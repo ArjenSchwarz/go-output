@@ -2,9 +2,8 @@ on: [push, pull_request]
 
 jobs:
   test:
-    name: Build binary
+    name: Build and run tests
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
@@ -13,14 +12,6 @@ jobs:
       - run: |
           go build
           go test
-  golangci:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.17 # Use 1.17 as some linting doesn't support 1.18 yet because of generics
-      - uses: actions/checkout@v3
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
