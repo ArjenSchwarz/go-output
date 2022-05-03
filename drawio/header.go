@@ -6,17 +6,16 @@ import (
 	"strings"
 )
 
-// DefaultConnectionStyle is the default style for connecting nodes
+// DefaultConnectionStyle is the default style for connecting nodes.
 const DefaultConnectionStyle = "curved=1;endArrow=blockThin;endFill=1;fontSize=11;"
 const BidirectionalConnectionStyle = "curved=1;endArrow=blockThin;endFill=1;fontSize=11;startArrow=blockThin;startFill=1;"
 
-// DefaultParentStyle is the default style for parent-child relationships
+// DefaultParentStyle is the default style for parent-child relationships.
 const DefaultParentStyle = "swimlane;whiteSpace=wrap;html=1;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;"
 
 const defaultLabel = "%Name%"
 const defaultStyle = "%Image%"
 const defaultIgnore = "Image"
-const headerComment = "##"
 const defaultEdgeSpacing = 40
 const defaultLevelSpacing = 100
 const defaultNodeSpacing = 40
@@ -26,7 +25,7 @@ const defaultNamespace = "csvimport-"
 const defaultConnectionFrom = "Parent"
 const defaultConnectionTo = "Name"
 
-// Standard layout styles for draw.io
+// Standard layout styles for draw.io.
 const (
 	LayoutAuto           = "auto"
 	LayoutNone           = "none"
@@ -38,7 +37,7 @@ const (
 	LayoutCircle         = "circle"
 )
 
-// Connection is a representation Draw.IO CSV import connection value
+// Connection is a representation Draw.IO CSV import connection value.
 type Connection struct {
 	From   string `json:"from"`
 	To     string `json:"to"`
@@ -47,7 +46,7 @@ type Connection struct {
 	Style  string `json:"style"`
 }
 
-// Header is a representation of the Draw.IO CSV import header
+// Header is a representation of the Draw.IO CSV import header.
 type Header struct {
 	label        string
 	style        string
@@ -76,10 +75,11 @@ type Header struct {
 // used for connections and styles but will not be added as metadata.)
 func NewHeader(label string, style string, ignore string) Header {
 	header := Header{
-		label:  label,
-		style:  style,
-		ignore: ignore,
-		layout: LayoutAuto,
+		label:     label,
+		style:     style,
+		ignore:    ignore,
+		layout:    LayoutAuto,
+		namespace: defaultNamespace,
 	}
 	header.SetSpacing(defaultNodeSpacing, defaultLevelSpacing, defaultEdgeSpacing)
 	header.SetHeightAndWidth(defaultHeight, defaultWidth)
@@ -199,10 +199,7 @@ func (header *Header) String() string {
 
 //IsSet checks if a header is configured
 func (header *Header) IsSet() bool {
-	if header.label == "" {
-		return false
-	}
-	return true
+	return header.label != ""
 }
 
 func (header *Header) connectionlist() []string {

@@ -166,7 +166,10 @@ func (output OutputArray) toHTML() {
 		b := template.New("base")
 		b, _ = b.Parse(templates.BaseHTMLTemplate)
 		baseBuf := new(bytes.Buffer)
-		b.Execute(baseBuf, output)
+		err := b.Execute(baseBuf, output)
+		if err != nil {
+			panic(err)
+		}
 		baseTemplate = baseBuf.String()
 	}
 	t := output.buildTable()
@@ -272,7 +275,10 @@ func PrintByteSlice(contents []byte, outputFile string) error {
 		}
 	}
 	w := bufio.NewWriter(target)
-	w.Write(contents)
+	_, err = w.Write(contents)
+	if err != nil {
+		return err
+	}
 	err = w.Flush()
 	return err
 }

@@ -28,25 +28,39 @@ var TableStyles = map[string]table.Style{
 }
 
 type OutputSettings struct {
-	UseEmoji            bool
-	OutputFormat        string
-	OutputFile          string
-	ShouldAppend        bool
-	Title               string
-	SortKey             string
-	DrawIOHeader        drawio.Header
-	FromToColumns       *FromToColumns
-	TableStyle          table.Style
-	SeparateTables      bool
+	// The header information for a draw.io/diagrams.net CSV import
+	DrawIOHeader drawio.Header
+	// The columns for graphical interfaces to show how parent-child relationships connect
+	FromToColumns *FromToColumns
+	// The name of the file the output should be saved to
+	OutputFile string
+	// The format of the output that should be used
+	OutputFormat string
+	// For table heavy outputs, should there be extra spacing between tables
+	SeparateTables bool
+	// Does the output need to be appended to an existing file?
+	ShouldAppend bool
+	// The key the output should be sorted by
+	SortKey string
+	// For tables, how wide can a table be?
 	TableMaxColumnWidth int
+	// The style of the table
+	TableStyle table.Style
+	// The title of the output
+	Title string
+	// Should colors be shown in the output
+	UseColors bool
+	// Should emoji be shown in the output
+	UseEmoji bool
 }
 
-// DotColumns is used to set the From and To columns for the dot output format
+// FromToColumns is used to set the From and To columns for graphical output formats
 type FromToColumns struct {
 	From string
 	To   string
 }
 
+// NewOutputSettings creates and returns a new OutputSettings object with some default values
 func NewOutputSettings() *OutputSettings {
 	settings := OutputSettings{
 		TableStyle:          table.StyleDefault,
@@ -55,6 +69,7 @@ func NewOutputSettings() *OutputSettings {
 	return &settings
 }
 
+// AddFromToColumns sets from to columns for graphical formats
 func (settings *OutputSettings) AddFromToColumns(from string, to string) {
 	result := FromToColumns{
 		From: from,
@@ -63,10 +78,12 @@ func (settings *OutputSettings) AddFromToColumns(from string, to string) {
 	settings.FromToColumns = &result
 }
 
+// SetOutputFormat sets the expected output format
 func (settings *OutputSettings) SetOutputFormat(format string) {
 	settings.OutputFormat = strings.ToLower(format)
 }
 
+// NeedsFromToColumns verifies if a format requires from and to columns to be set
 func (settings *OutputSettings) NeedsFromToColumns() bool {
 	if settings.OutputFormat == "dot" || settings.OutputFormat == "mermaid" {
 		return true

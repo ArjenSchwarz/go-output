@@ -1,6 +1,6 @@
 package templates
 
-// BaseHTMLTemplate is the base HTML template for outputs
+// BaseHTMLTemplate is the base HTML template for outputs.
 const BaseHTMLTemplate = `<html>
 <head>
 	<title>{{.Settings.Title}}</title>

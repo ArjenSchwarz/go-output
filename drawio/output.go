@@ -38,7 +38,10 @@ func CreateCSV(drawIOHeader Header, headerRow []string, contents []map[string]st
 	}
 	buf := new(bytes.Buffer)
 	fmt.Fprintf(buf, "%s", drawIOHeader.String())
-	buf.WriteTo(target)
+	_, err := buf.WriteTo(target)
+	if err != nil {
+		log.Fatal(err)
+	}
 	w := csv.NewWriter(target)
 
 	for _, record := range total {
@@ -68,7 +71,7 @@ func GetHeaderAndContentsFromFile(filename string) (map[string]int, [][]string) 
 // GetContentsFromFileAsStringMaps returns the CSV contents as a slice of string maps
 func GetContentsFromFileAsStringMaps(filename string) []map[string]string {
 	header, contents := getContentsFromFile(filename)
-	result := make([]map[string]string, len(contents))
+	result := make([]map[string]string, 0, len(contents))
 	for _, row := range contents {
 		resultrow := make(map[string]string)
 		for index, value := range row {
