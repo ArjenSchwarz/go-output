@@ -11,12 +11,14 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/emicklei/dot"
 	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/ArjenSchwarz/go-output/drawio"
+	"github.com/ArjenSchwarz/go-output/mermaid"
 	"github.com/ArjenSchwarz/go-output/templates"
 )
 
@@ -50,6 +52,7 @@ func (output OutputArray) GetContentsMap() []map[string]string {
 
 // Write will provide the output as configured in the configuration
 func (output OutputArray) Write() {
+	var result []byte
 	switch output.Settings.OutputFormat {
 	case "csv":
 		output.toCSV()
@@ -63,7 +66,7 @@ func (output OutputArray) Write() {
 		if output.Settings.FromToColumns == nil {
 			log.Fatal("This command doesn't currently support the mermaid output format")
 		}
-		output.toMermaid()
+		result = output.toMermaid()
 	case "drawio":
 		if !output.Settings.DrawIOHeader.IsSet() {
 			log.Fatal("This command doesn't currently support the drawio output format")
@@ -73,9 +76,15 @@ func (output OutputArray) Write() {
 		if output.Settings.FromToColumns == nil {
 			log.Fatal("This command doesn't currently support the dot output format")
 		}
-		output.toDot()
+		result = output.toDot()
 	default:
 		output.toJSON()
+	}
+	if len(result) != 0 {
+		err := PrintByteSlice(result, output.Settings.OutputFile)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 	}
 }
 
@@ -84,54 +93,17 @@ func (output OutputArray) toCSV() {
 	t.RenderCSV()
 }
 
-func (output OutputArray) toJSON() {
+func (output OutputArray) toJSON() []byte {
 	jsonString, _ := json.Marshal(output.GetContentsMap())
-
-	err := PrintByteSlice(jsonString, output.Settings.OutputFile)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	return jsonString
+	// err := PrintByteSlice(jsonString, output.Settings.OutputFile)
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
 }
 
-func (output OutputArray) toDot() {
-	result := output.buildDotGraph()
-	err := PrintByteSlice([]byte(result), output.Settings.OutputFile)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-}
-
-func (output OutputArray) toMermaid() {
-	dotversion := output.buildDotGraph()
-	result := strings.ReplaceAll(dotversion, "->", " --> ")
-	result = strings.ReplaceAll(result, "[label=", "(")
-	result = strings.ReplaceAll(result, "];", ")")
-	result = strings.ReplaceAll(result, ";", "")
-	result = strings.Replace(result, "digraph  {", "flowchart TB", 1)
-	result = strings.ReplaceAll(result, "\t\n", "")
-	result = strings.TrimRight(result, "}\n")
-	err := PrintByteSlice([]byte(result), output.Settings.OutputFile)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-}
-
-func (output OutputArray) buildDotGraph() string {
-	type dotholder struct {
-		To   string
-		From string
-	}
-	// Create new lines using the FromToColumns, splitting up multi values
-	cleanedlist := []dotholder{}
-	for _, holder := range output.Contents {
-		for _, tovalue := range strings.Split(output.toString(holder.Contents[output.Settings.FromToColumns.To]), ",") {
-			dothold := dotholder{
-				From: output.toString(holder.Contents[output.Settings.FromToColumns.From]),
-				To:   tovalue,
-			}
-			cleanedlist = append(cleanedlist, dothold)
-		}
-	}
+func (output OutputArray) toDot() []byte {
+	cleanedlist := output.splitFromToValues()
 
 	g := dot.NewGraph(dot.Directed)
 
@@ -151,7 +123,41 @@ func (output OutputArray) buildDotGraph() string {
 			g.Edge(nodelist[cleaned.From], nodelist[cleaned.To])
 		}
 	}
-	return g.String()
+	return []byte(g.String())
+}
+
+func (output OutputArray) toMermaid() []byte {
+	mermaid := mermaid.NewFlowchart()
+	cleanedlist := output.splitFromToValues()
+	// Add nodes
+	for _, cleaned := range cleanedlist {
+		mermaid.AddBasicNode(cleaned.From)
+	}
+	for _, cleaned := range cleanedlist {
+		if cleaned.To != "" {
+			mermaid.AddEdgeByNames(cleaned.From, cleaned.To)
+		}
+	}
+	return []byte(mermaid.RenderString())
+}
+
+type fromToValues struct {
+	From string
+	To   string
+}
+
+func (output OutputArray) splitFromToValues() []fromToValues {
+	resultList := make([]fromToValues, 0, 0)
+	for _, holder := range output.Contents {
+		for _, tovalue := range strings.Split(output.toString(holder.Contents[output.Settings.FromToColumns.To]), ",") {
+			values := fromToValues{
+				From: output.toString(holder.Contents[output.Settings.FromToColumns.From]),
+				To:   tovalue,
+			}
+			resultList = append(resultList, values)
+		}
+	}
+	return resultList
 }
 
 func (output OutputArray) toHTML() {
@@ -299,9 +305,15 @@ func (output *OutputArray) AddHolder(holder OutputHolder) {
 	output.Contents = contents
 }
 
+// toString converts the provided interface value into a string.
 func (output *OutputArray) toString(val interface{}) string {
-	if tmp, ok := val.(bool); ok {
-		if tmp {
+	switch converted := val.(type) {
+	case []string:
+		return strings.Join(converted, output.Settings.GetSeparator())
+	case int:
+		return strconv.Itoa(converted)
+	case bool:
+		if converted {
 			if output.Settings.UseEmoji {
 				return "✅"
 			} else {

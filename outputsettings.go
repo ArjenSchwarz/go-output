@@ -90,3 +90,16 @@ func (settings *OutputSettings) NeedsFromToColumns() bool {
 	}
 	return false
 }
+
+func (settings *OutputSettings) GetSeparator() string {
+	switch settings.OutputFormat {
+	case "table":
+		return "\r\n"
+	case "markdown":
+		return "\r\n"
+	case "dot":
+		return ","
+	default:
+		return ", "
+	}
+}
