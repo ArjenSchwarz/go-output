@@ -50,6 +50,21 @@ func (output OutputArray) GetContentsMap() []map[string]string {
 	return total
 }
 
+// GetContentsMapRaw returns a interface map of the output contents
+func (output OutputArray) GetContentsMapRaw() []map[string]interface{} {
+	total := make([]map[string]interface{}, 0, len(output.Contents))
+	for _, holder := range output.Contents {
+		values := make(map[string]interface{})
+		for _, key := range output.Keys {
+			if val, ok := holder.Contents[key]; ok {
+				values[key] = val
+			}
+		}
+		total = append(total, values)
+	}
+	return total
+}
+
 // Write will provide the output as configured in the configuration
 func (output OutputArray) Write() {
 	var result []byte
@@ -78,7 +93,7 @@ func (output OutputArray) Write() {
 		}
 		result = output.toDot()
 	default:
-		output.toJSON()
+		result = output.toJSON()
 	}
 	if len(result) != 0 {
 		err := PrintByteSlice(result, output.Settings.OutputFile)
@@ -94,12 +109,8 @@ func (output OutputArray) toCSV() {
 }
 
 func (output OutputArray) toJSON() []byte {
-	jsonString, _ := json.Marshal(output.GetContentsMap())
+	jsonString, _ := json.Marshal(output.GetContentsMapRaw())
 	return jsonString
-	// err := PrintByteSlice(jsonString, output.Settings.OutputFile)
-	// if err != nil {
-	// 	log.Fatal(err.Error())
-	// }
 }
 
 func (output OutputArray) toDot() []byte {
@@ -147,7 +158,7 @@ type fromToValues struct {
 }
 
 func (output OutputArray) splitFromToValues() []fromToValues {
-	resultList := make([]fromToValues, 0, 0)
+	resultList := make([]fromToValues, 0)
 	for _, holder := range output.Contents {
 		for _, tovalue := range strings.Split(output.toString(holder.Contents[output.Settings.FromToColumns.To]), ",") {
 			values := fromToValues{

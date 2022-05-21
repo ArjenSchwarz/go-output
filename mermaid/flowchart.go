@@ -64,7 +64,7 @@ func (flowchart *Flowchart) RenderString() string {
 }
 
 func (flowchart *Flowchart) getNodeString() string {
-	result := make([]string, 0, 0)
+	result := make([]string, 0)
 	for _, node := range flowchart.Nodes {
 		result = append(result, fmt.Sprintf("\t%s(\"%s\")", node.id, node.name))
 	}
@@ -73,7 +73,7 @@ func (flowchart *Flowchart) getNodeString() string {
 }
 
 func (flowchart *Flowchart) getEdgeString() string {
-	result := make([]string, 0, 0)
+	result := make([]string, 0)
 	for _, edge := range flowchart.Edges {
 		result = append(result, fmt.Sprintf("\t%s --> %s", edge.From.id, edge.To.id))
 	}
