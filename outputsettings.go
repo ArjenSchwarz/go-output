@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/ArjenSchwarz/go-output/drawio"
+	"github.com/ArjenSchwarz/go-output/mermaid"
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
@@ -28,10 +29,14 @@ var TableStyles = map[string]table.Style{
 }
 
 type OutputSettings struct {
+	// Defines whether a table of contents should be added
+	HasTOC bool
 	// The header information for a draw.io/diagrams.net CSV import
 	DrawIOHeader drawio.Header
 	// The columns for graphical interfaces to show how parent-child relationships connect
 	FromToColumns *FromToColumns
+	// The type of Mermaid diagram
+	MermaidSettings *mermaid.Settings
 	// The name of the file the output should be saved to
 	OutputFile string
 	// The format of the output that should be used
@@ -56,8 +61,9 @@ type OutputSettings struct {
 
 // FromToColumns is used to set the From and To columns for graphical output formats
 type FromToColumns struct {
-	From string
-	To   string
+	From  string
+	To    string
+	Label string
 }
 
 // NewOutputSettings creates and returns a new OutputSettings object with some default values
@@ -65,6 +71,7 @@ func NewOutputSettings() *OutputSettings {
 	settings := OutputSettings{
 		TableStyle:          table.StyleDefault,
 		TableMaxColumnWidth: 50,
+		MermaidSettings:     &mermaid.Settings{},
 	}
 	return &settings
 }
@@ -74,6 +81,16 @@ func (settings *OutputSettings) AddFromToColumns(from string, to string) {
 	result := FromToColumns{
 		From: from,
 		To:   to,
+	}
+	settings.FromToColumns = &result
+}
+
+// AddFromToColumns sets from to columns for graphical formats
+func (settings *OutputSettings) AddFromToColumnsWithLabel(from string, to string, label string) {
+	result := FromToColumns{
+		From:  from,
+		To:    to,
+		Label: label,
 	}
 	settings.FromToColumns = &result
 }
@@ -94,9 +111,9 @@ func (settings *OutputSettings) NeedsFromToColumns() bool {
 func (settings *OutputSettings) GetSeparator() string {
 	switch settings.OutputFormat {
 	case "table":
-		return "\r\n"
+		return "\n"
 	case "markdown":
-		return "\r\n"
+		return "\n"
 	case "dot":
 		return ","
 	default:

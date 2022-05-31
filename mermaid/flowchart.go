@@ -11,6 +11,7 @@ type Flowchart struct {
 	Direction string
 	Nodes     map[string]*Node
 	Edges     []*Edge
+	Settings  *Settings
 }
 
 type Node struct {
@@ -23,8 +24,8 @@ type Edge struct {
 	To   *Node // Pointer to the Node where the Edge ends.
 }
 
-func NewFlowchart() *Flowchart {
-	return &Flowchart{Direction: "TB"}
+func NewFlowchart(settings *Settings) *Flowchart {
+	return &Flowchart{Direction: "TB", Settings: settings}
 }
 
 func (flowchart *Flowchart) AddBasicNode(name string) {

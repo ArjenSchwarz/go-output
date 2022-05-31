@@ -5,20 +5,7 @@ import (
 	"testing"
 )
 
-// TestOutputArray_toMermaid only needs to test basic functionality,
-// the rest is handled in the tests for the Mermaid class
-func TestOutputArray_toMermaid(t *testing.T) {
-	type fields struct {
-		Settings *OutputSettings
-		Contents []OutputHolder
-		Keys     []string
-	}
-	keys := []string{"Export", "Description", "Stack", "Value", "Imported"}
-	title := "Export values demo"
-	output := fields{Keys: keys, Settings: NewOutputSettings()}
-	output.Settings.Title = title
-	output.Settings.SortKey = "Export"
-	output.Settings.AddFromToColumns("Stack", "Imported By")
+func defaultContentsForTests() []OutputHolder {
 	contents := make([]OutputHolder, 0)
 
 	value1 := OutputHolder{
@@ -44,7 +31,24 @@ func TestOutputArray_toMermaid(t *testing.T) {
 
 	contents = append(contents, value1)
 	contents = append(contents, value4)
-	output.Contents = contents
+	return contents
+}
+
+// TestOutputArray_toMermaid only needs to test basic functionality,
+// the rest is handled in the tests for the Mermaid class
+func TestOutputArray_toMermaid(t *testing.T) {
+	type fields struct {
+		Settings *OutputSettings
+		Contents []OutputHolder
+		Keys     []string
+	}
+	keys := []string{"Export", "Description", "Stack", "Value", "Imported"}
+	title := "Export values demo"
+	output := fields{Keys: keys, Settings: NewOutputSettings()}
+	output.Settings.Title = title
+	output.Settings.SortKey = "Export"
+	output.Settings.AddFromToColumns("Stack", "Imported By")
+	output.Contents = defaultContentsForTests()
 
 	result := []byte(`flowchart TB
 	n1("awesome-stack-dev")
@@ -107,7 +111,7 @@ func TestOutputArray_toString(t *testing.T) {
 		{"Emoji Bool true", fields{Settings: &withEmoji}, args{val: true}, "✅"},
 		{"Emoji Bool false", fields{Settings: &withEmoji}, args{val: false}, "❌"},
 		{"Slice json format", fields{Settings: &jsonFormat}, args{val: []string{"first", "second"}}, "first, second"},
-		{"Slice table format", fields{Settings: &tableFormat}, args{val: []string{"first", "second"}}, "first\r\nsecond"},
+		{"Slice table format", fields{Settings: &tableFormat}, args{val: []string{"first", "second"}}, "first\nsecond"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -267,6 +271,242 @@ func TestOutputArray_splitFromToValues(t *testing.T) {
 			}
 			if got := output.splitFromToValues(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("OutputArray.splitFromToValues() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOutputArray_GetContentsMap(t *testing.T) {
+	type fields struct {
+		Settings *OutputSettings
+		Contents []OutputHolder
+		Keys     []string
+	}
+
+	keys := []string{"Name", "Value"}
+	output := fields{Keys: keys, Settings: NewOutputSettings()}
+	value1 := OutputHolder{
+		Contents: map[string]interface{}{
+			"Name":  "Test",
+			"Value": "Something",
+		},
+	}
+	output.Contents = append(output.Contents, value1)
+	expectedOutput := make([]map[string]string, 0, len(output.Contents))
+	expectedOutput = append(expectedOutput, map[string]string{
+		"Name":  "Test",
+		"Value": "Something",
+	})
+
+	output2 := fields{Keys: keys, Settings: NewOutputSettings()}
+	value2 := OutputHolder{
+		Contents: map[string]interface{}{
+			"Name":  "Item 2",
+			"Value": "Something else",
+		},
+	}
+	output2.Contents = append(output2.Contents, value1)
+	output2.Contents = append(output2.Contents, value2)
+	expectedOutput2 := make([]map[string]string, 0)
+	expectedOutput2 = append(expectedOutput2, map[string]string{
+		"Name":  "Test",
+		"Value": "Something",
+	})
+	expectedOutput2 = append(expectedOutput2, map[string]string{
+		"Name":  "Item 2",
+		"Value": "Something else",
+	})
+
+	outputnonString := fields{Keys: keys, Settings: NewOutputSettings()}
+	value3 := OutputHolder{
+		Contents: map[string]interface{}{
+			"Name":  true,
+			"Value": 42,
+		},
+	}
+	outputnonString.Contents = append(outputnonString.Contents, value3)
+	expectedOutputnonString := make([]map[string]string, 0)
+	expectedOutputnonString = append(expectedOutputnonString, map[string]string{
+		"Name":  "Yes",
+		"Value": "42",
+	})
+
+	keys3 := []string{"Export", "Description", "Stack", "Value", "Imported", "Imported By"}
+	output3 := fields{Keys: keys3, Settings: NewOutputSettings()}
+	output3.Contents = defaultContentsForTests()
+	expectedOutput3 := make([]map[string]string, 0, len(output3.Contents))
+	expectedOutput3 = append(expectedOutput3, map[string]string{
+		"Export":      "awesome-stack-dev-s3-arn",
+		"Value":       "arn:aws:s3:::fog-awesome-stack-dev",
+		"Description": "ARN of the S3 bucket",
+		"Stack":       "awesome-stack-dev",
+		"Imported":    "Yes",
+		"Imported By": "demo-resources",
+	})
+	expectedOutput3 = append(expectedOutput3, map[string]string{
+		"Export":      "demo-s3-bucket",
+		"Value":       "fog-demo-bucket",
+		"Description": "The S3 bucket used for demos but has an exceptionally long description so it can show a multi-line example",
+		"Stack":       "demo-resources",
+		"Imported":    "No",
+		"Imported By": "",
+	})
+
+	tests := []struct {
+		name   string
+		fields fields
+		want   []map[string]string
+	}{
+		{"Two fields One Object", output, expectedOutput},
+		{"Two fields Two Objects", output2, expectedOutput2},
+		{"Two fields One Object NonStrings - tests conversion", outputnonString, expectedOutputnonString},
+		{"Many Fields Two Objects", output3, expectedOutput3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := OutputArray{
+				Settings: tt.fields.Settings,
+				Contents: tt.fields.Contents,
+				Keys:     tt.fields.Keys,
+			}
+			if got := output.GetContentsMap(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("OutputArray.GetContentsMap() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOutputArray_GetContentsMapRaw(t *testing.T) {
+	type fields struct {
+		Settings *OutputSettings
+		Contents []OutputHolder
+		Keys     []string
+	}
+	keys := []string{"Name", "Value"}
+	output := fields{Keys: keys, Settings: NewOutputSettings()}
+	value1 := OutputHolder{
+		Contents: map[string]interface{}{
+			"Name":  "Test",
+			"Value": "Something",
+		},
+	}
+	output.Contents = append(output.Contents, value1)
+	expectedOutput := make([]map[string]interface{}, 0, len(output.Contents))
+	expectedOutput = append(expectedOutput, map[string]interface{}{
+		"Name":  "Test",
+		"Value": "Something",
+	})
+
+	output2 := fields{Keys: keys, Settings: NewOutputSettings()}
+	value2 := OutputHolder{
+		Contents: map[string]interface{}{
+			"Name":  "Item 2",
+			"Value": "Something else",
+		},
+	}
+	output2.Contents = append(output2.Contents, value1)
+	output2.Contents = append(output2.Contents, value2)
+	expectedOutput2 := make([]map[string]interface{}, 0)
+	expectedOutput2 = append(expectedOutput2, map[string]interface{}{
+		"Name":  "Test",
+		"Value": "Something",
+	})
+	expectedOutput2 = append(expectedOutput2, map[string]interface{}{
+		"Name":  "Item 2",
+		"Value": "Something else",
+	})
+
+	outputnonString := fields{Keys: keys, Settings: NewOutputSettings()}
+	value3 := OutputHolder{
+		Contents: map[string]interface{}{
+			"Name":  true,
+			"Value": 42,
+		},
+	}
+	outputnonString.Contents = append(outputnonString.Contents, value3)
+	expectedOutputnonString := make([]map[string]interface{}, 0)
+	expectedOutputnonString = append(expectedOutputnonString, map[string]interface{}{
+		"Name":  true,
+		"Value": 42,
+	})
+
+	keys3 := []string{"Export", "Description", "Stack", "Value", "Imported", "Imported By"}
+	output3 := fields{Keys: keys3, Settings: NewOutputSettings()}
+	output3.Contents = defaultContentsForTests()
+	expectedOutput3 := make([]map[string]interface{}, 0, len(output3.Contents))
+	expectedOutput3 = append(expectedOutput3, map[string]interface{}{
+		"Export":      "awesome-stack-dev-s3-arn",
+		"Value":       "arn:aws:s3:::fog-awesome-stack-dev",
+		"Description": "ARN of the S3 bucket",
+		"Stack":       "awesome-stack-dev",
+		"Imported":    true,
+		"Imported By": "demo-resources",
+	})
+	expectedOutput3 = append(expectedOutput3, map[string]interface{}{
+		"Export":      "demo-s3-bucket",
+		"Value":       "fog-demo-bucket",
+		"Description": "The S3 bucket used for demos but has an exceptionally long description so it can show a multi-line example",
+		"Stack":       "demo-resources",
+		"Imported":    false,
+		"Imported By": "",
+	})
+
+	tests := []struct {
+		name   string
+		fields fields
+		want   []map[string]interface{}
+	}{
+		{"Two fields One Object", output, expectedOutput},
+		{"Two fields Two Objects", output2, expectedOutput2},
+		{"Two fields One Object NonStrings - tests no conversion", outputnonString, expectedOutputnonString},
+		{"Many Fields Two Objects", output3, expectedOutput3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := OutputArray{
+				Settings: tt.fields.Settings,
+				Contents: tt.fields.Contents,
+				Keys:     tt.fields.Keys,
+			}
+			if got := output.GetContentsMapRaw(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("OutputArray.GetContentsMapRaw() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestOutputArray_toJSON only needs to test the json output part, the underlying logic is tested in other functions already
+func TestOutputArray_toJSON(t *testing.T) {
+	type fields struct {
+		Settings *OutputSettings
+		Contents []OutputHolder
+		Keys     []string
+	}
+	keys := []string{"Name", "Value"}
+	output := fields{Keys: keys, Settings: NewOutputSettings()}
+	value1 := OutputHolder{
+		Contents: map[string]interface{}{
+			"Name":  "Test",
+			"Value": "Something",
+		},
+	}
+	output.Contents = append(output.Contents, value1)
+	tests := []struct {
+		name   string
+		fields fields
+		want   []byte
+	}{
+		{"Basic value", output, []byte("[{\"Name\":\"Test\",\"Value\":\"Something\"}]")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := OutputArray{
+				Settings: tt.fields.Settings,
+				Contents: tt.fields.Contents,
+				Keys:     tt.fields.Keys,
+			}
+			if got := output.toJSON(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("OutputArray.toJSON() = %v, want %v", got, tt.want)
 			}
 		})
 	}

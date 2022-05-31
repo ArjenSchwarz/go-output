@@ -15,12 +15,16 @@ import (
 	"strings"
 
 	"github.com/emicklei/dot"
+	"github.com/gosimple/slug"
 	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/ArjenSchwarz/go-output/drawio"
 	"github.com/ArjenSchwarz/go-output/mermaid"
 	"github.com/ArjenSchwarz/go-output/templates"
 )
+
+var buffer bytes.Buffer
+var toc []string
 
 // OutputHolder holds key-value pairs that belong together in the output
 type OutputHolder struct {
@@ -70,15 +74,31 @@ func (output OutputArray) Write() {
 	var result []byte
 	switch output.Settings.OutputFormat {
 	case "csv":
-		output.toCSV()
+		if buffer.Len() == 0 {
+			result = output.toCSV()
+		} else {
+			result = buffer.Bytes()
+		}
 	case "html":
-		output.toHTML()
+		if buffer.Len() == 0 {
+			output.toHTML()
+		} else {
+			result = output.bufferToHTML()
+		}
 	case "table":
-		output.toTable()
+		if buffer.Len() == 0 {
+			result = output.toTable()
+		} else {
+			result = buffer.Bytes()
+		}
 	case "markdown":
-		output.toMarkdown()
+		if buffer.Len() == 0 {
+			result = output.toMarkdown()
+		} else {
+			result = output.bufferToMarkdown()
+		}
 	case "mermaid":
-		if output.Settings.FromToColumns == nil {
+		if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
 			log.Fatal("This command doesn't currently support the mermaid output format")
 		}
 		result = output.toMermaid()
@@ -93,7 +113,11 @@ func (output OutputArray) Write() {
 		}
 		result = output.toDot()
 	default:
-		result = output.toJSON()
+		if buffer.Len() == 0 {
+			result = output.toJSON()
+		} else {
+			result = buffer.Bytes()
+		}
 	}
 	if len(result) != 0 {
 		err := PrintByteSlice(result, output.Settings.OutputFile)
@@ -103,9 +127,12 @@ func (output OutputArray) Write() {
 	}
 }
 
-func (output OutputArray) toCSV() {
+func (output OutputArray) toCSV() []byte {
+	tableBuf := new(bytes.Buffer)
 	t := output.buildTable()
+	t.SetOutputMirror(tableBuf)
 	t.RenderCSV()
+	return tableBuf.Bytes()
 }
 
 func (output OutputArray) toJSON() []byte {
@@ -138,18 +165,48 @@ func (output OutputArray) toDot() []byte {
 }
 
 func (output OutputArray) toMermaid() []byte {
-	mermaid := mermaid.NewFlowchart()
-	cleanedlist := output.splitFromToValues()
-	// Add nodes
-	for _, cleaned := range cleanedlist {
-		mermaid.AddBasicNode(cleaned.From)
-	}
-	for _, cleaned := range cleanedlist {
-		if cleaned.To != "" {
-			mermaid.AddEdgeByNames(cleaned.From, cleaned.To)
+	switch output.Settings.MermaidSettings.ChartType {
+	case "":
+		fallthrough
+	case "flowchart":
+		mermaid := mermaid.NewFlowchart(output.Settings.MermaidSettings)
+		cleanedlist := output.splitFromToValues()
+		// Add nodes
+		for _, cleaned := range cleanedlist {
+			mermaid.AddBasicNode(cleaned.From)
 		}
+		for _, cleaned := range cleanedlist {
+			if cleaned.To != "" {
+				mermaid.AddEdgeByNames(cleaned.From, cleaned.To)
+			}
+		}
+		return []byte(mermaid.RenderString())
+	case "piechart":
+		mermaid := mermaid.NewPiechart(output.Settings.MermaidSettings)
+		for _, holder := range output.Contents {
+			label := output.toString(holder.Contents[output.Settings.FromToColumns.From])
+			var value float64
+			switch converted := holder.Contents[output.Settings.FromToColumns.To].(type) {
+			case float64:
+				value = converted
+			}
+			mermaid.AddValue(label, value)
+		}
+		return []byte(mermaid.RenderString())
+	case "ganttchart":
+		chart := mermaid.NewGanttchart(output.Settings.MermaidSettings)
+		chart.Title = output.Settings.Title
+		section := chart.GetDefaultSection()
+		for _, holder := range output.Contents {
+			startdate := output.toString(holder.Contents[chart.Settings.GanttSettings.StartDateColumn])
+			duration := output.toString(holder.Contents[chart.Settings.GanttSettings.DurationColumn])
+			label := output.toString(holder.Contents[chart.Settings.GanttSettings.LabelColumn])
+			status := output.toString(holder.Contents[chart.Settings.GanttSettings.StatusColumn])
+			section.AddTask(label, startdate, duration, status)
+		}
+		return []byte(chart.RenderString())
 	}
-	return []byte(mermaid.RenderString())
+	return []byte("")
 }
 
 type fromToValues struct {
@@ -171,7 +228,106 @@ func (output OutputArray) splitFromToValues() []fromToValues {
 	return resultList
 }
 
+func (output OutputArray) AddHeader(header string) {
+	switch output.Settings.OutputFormat {
+	case "html":
+		id := slug.Make(header)
+		buffer.Write([]byte(fmt.Sprintf("<h2 id='%s'>%s</h2>\n", id, header)))
+		toc = append(toc, fmt.Sprintf("<a href='#%s'>%s</a>", id, header))
+	// case "table":
+	// 	output.toTable()
+	case "markdown":
+		buffer.Write([]byte(fmt.Sprintf("## %s\n", header)))
+		id := slug.Make(header)
+		toc = append(toc, fmt.Sprintf("[%s](#%s)", header, id))
+	}
+}
+
+func (output OutputArray) AddToBuffer() {
+	switch output.Settings.OutputFormat {
+	case "csv":
+		buffer.Write(output.toCSV())
+	case "html":
+		buffer.Write(output.htmlTableOnly())
+	case "table":
+		buffer.Write(output.toTable())
+	case "markdown":
+		buffer.Write(output.toMarkdown())
+	case "mermaid":
+		// if output.Settings.FromToColumns == nil {
+		// 	log.Fatal("This command doesn't currently support the mermaid output format")
+		// }
+		buffer.Write(output.toMermaid())
+	case "drawio":
+		// if !output.Settings.DrawIOHeader.IsSet() {
+		// 	log.Fatal("This command doesn't currently support the drawio output format")
+		// }
+		// drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+	case "dot":
+		if output.Settings.FromToColumns == nil {
+			log.Fatal("This command doesn't currently support the dot output format")
+		}
+		buffer.Write(output.toDot())
+	default:
+		buffer.Write(output.toJSON())
+	}
+
+}
+
+func (output OutputArray) bufferToHTML() []byte {
+	var baseTemplate string
+	if output.Settings.ShouldAppend {
+		originalfile, err := ioutil.ReadFile(output.Settings.OutputFile)
+		if err != nil {
+			panic(err)
+		}
+		baseTemplate = string(originalfile)
+	} else {
+		b := template.New("base")
+		b, _ = b.Parse(templates.BaseHTMLTemplate)
+		baseBuf := new(bytes.Buffer)
+		err := b.Execute(baseBuf, output)
+		if err != nil {
+			panic(err)
+		}
+		baseTemplate = baseBuf.String()
+		tocstring := ""
+		if output.Settings.Title != "" {
+			tocstring = fmt.Sprintf("<h1>%s</h1>", output.Settings.Title)
+		}
+		if output.Settings.HasTOC {
+			tocstring += "<h2>Table of Contents</h2>\n<ul id='tableofcontent'>\n"
+			for _, item := range toc {
+				tocstring += fmt.Sprintf("<li>%s</li>\n", item)
+			}
+			tocstring += "</ul>"
+		}
+		tocstring += "\n<div id='end'></div>"
+		baseTemplate = strings.Replace(baseTemplate, "<div id='end'></div>", tocstring, 1)
+	}
+	buffer.Write([]byte("<div id='end'></div>")) // Add the placeholder
+	return []byte(strings.Replace(baseTemplate, "<div id='end'></div>", buffer.String(), 1))
+
+}
+
+func (output OutputArray) bufferToMarkdown() []byte {
+	tocstring := ""
+	if output.Settings.Title != "" {
+		tocstring = fmt.Sprintf("# %s\n\n", output.Settings.Title)
+	}
+	if output.Settings.HasTOC {
+		tocstring += "## Table of Contents\n"
+		for _, item := range toc {
+			tocstring += fmt.Sprintf("* %s \n", item)
+		}
+		tocstring += "\n"
+	}
+	return []byte(tocstring + buffer.String())
+
+}
+
 func (output OutputArray) toHTML() {
+	//TODO rewrite to use buffer. Need to think how to do the appending
 	var baseTemplate string
 	if output.Settings.ShouldAppend {
 		originalfile, err := ioutil.ReadFile(output.Settings.OutputFile)
@@ -203,27 +359,48 @@ func (output OutputArray) toHTML() {
 	}
 }
 
-func (output OutputArray) toTable() {
+func (output OutputArray) htmlTableOnly() []byte {
+	t := output.buildTable()
+	tableBuf := new(bytes.Buffer)
+	t.SetOutputMirror(tableBuf)
+	t.SetHTMLCSSClass("responstable")
+	t.RenderHTML()
+	return tableBuf.Bytes()
+}
+
+func (output OutputArray) toTable() []byte {
+	tableBuf := new(bytes.Buffer)
 	if output.Settings.SeparateTables {
-		fmt.Println("")
+		tableBuf.WriteString("\n")
 	}
 	t := output.buildTable()
+	t.SetOutputMirror(tableBuf)
 	t.SetStyle(output.Settings.TableStyle)
 	t.Render()
 	if output.Settings.SeparateTables {
-		fmt.Println("")
+		tableBuf.WriteString("\n")
 	}
+	return tableBuf.Bytes()
 }
 
-func (output OutputArray) toMarkdown() {
+func (output OutputArray) toMarkdown() []byte {
 	t := output.buildTable()
+	tableBuf := new(bytes.Buffer)
+	t.SetOutputMirror(tableBuf)
 	t.RenderMarkdown()
+	tableBuf.WriteString("\n")
+	return tableBuf.Bytes()
 }
 
 func (output OutputArray) buildTable() table.Writer {
 	t := table.NewWriter()
 	if output.Settings.Title != "" {
-		t.SetTitle(output.Settings.Title)
+		// Ugly hack because go-pretty uses a h1 (#) for the table title in Markdown
+		if (output.Settings.OutputFormat == "markdown") && buffer.Len() != 0 {
+			buffer.WriteString(fmt.Sprintf("#### %s\n\n", output.Settings.Title))
+		} else {
+			t.SetTitle(output.Settings.Title)
+		}
 	}
 	var target io.Writer
 	// var err error
