@@ -3,6 +3,7 @@ package format
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -14,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/emicklei/dot"
 	"github.com/gosimple/slug"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -120,7 +123,7 @@ func (output OutputArray) Write() {
 		}
 	}
 	if len(result) != 0 {
-		err := PrintByteSlice(result, output.Settings.OutputFile)
+		err := PrintByteSlice(result, output.Settings.OutputFile, output.Settings.S3Bucket)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
@@ -353,7 +356,7 @@ func (output OutputArray) toHTML() {
 	tableBuf.Write([]byte("<div id='end'></div>")) // Add the placeholder
 	resultString := strings.Replace(baseTemplate, "<div id='end'></div>", tableBuf.String(), 1)
 
-	err := PrintByteSlice([]byte(resultString), output.Settings.OutputFile)
+	err := PrintByteSlice([]byte(resultString), output.Settings.OutputFile, output.Settings.S3Bucket)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -457,9 +460,18 @@ func (output *OutputArray) ContentsAsInterfaces() [][]interface{} {
 }
 
 // PrintByteSlice prints the provided contents to stdout or the provided filepath
-func PrintByteSlice(contents []byte, outputFile string) error {
+func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) error {
 	var target io.Writer
 	var err error
+	if targetBucket.Bucket != "" {
+		s3params := s3.PutObjectInput{
+			Bucket: aws.String(targetBucket.Bucket),
+			Key:    aws.String(targetBucket.Path),
+			Body:   bytes.NewReader(contents),
+		}
+		_, err := targetBucket.S3Client.PutObject(context.TODO(), &s3params)
+		return err
+	}
 	if outputFile == "" {
 		target = os.Stdout
 	} else {

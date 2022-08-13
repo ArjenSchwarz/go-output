@@ -6,6 +6,8 @@ import (
 	"github.com/ArjenSchwarz/go-output/drawio"
 	"github.com/ArjenSchwarz/go-output/mermaid"
 	"github.com/jedib0t/go-pretty/v6/table"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // TableStyles is a lookup map for getting the table styles based on a string
@@ -41,6 +43,8 @@ type OutputSettings struct {
 	OutputFile string
 	// The format of the output that should be used
 	OutputFormat string
+	// Store the output in the provided S3 bucket
+	S3Bucket S3Output
 	// For table heavy outputs, should there be extra spacing between tables
 	SeparateTables bool
 	// Does the output need to be appended to an existing file?
@@ -57,6 +61,12 @@ type OutputSettings struct {
 	UseColors bool
 	// Should emoji be shown in the output
 	UseEmoji bool
+}
+
+type S3Output struct {
+	S3Client *s3.Client
+	Bucket   string
+	Path     string
 }
 
 // FromToColumns is used to set the From and To columns for graphical output formats
@@ -98,6 +108,14 @@ func (settings *OutputSettings) AddFromToColumnsWithLabel(from string, to string
 // SetOutputFormat sets the expected output format
 func (settings *OutputSettings) SetOutputFormat(format string) {
 	settings.OutputFormat = strings.ToLower(format)
+}
+
+func (settings *OutputSettings) SetS3Bucket(client *s3.Client, bucket string, path string) {
+	settings.S3Bucket = S3Output{
+		S3Client: client,
+		Bucket:   bucket,
+		Path:     path,
+	}
 }
 
 // NeedsFromToColumns verifies if a format requires from and to columns to be set
