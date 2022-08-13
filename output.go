@@ -407,7 +407,8 @@ func (output OutputArray) buildTable() table.Writer {
 	}
 	var target io.Writer
 	// var err error
-	if output.Settings.OutputFile == "" {
+	// pretend it's stdout when writing a bucket to prevent files from being created
+	if output.Settings.OutputFile == "" || output.Settings.S3Bucket.Bucket != "" {
 		target = os.Stdout
 	} else {
 		//Always create if append flag isn't provided
