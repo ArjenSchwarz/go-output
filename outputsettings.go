@@ -110,6 +110,17 @@ func (settings *OutputSettings) SetOutputFormat(format string) {
 	settings.OutputFormat = strings.ToLower(format)
 }
 
+func (settings *OutputSettings) GetDefaultExtension() string {
+	switch settings.OutputFormat {
+	case "markdown":
+		return ".md"
+	case "table":
+		return ".txt"
+	default:
+		return "." + settings.OutputFormat
+	}
+}
+
 func (settings *OutputSettings) SetS3Bucket(client *s3.Client, bucket string, path string) {
 	settings.S3Bucket = S3Output{
 		S3Client: client,
