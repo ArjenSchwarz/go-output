@@ -251,7 +251,7 @@ func (output OutputArray) AddToBuffer() {
 	case "csv":
 		buffer.Write(output.toCSV())
 	case "html":
-		buffer.Write(output.htmlTableOnly())
+		buffer.Write(output.HtmlTableOnly())
 	case "table":
 		buffer.Write(output.toTable())
 	case "markdown":
@@ -314,19 +314,25 @@ func (output OutputArray) bufferToHTML() []byte {
 }
 
 func (output OutputArray) bufferToMarkdown() []byte {
-	tocstring := ""
+	headerstring := ""
+	if len(output.Settings.FrontMatter) != 0 {
+		headerstring = "---\n"
+		for key, value := range output.Settings.FrontMatter {
+			headerstring += fmt.Sprintf("%s: %s\n", key, value)
+		}
+		headerstring += "---\n"
+	}
 	if output.Settings.Title != "" {
-		tocstring = fmt.Sprintf("# %s\n\n", output.Settings.Title)
+		headerstring += fmt.Sprintf("# %s\n\n", output.Settings.Title)
 	}
 	if output.Settings.HasTOC {
-		tocstring += "## Table of Contents\n"
+		headerstring += "## Table of Contents\n"
 		for _, item := range toc {
-			tocstring += fmt.Sprintf("* %s \n", item)
+			headerstring += fmt.Sprintf("* %s \n", item)
 		}
-		tocstring += "\n"
+		headerstring += "\n"
 	}
-	return []byte(tocstring + buffer.String())
-
+	return []byte(headerstring + buffer.String())
 }
 
 func (output OutputArray) toHTML() {
@@ -362,7 +368,8 @@ func (output OutputArray) toHTML() {
 	}
 }
 
-func (output OutputArray) htmlTableOnly() []byte {
+// HtmlTableOnly returns a byte array containing an HTML table of the OutputArray
+func (output OutputArray) HtmlTableOnly() []byte {
 	t := output.buildTable()
 	tableBuf := new(bytes.Buffer)
 	t.SetOutputMirror(tableBuf)

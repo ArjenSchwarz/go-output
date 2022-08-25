@@ -35,6 +35,8 @@ type OutputSettings struct {
 	HasTOC bool
 	// The header information for a draw.io/diagrams.net CSV import
 	DrawIOHeader drawio.Header
+	// FrontMatter can be provided for a Markdown output
+	FrontMatter map[string]string
 	// The columns for graphical interfaces to show how parent-child relationships connect
 	FromToColumns *FromToColumns
 	// The type of Mermaid diagram
