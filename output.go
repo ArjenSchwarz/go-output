@@ -237,8 +237,8 @@ func (output OutputArray) AddHeader(header string) {
 		id := slug.Make(header)
 		buffer.Write([]byte(fmt.Sprintf("<h2 id='%s'>%s</h2>\n", id, header)))
 		toc = append(toc, fmt.Sprintf("<a href='#%s'>%s</a>", id, header))
-	// case "table":
-	// 	output.toTable()
+	case "table":
+		buffer.Write([]byte(fmt.Sprintf("\n%s\n", header)))
 	case "markdown":
 		buffer.Write([]byte(fmt.Sprintf("## %s\n", header)))
 		id := slug.Make(header)
