@@ -127,6 +127,7 @@ func (output OutputArray) Write() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
+		buffer.Reset()
 	}
 }
 
