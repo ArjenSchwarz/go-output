@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/emicklei/dot"
 	"github.com/gosimple/slug"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -474,8 +473,8 @@ func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) e
 	var err error
 	if targetBucket.Bucket != "" {
 		s3params := s3.PutObjectInput{
-			Bucket: aws.String(targetBucket.Bucket),
-			Key:    aws.String(targetBucket.Path),
+			Bucket: &targetBucket.Bucket,
+			Key:    &targetBucket.Path,
 			Body:   bytes.NewReader(contents),
 		}
 		_, err := targetBucket.S3Client.PutObject(context.TODO(), &s3params)
