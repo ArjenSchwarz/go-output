@@ -19,6 +19,7 @@ import (
 	"github.com/emicklei/dot"
 	"github.com/gosimple/slug"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"gopkg.in/yaml.v3"
 
 	"github.com/ArjenSchwarz/go-output/drawio"
 	"github.com/ArjenSchwarz/go-output/mermaid"
@@ -114,6 +115,12 @@ func (output OutputArray) Write() {
 			log.Fatal("This command doesn't currently support the dot output format")
 		}
 		result = output.toDot()
+	case "yaml":
+		if buffer.Len() == 0 {
+			result = output.toYAML()
+		} else {
+			result = buffer.Bytes()
+		}
 	default:
 		if buffer.Len() == 0 {
 			result = output.toJSON()
@@ -140,6 +147,11 @@ func (output OutputArray) toCSV() []byte {
 
 func (output OutputArray) toJSON() []byte {
 	jsonString, _ := json.Marshal(output.GetContentsMapRaw())
+	return jsonString
+}
+
+func (output OutputArray) toYAML() []byte {
+	jsonString, _ := yaml.Marshal(output.GetContentsMapRaw())
 	return jsonString
 }
 

@@ -4,9 +4,12 @@ A module used by [me](https://github.com/ArjenSchwarz/) to manage outputs in var
 
 ## Output types
 
-This supports various output types
+This supports various output types:
 
 ### json
+
+
+### yaml
 
 
 ### csv

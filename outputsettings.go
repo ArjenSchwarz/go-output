@@ -51,6 +51,8 @@ type OutputSettings struct {
 	SeparateTables bool
 	// Does the output need to be appended to an existing file?
 	ShouldAppend bool
+	// For columnar outputs (table, html, csv, markdown) split rows with multiple values into separate rows
+	SplitLines bool
 	// The key the output should be sorted by
 	SortKey string
 	// For tables, how wide can a table be?
@@ -144,6 +146,8 @@ func (settings *OutputSettings) GetSeparator() string {
 	case "table":
 		return "\n"
 	case "markdown":
+		return "\n"
+	case "csv":
 		return "\n"
 	case "dot":
 		return ","

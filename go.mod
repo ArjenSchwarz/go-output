@@ -21,6 +21,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.19 // indirect
 	github.com/aws/smithy-go v1.13.4 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
