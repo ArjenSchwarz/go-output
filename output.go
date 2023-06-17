@@ -286,7 +286,6 @@ func (output OutputArray) AddToBuffer() {
 	default:
 		buffer.Write(output.toJSON())
 	}
-
 }
 
 func (output OutputArray) bufferToHTML() []byte {
@@ -523,6 +522,12 @@ func (output *OutputArray) AddHolder(holder OutputHolder) {
 			})
 	}
 	output.Contents = contents
+}
+
+// AddContents adds the provided map[string]interface{} to the OutputHolder and that in turn to the OutputArray
+func (output *OutputArray) AddContents(contents map[string]interface{}) {
+	holder := OutputHolder{Contents: contents}
+	output.AddHolder(holder)
 }
 
 // toString converts the provided interface value into a string.
