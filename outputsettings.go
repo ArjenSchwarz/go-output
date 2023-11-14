@@ -43,6 +43,8 @@ type OutputSettings struct {
 	MermaidSettings *mermaid.Settings
 	// The name of the file the output should be saved to
 	OutputFile string
+	// The format of the output file
+	OutputFileFormat string
 	// The format of the output that should be used
 	OutputFormat string
 	// Store the output in the provided S3 bucket

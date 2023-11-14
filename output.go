@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -129,11 +130,76 @@ func (output OutputArray) Write() {
 		}
 	}
 	if len(result) != 0 {
-		err := PrintByteSlice(result, output.Settings.OutputFile, output.Settings.S3Bucket)
+		err := PrintByteSlice(result, "", output.Settings.S3Bucket)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 		buffer.Reset()
+	}
+	if output.Settings.OutputFile != "" {
+		if output.Settings.OutputFileFormat == "" {
+			output.Settings.OutputFileFormat = output.Settings.OutputFormat
+		}
+		switch output.Settings.OutputFileFormat {
+		case "csv":
+			if buffer.Len() == 0 {
+				result = output.toCSV()
+			} else {
+				result = buffer.Bytes()
+			}
+		case "html":
+			if buffer.Len() == 0 {
+				output.toHTML()
+			} else {
+				result = output.bufferToHTML()
+			}
+		case "table":
+			if buffer.Len() == 0 {
+				result = output.toTable()
+			} else {
+				result = buffer.Bytes()
+			}
+		case "markdown":
+			if buffer.Len() == 0 {
+				result = output.toMarkdown()
+			} else {
+				result = output.bufferToMarkdown()
+			}
+		case "mermaid":
+			if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
+				log.Fatal("This command doesn't currently support the mermaid output format")
+			}
+			result = output.toMermaid()
+		case "drawio":
+			if !output.Settings.DrawIOHeader.IsSet() {
+				log.Fatal("This command doesn't currently support the drawio output format")
+			}
+			drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+		case "dot":
+			if output.Settings.FromToColumns == nil {
+				log.Fatal("This command doesn't currently support the dot output format")
+			}
+			result = output.toDot()
+		case "yaml":
+			if buffer.Len() == 0 {
+				result = output.toYAML()
+			} else {
+				result = buffer.Bytes()
+			}
+		default:
+			if buffer.Len() == 0 {
+				result = output.toJSON()
+			} else {
+				result = buffer.Bytes()
+			}
+		}
+		if len(result) != 0 {
+			err := PrintByteSlice(result, output.Settings.OutputFile, output.Settings.S3Bucket)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+			buffer.Reset()
+		}
 	}
 }
 
@@ -482,6 +548,11 @@ func (output *OutputArray) ContentsAsInterfaces() [][]interface{} {
 func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) error {
 	var target io.Writer
 	var err error
+	// Remove the bash colours from output files
+	if outputFile != "" {
+		re := regexp.MustCompile(`\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]`) // source: https://stackoverflow.com/questions/17998978/removing-colors-from-output
+		contents = re.ReplaceAll(contents, []byte(""))
+	}
 	if targetBucket.Bucket != "" {
 		s3params := s3.PutObjectInput{
 			Bucket: &targetBucket.Bucket,
@@ -495,6 +566,7 @@ func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) e
 		target = os.Stdout
 	} else {
 		target, err = os.Create(outputFile)
+		defer target.(*os.File).Close()
 		if err != nil {
 			return err
 		}
