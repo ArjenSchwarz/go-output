@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -33,7 +32,11 @@ func CreateCSV(drawIOHeader Header, headerRow []string, contents []map[string]st
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer file.Close()
+		defer func() {
+			if cerr := file.Close(); cerr != nil {
+				log.Println(cerr)
+			}
+		}()
 		target = bufio.NewWriter(file)
 	}
 	buf := new(bytes.Buffer)
@@ -85,7 +88,7 @@ func GetContentsFromFileAsStringMaps(filename string) []map[string]string {
 // getContentsFromFile returns the headers of a CSV in a string slice and the remaining rows separately
 // It filters away all of the comments
 func getContentsFromFile(filename string) ([]string, [][]string) {
-	originalfile, err := ioutil.ReadFile(filename)
+	originalfile, err := os.ReadFile(filename)
 	if err != nil {
 		panic(err)
 	}

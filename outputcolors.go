@@ -31,7 +31,7 @@ func (settings *OutputSettings) StringWarningInline(text string) string {
 func (settings *OutputSettings) StringSuccess(text interface{}) string {
 	green := color.New(color.FgGreen)
 	greenbold := green.Add(color.Bold)
-	greenbold.Println("")
+	_, _ = greenbold.Println("")
 	success := "OK"
 	if settings.UseEmoji {
 		success = "✅"

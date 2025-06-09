@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -357,7 +356,7 @@ func (output OutputArray) AddToBuffer() {
 func (output OutputArray) bufferToHTML() []byte {
 	var baseTemplate string
 	if output.Settings.ShouldAppend {
-		originalfile, err := ioutil.ReadFile(output.Settings.OutputFile)
+		originalfile, err := os.ReadFile(output.Settings.OutputFile)
 		if err != nil {
 			panic(err)
 		}
@@ -416,7 +415,7 @@ func (output OutputArray) toHTML() {
 	//TODO rewrite to use buffer. Need to think how to do the appending
 	var baseTemplate string
 	if output.Settings.ShouldAppend {
-		originalfile, err := ioutil.ReadFile(output.Settings.OutputFile)
+		originalfile, err := os.ReadFile(output.Settings.OutputFile)
 		if err != nil {
 			panic(err)
 		}
@@ -565,11 +564,16 @@ func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) e
 	if outputFile == "" {
 		target = os.Stdout
 	} else {
-		target, err = os.Create(outputFile)
-		defer target.(*os.File).Close()
-		if err != nil {
-			return err
+		f, errCreate := os.Create(outputFile)
+		if errCreate != nil {
+			return errCreate
 		}
+		target = f
+		defer func() {
+			if cerr := f.Close(); err == nil && cerr != nil {
+				err = cerr
+			}
+		}()
 	}
 	w := bufio.NewWriter(target)
 	_, err = w.Write(contents)
