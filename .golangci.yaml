@@ -136,7 +136,7 @@ enable:
 - wastedassign # finds wasted assignment statements
 - whitespace # detects leading and trailing whitespace
 
-```
+
 ## you may want to enable
 #- decorder # checks declaration order and count of types, constants, variables and functions
 #- exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
