@@ -172,7 +172,6 @@ enable:
 #- tagliatelle # checks the struct tags
 #- thelper # detects golang test helpers without t.Helper() call and checks the consistency of test helpers
 #- wsl # [too strict and mostly code is not more readable] whitespace linter forces you to use empty lines
-```
 
 # All settings can be found here https://github.com/golangci/golangci-lint/blob/HEAD/.golangci.reference.yml
 
