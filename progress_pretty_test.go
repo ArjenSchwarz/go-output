@@ -1,7 +1,9 @@
 package format
 
 import (
+	"context"
 	"testing"
+	"time"
 )
 
 func TestPrettyProgressBasics(t *testing.T) {
@@ -32,6 +34,18 @@ func TestPrettyProgressFail(t *testing.T) {
 	pp.Fail(assertError("boom"))
 	if pp.IsActive() {
 		t.Errorf("progress should stop on failure")
+	}
+}
+
+func TestPrettyProgressContextCancel(t *testing.T) {
+	settings := NewOutputSettings()
+	pp := newPrettyProgress(settings)
+	ctx, cancel := context.WithCancel(context.Background())
+	pp.SetContext(ctx)
+	cancel()
+	time.Sleep(50 * time.Millisecond)
+	if pp.IsActive() {
+		t.Errorf("progress should stop when context is cancelled")
 	}
 }
 

@@ -74,6 +74,7 @@ func (output OutputArray) GetContentsMapRaw() []map[string]interface{} {
 
 // Write will provide the output as configured in the configuration
 func (output OutputArray) Write() {
+	stopActiveProgress()
 	var result []byte
 	switch output.Settings.OutputFormat {
 	case "csv":
@@ -545,6 +546,7 @@ func (output *OutputArray) ContentsAsInterfaces() [][]interface{} {
 
 // PrintByteSlice prints the provided contents to stdout or the provided filepath
 func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) error {
+	stopActiveProgress()
 	var target io.Writer
 	var err error
 	// Remove the bash colours from output files

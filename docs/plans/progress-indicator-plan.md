@@ -79,20 +79,20 @@
 ### Step 5: Handle Edge Cases and Cleanup
 **Files**: Various
 
-- [ ] Add mutex protection for concurrent updates in PrettyProgress
+ - [x] Add mutex protection for concurrent updates in PrettyProgress
 - [ ] Ensure progress is properly stopped before other output:
-  - [ ] Modify `Write()` method to check and stop active progress
-  - [ ] Add progress cleanup to `OutputArray.Write()`
+  - [x] Modify `Write()` method to check and stop active progress
+  - [x] Add progress cleanup to `OutputArray.Write()`
   - [ ] Add progress cleanup to `OutputSingle.Write()`
-- [ ] Handle terminal resize gracefully
-- [ ] Add context support for cancellation:
-  - [ ] Add `SetContext(ctx context.Context)` method
-  - [ ] Monitor context cancellation in progress loop
-- [ ] Handle interrupt signals (SIGINT/SIGTERM):
-  - [ ] Register signal handler
-  - [ ] Cleanup progress bar on interrupt
-  - [ ] Restore terminal state
-- [ ] Add recovery from panics to ensure progress cleanup
+ - [x] Handle terminal resize gracefully
+- [x] Add context support for cancellation:
+  - [x] Add `SetContext(ctx context.Context)` method
+  - [x] Monitor context cancellation in progress loop
+- [x] Handle interrupt signals (SIGINT/SIGTERM):
+  - [x] Register signal handler
+  - [x] Cleanup progress bar on interrupt
+  - [x] Restore terminal state
+ - [x] Add recovery from panics to ensure progress cleanup
 
 ### Step 6: Testing
 **File**: `progress_test.go`, `progress_pretty_test.go`, `progress_noop_test.go`

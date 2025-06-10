@@ -8,6 +8,11 @@
 // used to display progress information.
 package format
 
+import (
+	"context"
+	"sync"
+)
+
 // ProgressColor defines the color used for a progress indicator.
 type ProgressColor int
 
@@ -50,4 +55,31 @@ type Progress interface {
 	Fail(err error)
 	// IsActive returns true when the progress indicator is running.
 	IsActive() bool
+	// SetContext sets a context used to cancel the progress.
+	SetContext(ctx context.Context)
+}
+
+var (
+	activeProgress Progress
+	activeMutex    sync.Mutex
+)
+
+// registerActiveProgress stores the provided Progress implementation so it can
+// be cleaned up before other output is written. Only a single progress can be
+// active at any given time.
+func registerActiveProgress(p Progress) {
+	activeMutex.Lock()
+	activeProgress = p
+	activeMutex.Unlock()
+}
+
+// stopActiveProgress stops and clears the currently active progress if it is a
+// PrettyProgress instance.
+func stopActiveProgress() {
+	activeMutex.Lock()
+	if pp, ok := activeProgress.(*PrettyProgress); ok {
+		pp.stop()
+	}
+	activeProgress = nil
+	activeMutex.Unlock()
 }
