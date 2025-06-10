@@ -1,6 +1,7 @@
 package format
 
 import (
+	"os"
 	"strings"
 
 	"github.com/ArjenSchwarz/go-output/drawio"
@@ -67,6 +68,10 @@ type OutputSettings struct {
 	UseColors bool
 	// Should emoji be shown in the output
 	UseEmoji bool
+	// Should progress output be shown
+	ProgressEnabled bool
+	// ProgressOptions configures the progress indicator
+	ProgressOptions ProgressOptions
 }
 
 type S3Output struct {
@@ -88,6 +93,12 @@ func NewOutputSettings() *OutputSettings {
 		TableStyle:          table.StyleDefault,
 		TableMaxColumnWidth: 50,
 		MermaidSettings:     &mermaid.Settings{},
+	}
+	env := strings.ToLower(os.Getenv("GO_OUTPUT_PROGRESS"))
+	if env == "false" {
+		settings.ProgressEnabled = false
+	} else {
+		settings.ProgressEnabled = true
 	}
 	return &settings
 }
@@ -156,4 +167,14 @@ func (settings *OutputSettings) GetSeparator() string {
 	default:
 		return ", "
 	}
+}
+
+// EnableProgress turns on progress output.
+func (settings *OutputSettings) EnableProgress() {
+	settings.ProgressEnabled = true
+}
+
+// DisableProgress turns off progress output.
+func (settings *OutputSettings) DisableProgress() {
+	settings.ProgressEnabled = false
 }

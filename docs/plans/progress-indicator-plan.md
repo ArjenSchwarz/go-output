@@ -56,7 +56,7 @@
 ### Step 4: Add Factory Function and Integration
 **File**: `format.go` (modifications)
 
-- [ ] Add progress-related fields to `OutputSettings`:
+ - [x] Add progress-related fields to `OutputSettings`:
   ```go
   type OutputSettings struct {
       // existing fields...
@@ -64,17 +64,17 @@
       ProgressOptions ProgressOptions
   }
   ```
-- [ ] Create `NewProgress(settings *OutputSettings) Progress` function
-- [ ] Add format detection logic:
-  - [ ] Return `NoOpProgress` for JSON format
-  - [ ] Return `NoOpProgress` for YAML format
-  - [ ] Return `NoOpProgress` for CSV format
-  - [ ] Return `NoOpProgress` for DOT format
-  - [ ] Return `PrettyProgress` for table format
-  - [ ] Return `PrettyProgress` for markdown format
-  - [ ] Return `PrettyProgress` for HTML format (consider future enhancement)
-- [ ] Add `EnableProgress()` and `DisableProgress()` methods to OutputSettings
-- [ ] Add environment variable check (e.g., `GO_OUTPUT_PROGRESS=false` to disable)
+ - [x] Create `NewProgress(settings *OutputSettings) Progress` function
+ - [x] Add format detection logic:
+  - [x] Return `NoOpProgress` for JSON format
+  - [x] Return `NoOpProgress` for YAML format
+  - [x] Return `NoOpProgress` for CSV format
+  - [x] Return `NoOpProgress` for DOT format
+  - [x] Return `PrettyProgress` for table format
+  - [x] Return `PrettyProgress` for markdown format
+  - [x] Return `PrettyProgress` for HTML format (consider future enhancement)
+ - [x] Add `EnableProgress()` and `DisableProgress()` methods to OutputSettings
+ - [x] Add environment variable check (e.g., `GO_OUTPUT_PROGRESS=false` to disable)
 
 ### Step 5: Handle Edge Cases and Cleanup
 **Files**: Various

@@ -63,6 +63,7 @@ func (pp *PrettyProgress) start() {
 		defer func() {
 			if r := recover(); r != nil {
 				// ensure progress stops on panic
+				_ = r
 			}
 			pp.stop()
 		}()
