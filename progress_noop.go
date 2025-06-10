@@ -6,7 +6,10 @@
 
 package format
 
-import "log"
+import (
+	"context"
+	"log"
+)
 
 // NoOpProgress implements Progress but performs no operations.
 type NoOpProgress struct {
@@ -76,3 +79,15 @@ func (nop *NoOpProgress) Fail(err error) {
 
 // IsActive always returns false for NoOpProgress.
 func (nop *NoOpProgress) IsActive() bool { return false }
+
+// SetContext stores the context. No operation for NoOpProgress other than
+// enabling debug logging when the context is cancelled.
+func (nop *NoOpProgress) SetContext(ctx context.Context) {
+	if ctx == nil {
+		return
+	}
+	go func() {
+		<-ctx.Done()
+		nop.debugf("context cancelled: %v", ctx.Err())
+	}()
+}

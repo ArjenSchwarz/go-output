@@ -1,6 +1,10 @@
 package format
 
-import "testing"
+import (
+	"context"
+	"testing"
+	"time"
+)
 
 func TestNoOpProgressBasics(t *testing.T) {
 	settings := NewOutputSettings()
@@ -28,6 +32,18 @@ func TestNoOpProgressFail(t *testing.T) {
 	np := newNoOpProgress(settings)
 	np.SetTotal(2)
 	np.Fail(assertError("boom"))
+	if np.IsActive() {
+		t.Errorf("progress should remain inactive")
+	}
+}
+
+func TestNoOpProgressContextCancel(t *testing.T) {
+	settings := NewOutputSettings()
+	np := newNoOpProgress(settings)
+	ctx, cancel := context.WithCancel(context.Background())
+	np.SetContext(ctx)
+	cancel()
+	time.Sleep(10 * time.Millisecond)
 	if np.IsActive() {
 		t.Errorf("progress should remain inactive")
 	}
