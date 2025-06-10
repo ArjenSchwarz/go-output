@@ -68,6 +68,7 @@ var (
 // be cleaned up before other output is written. Only a single progress can be
 // active at any given time.
 func registerActiveProgress(p Progress) {
+	stopActiveProgress()
 	activeMutex.Lock()
 	activeProgress = p
 	activeMutex.Unlock()
