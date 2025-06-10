@@ -50,6 +50,7 @@ func newPrettyProgress(settings *OutputSettings) *PrettyProgress {
 	}
 	pp.SetColor(pp.options.Color)
 	runtime.SetFinalizer(pp, func(p *PrettyProgress) { p.stop() })
+	stopActiveProgress() // Ensure any previously active progress is stopped
 	registerActiveProgress(pp)
 	return pp
 }
