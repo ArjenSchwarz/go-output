@@ -52,7 +52,10 @@ func TestPrettyProgressContextCancel(t *testing.T) {
 }
 
 func TestPrettyProgressStatusAndColor(t *testing.T) {
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
 	orig := os.Stdout
 	os.Stdout = w
 	settings := NewOutputSettings()
