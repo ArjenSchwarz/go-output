@@ -4,8 +4,21 @@
 // LICENSE file in the root directory of this source tree.
 
 // Package format contains helpers for rendering output in different
-// formats. This file defines the Progress interface and related types
-// used to display progress information.
+// formats.  Progress support is provided through the Progress
+// interface with both a real terminal implementation and a no-op
+// fallback.  All progress implementations are safe for concurrent use
+// by multiple goroutines.
+//
+// Basic usage:
+//
+//	settings := format.NewOutputSettings()
+//	settings.SetOutputFormat("table")
+//	p := format.NewProgress(settings)
+//	p.SetTotal(3)
+//	for i := 0; i < 3; i++ {
+//	    p.Increment(1)
+//	}
+//	p.Complete()
 package format
 
 import (
@@ -37,7 +50,8 @@ type ProgressOptions struct {
 	Status string
 }
 
-// Progress describes an abstract progress indicator.
+// Progress describes an abstract progress indicator. Implementations
+// must be safe for concurrent use by multiple goroutines.
 type Progress interface {
 	// SetTotal sets the total number of steps for this progress.
 	SetTotal(total int)

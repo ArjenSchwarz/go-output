@@ -14,7 +14,9 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
-// PrettyProgress wraps go-pretty's progress.Writer to implement the Progress interface.
+// PrettyProgress wraps go-pretty's progress.Writer to implement the Progress
+// interface. All methods are guarded by a mutex making the type safe for
+// concurrent use by multiple goroutines.
 type PrettyProgress struct {
 	writer  progress.Writer
 	tracker *progress.Tracker
