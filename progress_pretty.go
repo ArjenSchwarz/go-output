@@ -30,8 +30,8 @@ func newPrettyProgress(settings *OutputSettings) *PrettyProgress {
 	pp := &PrettyProgress{ctx: context.Background()}
 	pp.tracker = &progress.Tracker{}
 	if settings != nil {
-		pp.options = ProgressOptions{}
-		pp.tracker.Message = ""
+		pp.options = settings.ProgressOptions
+		pp.tracker.Message = settings.ProgressOptions.Status
 	}
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		w := progress.NewWriter()
