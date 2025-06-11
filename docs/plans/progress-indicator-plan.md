@@ -97,33 +97,33 @@
 ### Step 6: Testing
 **File**: `progress_test.go`, `progress_pretty_test.go`, `progress_noop_test.go`
 
-- [ ] Test Progress interface compliance for both implementations
-- [ ] Test basic progress operations:
-  - [ ] SetTotal and SetCurrent
-  - [ ] Increment with various values
-  - [ ] SetStatus with different messages
-- [ ] Test color changes:
-  - [ ] Each color constant
-  - [ ] Color changes during progress
-  - [ ] Color in Complete() and Fail() states
-- [ ] Test completion and failure states:
-  - [ ] Normal completion
-  - [ ] Failure with error message
-  - [ ] State after completion/failure
-- [ ] Test no-op implementation:
-  - [ ] Ensure no output is produced
-  - [ ] Verify state tracking works
-- [ ] Test factory function logic:
-  - [ ] Correct implementation for each format
-  - [ ] Settings propagation
-- [ ] Test concurrent usage:
-  - [ ] Multiple goroutines updating progress
+- [x] Test Progress interface compliance for both implementations
+- [x] Test basic progress operations:
+  - [x] SetTotal and SetCurrent
+  - [x] Increment with various values
+  - [x] SetStatus with different messages
+- [x] Test color changes:
+  - [x] Each color constant
+  - [x] Color changes during progress
+  - [x] Color in Complete() and Fail() states
+- [x] Test completion and failure states:
+  - [x] Normal completion
+  - [x] Failure with error message
+  - [x] State after completion/failure
+- [x] Test no-op implementation:
+  - [x] Ensure no output is produced
+  - [x] Verify state tracking works
+- [x] Test factory function logic:
+  - [x] Correct implementation for each format
+  - [x] Settings propagation
+- [x] Test concurrent usage:
+  - [x] Multiple goroutines updating progress
   - [ ] Race condition detection
-- [ ] Mock terminal for testing:
-  - [ ] Test TTY detection
-  - [ ] Test non-TTY fallback
-- [ ] Integration tests:
-  - [ ] Progress with table output
+- [x] Mock terminal for testing:
+  - [x] Test TTY detection
+  - [x] Test non-TTY fallback
+- [x] Integration tests:
+  - [x] Progress with table output
   - [ ] Progress with multiple outputs
 
 ### Step 7: Documentation and Examples

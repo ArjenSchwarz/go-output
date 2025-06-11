@@ -23,7 +23,7 @@ type NoOpProgress struct {
 func newNoOpProgress(settings *OutputSettings) *NoOpProgress {
 	nop := &NoOpProgress{}
 	if settings != nil {
-		nop.options = ProgressOptions{}
+		nop.options = settings.ProgressOptions
 	}
 	return nop
 }
