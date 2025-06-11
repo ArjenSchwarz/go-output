@@ -71,7 +71,11 @@ func TestNoOpProgressColorAndStatus(t *testing.T) {
 
 func TestNoOpProgressNoOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
+	originalOutput := log.Writer()
 	log.SetOutput(buf)
+	t.Cleanup(func() {
+		log.SetOutput(originalOutput)
+	})
 	settings := NewOutputSettings()
 	np := newNoOpProgress(settings)
 	np.SetTotal(1)
