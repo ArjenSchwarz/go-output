@@ -13,7 +13,7 @@ func main() {
 
 	success := format.NewProgress(settings)
 	success.SetTotal(1)
-	success.SetColor(format.ProgressColorBlue)
+	success.SetColor(format.ProgressColorGreen)
 	time.Sleep(200 * time.Millisecond)
 	success.Complete()
 
