@@ -19,7 +19,7 @@ func main() {
 
 	failure := format.NewProgress(settings)
 	failure.SetTotal(1)
-	failure.SetColor(format.ProgressColorYellow)
+	failure.SetColor(format.ProgressColorRed)
 	time.Sleep(200 * time.Millisecond)
 	failure.Fail(errors.New("something went wrong"))
 }
