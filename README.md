@@ -10,6 +10,7 @@ A comprehensive Go library for outputting structured data in multiple formats. T
 - **File & Cloud Output**: Write to local files or S3 buckets
 - **Graph Generation**: Create flowcharts and diagrams from relationship data
 - **CLI Integration**: Perfect for adding multiple output options to command-line tools
+- **Progress Indicators**: Visual progress bars for long-running tasks
 
 ## Supported Output Formats
 
@@ -52,6 +53,22 @@ func main() {
 
     output.Write()
 }
+```
+
+## Progress Indicators
+
+Progress bars can be displayed for supported formats (table, markdown and html).
+
+```go
+settings := format.NewOutputSettings()
+settings.SetOutputFormat("table")
+
+p := format.NewProgress(settings)
+p.SetTotal(2)
+for i := 0; i < 2; i++ {
+    p.Increment(1)
+}
+p.Complete()
 ```
 
 ## Documentation
