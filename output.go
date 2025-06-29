@@ -615,6 +615,28 @@ func (output *OutputArray) toString(val interface{}) string {
 		return strings.Join(converted, output.Settings.GetSeparator())
 	case int:
 		return strconv.Itoa(converted)
+	case int8:
+		return strconv.FormatInt(int64(converted), 10)
+	case int16:
+		return strconv.FormatInt(int64(converted), 10)
+	case int32:
+		return strconv.FormatInt(int64(converted), 10)
+	case int64:
+		return strconv.FormatInt(converted, 10)
+	case uint:
+		return strconv.FormatUint(uint64(converted), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(converted), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(converted), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(converted), 10)
+	case uint64:
+		return strconv.FormatUint(converted, 10)
+	case float32:
+		return strconv.FormatFloat(float64(converted), 'f', -1, 32)
+	case float64:
+		return strconv.FormatFloat(converted, 'f', -1, 64)
 	case bool:
 		if converted {
 			if output.Settings.UseEmoji {
@@ -629,5 +651,5 @@ func (output *OutputArray) toString(val interface{}) string {
 			return "No"
 		}
 	}
-	return fmt.Sprintf("%s", val)
+	return fmt.Sprintf("%v", val)
 }
