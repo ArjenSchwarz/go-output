@@ -48,6 +48,9 @@ type ProgressOptions struct {
 	Color ProgressColor
 	// Status sets an optional initial status message.
 	Status string
+	// TrackerLength sets the width of the progress bar. Values <= 0
+	// use a sensible default.
+	TrackerLength int
 }
 
 // Progress describes an abstract progress indicator. Implementations
