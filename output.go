@@ -85,7 +85,7 @@ func (output OutputArray) Write() {
 		}
 	case "html":
 		if buffer.Len() == 0 {
-			output.toHTML()
+			result = output.toHTML()
 		} else {
 			result = output.bufferToHTML()
 		}
@@ -149,7 +149,7 @@ func (output OutputArray) Write() {
 			}
 		case "html":
 			if buffer.Len() == 0 {
-				output.toHTML()
+				result = output.toHTML()
 			} else {
 				result = output.bufferToHTML()
 			}
@@ -412,8 +412,7 @@ func (output OutputArray) bufferToMarkdown() []byte {
 	return []byte(headerstring + buffer.String())
 }
 
-func (output OutputArray) toHTML() {
-	//TODO rewrite to use buffer. Need to think how to do the appending
+func (output OutputArray) toHTML() []byte {
 	var baseTemplate string
 	if output.Settings.ShouldAppend {
 		originalfile, err := os.ReadFile(output.Settings.OutputFile)
@@ -437,12 +436,7 @@ func (output OutputArray) toHTML() {
 	t.SetHTMLCSSClass("responstable")
 	t.RenderHTML()
 	tableBuf.Write([]byte("<div id='end'></div>")) // Add the placeholder
-	resultString := strings.Replace(baseTemplate, "<div id='end'></div>", tableBuf.String(), 1)
-
-	err := PrintByteSlice([]byte(resultString), output.Settings.OutputFile, output.Settings.S3Bucket)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	return []byte(strings.Replace(baseTemplate, "<div id='end'></div>", tableBuf.String(), 1))
 }
 
 // HtmlTableOnly returns a byte array containing an HTML table of the OutputArray
