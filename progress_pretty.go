@@ -14,6 +14,8 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
+const defaultTrackerLength = 40
+
 // PrettyProgress wraps go-pretty's progress.Writer to implement the Progress
 // interface. All methods are guarded by a mutex making the type safe for
 // concurrent use by multiple goroutines.
@@ -38,7 +40,11 @@ func newPrettyProgress(settings *OutputSettings) *PrettyProgress {
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		w := progress.NewWriter()
 		w.SetAutoStop(false)
-		w.SetTrackerLength(40)
+		length := pp.options.TrackerLength
+		if length <= 0 {
+			length = defaultTrackerLength
+		}
+		w.SetTrackerLength(length)
 		w.SetUpdateFrequency(time.Millisecond * 100)
 		w.SetTrackerPosition(progress.PositionRight)
 		w.SetOutputWriter(os.Stdout)

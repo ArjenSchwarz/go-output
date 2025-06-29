@@ -139,6 +139,22 @@ func TestPrettyProgressConcurrent(t *testing.T) {
 	}
 }
 
+func TestPrettyProgressTrackerLength(t *testing.T) {
+	r, w, _ := os.Pipe()
+	orig := os.Stdout
+	os.Stdout = w
+	settings := NewOutputSettings()
+	settings.ProgressOptions.TrackerLength = 60
+	pp := newPrettyProgress(settings)
+	os.Stdout = orig
+	_ = r.Close()
+	_ = w.Close()
+
+	if pp.options.TrackerLength != 60 {
+		t.Errorf("expected tracker length 60, got %d", pp.options.TrackerLength)
+	}
+}
+
 func TestPrettyProgressTTYDetection(t *testing.T) {
 	r, w, _ := os.Pipe()
 	orig := os.Stdout
