@@ -545,10 +545,9 @@ func (output *OutputArray) ContentsAsInterfaces() [][]interface{} {
 }
 
 // PrintByteSlice prints the provided contents to stdout or the provided filepath
-func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) error {
+func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) (err error) {
 	stopActiveProgress()
 	var target io.Writer
-	var err error
 	// Remove the bash colours from output files
 	if outputFile != "" {
 		re := regexp.MustCompile(`\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]`) // source: https://stackoverflow.com/questions/17998978/removing-colors-from-output
@@ -560,7 +559,7 @@ func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) e
 			Key:    &targetBucket.Path,
 			Body:   bytes.NewReader(contents),
 		}
-		_, err := targetBucket.S3Client.PutObject(context.TODO(), &s3params)
+		_, err = targetBucket.S3Client.PutObject(context.TODO(), &s3params)
 		return err
 	}
 	if outputFile == "" {
