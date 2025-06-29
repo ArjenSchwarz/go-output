@@ -197,7 +197,7 @@ func (header *Header) String() string {
 	return strings.Join(headerArray, "\n") + "\n"
 }
 
-//IsSet checks if a header is configured
+// IsSet checks if a header is configured
 func (header *Header) IsSet() bool {
 	return header.label != ""
 }
