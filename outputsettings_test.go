@@ -16,7 +16,7 @@ func TestNewOutputSettings(t *testing.T) {
 		t.Setenv("GO_OUTPUT_PROGRESS", "")
 		got := NewOutputSettings()
 		if got.TableStyle.Name != table.StyleDefault.Name {
-			t.Errorf("expected default table style")
+			t.Errorf("expected default table style %v but got %v", table.StyleDefault.Name, got.TableStyle.Name)
 		}
 		if got.TableMaxColumnWidth != 50 {
 			t.Errorf("expected default max width 50, got %d", got.TableMaxColumnWidth)
