@@ -38,7 +38,11 @@ func newPrettyProgress(settings *OutputSettings) *PrettyProgress {
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		w := progress.NewWriter()
 		w.SetAutoStop(false)
-		w.SetTrackerLength(40)
+		length := pp.options.TrackerLength
+		if length <= 0 {
+			length = 40
+		}
+		w.SetTrackerLength(length)
 		w.SetUpdateFrequency(time.Millisecond * 100)
 		w.SetTrackerPosition(progress.PositionRight)
 		w.SetOutputWriter(os.Stdout)
