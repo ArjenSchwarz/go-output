@@ -12,7 +12,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -606,21 +605,26 @@ func (output *OutputArray) toString(val interface{}) string {
 	switch converted := val.(type) {
 	case []string:
 		return strings.Join(converted, output.Settings.GetSeparator())
-	case int:
-		return strconv.Itoa(converted)
 	case bool:
 		if converted {
 			if output.Settings.UseEmoji {
 				return "✅"
-			} else {
-				return "Yes"
 			}
+			return "Yes"
 		}
 		if output.Settings.UseEmoji {
 			return "❌"
-		} else {
-			return "No"
 		}
+		return "No"
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64:
+		return formatNumber(val)
 	}
-	return fmt.Sprintf("%s", val)
+	return fmt.Sprintf("%v", val)
+}
+
+// formatNumber provides consistent string formatting for numeric values.
+func formatNumber(val interface{}) string {
+	return fmt.Sprintf("%v", val)
 }

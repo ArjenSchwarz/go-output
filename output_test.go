@@ -112,6 +112,10 @@ func TestOutputArray_toString(t *testing.T) {
 		{"Emoji Bool false", fields{Settings: &withEmoji}, args{val: false}, "❌"},
 		{"Slice json format", fields{Settings: &jsonFormat}, args{val: []string{"first", "second"}}, "first, second"},
 		{"Slice table format", fields{Settings: &tableFormat}, args{val: []string{"first", "second"}}, "first\nsecond"},
+		{"Float64", fields{Settings: &noEmoji}, args{val: 123.456}, "123.456"},
+		{"Float32", fields{Settings: &noEmoji}, args{val: float32(78.9)}, "78.9"},
+		{"Int64", fields{Settings: &noEmoji}, args{val: int64(9223372036854775807)}, "9223372036854775807"},
+		{"Uint", fields{Settings: &noEmoji}, args{val: uint(42)}, "42"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
