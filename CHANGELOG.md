@@ -2,6 +2,17 @@
 ## [Unreleased]
 
 ### Added
+- Built-in validator implementations for comprehensive data validation
+- RequiredColumnsValidator to ensure all required columns exist in datasets
+- DataTypeValidator with fluent API for column type validation (string, int, float, bool)
+- ConstraintValidator for custom business rule validation with constraint interface
+- EmptyDatasetValidator to handle empty dataset validation policies
+- MalformedDataValidator for detecting corrupted or malformed data with strict/lenient modes
+- Common constraint implementations: PositiveNumberConstraint, NonEmptyStringConstraint, RangeConstraint
+- ConstraintFunc for creating custom constraints with functional approach
+- Comprehensive validator test suite with integration tests and benchmarks
+- Type compatibility checking for numeric types in DataTypeValidator
+- Malformed data detection including null bytes and encoding issues
 - Validation framework foundation with Validator interface and ValidatorFunc type
 - CompositeError for collecting and managing multiple validation errors
 - ValidationRunner with fail-fast and collect-all modes for running multiple validators
