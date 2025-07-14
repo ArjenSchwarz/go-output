@@ -120,6 +120,93 @@ func (c *CompositeError) ErrorOrNil() error {
 	return nil
 }
 
+// Code implements the OutputError interface
+// Returns the error code of the first error if it's an OutputError, otherwise returns a generic code
+func (c *CompositeError) Code() ErrorCode {
+	if len(c.errors) == 0 {
+		return ErrMalformedData
+	}
+
+	// Return the code of the first OutputError found
+	for _, err := range c.errors {
+		if outputErr, ok := err.(OutputError); ok {
+			return outputErr.Code()
+		}
+	}
+
+	// If no OutputError found, return a generic validation error code
+	return ErrConstraintViolation
+}
+
+// Severity implements the OutputError interface
+// Returns the highest severity among all errors
+func (c *CompositeError) Severity() ErrorSeverity {
+	if len(c.errors) == 0 {
+		return SeverityInfo
+	}
+
+	maxSeverity := SeverityInfo
+	for _, err := range c.errors {
+		if outputErr, ok := err.(OutputError); ok {
+			if outputErr.Severity() > maxSeverity {
+				maxSeverity = outputErr.Severity()
+			}
+		} else {
+			// Non-OutputError defaults to Error severity
+			if SeverityError > maxSeverity {
+				maxSeverity = SeverityError
+			}
+		}
+	}
+
+	return maxSeverity
+}
+
+// Context implements the OutputError interface
+// Returns the context of the first error if it's an OutputError
+func (c *CompositeError) Context() ErrorContext {
+	if len(c.errors) == 0 {
+		return ErrorContext{}
+	}
+
+	// Return the context of the first OutputError found
+	for _, err := range c.errors {
+		if outputErr, ok := err.(OutputError); ok {
+			return outputErr.Context()
+		}
+	}
+
+	// If no OutputError found, return empty context
+	return ErrorContext{}
+}
+
+// Suggestions implements the OutputError interface
+// Returns aggregated suggestions from all OutputErrors
+func (c *CompositeError) Suggestions() []string {
+	suggestions := make([]string, 0)
+	suggestionSet := make(map[string]bool) // To avoid duplicates
+
+	for _, err := range c.errors {
+		if outputErr, ok := err.(OutputError); ok {
+			for _, suggestion := range outputErr.Suggestions() {
+				if !suggestionSet[suggestion] {
+					suggestions = append(suggestions, suggestion)
+					suggestionSet[suggestion] = true
+				}
+			}
+		}
+	}
+
+	return suggestions
+}
+
+// Wrap implements the OutputError interface
+// Wraps the provided error as a cause for this composite error
+func (c *CompositeError) Wrap(err error) OutputError {
+	c.Add(err)
+	return c
+}
+
 // ValidationRunner provides utilities for running multiple validators
 type ValidationRunner struct {
 	validators []Validator

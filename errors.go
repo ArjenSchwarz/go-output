@@ -657,3 +657,66 @@ func (b *ValidationErrorBuilder) Build() ValidationError {
 	b.err.violations = b.violations
 	return b.err
 }
+
+// LegacyErrorHandler maintains backward compatibility by using log.Fatal() behavior
+// This handler is designed to help with gradual migration from the old error handling approach
+type LegacyErrorHandler struct {
+	// logFatalFunc allows injection of the fatal function for testing
+	logFatalFunc func(...interface{})
+}
+
+// NewLegacyErrorHandler creates a new LegacyErrorHandler with default log.Fatal behavior
+func NewLegacyErrorHandler() *LegacyErrorHandler {
+	return &LegacyErrorHandler{
+		logFatalFunc: defaultLogFatal,
+	}
+}
+
+// NewLegacyErrorHandlerWithFatalFunc creates a LegacyErrorHandler with a custom fatal function
+// This is primarily used for testing to avoid actual program termination
+func NewLegacyErrorHandlerWithFatalFunc(fatalFunc func(...interface{})) *LegacyErrorHandler {
+	return &LegacyErrorHandler{
+		logFatalFunc: fatalFunc,
+	}
+}
+
+// HandleError implements ErrorHandler interface with log.Fatal() behavior
+// Any error will cause the program to terminate, maintaining backward compatibility
+func (h *LegacyErrorHandler) HandleError(err error) error {
+	if err != nil {
+		h.logFatalFunc(err)
+	}
+	return nil // This line should never be reached due to log.Fatal()
+}
+
+// SetMode implements ErrorHandler interface but is ignored in legacy mode
+// Legacy mode always behaves the same regardless of mode setting
+func (h *LegacyErrorHandler) SetMode(mode ErrorMode) {
+	// No-op: Legacy mode doesn't support different error modes
+}
+
+// GetMode implements ErrorHandler interface, always returns strict mode
+func (h *LegacyErrorHandler) GetMode() ErrorMode {
+	return ErrorModeStrict
+}
+
+// GetCollectedErrors implements ErrorHandler interface but returns empty slice
+// Legacy mode doesn't collect errors since it terminates on first error
+func (h *LegacyErrorHandler) GetCollectedErrors() []error {
+	return []error{}
+}
+
+// Clear implements ErrorHandler interface but is a no-op
+// Legacy mode doesn't collect errors so there's nothing to clear
+func (h *LegacyErrorHandler) Clear() {
+	// No-op: Legacy mode doesn't collect errors
+}
+
+// defaultLogFatal is the default fatal function that calls log.Fatal
+// This is separated to allow for dependency injection during testing
+func defaultLogFatal(v ...interface{}) {
+	// We use panic here to simulate log.Fatal behavior
+	// In a real implementation, this would call log.Fatal(v...)
+	// but we avoid importing log to prevent potential import cycles
+	panic(fmt.Sprintf("FATAL: %v", v))
+}

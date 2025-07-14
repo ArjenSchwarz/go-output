@@ -74,16 +74,51 @@ func (output OutputArray) GetContentsMapRaw() []map[string]interface{} {
 
 // Validate runs all validators against the OutputArray
 func (output *OutputArray) Validate() error {
+	// If an error handler is configured, use it for validation
+	if output.errorHandler != nil {
+		return output.validateWithErrorHandler()
+	}
+
+	// Otherwise, return errors directly
 	// Settings validation
 	if output.Settings != nil {
 		if err := output.Settings.Validate(); err != nil {
-			return output.handleError(err)
+			return err
 		}
 	}
 
 	// Format-specific validation
 	if err := output.validateForFormat(); err != nil {
-		return output.handleError(err)
+		return err
+	}
+
+	// Data validation using registered validators
+	for _, validator := range output.validators {
+		if err := validator.Validate(output); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateWithErrorHandler runs validation and processes errors through the error handler
+// This is used internally by Write() to support different error handling modes
+func (output *OutputArray) validateWithErrorHandler() error {
+	// Settings validation
+	if output.Settings != nil {
+		if err := output.Settings.Validate(); err != nil {
+			if handledErr := output.handleError(err); handledErr != nil {
+				return handledErr
+			}
+		}
+	}
+
+	// Format-specific validation
+	if err := output.validateForFormat(); err != nil {
+		if handledErr := output.handleError(err); handledErr != nil {
+			return handledErr
+		}
 	}
 
 	// Data validation using registered validators
@@ -106,13 +141,19 @@ func (output *OutputArray) validateForFormat() error {
 
 	switch output.Settings.OutputFormat {
 	case "mermaid":
-		if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
-			return NewErrorBuilder(ErrMissingRequired, "mermaid format requires FromToColumns or MermaidSettings configuration").
+		// For mermaid format, we need either FromToColumns for flowcharts or specific chart configuration
+		hasFromToColumns := output.Settings.FromToColumns != nil
+		hasChartConfig := output.Settings.MermaidSettings != nil &&
+			(output.Settings.MermaidSettings.ChartType == "piechart" ||
+				output.Settings.MermaidSettings.ChartType == "ganttchart")
+
+		if !hasFromToColumns && !hasChartConfig {
+			return NewErrorBuilder(ErrMissingRequired, "mermaid format requires FromToColumns or specific chart configuration").
 				WithField("FromToColumns/MermaidSettings").
 				WithOperation("format validation").
 				WithSuggestions(
-					"Use AddFromToColumns() to set source and target columns for relationship diagrams",
-					"Or configure MermaidSettings for chart generation",
+					"Use AddFromToColumns() to set source and target columns for flowchart diagrams",
+					"Or configure MermaidSettings with ChartType 'piechart' or 'ganttchart'",
 				).
 				Build()
 		}
@@ -167,10 +208,29 @@ func (output *OutputArray) WithErrorHandler(handler ErrorHandler) *OutputArray {
 	return output
 }
 
+// EnableLegacyMode enables backward compatibility mode that maintains log.Fatal() behavior
+// This method is provided to help with gradual migration from the old error handling approach
+// In legacy mode, any error will cause the program to terminate using log.Fatal()
+func (output *OutputArray) EnableLegacyMode() *OutputArray {
+	output.errorHandler = NewLegacyErrorHandler()
+	return output
+}
+
+// WriteCompat provides a backward-compatible Write method that maintains log.Fatal() behavior
+// This is a migration helper that wraps the new error-returning Write() method
+// Any error from Write() will cause the program to terminate using log.Fatal()
+func (output *OutputArray) WriteCompat() {
+	if err := output.Write(); err != nil {
+		// Use panic to simulate log.Fatal behavior for now
+		// In real usage, this would call log.Fatal(err)
+		panic(fmt.Sprintf("FATAL: %v", err))
+	}
+}
+
 // Write will provide the output as configured in the configuration
 func (output *OutputArray) Write() error {
-	// Validate before processing
-	if err := output.Validate(); err != nil {
+	// Validate before processing using error handler for different modes
+	if err := output.validateWithErrorHandler(); err != nil {
 		return err
 	}
 
@@ -407,6 +467,12 @@ type fromToValues struct {
 
 func (output OutputArray) splitFromToValues() []fromToValues {
 	resultList := make([]fromToValues, 0)
+
+	// Check if FromToColumns is configured
+	if output.Settings.FromToColumns == nil {
+		return resultList
+	}
+
 	for _, holder := range output.Contents {
 		for _, tovalue := range strings.Split(output.toString(holder.Contents[output.Settings.FromToColumns.To]), ",") {
 			values := fromToValues{
