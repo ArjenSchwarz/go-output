@@ -4,7 +4,12 @@
       "Bash(go test:*)",
       "Bash(go fmt:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(git checkout:*)",
+      "Bash(go build:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

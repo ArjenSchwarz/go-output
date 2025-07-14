@@ -9,38 +9,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-// Mock OutputSettings structure for testing
-type mockOutputSettings struct {
-	OutputFormat    string
-	OutputFile      string
-	S3Bucket        mockS3Output
-	FromToColumns   *mockFromToColumns
-	MermaidSettings *mockMermaidSettings
-}
-
-type mockS3Output struct {
-	S3Client *s3.Client
-	Bucket   string
-	Path     string
-}
-
-type mockFromToColumns struct {
-	From  string
-	To    string
-	Label string
-}
-
-type mockMermaidSettings struct {
-	ChartType string
-}
+// Mock types are defined in mock_types.go
 
 func TestFormatValidator(t *testing.T) {
 	tests := []struct {
-		name          string
+		name           string
 		allowedFormats []string
-		format        string
-		expectedError bool
-		expectedCode  errors.ErrorCode
+		format         string
+		expectedError  bool
+		expectedCode   errors.ErrorCode
 	}{
 		{
 			name:           "Valid format - json",
@@ -150,7 +127,7 @@ func TestFilePathValidator(t *testing.T) {
 	tempDir := t.TempDir()
 	validPath := filepath.Join(tempDir, "test.json")
 	readOnlyDir := filepath.Join(tempDir, "readonly")
-	
+
 	// Create read-only directory (if possible)
 	os.Mkdir(readOnlyDir, 0444)
 	defer os.Chmod(readOnlyDir, 0755) // Restore permissions for cleanup

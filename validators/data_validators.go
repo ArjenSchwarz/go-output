@@ -33,12 +33,6 @@ func NewRequiredColumnsValidator(columns ...string) *RequiredColumnsValidator {
 
 // Validate checks if all required columns are present in the OutputArray
 func (v *RequiredColumnsValidator) Validate(subject interface{}) error {
-	// Handle the mock structure for testing
-	if mockOutput, ok := subject.(*mockOutputArray); ok {
-		return v.validateMockOutput(mockOutput)
-	}
-
-	// Handle the real OutputArray structure (will be implemented when integrating)
 	outputArray, ok := subject.(OutputArray)
 	if !ok {
 		return errors.NewValidationError(
@@ -51,16 +45,6 @@ func (v *RequiredColumnsValidator) Validate(subject interface{}) error {
 	}
 
 	return v.validateOutputArray(outputArray)
-}
-
-// validateMockOutput validates mock output for testing
-func (v *RequiredColumnsValidator) validateMockOutput(mockOutput *mockOutputArray) error {
-	missing := v.findMissingColumns(mockOutput.Keys)
-	if len(missing) == 0 {
-		return nil
-	}
-
-	return v.createMissingColumnsError(missing)
 }
 
 // validateOutputArray validates real OutputArray
@@ -76,7 +60,7 @@ func (v *RequiredColumnsValidator) validateOutputArray(outputArray OutputArray) 
 // findMissingColumns returns a slice of missing required columns
 func (v *RequiredColumnsValidator) findMissingColumns(availableKeys []string) []string {
 	missing := make([]string, 0)
-	
+
 	for _, required := range v.requiredColumns {
 		found := false
 		for _, available := range availableKeys {
@@ -89,7 +73,7 @@ func (v *RequiredColumnsValidator) findMissingColumns(availableKeys []string) []
 			missing = append(missing, required)
 		}
 	}
-	
+
 	return missing
 }
 
@@ -131,12 +115,6 @@ func NewDataTypeValidator(columnTypes map[string]reflect.Type) *DataTypeValidato
 
 // Validate checks if data types match the expected types
 func (v *DataTypeValidator) Validate(subject interface{}) error {
-	// Handle the mock structure for testing
-	if mockOutput, ok := subject.(*mockOutputArray); ok {
-		return v.validateMockOutput(mockOutput)
-	}
-
-	// Handle the real OutputArray structure (will be implemented when integrating)
 	outputArray, ok := subject.(OutputArray)
 	if !ok {
 		return errors.NewValidationError(
@@ -146,22 +124,6 @@ func (v *DataTypeValidator) Validate(subject interface{}) error {
 	}
 
 	return v.validateOutputArray(outputArray)
-}
-
-// validateMockOutput validates mock output for testing
-func (v *DataTypeValidator) validateMockOutput(mockOutput *mockOutputArray) error {
-	violations := make([]errors.Violation, 0)
-
-	for rowIndex, holder := range mockOutput.Contents {
-		rowViolations := v.validateRow(holder.Contents, rowIndex)
-		violations = append(violations, rowViolations...)
-	}
-
-	if len(violations) == 0 {
-		return nil
-	}
-
-	return v.createTypeValidationError(violations)
 }
 
 // validateOutputArray validates real OutputArray
@@ -231,12 +193,6 @@ func NewNotEmptyValidator() *NotEmptyValidator {
 
 // Validate checks if the dataset contains at least one row
 func (v *NotEmptyValidator) Validate(subject interface{}) error {
-	// Handle the mock structure for testing
-	if mockOutput, ok := subject.(*mockOutputArray); ok {
-		return v.validateMockOutput(mockOutput)
-	}
-
-	// Handle the real OutputArray structure (will be implemented when integrating)
 	outputArray, ok := subject.(OutputArray)
 	if !ok {
 		return errors.NewValidationError(
@@ -246,14 +202,6 @@ func (v *NotEmptyValidator) Validate(subject interface{}) error {
 	}
 
 	return v.validateOutputArray(outputArray)
-}
-
-// validateMockOutput validates mock output for testing
-func (v *NotEmptyValidator) validateMockOutput(mockOutput *mockOutputArray) error {
-	if len(mockOutput.Contents) == 0 {
-		return v.createEmptyDatasetError()
-	}
-	return nil
 }
 
 // validateOutputArray validates real OutputArray
@@ -301,12 +249,6 @@ func NewConstraintValidator(constraints ...Constraint) *ConstraintValidator {
 
 // Validate applies all constraints to each row in the dataset
 func (v *ConstraintValidator) Validate(subject interface{}) error {
-	// Handle the mock structure for testing
-	if mockOutput, ok := subject.(*mockOutputArray); ok {
-		return v.validateMockOutput(mockOutput)
-	}
-
-	// Handle the real OutputArray structure (will be implemented when integrating)
 	outputArray, ok := subject.(OutputArray)
 	if !ok {
 		return errors.NewValidationError(
@@ -316,38 +258,6 @@ func (v *ConstraintValidator) Validate(subject interface{}) error {
 	}
 
 	return v.validateOutputArray(outputArray)
-}
-
-// validateMockOutput validates mock output for testing
-func (v *ConstraintValidator) validateMockOutput(mockOutput *mockOutputArray) error {
-	composite := errors.NewCompositeError()
-
-	for rowIndex, holder := range mockOutput.Contents {
-		for _, constraint := range v.constraints {
-			if err := constraint.Check(holder.Contents); err != nil {
-				if validationErr, ok := err.(errors.ValidationError); ok {
-					// Add row context to the error
-					contextualErr := validationErr.WithContext(errors.ErrorContext{
-						Operation: "constraint_validation",
-						Index:     rowIndex,
-						Metadata: map[string]interface{}{
-							"constraint": constraint.Description(),
-						},
-					})
-					composite.Add(contextualErr.(errors.ValidationError))
-				} else {
-					// Wrap regular errors as validation errors
-					wrappedErr := errors.NewValidationError(
-						errors.ErrConstraintViolation,
-						fmt.Sprintf("Constraint violation in row %d: %s", rowIndex, err.Error()),
-					)
-					composite.Add(wrappedErr)
-				}
-			}
-		}
-	}
-
-	return composite.ErrorOrNil()
 }
 
 // validateOutputArray validates real OutputArray

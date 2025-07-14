@@ -13,18 +13,36 @@ type mockOutputArray struct {
 	Contents []mockOutputHolder
 }
 
+// Implement OutputArray interface
+func (m *mockOutputArray) GetKeys() []string {
+	return m.Keys
+}
+
+func (m *mockOutputArray) GetContents() []OutputHolder {
+	holders := make([]OutputHolder, len(m.Contents))
+	for i, content := range m.Contents {
+		holders[i] = &content
+	}
+	return holders
+}
+
 type mockOutputHolder struct {
 	Contents map[string]interface{}
 }
 
+// Implement OutputHolder interface
+func (m *mockOutputHolder) GetContents() map[string]interface{} {
+	return m.Contents
+}
+
 func TestRequiredColumnsValidator(t *testing.T) {
 	tests := []struct {
-		name           string
-		requiredCols   []string
-		outputKeys     []string
-		expectedError  bool
-		expectedCode   errors.ErrorCode
-		expectedField  string
+		name          string
+		requiredCols  []string
+		outputKeys    []string
+		expectedError bool
+		expectedCode  errors.ErrorCode
+		expectedField string
 	}{
 		{
 			name:          "All required columns present",
@@ -65,7 +83,7 @@ func TestRequiredColumnsValidator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := NewRequiredColumnsValidator(tt.requiredCols...)
-			
+
 			mockOutput := &mockOutputArray{
 				Keys: tt.outputKeys,
 			}
@@ -124,7 +142,7 @@ func TestRequiredColumnsValidatorName(t *testing.T) {
 
 func TestRequiredColumnsValidatorWithInvalidInput(t *testing.T) {
 	validator := NewRequiredColumnsValidator("Name")
-	
+
 	// Test with non-OutputArray input
 	err := validator.Validate("invalid input")
 	if err == nil {
@@ -143,12 +161,12 @@ func TestRequiredColumnsValidatorWithInvalidInput(t *testing.T) {
 
 func TestDataTypeValidator(t *testing.T) {
 	tests := []struct {
-		name           string
-		columnTypes    map[string]reflect.Type
-		mockData       []mockOutputHolder
-		expectedError  bool
-		expectedCode   errors.ErrorCode
-		expectedField  string
+		name          string
+		columnTypes   map[string]reflect.Type
+		mockData      []mockOutputHolder
+		expectedError bool
+		expectedCode  errors.ErrorCode
+		expectedField string
 	}{
 		{
 			name: "All types match",
@@ -212,7 +230,7 @@ func TestDataTypeValidator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := NewDataTypeValidator(tt.columnTypes)
-			
+
 			mockOutput := &mockOutputArray{
 				Keys:     getKeysFromTypes(tt.columnTypes),
 				Contents: tt.mockData,
@@ -297,7 +315,7 @@ func TestNotEmptyValidator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := NewNotEmptyValidator()
-			
+
 			mockOutput := &mockOutputArray{
 				Contents: tt.mockData,
 			}
@@ -338,7 +356,7 @@ func TestNotEmptyValidatorName(t *testing.T) {
 
 func TestNotEmptyValidatorWithInvalidInput(t *testing.T) {
 	validator := NewNotEmptyValidator()
-	
+
 	err := validator.Validate("invalid input")
 	if err == nil {
 		t.Error("Expected error for invalid input type")
@@ -449,9 +467,9 @@ func TestConstraintValidator(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:        "Empty dataset with constraints",
-			constraints: []Constraint{positiveConstraint},
-			mockData:    []mockOutputHolder{},
+			name:          "Empty dataset with constraints",
+			constraints:   []Constraint{positiveConstraint},
+			mockData:      []mockOutputHolder{},
 			expectedError: false,
 		},
 	}
@@ -459,7 +477,7 @@ func TestConstraintValidator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := NewConstraintValidator(tt.constraints...)
-			
+
 			mockOutput := &mockOutputArray{
 				Contents: tt.mockData,
 			}
@@ -500,7 +518,7 @@ func TestConstraintValidatorName(t *testing.T) {
 
 func TestConstraintValidatorWithInvalidInput(t *testing.T) {
 	validator := NewConstraintValidator()
-	
+
 	err := validator.Validate("invalid input")
 	if err == nil {
 		t.Error("Expected error for invalid input type")

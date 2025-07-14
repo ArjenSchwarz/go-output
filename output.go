@@ -21,8 +21,10 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/ArjenSchwarz/go-output/drawio"
+	"github.com/ArjenSchwarz/go-output/errors"
 	"github.com/ArjenSchwarz/go-output/mermaid"
 	"github.com/ArjenSchwarz/go-output/templates"
+	"github.com/ArjenSchwarz/go-output/validators"
 )
 
 var buffer bytes.Buffer
@@ -36,9 +38,12 @@ type OutputHolder struct {
 // OutputArray holds all the different OutputHolders that will be provided as
 // output, as well as the keys (headers) that will actually need to be printed
 type OutputArray struct {
-	Settings *OutputSettings
-	Contents []OutputHolder
-	Keys     []string
+	Settings        *OutputSettings
+	Contents        []OutputHolder
+	Keys            []string
+	validators      []validators.Validator
+	errorHandler    errors.ErrorHandler
+	recoveryHandler errors.RecoveryHandler
 }
 
 // GetContentsMap returns a stringmap of the output contents

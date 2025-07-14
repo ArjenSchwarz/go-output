@@ -58,12 +58,6 @@ func NewFormatValidator(allowedFormats ...string) *FormatValidator {
 
 // Validate checks if the output format is in the list of allowed formats
 func (v *FormatValidator) Validate(subject interface{}) error {
-	// Handle the mock structure for testing
-	if mockSettings, ok := subject.(*mockOutputSettings); ok {
-		return v.validateMockSettings(mockSettings)
-	}
-
-	// Handle the real OutputSettings structure
 	settings, ok := subject.(OutputSettings)
 	if !ok {
 		return errors.NewValidationError(
@@ -73,11 +67,6 @@ func (v *FormatValidator) Validate(subject interface{}) error {
 	}
 
 	return v.validateSettings(settings)
-}
-
-// validateMockSettings validates mock settings for testing
-func (v *FormatValidator) validateMockSettings(settings *mockOutputSettings) error {
-	return v.validateFormat(settings.OutputFormat)
 }
 
 // validateSettings validates real OutputSettings
@@ -168,7 +157,7 @@ func (v *FilePathValidator) validateFilePath(outputFile string) error {
 
 	// Check if the directory exists and is writable
 	dir := filepath.Dir(outputFile)
-	
+
 	// Convert relative paths to absolute for validation
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -241,7 +230,7 @@ func (v *S3ConfigValidator) Validate(subject interface{}) error {
 // validateMockSettings validates mock settings for testing
 func (v *S3ConfigValidator) validateMockSettings(settings *mockOutputSettings) error {
 	s3Config := settings.S3Bucket
-	
+
 	// If no bucket specified, no validation needed
 	if s3Config.Bucket == "" {
 		return nil
@@ -253,7 +242,7 @@ func (v *S3ConfigValidator) validateMockSettings(settings *mockOutputSettings) e
 // validateSettings validates real OutputSettings
 func (v *S3ConfigValidator) validateSettings(settings OutputSettings) error {
 	s3Config := settings.GetS3Bucket()
-	
+
 	// If no bucket specified, no validation needed
 	if s3Config.GetBucket() == "" {
 		return nil

@@ -1,10 +1,13 @@
 package format
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ArjenSchwarz/go-output/drawio"
+	"github.com/ArjenSchwarz/go-output/errors"
 	"github.com/ArjenSchwarz/go-output/mermaid"
 	"github.com/jedib0t/go-pretty/v6/table"
 
@@ -177,4 +180,159 @@ func (settings *OutputSettings) EnableProgress() {
 // DisableProgress turns off progress output.
 func (settings *OutputSettings) DisableProgress() {
 	settings.ProgressEnabled = false
+}
+
+// Validate performs comprehensive validation of OutputSettings
+func (settings *OutputSettings) Validate() error {
+	composite := errors.NewCompositeError()
+
+	// Validate output format
+	if err := settings.validateOutputFormat(); err != nil {
+		composite.Add(err.(errors.ValidationError))
+	}
+
+	// Validate format-specific requirements
+	if err := settings.validateFormatSpecificRequirements(); err != nil {
+		composite.Add(err.(errors.ValidationError))
+	}
+
+	// Validate file output configuration
+	if err := settings.validateFileOutput(); err != nil {
+		composite.Add(err.(errors.ValidationError))
+	}
+
+	// Validate S3 configuration
+	if err := settings.validateS3Configuration(); err != nil {
+		composite.Add(err.(errors.ValidationError))
+	}
+
+	return composite.ErrorOrNil()
+}
+
+// validateOutputFormat validates the output format is supported
+func (settings *OutputSettings) validateOutputFormat() error {
+	validFormats := []string{
+		"json", "csv", "table", "html", "markdown", "yaml",
+		"mermaid", "drawio", "dot",
+	}
+
+	if settings.OutputFormat == "" {
+		return errors.NewValidationError(
+			errors.ErrMissingRequired,
+			"OutputFormat is required",
+		).WithSuggestions(
+			fmt.Sprintf("Valid formats: %s", strings.Join(validFormats, ", ")),
+		)
+	}
+
+	for _, valid := range validFormats {
+		if settings.OutputFormat == valid {
+			return nil
+		}
+	}
+
+	return errors.NewValidationError(
+		errors.ErrInvalidFormat,
+		fmt.Sprintf("Invalid output format: %s", settings.OutputFormat),
+	).WithSuggestions(
+		fmt.Sprintf("Valid formats: %s", strings.Join(validFormats, ", ")),
+	).WithContext(errors.ErrorContext{
+		Operation: "format_validation",
+		Field:     "OutputFormat",
+		Value:     settings.OutputFormat,
+	})
+}
+
+// validateFormatSpecificRequirements validates format-specific requirements
+func (settings *OutputSettings) validateFormatSpecificRequirements() error {
+	switch settings.OutputFormat {
+	case "mermaid":
+		if settings.FromToColumns == nil && settings.MermaidSettings == nil {
+			return errors.NewValidationError(
+				errors.ErrMissingRequired,
+				"mermaid format requires FromToColumns or MermaidSettings",
+			).WithSuggestions(
+				"Use AddFromToColumns() to set source and target columns",
+				"Or configure MermaidSettings for chart generation",
+			)
+		}
+	case "drawio":
+		if !settings.DrawIOHeader.IsSet() {
+			return errors.NewValidationError(
+				errors.ErrMissingRequired,
+				"drawio format requires DrawIOHeader configuration",
+			).WithSuggestions(
+				"Configure DrawIOHeader before using drawio format",
+			)
+		}
+	case "dot":
+		if settings.FromToColumns == nil {
+			return errors.NewValidationError(
+				errors.ErrMissingRequired,
+				"dot format requires FromToColumns configuration",
+			).WithSuggestions(
+				"Use AddFromToColumns() to set source and target columns",
+			)
+		}
+	}
+	return nil
+}
+
+// validateFileOutput validates file output configuration
+func (settings *OutputSettings) validateFileOutput() error {
+	if settings.OutputFile == "" {
+		return nil // No file output, nothing to validate
+	}
+
+	// Check if directory exists and is writable
+	if dir := filepath.Dir(settings.OutputFile); dir != "." {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			return errors.NewValidationError(
+				errors.ErrInvalidFilePath,
+				fmt.Sprintf("Output directory does not exist: %s", dir),
+			).WithSuggestions(
+				"Create the directory before running the command",
+				"Use a different output path",
+			).WithContext(errors.ErrorContext{
+				Operation: "file_validation",
+				Field:     "OutputFile",
+				Value:     settings.OutputFile,
+			})
+		}
+	}
+
+	return nil
+}
+
+// validateS3Configuration validates S3 bucket configuration
+func (settings *OutputSettings) validateS3Configuration() error {
+	if settings.S3Bucket.Bucket == "" {
+		return nil // No S3 output, nothing to validate
+	}
+
+	if settings.S3Bucket.Path == "" {
+		return errors.NewValidationError(
+			errors.ErrMissingRequired,
+			"S3 path is required when bucket is specified",
+		).WithSuggestions(
+			"Specify the S3 object key/path",
+		).WithContext(errors.ErrorContext{
+			Operation: "s3_validation",
+			Field:     "S3Bucket.Path",
+		})
+	}
+
+	if settings.S3Bucket.S3Client == nil {
+		return errors.NewValidationError(
+			errors.ErrMissingRequired,
+			"S3Client is required when bucket is specified",
+		).WithSuggestions(
+			"Initialize S3Client before setting bucket configuration",
+		).WithContext(errors.ErrorContext{
+			Operation: "s3_validation",
+			Field:     "S3Bucket.S3Client",
+		})
+	}
+
+	return nil
 }
