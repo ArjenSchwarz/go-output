@@ -303,7 +303,9 @@ func (output *OutputArray) generateOutput() ([]byte, error) {
 		if !output.Settings.DrawIOHeader.IsSet() {
 			return nil, NewProcessingError(ErrMissingRequired, "drawio format requires DrawIOHeader configuration", false)
 		}
-		drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+		if err := drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile); err != nil {
+			return nil, NewProcessingError(ErrFileWrite, fmt.Sprintf("failed to create drawio CSV: %v", err), false)
+		}
 		return nil, nil
 	case "dot":
 		// Validation already handled in Validate(), so this should not occur
@@ -356,7 +358,9 @@ func (output *OutputArray) generateFileOutput() ([]byte, error) {
 		if !output.Settings.DrawIOHeader.IsSet() {
 			return nil, NewProcessingError(ErrMissingRequired, "drawio format requires DrawIOHeader configuration", false)
 		}
-		drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+		if err := drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile); err != nil {
+			return nil, NewProcessingError(ErrFileWrite, fmt.Sprintf("failed to create drawio CSV: %v", err), false)
+		}
 		return nil, nil
 	case "dot":
 		return output.toDot(), nil
