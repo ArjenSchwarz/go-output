@@ -214,7 +214,7 @@ func (p *PerformanceProfiler) IsEnabled() bool {
 
 // ProfileOperation profiles a specific operation
 func (p *PerformanceProfiler) ProfileOperation(operation string, fn func() error) error {
-	if !p.enabled {
+	if p == nil || !p.enabled {
 		return fn()
 	}
 
@@ -412,36 +412,44 @@ func (s *IntegratedErrorSystem) GetMigrationHelper() *MigrationHelper {
 
 // ProcessError processes an error through the complete error handling pipeline
 func (s *IntegratedErrorSystem) ProcessError(err error) error {
-	return s.profiler.ProfileOperation("process_error", func() error {
-		if err == nil {
+	if s.profiler != nil {
+		return s.profiler.ProfileOperation("process_error", func() error {
+			return s.processErrorInternal(err)
+		})
+	}
+	return s.processErrorInternal(err)
+}
+
+// processErrorInternal handles the actual error processing
+func (s *IntegratedErrorSystem) processErrorInternal(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	// Convert to OutputError if needed
+	var outputErr OutputError
+	if oe, ok := err.(OutputError); ok {
+		outputErr = oe
+	} else {
+		outputErr = WrapError(err)
+	}
+
+	// Report the error (if reporter is available)
+	if s.reporter != nil {
+		// Note: In a real implementation, this would call the reporter
+		// s.reporter.Report(outputErr)
+	}
+
+	// Try recovery first
+	if s.recoveryHandler != nil && s.recoveryHandler.CanRecover(outputErr) {
+		if recoveryErr := s.recoveryHandler.Recover(outputErr); recoveryErr == nil {
+			// Recovery successful
 			return nil
 		}
+	}
 
-		// Convert to OutputError if needed
-		var outputErr OutputError
-		if oe, ok := err.(OutputError); ok {
-			outputErr = oe
-		} else {
-			outputErr = WrapError(err)
-		}
-
-		// Report the error (if reporter is available)
-		if s.reporter != nil {
-			// Note: In a real implementation, this would call the reporter
-			// s.reporter.Report(outputErr)
-		}
-
-		// Try recovery first
-		if s.recoveryHandler != nil && s.recoveryHandler.CanRecover(outputErr) {
-			if recoveryErr := s.recoveryHandler.Recover(outputErr); recoveryErr == nil {
-				// Recovery successful
-				return nil
-			}
-		}
-
-		// Handle the error through the error handler
-		return s.handler.HandleError(outputErr)
-	})
+	// Handle the error through the error handler
+	return s.handler.HandleError(outputErr)
 }
 
 // ProcessErrors processes multiple errors as a batch
