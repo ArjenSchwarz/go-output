@@ -10,6 +10,8 @@
   * Support for detailed field-level validation failures with context and constraints
   * Implement processing error types for runtime failures with retry and partial result support
   * Add retryable error wrapper with exponential backoff configuration and transient error detection
+  * Create core validator interface with function-based and chain-based validation support
+  * Add validation context and configurable fail-fast vs collect-all error handling modes
 
 1.4.0 / 2023-11-14
 ==================
