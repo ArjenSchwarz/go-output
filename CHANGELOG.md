@@ -12,6 +12,8 @@
   * Add retryable error wrapper with exponential backoff configuration and transient error detection
   * Create core validator interface with function-based and chain-based validation support
   * Add validation context and configurable fail-fast vs collect-all error handling modes
+  * Implement built-in data validators: RequiredColumnsValidator, DataTypeValidator, NotEmptyValidator, and ConstraintValidator
+  * Add constraint interface for custom business rules with common implementations for positive numbers and non-empty strings
 
 1.4.0 / 2023-11-14
 ==================

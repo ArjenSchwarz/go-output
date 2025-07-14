@@ -86,7 +86,7 @@ Focus on:
 The framework should integrate with the error types from Phase 1 and be extensible for custom validators."
 
 ### Task 5: Built-in Data Validators
-- [ ] **Objective**: Implement common validators for data validation.
+- [x] **Objective**: Implement common validators for data validation.
 
 **Test-driven prompt**:
 "Building on Task 4, write tests first then implement built-in validators for common data validation scenarios:
