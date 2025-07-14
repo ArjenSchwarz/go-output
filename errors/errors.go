@@ -32,6 +32,7 @@ const (
 	ErrS3Upload        ErrorCode = "OUT-3002"
 	ErrTemplateRender  ErrorCode = "OUT-3003"
 	ErrMemoryExhausted ErrorCode = "OUT-3004"
+	ErrRetryable       ErrorCode = "OUT-3005"
 )
 
 // ErrorSeverity represents the severity level of an error
