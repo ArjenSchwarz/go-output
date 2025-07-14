@@ -487,17 +487,3 @@ func BenchmarkValidationRunner(b *testing.B) {
 		runner.Validate(data)
 	}
 }
-
-func BenchmarkCompositeError(b *testing.B) {
-	errors := make([]error, 10)
-	for i := 0; i < 10; i++ {
-		errors[i] = fmt.Errorf("error %d", i)
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		composite := NewCompositeError()
-		composite.AddAll(errors...)
-		_ = composite.Error()
-	}
-}

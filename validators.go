@@ -9,6 +9,10 @@ import (
 // RequiredColumnsValidator validates that all required columns exist in the dataset
 type RequiredColumnsValidator struct {
 	columns []string
+	// Performance optimization: cache validation results
+	lastKeys   []string
+	lastResult error
+	cacheValid bool
 }
 
 // NewRequiredColumnsValidator creates a new RequiredColumnsValidator
@@ -18,7 +22,7 @@ func NewRequiredColumnsValidator(columns ...string) *RequiredColumnsValidator {
 	}
 }
 
-// Validate implements the Validator interface
+// Validate implements the Validator interface with performance optimizations
 func (v *RequiredColumnsValidator) Validate(subject any) error {
 	output, ok := subject.(*OutputArray)
 	if !ok {
@@ -27,20 +31,26 @@ func (v *RequiredColumnsValidator) Validate(subject any) error {
 			Build()
 	}
 
-	missing := []string{}
+	// Performance optimization: check cache first
+	if v.cacheValid && v.keysEqual(output.Keys, v.lastKeys) {
+		return v.lastResult
+	}
+
+	// Performance optimization: use map for O(1) lookup instead of O(n) search
+	keyMap := make(map[string]bool, len(output.Keys))
+	for _, key := range output.Keys {
+		keyMap[key] = true
+	}
+
+	// Pre-allocate slice with capacity to avoid reallocations
+	missing := make([]string, 0, len(v.columns))
 	for _, required := range v.columns {
-		found := false
-		for _, key := range output.Keys {
-			if key == required {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !keyMap[required] {
 			missing = append(missing, required)
 		}
 	}
 
+	var result error
 	if len(missing) > 0 {
 		builder := NewValidationErrorBuilder(ErrMissingColumn,
 			fmt.Sprintf("missing required columns: %s", strings.Join(missing, ", ")))
@@ -49,18 +59,49 @@ func (v *RequiredColumnsValidator) Validate(subject any) error {
 			builder.WithViolation(col, "required", "column is required but not found", nil)
 		}
 
-		return builder.WithSuggestions(
+		result = builder.WithSuggestions(
 			fmt.Sprintf("add the missing columns: %s", strings.Join(missing, ", ")),
 			"check your data source to ensure all required columns are included",
 		).Build()
 	}
 
-	return nil
+	// Cache the result
+	v.lastKeys = make([]string, len(output.Keys))
+	copy(v.lastKeys, output.Keys)
+	v.lastResult = result
+	v.cacheValid = true
+
+	return result
+}
+
+// keysEqual checks if two key slices are equal (performance optimized)
+func (v *RequiredColumnsValidator) keysEqual(keys1, keys2 []string) bool {
+	if len(keys1) != len(keys2) {
+		return false
+	}
+	for i, key := range keys1 {
+		if key != keys2[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // Name implements the Validator interface
 func (v *RequiredColumnsValidator) Name() string {
 	return fmt.Sprintf("required columns validator (%s)", strings.Join(v.columns, ", "))
+}
+
+// EstimatedCost implements the PerformanceAwareValidator interface
+// Required columns validation is very fast - just checking keys
+func (v *RequiredColumnsValidator) EstimatedCost() int {
+	return 1 // Very low cost
+}
+
+// IsFailFast implements the PerformanceAwareValidator interface
+// This should run early since missing columns will cause other validators to fail
+func (v *RequiredColumnsValidator) IsFailFast() bool {
+	return true
 }
 
 // DataTypeValidator validates that column values match expected data types
@@ -195,6 +236,18 @@ func (v *DataTypeValidator) Name() string {
 	return fmt.Sprintf("data type validator (%s)", strings.Join(columns, ", "))
 }
 
+// EstimatedCost implements the PerformanceAwareValidator interface
+// Data type validation requires reflection and is moderately expensive
+func (v *DataTypeValidator) EstimatedCost() int {
+	return 5 * len(v.columnTypes) // Cost scales with number of columns to check
+}
+
+// IsFailFast implements the PerformanceAwareValidator interface
+// Data type validation is not typically a fail-fast validator
+func (v *DataTypeValidator) IsFailFast() bool {
+	return false
+}
+
 // Constraint defines a custom business rule constraint
 type Constraint interface {
 	// Check validates a single row against the constraint
@@ -317,6 +370,18 @@ func (v *ConstraintValidator) Name() string {
 	return fmt.Sprintf("constraint validator (%s)", strings.Join(names, ", "))
 }
 
+// EstimatedCost implements the PerformanceAwareValidator interface
+// Constraint validation can be expensive as it runs custom logic on each row
+func (v *ConstraintValidator) EstimatedCost() int {
+	return 10 * len(v.constraints) // High cost, scales with number of constraints
+}
+
+// IsFailFast implements the PerformanceAwareValidator interface
+// Constraint validation is not typically a fail-fast validator
+func (v *ConstraintValidator) IsFailFast() bool {
+	return false
+}
+
 // EmptyDatasetValidator validates against empty datasets
 type EmptyDatasetValidator struct {
 	allowEmpty bool
@@ -357,6 +422,18 @@ func (v *EmptyDatasetValidator) Name() string {
 		return "empty dataset validator (allows empty)"
 	}
 	return "empty dataset validator (requires data)"
+}
+
+// EstimatedCost implements the PerformanceAwareValidator interface
+// Empty dataset validation is very fast - just checking length
+func (v *EmptyDatasetValidator) EstimatedCost() int {
+	return 1 // Very low cost
+}
+
+// IsFailFast implements the PerformanceAwareValidator interface
+// This should run early since empty datasets will cause other validators to behave differently
+func (v *EmptyDatasetValidator) IsFailFast() bool {
+	return true
 }
 
 // MalformedDataValidator validates against malformed data
@@ -480,6 +557,21 @@ func (v *MalformedDataValidator) Name() string {
 		return "malformed data validator (strict mode)"
 	}
 	return "malformed data validator (lenient mode)"
+}
+
+// EstimatedCost implements the PerformanceAwareValidator interface
+// Malformed data validation requires string analysis and is moderately expensive
+func (v *MalformedDataValidator) EstimatedCost() int {
+	if v.strictMode {
+		return 8 // Higher cost in strict mode due to additional checks
+	}
+	return 6 // Moderate cost in lenient mode
+}
+
+// IsFailFast implements the PerformanceAwareValidator interface
+// Malformed data validation is not typically a fail-fast validator
+func (v *MalformedDataValidator) IsFailFast() bool {
+	return false
 }
 
 // Common constraint implementations

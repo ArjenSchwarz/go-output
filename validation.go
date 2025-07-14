@@ -13,6 +13,15 @@ type Validator interface {
 	Name() string
 }
 
+// PerformanceAwareValidator extends Validator with performance characteristics
+type PerformanceAwareValidator interface {
+	Validator
+	// EstimatedCost returns the estimated performance cost (lower is faster)
+	EstimatedCost() int
+	// IsFailFast returns true if this validator should run early to fail fast
+	IsFailFast() bool
+}
+
 // ValidatorFunc is a function type that implements the Validator interface
 // This allows for easy creation of validators using anonymous functions
 type ValidatorFunc func(any) error
@@ -393,4 +402,123 @@ func AsContextual(validator Validator) ContextualValidator {
 		return contextual
 	}
 	return &contextualValidatorAdapter{validator: validator}
+}
+
+// OptimizedValidationRunner provides performance-optimized validation execution
+type OptimizedValidationRunner struct {
+	validators []Validator
+	mode       ValidationMode
+	sorted     bool
+}
+
+// NewOptimizedValidationRunner creates a new optimized validation runner
+func NewOptimizedValidationRunner(mode ValidationMode) *OptimizedValidationRunner {
+	return &OptimizedValidationRunner{
+		validators: make([]Validator, 0),
+		mode:       mode,
+		sorted:     false,
+	}
+}
+
+// AddValidator adds a validator to the runner
+func (r *OptimizedValidationRunner) AddValidator(validator Validator) *OptimizedValidationRunner {
+	r.validators = append(r.validators, validator)
+	r.sorted = false // Mark as needing re-sort
+	return r
+}
+
+// AddValidators adds multiple validators to the runner
+func (r *OptimizedValidationRunner) AddValidators(validators ...Validator) *OptimizedValidationRunner {
+	r.validators = append(r.validators, validators...)
+	r.sorted = false // Mark as needing re-sort
+	return r
+}
+
+// optimizeValidatorOrder sorts validators for optimal execution order
+func (r *OptimizedValidationRunner) optimizeValidatorOrder() {
+	if r.sorted || len(r.validators) <= 1 {
+		return
+	}
+
+	// Sort validators by performance characteristics:
+	// 1. Fail-fast validators first (to exit early on common errors)
+	// 2. Then by estimated cost (lower cost first)
+	// 3. Regular validators last
+
+	failFastValidators := make([]Validator, 0)
+	performanceAwareValidators := make([]Validator, 0)
+	regularValidators := make([]Validator, 0)
+
+	for _, validator := range r.validators {
+		if perfValidator, ok := validator.(PerformanceAwareValidator); ok {
+			if perfValidator.IsFailFast() {
+				failFastValidators = append(failFastValidators, validator)
+			} else {
+				performanceAwareValidators = append(performanceAwareValidators, validator)
+			}
+		} else {
+			regularValidators = append(regularValidators, validator)
+		}
+	}
+
+	// Sort performance-aware validators by cost
+	for i := 0; i < len(performanceAwareValidators)-1; i++ {
+		for j := i + 1; j < len(performanceAwareValidators); j++ {
+			vi := performanceAwareValidators[i].(PerformanceAwareValidator)
+			vj := performanceAwareValidators[j].(PerformanceAwareValidator)
+			if vi.EstimatedCost() > vj.EstimatedCost() {
+				performanceAwareValidators[i], performanceAwareValidators[j] = performanceAwareValidators[j], performanceAwareValidators[i]
+			}
+		}
+	}
+
+	// Rebuild validators list in optimal order
+	r.validators = make([]Validator, 0, len(r.validators))
+	r.validators = append(r.validators, failFastValidators...)
+	r.validators = append(r.validators, performanceAwareValidators...)
+	r.validators = append(r.validators, regularValidators...)
+
+	r.sorted = true
+}
+
+// Validate runs all validators against the subject with optimized execution order
+func (r *OptimizedValidationRunner) Validate(subject any) error {
+	if len(r.validators) == 0 {
+		return nil
+	}
+
+	// Optimize validator order before execution
+	r.optimizeValidatorOrder()
+
+	switch r.mode {
+	case ValidationModeFailFast:
+		return r.validateFailFast(subject)
+	case ValidationModeCollectAll:
+		return r.validateCollectAll(subject)
+	default:
+		return r.validateFailFast(subject)
+	}
+}
+
+// validateFailFast runs validators and returns on first error
+func (r *OptimizedValidationRunner) validateFailFast(subject any) error {
+	for _, validator := range r.validators {
+		if err := validator.Validate(subject); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateCollectAll runs all validators and collects all errors
+func (r *OptimizedValidationRunner) validateCollectAll(subject any) error {
+	composite := NewCompositeError()
+
+	for _, validator := range r.validators {
+		if err := validator.Validate(subject); err != nil {
+			composite.Add(err)
+		}
+	}
+
+	return composite.ErrorOrNil()
 }

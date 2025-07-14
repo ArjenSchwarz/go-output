@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // ErrorCode represents a structured error code for the go-output library
@@ -72,6 +73,56 @@ type ErrorContext struct {
 	Value     interface{}            `json:"value,omitempty"`     // The problematic value
 	Index     int                    `json:"index,omitempty"`     // Index in array/slice if applicable
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`  // Additional context information
+	// Performance optimization: lazy context gathering
+	lazyContextFunc func() ErrorContext
+	contextBuilt    bool
+}
+
+// contextPool is a sync.Pool for reusing ErrorContext metadata maps
+var contextPool = &sync.Pool{
+	New: func() interface{} {
+		return make(map[string]interface{}, 4) // Pre-allocate space for common case
+	},
+}
+
+// newContextFromPool creates a new ErrorContext with pooled metadata map
+func newContextFromPool() ErrorContext {
+	return ErrorContext{
+		Metadata: contextPool.Get().(map[string]interface{}),
+	}
+}
+
+// returnContextToPool returns the metadata map to the pool
+func (c *ErrorContext) returnToPool() {
+	if c.Metadata != nil {
+		// Clear the map but keep the underlying storage
+		for k := range c.Metadata {
+			delete(c.Metadata, k)
+		}
+		contextPool.Put(c.Metadata)
+		c.Metadata = nil
+	}
+}
+
+// buildContext builds the context using lazy evaluation if available
+func (c *ErrorContext) buildContext() ErrorContext {
+	if c.lazyContextFunc != nil && !c.contextBuilt {
+		built := c.lazyContextFunc()
+		c.Operation = built.Operation
+		c.Field = built.Field
+		c.Value = built.Value
+		c.Index = built.Index
+		if built.Metadata != nil {
+			if c.Metadata == nil {
+				c.Metadata = contextPool.Get().(map[string]interface{})
+			}
+			for k, v := range built.Metadata {
+				c.Metadata[k] = v
+			}
+		}
+		c.contextBuilt = true
+	}
+	return *c
 }
 
 // OutputError is the base error interface for all go-output errors
@@ -114,10 +165,66 @@ type baseError struct {
 	context     ErrorContext
 	suggestions []string
 	cause       error
+	// Performance optimization: lazy error message generation
+	lazyMessage   func() string
+	cachedMessage string
+	messageBuilt  bool
 }
 
-// Error implements the error interface
+// errorPool is a sync.Pool for reusing baseError instances to reduce allocations
+var errorPool = &sync.Pool{
+	New: func() interface{} {
+		return &baseError{
+			suggestions: make([]string, 0, 4), // Pre-allocate space for common case
+		}
+	},
+}
+
+// newBaseErrorFromPool creates a new baseError from the pool
+func newBaseErrorFromPool() *baseError {
+	err := errorPool.Get().(*baseError)
+	// Reset the error to clean state
+	err.code = ""
+	err.severity = SeverityInfo
+	err.message = ""
+	err.context = ErrorContext{}
+	err.suggestions = err.suggestions[:0] // Keep underlying array, reset length
+	err.cause = nil
+	err.lazyMessage = nil
+	err.cachedMessage = ""
+	err.messageBuilt = false
+	return err
+}
+
+// returnToPool returns a baseError to the pool for reuse
+func (e *baseError) returnToPool() {
+	// Clear any references to prevent memory leaks
+	e.cause = nil
+	e.lazyMessage = nil
+	e.context.Metadata = nil
+	errorPool.Put(e)
+}
+
+// Error implements the error interface with lazy message generation
 func (e *baseError) Error() string {
+	// Use lazy message if available and not yet built
+	if e.lazyMessage != nil && !e.messageBuilt {
+		e.cachedMessage = e.lazyMessage()
+		e.messageBuilt = true
+		return e.cachedMessage
+	}
+
+	// Return cached message if already built
+	if e.messageBuilt && e.cachedMessage != "" {
+		return e.cachedMessage
+	}
+
+	// Build message on demand
+	return e.buildErrorMessage()
+}
+
+// buildErrorMessage constructs the error message
+func (e *baseError) buildErrorMessage() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "[%s] %s", e.code, e.message)
 
@@ -153,9 +260,9 @@ func (e *baseError) Severity() ErrorSeverity {
 	return e.severity
 }
 
-// Context returns the error context
+// Context returns the error context with lazy evaluation
 func (e *baseError) Context() ErrorContext {
-	return e.context
+	return e.context.buildContext()
 }
 
 // Suggestions returns suggested fixes
@@ -242,15 +349,15 @@ func (p *processingError) PartialResult() interface{} {
 	return p.partialResult
 }
 
-// NewOutputError creates a new base OutputError
+// NewOutputError creates a new base OutputError with memory pool optimization
 func NewOutputError(code ErrorCode, severity ErrorSeverity, message string) OutputError {
-	return &baseError{
-		code:        code,
-		severity:    severity,
-		message:     message,
-		context:     ErrorContext{},
-		suggestions: []string{},
-	}
+	err := newBaseErrorFromPool()
+	err.code = code
+	err.severity = severity
+	err.message = message
+	err.context = ErrorContext{}
+	// suggestions slice is already pre-allocated from pool
+	return err
 }
 
 // NewConfigError creates a new configuration error
@@ -258,30 +365,32 @@ func NewConfigError(code ErrorCode, message string) OutputError {
 	return NewOutputError(code, SeverityError, message)
 }
 
-// NewValidationError creates a new validation error
+// NewValidationError creates a new validation error with memory pool optimization
 func NewValidationError(code ErrorCode, message string) ValidationError {
+	err := newBaseErrorFromPool()
+	err.code = code
+	err.severity = SeverityError
+	err.message = message
+	err.context = ErrorContext{}
+	// suggestions slice is already pre-allocated from pool
+
 	return &validationError{
-		baseError: baseError{
-			code:        code,
-			severity:    SeverityError,
-			message:     message,
-			context:     ErrorContext{},
-			suggestions: []string{},
-		},
-		violations: []Violation{},
+		baseError:  *err,
+		violations: make([]Violation, 0, 4), // Pre-allocate space for common case
 	}
 }
 
-// NewProcessingError creates a new processing error
+// NewProcessingError creates a new processing error with memory pool optimization
 func NewProcessingError(code ErrorCode, message string, retryable bool) ProcessingError {
+	err := newBaseErrorFromPool()
+	err.code = code
+	err.severity = SeverityError
+	err.message = message
+	err.context = ErrorContext{}
+	// suggestions slice is already pre-allocated from pool
+
 	return &processingError{
-		baseError: baseError{
-			code:        code,
-			severity:    SeverityError,
-			message:     message,
-			context:     ErrorContext{},
-			suggestions: []string{},
-		},
+		baseError: *err,
 		retryable: retryable,
 	}
 }
@@ -311,16 +420,16 @@ type ErrorBuilder struct {
 	err *baseError
 }
 
-// NewErrorBuilder creates a new error builder
+// NewErrorBuilder creates a new error builder with memory pool optimization
 func NewErrorBuilder(code ErrorCode, message string) *ErrorBuilder {
+	err := newBaseErrorFromPool()
+	err.code = code
+	err.severity = SeverityError
+	err.message = message
+	err.context = ErrorContext{}
+	// suggestions slice is already pre-allocated from pool
 	return &ErrorBuilder{
-		err: &baseError{
-			code:        code,
-			severity:    SeverityError,
-			message:     message,
-			context:     ErrorContext{},
-			suggestions: []string{},
-		},
+		err: err,
 	}
 }
 
@@ -363,6 +472,18 @@ func (b *ErrorBuilder) WithSuggestions(suggestions ...string) *ErrorBuilder {
 // WithCause sets the underlying cause
 func (b *ErrorBuilder) WithCause(cause error) *ErrorBuilder {
 	b.err.cause = cause
+	return b
+}
+
+// WithLazyMessage sets a lazy message generator function for performance optimization
+func (b *ErrorBuilder) WithLazyMessage(lazyMessage func() string) *ErrorBuilder {
+	b.err.lazyMessage = lazyMessage
+	return b
+}
+
+// WithLazyContext sets a lazy context generator function for performance optimization
+func (b *ErrorBuilder) WithLazyContext(lazyContext func() ErrorContext) *ErrorBuilder {
+	b.err.context.lazyContextFunc = lazyContext
 	return b
 }
 
@@ -607,19 +728,21 @@ type ValidationErrorBuilder struct {
 	violations []Violation
 }
 
-// NewValidationErrorBuilder creates a new validation error builder
+// NewValidationErrorBuilder creates a new validation error builder with memory pool optimization
 func NewValidationErrorBuilder(code ErrorCode, message string) *ValidationErrorBuilder {
+	err := newBaseErrorFromPool()
+	err.code = code
+	err.severity = SeverityError
+	err.message = message
+	err.context = ErrorContext{}
+	// suggestions slice is already pre-allocated from pool
+
 	return &ValidationErrorBuilder{
 		err: &validationError{
-			baseError: baseError{
-				code:        code,
-				severity:    SeverityError,
-				message:     message,
-				context:     ErrorContext{},
-				suggestions: []string{},
-			},
-			violations: []Violation{},
+			baseError:  *err,
+			violations: make([]Violation, 0, 4), // Pre-allocate space for common case
 		},
+		violations: make([]Violation, 0, 4), // Pre-allocate space for common case
 	}
 }
 
