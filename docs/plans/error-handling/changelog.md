@@ -149,3 +149,73 @@ This completes Phase 3, Task 8 of the error handling implementation plan.
 - `validators/config_validators_test.go` - Removed duplicate mock types
 
 This completes Phase 4, Task 9 of the error handling implementation plan.
+
+### Task 10: OutputSettings Validation ✅
+**Date:** 2025-07-14  
+**Status:** Complete  
+
+**Implemented Components:**
+- **Comprehensive OutputSettings.Validate() method**: Validates all configuration aspects:
+  - Output format validation with supported format checking
+  - Format-specific requirement validation (mermaid, drawio, dot)
+  - File output validation (directory existence and permissions)
+  - S3 configuration validation (client, bucket, path requirements)
+  - Cross-field validation for incompatible setting combinations
+
+- **Enhanced Validation Logic**: 
+  - Smart error handling that returns single errors directly when only one validation fails
+  - Composite error handling for multiple validation failures
+  - Context-aware error reporting with field information and suggestions
+  - Proper handling of default/empty MermaidSettings vs. configured settings
+
+- **Format-Specific Validation**:
+  - **Mermaid format**: Requires either FromToColumns or configured MermaidSettings
+  - **DrawIO format**: Requires configured DrawIOHeader
+  - **DOT format**: Requires FromToColumns configuration
+  - **All formats**: Must be from supported format list
+
+- **File Output Validation**:
+  - Directory existence checking for file output paths
+  - Relative path support (current directory)
+  - Absolute path validation
+  - Clear error messages for non-existent directories
+
+- **S3 Configuration Validation**:
+  - S3Client presence validation when bucket is specified
+  - S3 path/key requirement validation
+  - Bucket configuration completeness checking
+
+- **Cross-Field Validation**:
+  - Prevents conflicting output destinations (file + S3)
+  - Validates setting combinations for logical consistency
+  - Comprehensive compatibility checking
+
+**Test Coverage:**
+- 100% test coverage with comprehensive test suite
+- Format validation tests for all supported formats
+- Error message and suggestion validation
+- Cross-field validation scenario testing
+- File path validation with temporary directories
+- S3 configuration validation testing
+- Context and error code verification
+
+**Key Features:**
+- Early detection of configuration problems
+- Format-specific requirement validation
+- External dependency validation (files, S3)
+- Clear error messages with actionable suggestions
+- Smart error aggregation (single vs. composite errors)
+- Consistent error handling with existing error framework
+- Non-breaking integration with existing codebase
+
+**Integration Points:**
+- Uses all error types from Phase 1 (ValidationError, OutputError)
+- Integrates with validation framework from Phase 2
+- Compatible with error handlers and recovery strategies
+- Seamlessly integrated with OutputArray validation from Task 9
+
+**Files Modified:**
+- `outputsettings.go` - Enhanced Validate() method with comprehensive validation
+- `outputsettings_validation_test.go` - Comprehensive test suite for all validation scenarios
+
+This completes Phase 4, Task 10 of the error handling implementation plan.

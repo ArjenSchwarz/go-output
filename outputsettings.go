@@ -184,29 +184,39 @@ func (settings *OutputSettings) DisableProgress() {
 
 // Validate performs comprehensive validation of OutputSettings
 func (settings *OutputSettings) Validate() error {
-	composite := errors.NewCompositeError()
+	var validationErrors []error
 
-	// Validate output format
+	// Collect all validation errors
 	if err := settings.validateOutputFormat(); err != nil {
-		composite.Add(err.(errors.ValidationError))
+		validationErrors = append(validationErrors, err)
 	}
-
-	// Validate format-specific requirements
 	if err := settings.validateFormatSpecificRequirements(); err != nil {
-		composite.Add(err.(errors.ValidationError))
+		validationErrors = append(validationErrors, err)
 	}
-
-	// Validate file output configuration
 	if err := settings.validateFileOutput(); err != nil {
-		composite.Add(err.(errors.ValidationError))
+		validationErrors = append(validationErrors, err)
 	}
-
-	// Validate S3 configuration
 	if err := settings.validateS3Configuration(); err != nil {
-		composite.Add(err.(errors.ValidationError))
+		validationErrors = append(validationErrors, err)
+	}
+	if err := settings.validateCrossFieldRequirements(); err != nil {
+		validationErrors = append(validationErrors, err)
 	}
 
-	return composite.ErrorOrNil()
+	// Return based on number of errors
+	switch len(validationErrors) {
+	case 0:
+		return nil
+	case 1:
+		return validationErrors[0] // Return single error directly
+	default:
+		// Multiple errors - use composite
+		composite := errors.NewCompositeError()
+		for _, err := range validationErrors {
+			composite.Add(err.(errors.ValidationError))
+		}
+		return composite
+	}
 }
 
 // validateOutputFormat validates the output format is supported
@@ -222,7 +232,11 @@ func (settings *OutputSettings) validateOutputFormat() error {
 			"OutputFormat is required",
 		).WithSuggestions(
 			fmt.Sprintf("Valid formats: %s", strings.Join(validFormats, ", ")),
-		)
+		).WithContext(errors.ErrorContext{
+			Operation: "format_validation",
+			Field:     "OutputFormat",
+			Value:     "",
+		})
 	}
 
 	for _, valid := range validFormats {
@@ -247,7 +261,7 @@ func (settings *OutputSettings) validateOutputFormat() error {
 func (settings *OutputSettings) validateFormatSpecificRequirements() error {
 	switch settings.OutputFormat {
 	case "mermaid":
-		if settings.FromToColumns == nil && settings.MermaidSettings == nil {
+		if settings.FromToColumns == nil && (settings.MermaidSettings == nil || settings.isMermaidSettingsEmpty()) {
 			return errors.NewValidationError(
 				errors.ErrMissingRequired,
 				"mermaid format requires FromToColumns or MermaidSettings",
@@ -331,6 +345,36 @@ func (settings *OutputSettings) validateS3Configuration() error {
 		).WithContext(errors.ErrorContext{
 			Operation: "s3_validation",
 			Field:     "S3Bucket.S3Client",
+		})
+	}
+
+	return nil
+}
+
+// isMermaidSettingsEmpty checks if MermaidSettings is in its default/empty state
+func (settings *OutputSettings) isMermaidSettingsEmpty() bool {
+	if settings.MermaidSettings == nil {
+		return true
+	}
+	// Check if all fields are in their default state
+	return !settings.MermaidSettings.AddMarkdown &&
+		!settings.MermaidSettings.AddHTML &&
+		settings.MermaidSettings.ChartType == "" &&
+		settings.MermaidSettings.GanttSettings == nil
+}
+
+// validateCrossFieldRequirements validates combinations of settings that conflict with each other
+func (settings *OutputSettings) validateCrossFieldRequirements() error {
+	// Check for conflicting output destinations
+	if settings.OutputFile != "" && settings.S3Bucket.Bucket != "" {
+		return errors.NewValidationError(
+			errors.ErrIncompatibleConfig,
+			"Cannot specify both OutputFile and S3Bucket",
+		).WithSuggestions(
+			"Choose either file output or S3 output, not both",
+		).WithContext(errors.ErrorContext{
+			Operation: "cross_field_validation",
+			Field:     "OutputFile,S3Bucket.Bucket",
 		})
 	}
 

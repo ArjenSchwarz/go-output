@@ -9,7 +9,8 @@
       "Bash(sed:*)",
       "Bash(git checkout:*)",
       "Bash(go build:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
