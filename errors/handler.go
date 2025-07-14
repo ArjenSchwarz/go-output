@@ -161,9 +161,10 @@ func (h *DefaultErrorHandler) handleLenient(err OutputError) error {
 }
 
 // handleInteractive implements interactive mode error handling
-// For now, it behaves like lenient mode - interactive features will be added later
+// This is a basic implementation - full interactive features are in InteractiveErrorHandler
 func (h *DefaultErrorHandler) handleInteractive(err OutputError) error {
-	// TODO: Implement interactive error resolution in a later task
+	// Default implementation falls back to lenient mode
+	// For full interactive features, use InteractiveErrorHandler
 	return h.handleLenient(err)
 }
 
