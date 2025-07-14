@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
 	"os"
 	"regexp"
 	"sort"
@@ -36,9 +35,11 @@ type OutputHolder struct {
 // OutputArray holds all the different OutputHolders that will be provided as
 // output, as well as the keys (headers) that will actually need to be printed
 type OutputArray struct {
-	Settings *OutputSettings
-	Contents []OutputHolder
-	Keys     []string
+	Settings     *OutputSettings
+	Contents     []OutputHolder
+	Keys         []string
+	validators   []Validator
+	errorHandler ErrorHandler
 }
 
 // GetContentsMap returns a stringmap of the output contents
@@ -71,134 +72,244 @@ func (output OutputArray) GetContentsMapRaw() []map[string]interface{} {
 	return total
 }
 
-// Write will provide the output as configured in the configuration
-func (output OutputArray) Write() {
-	stopActiveProgress()
-	var result []byte
-	switch output.Settings.OutputFormat {
-	case "csv":
-		if buffer.Len() == 0 {
-			result = output.toCSV()
-		} else {
-			result = buffer.Bytes()
-		}
-	case "html":
-		if buffer.Len() == 0 {
-			result = output.toHTML()
-		} else {
-			result = output.bufferToHTML()
-		}
-	case "table":
-		if buffer.Len() == 0 {
-			result = output.toTable()
-		} else {
-			result = buffer.Bytes()
-		}
-	case "markdown":
-		if buffer.Len() == 0 {
-			result = output.toMarkdown()
-		} else {
-			result = output.bufferToMarkdown()
-		}
-	case "mermaid":
-		if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
-			log.Fatal("This command doesn't currently support the mermaid output format")
-		}
-		result = output.toMermaid()
-	case "drawio":
-		if !output.Settings.DrawIOHeader.IsSet() {
-			log.Fatal("This command doesn't currently support the drawio output format")
-		}
-		drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
-	case "dot":
-		if output.Settings.FromToColumns == nil {
-			log.Fatal("This command doesn't currently support the dot output format")
-		}
-		result = output.toDot()
-	case "yaml":
-		if buffer.Len() == 0 {
-			result = output.toYAML()
-		} else {
-			result = buffer.Bytes()
-		}
-	default:
-		if buffer.Len() == 0 {
-			result = output.toJSON()
-		} else {
-			result = buffer.Bytes()
+// Validate runs all validators against the OutputArray
+func (output *OutputArray) Validate() error {
+	// Settings validation
+	if output.Settings != nil {
+		if err := output.Settings.Validate(); err != nil {
+			return output.handleError(err)
 		}
 	}
+
+	// Format-specific validation
+	if err := output.validateForFormat(); err != nil {
+		return output.handleError(err)
+	}
+
+	// Data validation using registered validators
+	for _, validator := range output.validators {
+		if err := validator.Validate(output); err != nil {
+			if handledErr := output.handleError(err); handledErr != nil {
+				return handledErr
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateForFormat performs format-specific validation
+func (output *OutputArray) validateForFormat() error {
+	if output.Settings == nil {
+		return NewConfigError(ErrMissingRequired, "OutputSettings is required")
+	}
+
+	switch output.Settings.OutputFormat {
+	case "mermaid":
+		if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
+			return NewErrorBuilder(ErrMissingRequired, "mermaid format requires FromToColumns or MermaidSettings configuration").
+				WithField("FromToColumns/MermaidSettings").
+				WithOperation("format validation").
+				WithSuggestions(
+					"Use AddFromToColumns() to set source and target columns for relationship diagrams",
+					"Or configure MermaidSettings for chart generation",
+				).
+				Build()
+		}
+	case "dot":
+		if output.Settings.FromToColumns == nil {
+			return NewErrorBuilder(ErrMissingRequired, "dot format requires FromToColumns configuration").
+				WithField("FromToColumns").
+				WithOperation("format validation").
+				WithSuggestions(
+					"Use AddFromToColumns() to set source and target columns",
+				).
+				Build()
+		}
+	case "drawio":
+		if !output.Settings.DrawIOHeader.IsSet() {
+			return NewErrorBuilder(ErrMissingRequired, "drawio format requires DrawIOHeader configuration").
+				WithField("DrawIOHeader").
+				WithOperation("format validation").
+				WithSuggestions(
+					"Configure DrawIOHeader with appropriate settings for CSV import",
+				).
+				Build()
+		}
+	}
+
+	return nil
+}
+
+// handleError processes errors through the configured error handler
+func (output *OutputArray) handleError(err error) error {
+	if output.errorHandler != nil {
+		return output.errorHandler.HandleError(err)
+	}
+
+	// Default to strict mode behavior if no handler is configured
+	defaultHandler := NewDefaultErrorHandler()
+	return defaultHandler.HandleError(err)
+}
+
+// AddValidator adds a validator to the OutputArray
+func (output *OutputArray) AddValidator(validator Validator) *OutputArray {
+	if output.validators == nil {
+		output.validators = make([]Validator, 0)
+	}
+	output.validators = append(output.validators, validator)
+	return output
+}
+
+// WithErrorHandler sets a custom error handler for the OutputArray
+func (output *OutputArray) WithErrorHandler(handler ErrorHandler) *OutputArray {
+	output.errorHandler = handler
+	return output
+}
+
+// Write will provide the output as configured in the configuration
+func (output *OutputArray) Write() error {
+	// Validate before processing
+	if err := output.Validate(); err != nil {
+		return err
+	}
+
+	stopActiveProgress()
+	var result []byte
+	var err error
+
+	// Generate output based on format
+	result, err = output.generateOutput()
+	if err != nil {
+		return output.handleError(err)
+	}
+
+	// Write to stdout/S3 if result is not empty
 	if len(result) != 0 {
-		err := PrintByteSlice(result, "", output.Settings.S3Bucket)
+		err = PrintByteSlice(result, "", output.Settings.S3Bucket)
 		if err != nil {
-			log.Fatal(err.Error())
+			return output.handleError(NewProcessingError(ErrFileWrite, fmt.Sprintf("failed to write output: %v", err), false))
 		}
 		buffer.Reset()
 	}
+
+	// Write to file if specified
 	if output.Settings.OutputFile != "" {
-		if output.Settings.OutputFileFormat == "" {
-			output.Settings.OutputFileFormat = output.Settings.OutputFormat
+		result, err = output.generateFileOutput()
+		if err != nil {
+			return output.handleError(err)
 		}
-		switch output.Settings.OutputFileFormat {
-		case "csv":
-			if buffer.Len() == 0 {
-				result = output.toCSV()
-			} else {
-				result = buffer.Bytes()
-			}
-		case "html":
-			if buffer.Len() == 0 {
-				result = output.toHTML()
-			} else {
-				result = output.bufferToHTML()
-			}
-		case "table":
-			if buffer.Len() == 0 {
-				result = output.toTable()
-			} else {
-				result = buffer.Bytes()
-			}
-		case "markdown":
-			if buffer.Len() == 0 {
-				result = output.toMarkdown()
-			} else {
-				result = output.bufferToMarkdown()
-			}
-		case "mermaid":
-			if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
-				log.Fatal("This command doesn't currently support the mermaid output format")
-			}
-			result = output.toMermaid()
-		case "drawio":
-			if !output.Settings.DrawIOHeader.IsSet() {
-				log.Fatal("This command doesn't currently support the drawio output format")
-			}
-			drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
-		case "dot":
-			if output.Settings.FromToColumns == nil {
-				log.Fatal("This command doesn't currently support the dot output format")
-			}
-			result = output.toDot()
-		case "yaml":
-			if buffer.Len() == 0 {
-				result = output.toYAML()
-			} else {
-				result = buffer.Bytes()
-			}
-		default:
-			if buffer.Len() == 0 {
-				result = output.toJSON()
-			} else {
-				result = buffer.Bytes()
-			}
-		}
+
 		if len(result) != 0 {
-			err := PrintByteSlice(result, output.Settings.OutputFile, output.Settings.S3Bucket)
+			err = PrintByteSlice(result, output.Settings.OutputFile, output.Settings.S3Bucket)
 			if err != nil {
-				log.Fatal(err.Error())
+				return output.handleError(NewProcessingError(ErrFileWrite, fmt.Sprintf("failed to write file output: %v", err), false))
 			}
 			buffer.Reset()
 		}
+	}
+
+	return nil
+}
+
+// generateOutput generates output for stdout/S3 based on OutputFormat
+func (output *OutputArray) generateOutput() ([]byte, error) {
+	switch output.Settings.OutputFormat {
+	case "csv":
+		if buffer.Len() == 0 {
+			return output.toCSV(), nil
+		}
+		return buffer.Bytes(), nil
+	case "html":
+		if buffer.Len() == 0 {
+			return output.toHTML(), nil
+		}
+		return output.bufferToHTML(), nil
+	case "table":
+		if buffer.Len() == 0 {
+			return output.toTable(), nil
+		}
+		return buffer.Bytes(), nil
+	case "markdown":
+		if buffer.Len() == 0 {
+			return output.toMarkdown(), nil
+		}
+		return output.bufferToMarkdown(), nil
+	case "mermaid":
+		// Validation already handled in Validate(), so this should not occur
+		return output.toMermaid(), nil
+	case "drawio":
+		// Special case: drawio writes directly to file
+		if !output.Settings.DrawIOHeader.IsSet() {
+			return nil, NewProcessingError(ErrMissingRequired, "drawio format requires DrawIOHeader configuration", false)
+		}
+		drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+		return nil, nil
+	case "dot":
+		// Validation already handled in Validate(), so this should not occur
+		return output.toDot(), nil
+	case "yaml":
+		if buffer.Len() == 0 {
+			return output.toYAML(), nil
+		}
+		return buffer.Bytes(), nil
+	default:
+		if buffer.Len() == 0 {
+			return output.toJSON(), nil
+		}
+		return buffer.Bytes(), nil
+	}
+}
+
+// generateFileOutput generates output for file based on OutputFileFormat
+func (output *OutputArray) generateFileOutput() ([]byte, error) {
+	format := output.Settings.OutputFileFormat
+	if format == "" {
+		format = output.Settings.OutputFormat
+	}
+
+	switch format {
+	case "csv":
+		if buffer.Len() == 0 {
+			return output.toCSV(), nil
+		}
+		return buffer.Bytes(), nil
+	case "html":
+		if buffer.Len() == 0 {
+			return output.toHTML(), nil
+		}
+		return output.bufferToHTML(), nil
+	case "table":
+		if buffer.Len() == 0 {
+			return output.toTable(), nil
+		}
+		return buffer.Bytes(), nil
+	case "markdown":
+		if buffer.Len() == 0 {
+			return output.toMarkdown(), nil
+		}
+		return output.bufferToMarkdown(), nil
+	case "mermaid":
+		return output.toMermaid(), nil
+	case "drawio":
+		// Special case: drawio writes directly to file
+		if !output.Settings.DrawIOHeader.IsSet() {
+			return nil, NewProcessingError(ErrMissingRequired, "drawio format requires DrawIOHeader configuration", false)
+		}
+		drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+		return nil, nil
+	case "dot":
+		return output.toDot(), nil
+	case "yaml":
+		if buffer.Len() == 0 {
+			return output.toYAML(), nil
+		}
+		return buffer.Bytes(), nil
+	default:
+		if buffer.Len() == 0 {
+			return output.toJSON(), nil
+		}
+		return buffer.Bytes(), nil
 	}
 }
 
@@ -334,19 +445,12 @@ func (output OutputArray) AddToBuffer() {
 	case "markdown":
 		buffer.Write(output.toMarkdown())
 	case "mermaid":
-		// if output.Settings.FromToColumns == nil {
-		// 	log.Fatal("This command doesn't currently support the mermaid output format")
-		// }
 		buffer.Write(output.toMermaid())
 	case "drawio":
-		// if !output.Settings.DrawIOHeader.IsSet() {
-		// 	log.Fatal("This command doesn't currently support the drawio output format")
-		// }
-		// drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+		// drawio format writes directly to file, no buffer needed
 	case "dot":
-		if output.Settings.FromToColumns == nil {
-			log.Fatal("This command doesn't currently support the dot output format")
-		}
+		// Note: This should be validated before calling AddToBuffer
+		// The validation should happen in the calling code
 		buffer.Write(output.toDot())
 	default:
 		buffer.Write(output.toJSON())
