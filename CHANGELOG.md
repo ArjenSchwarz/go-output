@@ -1,4 +1,12 @@
 
+1.5.0 / In Development
+======================
+
+  * Implement basic error interface and types for comprehensive error handling
+  * Add structured error system with error codes, severity levels, and context
+  * Support for error suggestions and wrapped errors with builder pattern
+  * JSON marshaling capability for structured logging
+
 1.4.0 / 2023-11-14
 ==================
 
