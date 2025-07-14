@@ -14,6 +14,9 @@
   * Add validation context and configurable fail-fast vs collect-all error handling modes
   * Implement built-in data validators: RequiredColumnsValidator, DataTypeValidator, NotEmptyValidator, and ConstraintValidator
   * Add constraint interface for custom business rules with common implementations for positive numbers and non-empty strings
+  * Implement configuration validators: FormatValidator, FilePathValidator, S3ConfigValidator, and CompatibilityValidator  
+  * Add format-specific validators for Mermaid and DOT with comprehensive validation rules
+  * Support for AWS S3 bucket name validation and file path permission checking
 
 1.4.0 / 2023-11-14
 ==================

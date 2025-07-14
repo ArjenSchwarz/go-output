@@ -106,7 +106,7 @@ Focus on:
 Each validator should provide clear, actionable error messages and integrate with the validation error types from previous tasks."
 
 ### Task 6: Configuration Validators
-- [ ] **Objective**: Add validators for configuration and settings validation.
+- [x] **Objective**: Add validators for configuration and settings validation.
 
 **Test-driven prompt**:
 "Building on Tasks 4-5, write tests first then implement configuration validators:
