@@ -29,22 +29,22 @@ func (m ErrorMode) String() string {
 
 // ErrorHandler interface defines the contract for handling errors in different modes
 type ErrorHandler interface {
-	HandleError(err error) error                  // Process an error according to the current mode
-	SetMode(mode ErrorMode)                       // Set the error handling mode
-	Mode() ErrorMode                              // Get the current error handling mode
-	Errors() []error                              // Get all collected errors
-	GetSummary() ErrorSummary                     // Get a summary of collected errors
-	Clear()                                       // Clear all collected errors
-	SetWarningHandler(handler func(error))       // Set callback for warnings
-	SetInfoHandler(handler func(error))          // Set callback for info messages
+	HandleError(err error) error           // Process an error according to the current mode
+	SetMode(mode ErrorMode)                // Set the error handling mode
+	Mode() ErrorMode                       // Get the current error handling mode
+	Errors() []error                       // Get all collected errors
+	GetSummary() ErrorSummary              // Get a summary of collected errors
+	Clear()                                // Clear all collected errors
+	SetWarningHandler(handler func(error)) // Set callback for warnings
+	SetInfoHandler(handler func(error))    // Set callback for info messages
 }
 
 // ErrorSummary provides statistics and categorization of collected errors
 type ErrorSummary struct {
-	TotalErrors int                          // Total number of errors collected
-	BySeverity  map[ErrorSeverity]int        // Count of errors by severity level
-	ByCategory  map[ErrorCode]int            // Count of errors by error code
-	Suggestions []string                     // Aggregated suggestions from all errors
+	TotalErrors int                   // Total number of errors collected
+	BySeverity  map[ErrorSeverity]int // Count of errors by severity level
+	ByCategory  map[ErrorCode]int     // Count of errors by error code
+	Suggestions []string              // Aggregated suggestions from all errors
 }
 
 // HasErrors returns true if there are any errors in the summary
