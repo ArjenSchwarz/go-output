@@ -2,6 +2,14 @@
 ## [Unreleased]
 
 ### Added
+- OutputSettings validation with comprehensive format-specific validation rules
+- Validation for mermaid format requiring FromToColumns or MermaidSettings configuration
+- Validation for dot format requiring FromToColumns configuration  
+- Validation for drawio format requiring DrawIOHeader configuration
+- File output validation including path validation and format compatibility checks
+- S3 configuration validation with AWS bucket naming rules and path validation
+- Setting combination validation to prevent incompatible configuration combinations
+- Comprehensive OutputSettings validation test suite with 600+ lines of test coverage
 - Recovery framework with comprehensive error recovery strategies
 - DefaultRecoveryHandler for managing multiple recovery strategies with priority-based execution
 - FormatFallbackStrategy for automatic fallback to simpler output formats (table → CSV → JSON)
