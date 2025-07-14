@@ -17,6 +17,9 @@
   * Implement configuration validators: FormatValidator, FilePathValidator, S3ConfigValidator, and CompatibilityValidator  
   * Add format-specific validators for Mermaid and DOT with comprehensive validation rules
   * Support for AWS S3 bucket name validation and file path permission checking
+  * Implement error handler interface with strict, lenient, and interactive modes
+  * Add DefaultErrorHandler with error collection, categorization, and callback support
+  * Provide LegacyErrorHandler for backward compatibility with existing log.Fatal behavior
 
 1.4.0 / 2023-11-14
 ==================
