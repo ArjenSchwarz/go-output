@@ -432,3 +432,420 @@ func TestViolation_JSONMarshaling(t *testing.T) {
 		t.Errorf("Expected message %v, got %v", violation.Message, result.Message)
 	}
 }
+
+func TestErrorMode_String(t *testing.T) {
+	tests := []struct {
+		name string
+		mode ErrorMode
+		want string
+	}{
+		{"Strict mode", ErrorModeStrict, "strict"},
+		{"Lenient mode", ErrorModeLenient, "lenient"},
+		{"Interactive mode", ErrorModeInteractive, "interactive"},
+		{"Unknown mode", ErrorMode(999), "unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.mode.String(); got != tt.want {
+				t.Errorf("ErrorMode.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewDefaultErrorHandler(t *testing.T) {
+	handler := NewDefaultErrorHandler()
+
+	if handler.GetMode() != ErrorModeStrict {
+		t.Errorf("Expected default mode to be strict, got %v", handler.GetMode())
+	}
+
+	if handler.HasErrors() {
+		t.Error("Expected no errors initially")
+	}
+
+	if len(handler.GetCollectedErrors()) != 0 {
+		t.Errorf("Expected no collected errors initially, got %d", len(handler.GetCollectedErrors()))
+	}
+}
+
+func TestNewErrorHandlerWithMode(t *testing.T) {
+	tests := []struct {
+		name string
+		mode ErrorMode
+	}{
+		{"Strict mode", ErrorModeStrict},
+		{"Lenient mode", ErrorModeLenient},
+		{"Interactive mode", ErrorModeInteractive},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := NewErrorHandlerWithMode(tt.mode)
+
+			if handler.GetMode() != tt.mode {
+				t.Errorf("Expected mode %v, got %v", tt.mode, handler.GetMode())
+			}
+		})
+	}
+}
+
+func TestDefaultErrorHandler_SetMode(t *testing.T) {
+	handler := NewDefaultErrorHandler()
+
+	// Test changing modes
+	handler.SetMode(ErrorModeLenient)
+	if handler.GetMode() != ErrorModeLenient {
+		t.Errorf("Expected mode to be lenient, got %v", handler.GetMode())
+	}
+
+	handler.SetMode(ErrorModeInteractive)
+	if handler.GetMode() != ErrorModeInteractive {
+		t.Errorf("Expected mode to be interactive, got %v", handler.GetMode())
+	}
+}
+
+func TestDefaultErrorHandler_HandleError_Nil(t *testing.T) {
+	handler := NewDefaultErrorHandler()
+
+	err := handler.HandleError(nil)
+	if err != nil {
+		t.Errorf("Expected nil error to return nil, got %v", err)
+	}
+}
+
+func TestDefaultErrorHandler_StrictMode(t *testing.T) {
+	handler := NewErrorHandlerWithMode(ErrorModeStrict)
+
+	tests := []struct {
+		name        string
+		inputError  error
+		expectError bool
+	}{
+		{
+			"Info severity - should not fail",
+			NewErrorBuilder(ErrInvalidFormat, "info message").WithSeverity(SeverityInfo).Build(),
+			false,
+		},
+		{
+			"Warning severity - should not fail",
+			NewErrorBuilder(ErrInvalidFormat, "warning message").WithSeverity(SeverityWarning).Build(),
+			false,
+		},
+		{
+			"Error severity - should fail",
+			NewErrorBuilder(ErrInvalidFormat, "error message").WithSeverity(SeverityError).Build(),
+			true,
+		},
+		{
+			"Fatal severity - should fail",
+			NewErrorBuilder(ErrInvalidFormat, "fatal message").WithSeverity(SeverityFatal).Build(),
+			true,
+		},
+		{
+			"Standard error - should fail",
+			errors.New("standard error"),
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := handler.HandleError(tt.inputError)
+
+			if tt.expectError && err == nil {
+				t.Error("Expected error to be returned, got nil")
+			}
+
+			if !tt.expectError && err != nil {
+				t.Errorf("Expected no error to be returned, got %v", err)
+			}
+
+			// Strict mode should not collect errors
+			if handler.HasErrors() {
+				t.Error("Expected strict mode to not collect errors")
+			}
+		})
+	}
+}
+
+func TestDefaultErrorHandler_LenientMode(t *testing.T) {
+	handler := NewErrorHandlerWithMode(ErrorModeLenient)
+
+	tests := []struct {
+		name        string
+		inputError  error
+		expectError bool
+	}{
+		{
+			"Info severity - should not fail but collect",
+			NewErrorBuilder(ErrInvalidFormat, "info message").WithSeverity(SeverityInfo).Build(),
+			false,
+		},
+		{
+			"Warning severity - should not fail but collect",
+			NewErrorBuilder(ErrInvalidFormat, "warning message").WithSeverity(SeverityWarning).Build(),
+			false,
+		},
+		{
+			"Error severity - should not fail but collect",
+			NewErrorBuilder(ErrInvalidFormat, "error message").WithSeverity(SeverityError).Build(),
+			false,
+		},
+		{
+			"Fatal severity - should fail and collect",
+			NewErrorBuilder(ErrInvalidFormat, "fatal message").WithSeverity(SeverityFatal).Build(),
+			true,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := handler.HandleError(tt.inputError)
+
+			if tt.expectError && err == nil {
+				t.Error("Expected error to be returned, got nil")
+			}
+
+			if !tt.expectError && err != nil {
+				t.Errorf("Expected no error to be returned, got %v", err)
+			}
+
+			// Lenient mode should collect all errors
+			expectedCount := i + 1
+			if len(handler.GetCollectedErrors()) != expectedCount {
+				t.Errorf("Expected %d collected errors, got %d", expectedCount, len(handler.GetCollectedErrors()))
+			}
+
+			if !handler.HasErrors() {
+				t.Error("Expected handler to have errors")
+			}
+		})
+	}
+}
+
+func TestDefaultErrorHandler_InteractiveMode(t *testing.T) {
+	handler := NewErrorHandlerWithMode(ErrorModeInteractive)
+
+	// Interactive mode currently behaves like strict mode
+	err := NewErrorBuilder(ErrInvalidFormat, "error message").WithSeverity(SeverityError).Build()
+	result := handler.HandleError(err)
+
+	if result == nil {
+		t.Error("Expected error to be returned in interactive mode")
+	}
+
+	// Should not collect errors in current implementation
+	if handler.HasErrors() {
+		t.Error("Expected interactive mode to not collect errors (current implementation)")
+	}
+}
+
+func TestDefaultErrorHandler_Clear(t *testing.T) {
+	handler := NewErrorHandlerWithMode(ErrorModeLenient)
+
+	// Add some errors
+	err1 := NewErrorBuilder(ErrInvalidFormat, "error 1").Build()
+	err2 := NewErrorBuilder(ErrMissingColumn, "error 2").Build()
+
+	handler.HandleError(err1)
+	handler.HandleError(err2)
+
+	if len(handler.GetCollectedErrors()) != 2 {
+		t.Errorf("Expected 2 collected errors, got %d", len(handler.GetCollectedErrors()))
+	}
+
+	// Clear errors
+	handler.Clear()
+
+	if handler.HasErrors() {
+		t.Error("Expected no errors after clear")
+	}
+
+	if len(handler.GetCollectedErrors()) != 0 {
+		t.Errorf("Expected 0 collected errors after clear, got %d", len(handler.GetCollectedErrors()))
+	}
+}
+
+func TestDefaultErrorHandler_SetWarningHandler(t *testing.T) {
+	handler := NewErrorHandlerWithMode(ErrorModeStrict)
+
+	var capturedWarning error
+	handler.SetWarningHandler(func(err error) {
+		capturedWarning = err
+	})
+
+	warningErr := NewErrorBuilder(ErrInvalidFormat, "warning message").WithSeverity(SeverityWarning).Build()
+	result := handler.HandleError(warningErr)
+
+	if result != nil {
+		t.Errorf("Expected no error to be returned for warning, got %v", result)
+	}
+
+	if capturedWarning == nil {
+		t.Error("Expected warning to be captured by warning handler")
+	}
+
+	if capturedWarning != warningErr {
+		t.Error("Expected captured warning to match input warning")
+	}
+}
+
+func TestDefaultErrorHandler_Summary(t *testing.T) {
+	handler := NewErrorHandlerWithMode(ErrorModeLenient)
+
+	// Add various errors
+	err1 := NewErrorBuilder(ErrInvalidFormat, "error 1").WithSeverity(SeverityError).WithSuggestions("Fix format").Build()
+	err2 := NewErrorBuilder(ErrMissingColumn, "error 2").WithSeverity(SeverityWarning).WithSuggestions("Add column", "Check schema").Build()
+	err3 := NewErrorBuilder(ErrInvalidFormat, "error 3").WithSeverity(SeverityInfo).WithSuggestions("Fix format").Build() // Duplicate suggestion
+	err4 := NewErrorBuilder(ErrFileWrite, "error 4").WithSeverity(SeverityFatal).Build()
+
+	handler.HandleError(err1)
+	handler.HandleError(err2)
+	handler.HandleError(err3)
+	handler.HandleError(err4)
+
+	summary := handler.Summary()
+
+	// Test total errors
+	if summary.TotalErrors != 4 {
+		t.Errorf("Expected 4 total errors, got %d", summary.TotalErrors)
+	}
+
+	// Test by category
+	if summary.ByCategory[ErrInvalidFormat] != 2 {
+		t.Errorf("Expected 2 ErrInvalidFormat errors, got %d", summary.ByCategory[ErrInvalidFormat])
+	}
+
+	if summary.ByCategory[ErrMissingColumn] != 1 {
+		t.Errorf("Expected 1 ErrMissingColumn error, got %d", summary.ByCategory[ErrMissingColumn])
+	}
+
+	if summary.ByCategory[ErrFileWrite] != 1 {
+		t.Errorf("Expected 1 ErrFileWrite error, got %d", summary.ByCategory[ErrFileWrite])
+	}
+
+	// Test by severity
+	if summary.BySeverity[SeverityError] != 1 {
+		t.Errorf("Expected 1 error severity, got %d", summary.BySeverity[SeverityError])
+	}
+
+	if summary.BySeverity[SeverityWarning] != 1 {
+		t.Errorf("Expected 1 warning severity, got %d", summary.BySeverity[SeverityWarning])
+	}
+
+	if summary.BySeverity[SeverityInfo] != 1 {
+		t.Errorf("Expected 1 info severity, got %d", summary.BySeverity[SeverityInfo])
+	}
+
+	if summary.BySeverity[SeverityFatal] != 1 {
+		t.Errorf("Expected 1 fatal severity, got %d", summary.BySeverity[SeverityFatal])
+	}
+
+	// Test unique suggestions (should deduplicate "Fix format")
+	expectedSuggestions := 3 // "Fix format", "Add column", "Check schema"
+	if len(summary.Suggestions) != expectedSuggestions {
+		t.Errorf("Expected %d unique suggestions, got %d: %v", expectedSuggestions, len(summary.Suggestions), summary.Suggestions)
+	}
+
+	// Test fixable errors (warnings and info)
+	if summary.FixableErrors != 2 {
+		t.Errorf("Expected 2 fixable errors, got %d", summary.FixableErrors)
+	}
+}
+
+func TestDefaultErrorHandler_HasErrorsWithSeverity(t *testing.T) {
+	handler := NewErrorHandlerWithMode(ErrorModeLenient)
+
+	// Add errors with different severities
+	infoErr := NewErrorBuilder(ErrInvalidFormat, "info").WithSeverity(SeverityInfo).Build()
+	warningErr := NewErrorBuilder(ErrMissingColumn, "warning").WithSeverity(SeverityWarning).Build()
+	errorErr := NewErrorBuilder(ErrFileWrite, "error").WithSeverity(SeverityError).Build()
+
+	handler.HandleError(infoErr)
+	handler.HandleError(warningErr)
+	handler.HandleError(errorErr)
+
+	tests := []struct {
+		name     string
+		severity ErrorSeverity
+		expected bool
+	}{
+		{"Has info or higher", SeverityInfo, true},
+		{"Has warning or higher", SeverityWarning, true},
+		{"Has error or higher", SeverityError, true},
+		{"Has fatal or higher", SeverityFatal, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := handler.HasErrorsWithSeverity(tt.severity)
+			if result != tt.expected {
+				t.Errorf("HasErrorsWithSeverity(%v) = %v, want %v", tt.severity, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestErrorSummary_JSONMarshaling(t *testing.T) {
+	summary := ErrorSummary{
+		TotalErrors: 3,
+		ByCategory: map[ErrorCode]int{
+			ErrInvalidFormat: 2,
+			ErrMissingColumn: 1,
+		},
+		BySeverity: map[ErrorSeverity]int{
+			SeverityError:   2,
+			SeverityWarning: 1,
+		},
+		Suggestions:   []string{"Fix format", "Add column"},
+		FixableErrors: 1,
+	}
+
+	data, err := json.Marshal(summary)
+	if err != nil {
+		t.Fatalf("Failed to marshal ErrorSummary: %v", err)
+	}
+
+	var result ErrorSummary
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("Failed to unmarshal ErrorSummary: %v", err)
+	}
+
+	if result.TotalErrors != summary.TotalErrors {
+		t.Errorf("Expected TotalErrors %d, got %d", summary.TotalErrors, result.TotalErrors)
+	}
+
+	if len(result.Suggestions) != len(summary.Suggestions) {
+		t.Errorf("Expected %d suggestions, got %d", len(summary.Suggestions), len(result.Suggestions))
+	}
+}
+
+func TestDefaultErrorHandler_WrapStandardError(t *testing.T) {
+	handler := NewDefaultErrorHandler()
+
+	standardErr := errors.New("standard error message")
+	result := handler.HandleError(standardErr)
+
+	if result == nil {
+		t.Error("Expected wrapped standard error to be returned")
+	}
+
+	outputErr, ok := result.(OutputError)
+	if !ok {
+		t.Error("Expected result to be an OutputError")
+	}
+
+	if outputErr.Code() != ErrFormatGeneration {
+		t.Errorf("Expected error code %v, got %v", ErrFormatGeneration, outputErr.Code())
+	}
+
+	if !strings.Contains(outputErr.Error(), "unexpected error occurred") {
+		t.Errorf("Expected wrapped error message, got: %v", outputErr.Error())
+	}
+
+	if !strings.Contains(outputErr.Error(), "standard error message") {
+		t.Errorf("Expected original error in cause, got: %v", outputErr.Error())
+	}
+}

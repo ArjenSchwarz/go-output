@@ -2,6 +2,20 @@
 ## [Unreleased]
 
 ### Added
+- Recovery framework with comprehensive error recovery strategies
+- DefaultRecoveryHandler for managing multiple recovery strategies with priority-based execution
+- FormatFallbackStrategy for automatic fallback to simpler output formats (table → CSV → JSON)
+- DefaultValueStrategy for substituting missing values with configurable defaults
+- RetryStrategy with exponential backoff for handling transient errors
+- CompositeRecoveryStrategy for combining multiple recovery approaches
+- ExponentialBackoff implementation with configurable base delay, max delay, and attempt limits
+- ContextualRecoveryStrategy interface for recovery operations requiring additional context
+- Recovery strategy priority system for optimal recovery attempt ordering
+- Comprehensive recovery framework test suite with integration scenarios
+- Simple recovery test demonstrating end-to-end error recovery workflow
+- Build system with Makefile for standardized development workflow
+- Test, lint, build, and utility targets for consistent development practices
+- Go function discovery utility for codebase exploration
 - Built-in validator implementations for comprehensive data validation
 - RequiredColumnsValidator to ensure all required columns exist in datasets
 - DataTypeValidator with fluent API for column type validation (string, int, float, bool)

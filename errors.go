@@ -43,10 +43,10 @@ const (
 type ErrorSeverity int
 
 const (
-	SeverityFatal ErrorSeverity = iota
-	SeverityError
+	SeverityInfo ErrorSeverity = iota
 	SeverityWarning
-	SeverityInfo
+	SeverityError
+	SeverityFatal
 )
 
 // String returns the string representation of ErrorSeverity
@@ -385,6 +385,220 @@ func (b *ErrorBuilder) BuildProcessing(retryable bool) ProcessingError {
 		baseError: *b.err,
 		retryable: retryable,
 	}
+}
+
+// ErrorMode represents different error handling modes
+type ErrorMode int
+
+const (
+	// ErrorModeStrict fails fast on any error with severity >= Error
+	ErrorModeStrict ErrorMode = iota
+	// ErrorModeLenient continues processing on recoverable errors and collects all issues
+	ErrorModeLenient
+	// ErrorModeInteractive prompts user for error resolution
+	ErrorModeInteractive
+)
+
+// String returns the string representation of ErrorMode
+func (m ErrorMode) String() string {
+	switch m {
+	case ErrorModeStrict:
+		return "strict"
+	case ErrorModeLenient:
+		return "lenient"
+	case ErrorModeInteractive:
+		return "interactive"
+	default:
+		return "unknown"
+	}
+}
+
+// ErrorHandler defines the interface for handling errors in different modes
+type ErrorHandler interface {
+	// HandleError processes an error according to the configured mode
+	HandleError(err error) error
+	// SetMode changes the error handling mode
+	SetMode(mode ErrorMode)
+	// GetMode returns the current error handling mode
+	GetMode() ErrorMode
+	// GetCollectedErrors returns all collected errors (for lenient mode)
+	GetCollectedErrors() []error
+	// Clear clears all collected errors
+	Clear()
+}
+
+// ErrorSummary provides aggregated information about collected errors
+type ErrorSummary struct {
+	TotalErrors   int                   `json:"total_errors"`   // Total number of errors
+	ByCategory    map[ErrorCode]int     `json:"by_category"`    // Errors grouped by error code
+	BySeverity    map[ErrorSeverity]int `json:"by_severity"`    // Errors grouped by severity
+	Suggestions   []string              `json:"suggestions"`    // Aggregated suggestions
+	FixableErrors int                   `json:"fixable_errors"` // Number of automatically fixable errors
+}
+
+// DefaultErrorHandler provides the default implementation of ErrorHandler
+type DefaultErrorHandler struct {
+	mode            ErrorMode
+	collectedErrors []error
+	warningHandler  func(error)
+}
+
+// NewDefaultErrorHandler creates a new DefaultErrorHandler with strict mode
+func NewDefaultErrorHandler() *DefaultErrorHandler {
+	return &DefaultErrorHandler{
+		mode:            ErrorModeStrict,
+		collectedErrors: make([]error, 0),
+	}
+}
+
+// NewErrorHandlerWithMode creates a new DefaultErrorHandler with the specified mode
+func NewErrorHandlerWithMode(mode ErrorMode) *DefaultErrorHandler {
+	return &DefaultErrorHandler{
+		mode:            mode,
+		collectedErrors: make([]error, 0),
+	}
+}
+
+// HandleError processes an error according to the configured mode
+func (h *DefaultErrorHandler) HandleError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	// Convert to OutputError if needed
+	outputErr, ok := err.(OutputError)
+	if !ok {
+		outputErr = WrapError(err)
+	}
+
+	switch h.mode {
+	case ErrorModeStrict:
+		return h.handleStrict(outputErr)
+	case ErrorModeLenient:
+		return h.handleLenient(outputErr)
+	case ErrorModeInteractive:
+		return h.handleInteractive(outputErr)
+	default:
+		return h.handleStrict(outputErr)
+	}
+}
+
+// handleStrict implements strict mode error handling
+func (h *DefaultErrorHandler) handleStrict(err OutputError) error {
+	// Handle warnings through warning handler if configured
+	if err.Severity() == SeverityWarning && h.warningHandler != nil {
+		h.warningHandler(err)
+	}
+
+	// In strict mode, fail fast on errors and fatal issues
+	if err.Severity() >= SeverityError {
+		return err
+	}
+
+	// Info and warnings don't cause failures in strict mode
+	return nil
+}
+
+// handleLenient implements lenient mode error handling
+func (h *DefaultErrorHandler) handleLenient(err OutputError) error {
+	// Collect all errors for batch reporting
+	h.collectedErrors = append(h.collectedErrors, err)
+
+	// Only fail immediately on fatal errors
+	if err.Severity() == SeverityFatal {
+		return err
+	}
+
+	// Continue processing for all other error types
+	return nil
+}
+
+// handleInteractive implements interactive mode error handling
+func (h *DefaultErrorHandler) handleInteractive(err OutputError) error {
+	// For now, interactive mode behaves like strict mode
+	// In a full implementation, this would prompt the user for resolution
+	// TODO: Implement user prompting and guided error resolution
+	return h.handleStrict(err)
+}
+
+// SetMode changes the error handling mode
+func (h *DefaultErrorHandler) SetMode(mode ErrorMode) {
+	h.mode = mode
+}
+
+// GetMode returns the current error handling mode
+func (h *DefaultErrorHandler) GetMode() ErrorMode {
+	return h.mode
+}
+
+// GetCollectedErrors returns all collected errors
+func (h *DefaultErrorHandler) GetCollectedErrors() []error {
+	return h.collectedErrors
+}
+
+// Clear clears all collected errors
+func (h *DefaultErrorHandler) Clear() {
+	h.collectedErrors = make([]error, 0)
+}
+
+// SetWarningHandler sets a custom warning handler function
+func (h *DefaultErrorHandler) SetWarningHandler(handler func(error)) {
+	h.warningHandler = handler
+}
+
+// Summary generates an ErrorSummary from collected errors
+func (h *DefaultErrorHandler) Summary() ErrorSummary {
+	summary := ErrorSummary{
+		TotalErrors:   len(h.collectedErrors),
+		ByCategory:    make(map[ErrorCode]int),
+		BySeverity:    make(map[ErrorSeverity]int),
+		Suggestions:   make([]string, 0),
+		FixableErrors: 0,
+	}
+
+	suggestionSet := make(map[string]bool) // To avoid duplicate suggestions
+
+	for _, err := range h.collectedErrors {
+		if outputErr, ok := err.(OutputError); ok {
+			// Count by category
+			summary.ByCategory[outputErr.Code()]++
+
+			// Count by severity
+			summary.BySeverity[outputErr.Severity()]++
+
+			// Collect unique suggestions
+			for _, suggestion := range outputErr.Suggestions() {
+				if !suggestionSet[suggestion] {
+					summary.Suggestions = append(summary.Suggestions, suggestion)
+					suggestionSet[suggestion] = true
+				}
+			}
+
+			// Count fixable errors (warnings and info are considered fixable)
+			if outputErr.Severity() <= SeverityWarning {
+				summary.FixableErrors++
+			}
+		}
+	}
+
+	return summary
+}
+
+// HasErrors returns true if there are any collected errors
+func (h *DefaultErrorHandler) HasErrors() bool {
+	return len(h.collectedErrors) > 0
+}
+
+// HasErrorsWithSeverity returns true if there are errors with the specified severity or higher
+func (h *DefaultErrorHandler) HasErrorsWithSeverity(severity ErrorSeverity) bool {
+	for _, err := range h.collectedErrors {
+		if outputErr, ok := err.(OutputError); ok {
+			if outputErr.Severity() >= severity {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ValidationErrorBuilder provides a fluent interface for building validation errors
