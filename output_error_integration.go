@@ -1,7 +1,6 @@
 package format
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 
@@ -399,49 +398,15 @@ func (output *OutputArray) generateFileOutput() ([]byte, error) {
 
 // Error-handling versions of format methods
 func (output *OutputArray) toJSONWithError() ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panic(errors.NewProcessingError(
-				errors.ErrTemplateRender,
-				fmt.Sprintf("JSON generation failed: %v", r),
-			))
-		}
-	}()
-
-	jsonString, err := json.Marshal(output.GetContentsMapRaw())
-	if err != nil {
-		return nil, errors.NewProcessingError(
-			errors.ErrTemplateRender,
-			"Failed to marshal JSON",
-		).Wrap(err)
-	}
-	return jsonString, nil
+	return output.toJSONWithErrorHandling()
 }
 
 func (output *OutputArray) toCSVWithError() ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panic(errors.NewProcessingError(
-				errors.ErrTemplateRender,
-				fmt.Sprintf("CSV generation failed: %v", r),
-			))
-		}
-	}()
-
-	return output.toCSV(), nil
+	return output.toCSVWithErrorHandling()
 }
 
 func (output *OutputArray) toTableWithError() ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panic(errors.NewProcessingError(
-				errors.ErrTemplateRender,
-				fmt.Sprintf("Table generation failed: %v", r),
-			))
-		}
-	}()
-
-	return output.toTable(), nil
+	return output.toTableWithErrorHandling()
 }
 
 func (output *OutputArray) toMarkdownWithError() ([]byte, error) {
@@ -454,59 +419,28 @@ func (output *OutputArray) toMarkdownWithError() ([]byte, error) {
 		}
 	}()
 
+	// Markdown uses table generation, so validate table data
+	if err := output.validateTableData(); err != nil {
+		return nil, err
+	}
+
 	return output.toMarkdown(), nil
 }
 
 func (output *OutputArray) toHTMLWithError() ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panic(errors.NewProcessingError(
-				errors.ErrTemplateRender,
-				fmt.Sprintf("HTML generation failed: %v", r),
-			))
-		}
-	}()
-
-	return output.toHTML(), nil
+	return output.toHTMLWithErrorHandling()
 }
 
 func (output *OutputArray) toYAMLWithError() ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panic(errors.NewProcessingError(
-				errors.ErrTemplateRender,
-				fmt.Sprintf("YAML generation failed: %v", r),
-			))
-		}
-	}()
-
-	return output.toYAML(), nil
+	return output.toYAMLWithErrorHandling()
 }
 
 func (output *OutputArray) toMermaidWithError() ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panic(errors.NewProcessingError(
-				errors.ErrTemplateRender,
-				fmt.Sprintf("Mermaid generation failed: %v", r),
-			))
-		}
-	}()
-
-	return output.toMermaid(), nil
+	return output.toMermaidWithErrorHandling()
 }
 
 func (output *OutputArray) toDotWithError() ([]byte, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panic(errors.NewProcessingError(
-				errors.ErrTemplateRender,
-				fmt.Sprintf("DOT generation failed: %v", r),
-			))
-		}
-	}()
-
-	return output.toDot(), nil
+	return output.toDotWithErrorHandling()
 }
 
 func (output *OutputArray) toDrawIOWithError() error {

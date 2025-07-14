@@ -219,3 +219,74 @@ This completes Phase 4, Task 9 of the error handling implementation plan.
 - `outputsettings_validation_test.go` - Comprehensive test suite for all validation scenarios
 
 This completes Phase 4, Task 10 of the error handling implementation plan.
+
+### Task 11: Format-Specific Error Handling ✅
+**Date:** 2025-07-14  
+**Status:** Complete  
+
+**Implemented Components:**
+- **Enhanced Format-Specific Error Handling**: Comprehensive error handling for all output formats:
+  - `toJSONWithErrorHandling()` - JSON format with data validation and marshaling error handling
+  - `toYAMLWithErrorHandling()` - YAML format with data validation and marshaling error handling  
+  - `toCSVWithErrorHandling()` - CSV format with data validation and special character handling
+  - `toTableWithErrorHandling()` - Table format with column width validation and content size checking
+  - `toHTMLWithErrorHandling()` - HTML format with template and data validation
+  - `toMermaidWithErrorHandling()` - Mermaid format with chart type validation and content-specific handling
+  - `toDotWithErrorHandling()` - DOT format with graph validation and node/edge checking
+
+- **Format-Specific Validation**: Detailed validation for each format type:
+  - **JSON/YAML Validation**: Checks for unserializable data types (functions, channels, etc.)
+  - **CSV/Table Validation**: Validates column keys and content length constraints
+  - **Mermaid Validation**: Chart type validation, FromToColumns requirements, and value type checking
+  - **DOT Validation**: Node name validation, edge relationship validation, and empty data handling
+
+- **Advanced Mermaid Support**: Enhanced error handling for different chart types:
+  - **Flowchart**: Node and edge validation with empty value checking
+  - **Piechart**: Numeric value validation with type conversion and error reporting
+  - **Gantt Chart**: Complete field validation for all required columns
+
+- **Error Context and Recovery**: Rich error context with specific suggestions:
+  - Field-level error reporting with row/column information
+  - Actionable error messages with fix suggestions
+  - Integration with recovery strategies for format fallbacks
+  - Panic recovery with structured error conversion
+
+- **Performance Considerations**: Optimized error checking:
+  - Early validation to prevent expensive operations on invalid data
+  - Efficient type checking for large datasets
+  - Minimal performance overhead for error handling paths
+  - Proper handling of large content without memory issues
+
+**Test Coverage:**
+- Comprehensive test suite with 100% coverage for format-specific error handling
+- Edge case testing including unserializable data, invalid configurations, and large datasets
+- Error recovery integration testing with format fallback strategies
+- Performance testing with large datasets to ensure minimal overhead
+- Character encoding and special character handling tests
+- Cross-format compatibility and error consistency verification
+
+**Key Features:**
+- **Early Error Detection**: Validates data before expensive format generation operations
+- **Detailed Error Messages**: Context-aware errors with field information, suggestions, and recovery options
+- **Format-Specific Validation**: Tailored validation rules for each output format's requirements
+- **Panic Recovery**: Comprehensive panic handling with structured error conversion
+- **Integration with Recovery**: Works seamlessly with format fallback strategies
+- **Performance Optimized**: Minimal overhead while providing comprehensive error checking
+- **Backward Compatibility**: Enhanced methods integrate with existing error handling infrastructure
+
+**Integration Points:**
+- Uses all error types from Phase 1 (OutputError, ValidationError, ProcessingError)
+- Integrates with error handlers from Phase 2 for different error modes
+- Utilizes recovery strategies from Task 8 for automatic format fallbacks
+- Works with validation framework from Phase 2 for consistent error handling
+- Compatible with OutputArray integration from Task 9
+
+**Files Created:**
+- `format_error_handling.go` - Enhanced format-specific error handling implementation
+- `format_error_handling_test.go` - Comprehensive test suite for all format error scenarios
+
+**Files Modified:**
+- `output_error_integration.go` - Updated to use enhanced error handling methods
+- `errors/errors.go` - Added ErrInvalidConfiguration error code
+
+This completes Phase 4, Task 11 of the error handling implementation plan.

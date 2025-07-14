@@ -15,10 +15,11 @@ type ErrorCode string
 // Error codes for different categories of errors
 const (
 	// Configuration errors (1xxx)
-	ErrInvalidFormat      ErrorCode = "OUT-1001"
-	ErrMissingRequired    ErrorCode = "OUT-1002"
-	ErrIncompatibleConfig ErrorCode = "OUT-1003"
-	ErrInvalidFilePath    ErrorCode = "OUT-1004"
+	ErrInvalidFormat        ErrorCode = "OUT-1001"
+	ErrMissingRequired      ErrorCode = "OUT-1002"
+	ErrIncompatibleConfig   ErrorCode = "OUT-1003"
+	ErrInvalidFilePath      ErrorCode = "OUT-1004"
+	ErrInvalidConfiguration ErrorCode = "OUT-1005"
 
 	// Validation errors (2xxx)
 	ErrMissingColumn       ErrorCode = "OUT-2001"
