@@ -86,10 +86,10 @@ func (m *MigrationHelper) CheckMigrationStatus() MigrationStatus {
 // RunMigration executes the migration process
 func (m *MigrationHelper) RunMigration() MigrationResult {
 	result := MigrationResult{
-		Status:    m.CheckMigrationStatus(),
+		Status:     m.CheckMigrationStatus(),
 		FixedSteps: 0,
-		Errors:    make([]error, 0),
-		StartTime: time.Now(),
+		Errors:     make([]error, 0),
+		StartTime:  time.Now(),
 	}
 
 	for i, stepResult := range result.Status.Results {
@@ -103,6 +103,17 @@ func (m *MigrationHelper) RunMigration() MigrationResult {
 				result.Status.Results[i].Passed = passed
 				result.Status.Results[i].Message = message
 			}
+		}
+	}
+
+	// Recalculate completion and failure counts
+	result.Status.CompletedSteps = 0
+	result.Status.FailedSteps = 0
+	for _, stepResult := range result.Status.Results {
+		if stepResult.Passed {
+			result.Status.CompletedSteps++
+		} else {
+			result.Status.FailedSteps++
 		}
 	}
 
@@ -295,11 +306,11 @@ func (p *PerformanceProfiler) PerformanceReport() PerformanceReport {
 		stats, exists := report.Operations[metric.Operation]
 		if !exists {
 			stats = OperationStats{
-				Count:      0,
-				TotalTime:  0,
+				Count:       0,
+				TotalTime:   0,
 				TotalErrors: 0,
-				MinTime:    metric.Duration,
-				MaxTime:    metric.Duration,
+				MinTime:     metric.Duration,
+				MaxTime:     metric.Duration,
 			}
 		}
 
@@ -499,10 +510,14 @@ func (s *IntegratedErrorSystem) SystemHealthCheck() SystemHealthReport {
 		report.Issues = append(report.Issues, "Error handler is nil")
 	}
 
-	// Check error reporter
+	// Check error reporter (optional component)
 	if s.reporter == nil {
-		report.Healthy = false
-		report.Issues = append(report.Issues, "Error reporter is nil")
+		// For a completely broken system, this is more critical
+		if s.handler == nil && s.recoveryHandler == nil && s.profiler == nil {
+			report.Issues = append(report.Issues, "Error reporter is nil")
+		} else {
+			report.Issues = append(report.Issues, "Error reporter is nil (optional)")
+		}
 	}
 
 	// Check recovery handler
@@ -515,14 +530,16 @@ func (s *IntegratedErrorSystem) SystemHealthCheck() SystemHealthReport {
 		report.Issues = append(report.Issues, "Performance profiler is nil")
 	}
 
-	// Test basic error processing
-	testErr := NewError(ErrInvalidFormat, "health check test")
-	if err := s.ProcessError(testErr); err != testErr {
-		// In strict mode, the error should be returned as-is
-		if s.handler.Mode() == ErrorModeStrict {
-			// This is expected behavior
-		} else {
-			report.Issues = append(report.Issues, "Basic error processing failed")
+	// Test basic error processing only if handler is available
+	if s.handler != nil {
+		testErr := NewError(ErrInvalidFormat, "health check test")
+		if err := s.ProcessError(testErr); err != testErr {
+			// In strict mode, the error should be returned as-is
+			if s.handler.Mode() == ErrorModeStrict {
+				// This is expected behavior
+			} else {
+				report.Issues = append(report.Issues, "Basic error processing failed")
+			}
 		}
 	}
 
@@ -571,7 +588,7 @@ func NewLegacyMigrationHelper() *LegacyMigrationHelper {
 func (h *LegacyMigrationHelper) AnalyzeCode(code string) {
 	h.logFatalCount = strings.Count(code, "log.Fatal")
 	h.panicCount = strings.Count(code, "panic(")
-	
+
 	// Analyze different error patterns
 	h.errorAnalysis["log.Fatal"] = strings.Count(code, "log.Fatal")
 	h.errorAnalysis["log.Fatalf"] = strings.Count(code, "log.Fatalf")
@@ -583,7 +600,7 @@ func (h *LegacyMigrationHelper) AnalyzeCode(code string) {
 // GetMigrationPlan returns a migration plan based on the analysis
 func (h *LegacyMigrationHelper) GetMigrationPlan() []MigrationStep {
 	var steps []MigrationStep
-	
+
 	// Step 1: Replace log.Fatal with error returns
 	if h.logFatalCount > 0 {
 		steps = append(steps, MigrationStep{
@@ -599,7 +616,7 @@ func (h *LegacyMigrationHelper) GetMigrationPlan() []MigrationStep {
 			},
 		})
 	}
-	
+
 	// Step 2: Add error handling
 	steps = append(steps, MigrationStep{
 		Name:        "Add error handling",
@@ -611,7 +628,7 @@ func (h *LegacyMigrationHelper) GetMigrationPlan() []MigrationStep {
 			return fmt.Errorf("requires code changes")
 		},
 	})
-	
+
 	// Step 3: Add validation
 	steps = append(steps, MigrationStep{
 		Name:        "Add validation",
@@ -620,7 +637,7 @@ func (h *LegacyMigrationHelper) GetMigrationPlan() []MigrationStep {
 			return false, "Validation needs to be added"
 		},
 	})
-	
+
 	return steps
 }
 
@@ -628,19 +645,19 @@ func (h *LegacyMigrationHelper) GetMigrationPlan() []MigrationStep {
 func (h *LegacyMigrationHelper) GetMigrationReport() string {
 	report := "Legacy Migration Analysis Report:\n"
 	report += fmt.Sprintf("\nError Pattern Analysis:\n")
-	
+
 	for pattern, count := range h.errorAnalysis {
 		if count > 0 {
 			report += fmt.Sprintf("  %s: %d occurrences\n", pattern, count)
 		}
 	}
-	
+
 	report += fmt.Sprintf("\nRecommended Migration Steps:\n")
 	steps := h.GetMigrationPlan()
 	for i, step := range steps {
 		report += fmt.Sprintf("  %d. %s - %s\n", i+1, step.Name, step.Description)
 	}
-	
+
 	return report
 }
 
@@ -699,9 +716,9 @@ func (t *CodeTransformer) GetStandardTransformations() map[string]string {
 	return map[string]string{
 		"log.Fatal(err)":          "return err",
 		"log.Fatalf(msg, args)":   "return fmt.Errorf(msg, args)",
-		"log.Fatalln(msg)":       "return fmt.Errorf(msg)",
-		"if err != nil { panic }":  "if err != nil { return err }",
-		"panic(err)":             "return err",
+		"log.Fatalln(msg)":        "return fmt.Errorf(msg)",
+		"if err != nil { panic }": "if err != nil { return err }",
+		"panic(err)":              "return err",
 	}
 }
 
@@ -763,14 +780,14 @@ func (g *MigrationGuide) GetAllSteps() []MigrationGuideStep {
 // GenerateGuide generates a complete migration guide as a string
 func (g *MigrationGuide) GenerateGuide() string {
 	guide := "# Migration Guide: From log.Fatal to Structured Error Handling\n\n"
-	
+
 	for i, step := range g.steps {
 		guide += fmt.Sprintf("## Step %d: %s\n\n", i+1, step.Title)
 		guide += fmt.Sprintf("%s\n\n", step.Description)
-		
+
 		guide += "### Before:\n```go\n" + step.CodeBefore + "\n```\n\n"
 		guide += "### After:\n```go\n" + step.CodeAfter + "\n```\n\n"
-		
+
 		if len(step.Notes) > 0 {
 			guide += "### Notes:\n"
 			for _, note := range step.Notes {
@@ -779,6 +796,6 @@ func (g *MigrationGuide) GenerateGuide() string {
 			guide += "\n"
 		}
 	}
-	
+
 	return guide
 }
