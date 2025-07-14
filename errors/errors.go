@@ -25,6 +25,7 @@ const (
 	ErrInvalidDataType     ErrorCode = "OUT-2002"
 	ErrConstraintViolation ErrorCode = "OUT-2003"
 	ErrEmptyDataset        ErrorCode = "OUT-2004"
+	ErrCompositeValidation ErrorCode = "OUT-2005"
 
 	// Processing errors (3xxx)
 	ErrFileWrite       ErrorCode = "OUT-3001"

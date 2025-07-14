@@ -6,6 +6,8 @@
   * Add structured error system with error codes, severity levels, and context
   * Support for error suggestions and wrapped errors with builder pattern
   * JSON marshaling capability for structured logging
+  * Add validation error types with violation tracking and composite error collection
+  * Support for detailed field-level validation failures with context and constraints
 
 1.4.0 / 2023-11-14
 ==================

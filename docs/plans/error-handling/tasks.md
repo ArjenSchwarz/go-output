@@ -24,7 +24,7 @@ Focus on:
 The implementation should be in package `errors` and all types should be exported. Write thorough unit tests covering all methods and edge cases."
 
 ### Task 2: Validation Error Types
-- [ ] **Objective**: Extend the error system with validation-specific error types.
+- [x] **Objective**: Extend the error system with validation-specific error types.
 
 **Test-driven prompt**:
 "Building on the basic error types from Task 1, write tests first then implement validation-specific error types:
