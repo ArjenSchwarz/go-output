@@ -68,17 +68,17 @@ func customValidators() {
 		{
 			"ID":         "EMP002",
 			"Name":       "Jane Smith",
-			"Email":      "invalid-email",  // Invalid email
+			"Email":      "invalid-email", // Invalid email
 			"Department": "Sales",
-			"Salary":     250000,  // Salary too high
-			"StartDate":  "2023-02-30",  // Invalid date
+			"Salary":     250000,       // Salary too high
+			"StartDate":  "2023-02-30", // Invalid date
 		},
 		{
 			"ID":         "EMP003",
 			"Name":       "Bob Johnson",
 			"Email":      "bob@company.com",
-			"Department": "InvalidDept",  // Invalid department
-			"Salary":     15000,  // Salary too low
+			"Department": "InvalidDept", // Invalid department
+			"Salary":     15000,         // Salary too low
 			"StartDate":  "2023-03-10",
 		},
 	}
@@ -164,7 +164,7 @@ func customRecoveryStrategies() {
 	// Add data that needs cleanup
 	output.AddContents(map[string]interface{}{
 		"Name":       "Alice Johnson",
-		"Email":      "alice.johnson",  // Missing domain
+		"Email":      "alice.johnson", // Missing domain
 		"Department": "eng",           // Needs normalization
 	})
 
@@ -284,10 +284,10 @@ func complexValidationChains() {
 
 	// Test with invalid data
 	invalidData := map[string]interface{}{
-		"Name":       "",  // Empty name
-		"Email":      "invalid-email",  // Invalid email
+		"Name":       "",              // Empty name
+		"Email":      "invalid-email", // Invalid email
 		"Department": "Engineering",
-		"Salary":     15000,  // Too low
+		"Salary":     15000, // Too low
 		"Level":      "Senior",
 		"StartDate":  "2023-01-15",
 	}
@@ -295,7 +295,7 @@ func complexValidationChains() {
 	fmt.Printf("\nRunning validation chain on invalid data: %v\n", invalidData)
 	if err := chain.Validate(invalidData); err != nil {
 		fmt.Printf("Validation failed: %v\n", err)
-		
+
 		// Show detailed error information
 		if validationErr, ok := err.(errors.ValidationError); ok {
 			fmt.Printf("Validation violations: %d\n", len(validationErr.Violations()))
@@ -604,7 +604,7 @@ func (r *ErrorReporter) GenerateReport() string {
 	}
 
 	report := fmt.Sprintf("Error Report - Total: %d errors\n", len(r.errors))
-	
+
 	// Count by error code
 	counts := make(map[errors.ErrorCode]int)
 	for _, err := range r.errors {
@@ -620,10 +620,10 @@ func (r *ErrorReporter) GenerateReport() string {
 }
 
 type ErrorMetrics struct {
-	TotalErrors      int
-	MostCommonError  errors.ErrorCode
-	MostCommonCount  int
-	ErrorRate        float64
+	TotalErrors     int
+	MostCommonError errors.ErrorCode
+	MostCommonCount int
+	ErrorRate       float64
 }
 
 func (r *ErrorReporter) GetMetrics() ErrorMetrics {

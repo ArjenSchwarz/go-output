@@ -194,7 +194,7 @@ func generateReport(data []map[string]interface{}) error {
 		{"Name": "John Doe", "Age": 30, "Email": "john@example.com"},
 		{"Name": "Jane Smith", "Age": 25, "Email": "jane@example.com"},
 	}
-	
+
 	if err := generateReportNew(testData); err != nil {
 		fmt.Printf("Validation error: %v\n", err)
 	} else {
@@ -263,7 +263,7 @@ func exportData(data []map[string]interface{}, format string) error {
 	testData := []map[string]interface{}{
 		{"ID": "1", "Name": "Test Item", "Status": "active"},
 	}
-	
+
 	if err := exportDataNew(testData, "invalid_format"); err != nil {
 		fmt.Printf("Error after recovery attempt: %v\n", err)
 	} else {
@@ -274,10 +274,10 @@ func exportData(data []map[string]interface{}, format string) error {
 // migrationHelper shows using the migration helper
 func migrationHelper() {
 	fmt.Println("Using Migration Helper to analyze and guide migration:")
-	
+
 	// Create migration helper
 	helper := errors.NewMigrationHelper()
-	
+
 	// Add some example migration steps
 	helper.AddMigrationStep(errors.MigrationStep{
 		Name:        "Replace log.Fatal calls",
@@ -292,7 +292,7 @@ func migrationHelper() {
 			return nil
 		},
 	})
-	
+
 	helper.AddMigrationStep(errors.MigrationStep{
 		Name:        "Add error handling",
 		Description: "Add proper error handling to all callers",
@@ -300,7 +300,7 @@ func migrationHelper() {
 			return true, "All callers have proper error handling"
 		},
 	})
-	
+
 	helper.AddMigrationStep(errors.MigrationStep{
 		Name:        "Add validation",
 		Description: "Add input validation before operations",
@@ -312,21 +312,21 @@ func migrationHelper() {
 			return nil
 		},
 	})
-	
+
 	// Check migration status
 	fmt.Println("\nMigration Status:")
 	status := helper.CheckMigrationStatus()
 	fmt.Printf("  %s\n", status.String())
-	
+
 	// Run migration
 	fmt.Println("\nRunning migration:")
 	result := helper.RunMigration()
 	fmt.Printf("  %s\n", result.String())
-	
+
 	// Show legacy migration helper
 	fmt.Println("\nLegacy Code Analysis:")
 	legacyHelper := errors.NewLegacyMigrationHelper()
-	
+
 	// Analyze some example code
 	exampleCode := `
 func processData(data []byte) {
@@ -345,7 +345,7 @@ func handleError(err error) {
     }
 }
 `
-	
+
 	legacyHelper.AnalyzeCode(exampleCode)
 	fmt.Println(legacyHelper.GetMigrationReport())
 }
@@ -355,18 +355,18 @@ func handleError(err error) {
 func processOutputNew(data []string) error {
 	settings := format.NewOutputSettings()
 	settings.SetOutputFormat("json")
-	
+
 	output := format.OutputArray{
 		Settings: settings,
 		Keys:     []string{"Item"},
 	}
-	
+
 	for _, item := range data {
 		output.AddContents(map[string]interface{}{
 			"Item": item,
 		})
 	}
-	
+
 	return output.WriteWithValidation()
 }
 
@@ -380,43 +380,43 @@ func generateReportNew(data []map[string]interface{}) error {
 			"Check data source for availability",
 		)
 	}
-	
+
 	settings := format.NewOutputSettings()
 	settings.SetOutputFormat("table")
-	
+
 	output := format.OutputArray{
 		Settings: settings,
 		Keys:     []string{"Name", "Age", "Email"},
 	}
-	
+
 	for _, item := range data {
 		output.AddContents(item)
 	}
-	
+
 	// Validate first, then write
 	if err := output.Validate(); err != nil {
 		return err
 	}
-	
+
 	return output.WriteWithValidation()
 }
 
 func exportDataNew(data []map[string]interface{}, outputFormat string) error {
 	settings := format.NewOutputSettings()
 	settings.SetOutputFormat(outputFormat)
-	
+
 	output := format.OutputArray{
 		Settings: settings,
 		Keys:     []string{"ID", "Name", "Status"},
 	}
-	
+
 	// Set lenient mode to allow recovery
 	output.SetErrorMode(errors.ErrorModeLenient)
-	
+
 	for _, item := range data {
 		output.AddContents(item)
 	}
-	
+
 	// Try to write with recovery
 	if err := output.WriteWithValidation(); err != nil {
 		// Check if any errors were recovered
@@ -426,7 +426,7 @@ func exportDataNew(data []map[string]interface{}, outputFormat string) error {
 		}
 		return err
 	}
-	
+
 	return nil
 }
 

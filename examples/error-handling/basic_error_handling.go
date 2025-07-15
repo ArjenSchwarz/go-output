@@ -51,12 +51,12 @@ func basicErrorHandling() {
 	fmt.Println("Using new error handling:")
 	if err := output.WriteWithValidation(); err != nil {
 		fmt.Printf("Error occurred: %v\n", err)
-		
+
 		// Check if it's an OutputError for more details
 		if outputErr, ok := err.(errors.OutputError); ok {
 			fmt.Printf("Error Code: %s\n", outputErr.Code())
 			fmt.Printf("Severity: %s\n", outputErr.Severity())
-			
+
 			// Show suggestions if available
 			if suggestions := outputErr.Suggestions(); len(suggestions) > 0 {
 				fmt.Println("Suggestions:")
@@ -78,7 +78,7 @@ func basicErrorHandling() {
 func errorModes() {
 	settings := format.NewOutputSettings()
 	settings.SetOutputFormat("invalid_format") // This will cause an error
-	
+
 	output := format.OutputArray{
 		Settings: settings,
 		Keys:     []string{"Name", "Value"},
@@ -107,7 +107,7 @@ func errorModes() {
 func errorCollection() {
 	settings := format.NewOutputSettings()
 	settings.SetOutputFormat("json")
-	
+
 	output := format.OutputArray{
 		Settings: settings,
 		Keys:     []string{"Name", "Age", "Email"},
@@ -175,7 +175,7 @@ func errorContext() {
 	fmt.Printf("Error: %v\n", validationErr)
 	fmt.Printf("Code: %s\n", validationErr.Code())
 	fmt.Printf("Severity: %s\n", validationErr.Severity())
-	
+
 	context := validationErr.Context()
 	fmt.Printf("Context:\n")
 	fmt.Printf("  Operation: %s\n", context.Operation)
@@ -183,7 +183,7 @@ func errorContext() {
 	fmt.Printf("  Value: %v\n", context.Value)
 	fmt.Printf("  Index: %d\n", context.Index)
 	fmt.Printf("  Metadata: %v\n", context.Metadata)
-	
+
 	fmt.Println("Suggestions:")
 	for _, suggestion := range validationErr.Suggestions() {
 		fmt.Printf("  - %s\n", suggestion)
