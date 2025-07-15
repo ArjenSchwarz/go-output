@@ -2,6 +2,16 @@
 ## [Unreleased]
 
 ### Added
+- Error injection testing utilities for comprehensive error scenario testing
+  - ErrorInjector helper for injecting errors during testing with conditional triggers
+  - MockValidator for configurable validation testing scenarios with performance awareness
+  - MockErrorHandler for testing different error handling modes and behaviors
+  - MockRecoveryStrategy for testing recovery mechanisms with custom apply functions
+  - ErrorScenarioRunner for running complete error testing scenarios with expected results
+  - TestDataBuilder for constructing test data with various configurations
+  - ErrorTypeHelper for creating different types of errors (configuration, validation, processing, runtime)
+  - PerformanceTestHelper for measuring error handling performance impact and overhead verification
+  - Comprehensive test suite with integration scenarios and performance impact testing
 - Comprehensive error handling integration test suite with end-to-end pipeline testing
   - Complete error handling pipeline tests from validation through error processing to recovery
   - Error propagation testing through the entire system with multiple error types
