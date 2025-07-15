@@ -41,22 +41,24 @@ func CreateCSV(drawIOHeader Header, headerRow []string, contents []map[string]st
 	}
 	buf := new(bytes.Buffer)
 	fmt.Fprintf(buf, "%s", drawIOHeader.String())
-	_, err := buf.WriteTo(target)
-	if err != nil {
-		log.Fatal(err)
+	if _, err := buf.WriteTo(target); err != nil {
+		log.Println(err)
+		return
 	}
 	w := csv.NewWriter(target)
 
 	for _, record := range total {
 		if err := w.Write(record); err != nil {
-			log.Fatalln("error writing record to csv:", err)
+			log.Println("error writing record to csv:", err)
+			return
 		}
 	}
 
 	w.Flush()
 
 	if err := w.Error(); err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return
 	}
 }
 

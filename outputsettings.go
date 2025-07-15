@@ -1,10 +1,13 @@
 package format
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ArjenSchwarz/go-output/drawio"
+	"github.com/ArjenSchwarz/go-output/errors"
 	"github.com/ArjenSchwarz/go-output/mermaid"
 	"github.com/jedib0t/go-pretty/v6/table"
 
@@ -31,6 +34,7 @@ var TableStyles = map[string]table.Style{
 	"ColoredYellowWhiteOnBlack":  table.StyleColoredYellowWhiteOnBlack,
 }
 
+// OutputSettings contains configuration for output generation
 type OutputSettings struct {
 	// Defines whether a table of contents should be added
 	HasTOC bool
@@ -74,6 +78,7 @@ type OutputSettings struct {
 	ProgressOptions ProgressOptions
 }
 
+// S3Output contains configuration for S3 output
 type S3Output struct {
 	S3Client *s3.Client
 	Bucket   string
@@ -112,7 +117,7 @@ func (settings *OutputSettings) AddFromToColumns(from string, to string) {
 	settings.FromToColumns = &result
 }
 
-// AddFromToColumns sets from to columns for graphical formats
+// AddFromToColumnsWithLabel sets from to columns with label for graphical formats
 func (settings *OutputSettings) AddFromToColumnsWithLabel(from string, to string, label string) {
 	result := FromToColumns{
 		From:  from,
@@ -127,17 +132,19 @@ func (settings *OutputSettings) SetOutputFormat(format string) {
 	settings.OutputFormat = strings.ToLower(format)
 }
 
+// GetDefaultExtension returns the default file extension for the output format
 func (settings *OutputSettings) GetDefaultExtension() string {
 	switch settings.OutputFormat {
-	case "markdown":
+	case formatMarkdown:
 		return ".md"
-	case "table":
+	case formatTable:
 		return ".txt"
 	default:
 		return "." + settings.OutputFormat
 	}
 }
 
+// SetS3Bucket sets the S3 bucket configuration for output
 func (settings *OutputSettings) SetS3Bucket(client *s3.Client, bucket string, path string) {
 	settings.S3Bucket = S3Output{
 		S3Client: client,
@@ -148,21 +155,22 @@ func (settings *OutputSettings) SetS3Bucket(client *s3.Client, bucket string, pa
 
 // NeedsFromToColumns verifies if a format requires from and to columns to be set
 func (settings *OutputSettings) NeedsFromToColumns() bool {
-	if settings.OutputFormat == "dot" || settings.OutputFormat == "mermaid" {
+	if settings.OutputFormat == formatDot || settings.OutputFormat == formatMermaid {
 		return true
 	}
 	return false
 }
 
+// GetSeparator returns the separator string for the output format
 func (settings *OutputSettings) GetSeparator() string {
 	switch settings.OutputFormat {
-	case "table":
+	case formatTable:
 		return "\n"
-	case "markdown":
+	case formatMarkdown:
 		return "\n"
-	case "csv":
+	case formatCSV:
 		return "\n"
-	case "dot":
+	case formatDot:
 		return ","
 	default:
 		return ", "
@@ -177,4 +185,203 @@ func (settings *OutputSettings) EnableProgress() {
 // DisableProgress turns off progress output.
 func (settings *OutputSettings) DisableProgress() {
 	settings.ProgressEnabled = false
+}
+
+// Validate performs comprehensive validation of OutputSettings
+func (settings *OutputSettings) Validate() error {
+	var validationErrors []error
+
+	// Collect all validation errors
+	if err := settings.validateOutputFormat(); err != nil {
+		validationErrors = append(validationErrors, err)
+	}
+	if err := settings.validateFormatSpecificRequirements(); err != nil {
+		validationErrors = append(validationErrors, err)
+	}
+	if err := settings.validateFileOutput(); err != nil {
+		validationErrors = append(validationErrors, err)
+	}
+	if err := settings.validateS3Configuration(); err != nil {
+		validationErrors = append(validationErrors, err)
+	}
+	if err := settings.validateCrossFieldRequirements(); err != nil {
+		validationErrors = append(validationErrors, err)
+	}
+
+	// Return based on number of errors
+	switch len(validationErrors) {
+	case 0:
+		return nil
+	case 1:
+		return validationErrors[0] // Return single error directly
+	default:
+		// Multiple errors - use composite
+		composite := errors.NewCompositeError()
+		for _, err := range validationErrors {
+			composite.Add(err.(errors.ValidationError))
+		}
+		return composite
+	}
+}
+
+// validateOutputFormat validates the output format is supported
+func (settings *OutputSettings) validateOutputFormat() error {
+	validFormats := []string{
+		"json", "csv", "table", "html", "markdown", "yaml",
+		"mermaid", "drawio", "dot",
+	}
+
+	if settings.OutputFormat == "" {
+		return errors.NewValidationError(
+			errors.ErrMissingRequired,
+			"OutputFormat is required",
+		).WithSuggestions(
+			fmt.Sprintf("Valid formats: %s", strings.Join(validFormats, ", ")),
+		).WithContext(errors.ErrorContext{
+			Operation: "format_validation",
+			Field:     "OutputFormat",
+			Value:     "",
+		})
+	}
+
+	for _, valid := range validFormats {
+		if settings.OutputFormat == valid {
+			return nil
+		}
+	}
+
+	return errors.NewValidationError(
+		errors.ErrInvalidFormat,
+		fmt.Sprintf("Invalid output format: %s", settings.OutputFormat),
+	).WithSuggestions(
+		fmt.Sprintf("Valid formats: %s", strings.Join(validFormats, ", ")),
+	).WithContext(errors.ErrorContext{
+		Operation: "format_validation",
+		Field:     "OutputFormat",
+		Value:     settings.OutputFormat,
+	})
+}
+
+// validateFormatSpecificRequirements validates format-specific requirements
+func (settings *OutputSettings) validateFormatSpecificRequirements() error {
+	switch settings.OutputFormat {
+	case "mermaid":
+		if settings.FromToColumns == nil && (settings.MermaidSettings == nil || settings.isMermaidSettingsEmpty()) {
+			return errors.NewValidationError(
+				errors.ErrMissingRequired,
+				"mermaid format requires FromToColumns or MermaidSettings",
+			).WithSuggestions(
+				"Use AddFromToColumns() to set source and target columns",
+				"Or configure MermaidSettings for chart generation",
+			)
+		}
+	case formatDrawio:
+		if !settings.DrawIOHeader.IsSet() {
+			return errors.NewValidationError(
+				errors.ErrMissingRequired,
+				"drawio format requires DrawIOHeader configuration",
+			).WithSuggestions(
+				"Configure DrawIOHeader before using drawio format",
+			)
+		}
+	case formatDot:
+		if settings.FromToColumns == nil {
+			return errors.NewValidationError(
+				errors.ErrMissingRequired,
+				"dot format requires FromToColumns configuration",
+			).WithSuggestions(
+				"Use AddFromToColumns() to set source and target columns",
+			)
+		}
+	}
+	return nil
+}
+
+// validateFileOutput validates file output configuration
+func (settings *OutputSettings) validateFileOutput() error {
+	if settings.OutputFile == "" {
+		return nil // No file output, nothing to validate
+	}
+
+	// Check if directory exists and is writable
+	if dir := filepath.Dir(settings.OutputFile); dir != "." {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			return errors.NewValidationError(
+				errors.ErrInvalidFilePath,
+				fmt.Sprintf("Output directory does not exist: %s", dir),
+			).WithSuggestions(
+				"Create the directory before running the command",
+				"Use a different output path",
+			).WithContext(errors.ErrorContext{
+				Operation: "file_validation",
+				Field:     "OutputFile",
+				Value:     settings.OutputFile,
+			})
+		}
+	}
+
+	return nil
+}
+
+// validateS3Configuration validates S3 bucket configuration
+func (settings *OutputSettings) validateS3Configuration() error {
+	if settings.S3Bucket.Bucket == "" {
+		return nil // No S3 output, nothing to validate
+	}
+
+	if settings.S3Bucket.Path == "" {
+		return errors.NewValidationError(
+			errors.ErrMissingRequired,
+			"S3 path is required when bucket is specified",
+		).WithSuggestions(
+			"Specify the S3 object key/path",
+		).WithContext(errors.ErrorContext{
+			Operation: "s3_validation",
+			Field:     "S3Bucket.Path",
+		})
+	}
+
+	if settings.S3Bucket.S3Client == nil {
+		return errors.NewValidationError(
+			errors.ErrMissingRequired,
+			"S3Client is required when bucket is specified",
+		).WithSuggestions(
+			"Initialize S3Client before setting bucket configuration",
+		).WithContext(errors.ErrorContext{
+			Operation: "s3_validation",
+			Field:     "S3Bucket.S3Client",
+		})
+	}
+
+	return nil
+}
+
+// isMermaidSettingsEmpty checks if MermaidSettings is in its default/empty state
+func (settings *OutputSettings) isMermaidSettingsEmpty() bool {
+	if settings.MermaidSettings == nil {
+		return true
+	}
+	// Check if all fields are in their default state
+	return !settings.MermaidSettings.AddMarkdown &&
+		!settings.MermaidSettings.AddHTML &&
+		settings.MermaidSettings.ChartType == "" &&
+		settings.MermaidSettings.GanttSettings == nil
+}
+
+// validateCrossFieldRequirements validates combinations of settings that conflict with each other
+func (settings *OutputSettings) validateCrossFieldRequirements() error {
+	// Check for conflicting output destinations
+	if settings.OutputFile != "" && settings.S3Bucket.Bucket != "" {
+		return errors.NewValidationError(
+			errors.ErrIncompatibleConfig,
+			"Cannot specify both OutputFile and S3Bucket",
+		).WithSuggestions(
+			"Choose either file output or S3 output, not both",
+		).WithContext(errors.ErrorContext{
+			Operation: "cross_field_validation",
+			Field:     "OutputFile,S3Bucket.Bucket",
+		})
+	}
+
+	return nil
 }

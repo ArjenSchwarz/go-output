@@ -2,6 +2,7 @@ package mermaid
 
 import "fmt"
 
+// HTMLScript contains the HTML script tags needed for mermaid rendering
 const HTMLScript = `<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 	<script>
 		mermaid.initialize({ startOnLoad: true });
@@ -9,6 +10,7 @@ const HTMLScript = `<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/merma
 
 var scriptset = false
 
+// Settings contains configuration for mermaid chart rendering
 type Settings struct {
 	AddMarkdown   bool
 	AddHTML       bool
@@ -16,6 +18,7 @@ type Settings struct {
 	GanttSettings *GanttSettings
 }
 
+// GanttSettings contains configuration specific to gantt charts
 type GanttSettings struct {
 	LabelColumn     string
 	StartDateColumn string
@@ -23,6 +26,7 @@ type GanttSettings struct {
 	StatusColumn    string
 }
 
+// MarkdownHeader returns the markdown header for mermaid charts
 func (settings *Settings) MarkdownHeader() string {
 	if settings.AddMarkdown {
 		return "```mermaid\n"
@@ -31,6 +35,7 @@ func (settings *Settings) MarkdownHeader() string {
 	}
 }
 
+// MarkdownFooter returns the markdown footer for mermaid charts
 func (settings *Settings) MarkdownFooter() string {
 	if settings.AddMarkdown {
 		return "\n```"
@@ -39,6 +44,7 @@ func (settings *Settings) MarkdownFooter() string {
 	}
 }
 
+// HtmlHeader returns the HTML header for mermaid charts
 func (settings *Settings) HtmlHeader() string {
 	if settings.AddHTML {
 		if !scriptset {
@@ -51,6 +57,7 @@ func (settings *Settings) HtmlHeader() string {
 	}
 }
 
+// HtmlFooter returns the HTML footer for mermaid charts
 func (settings *Settings) HtmlFooter() string {
 	if settings.AddHTML {
 		return "</div>\n"
@@ -59,6 +66,7 @@ func (settings *Settings) HtmlFooter() string {
 	}
 }
 
+// Header returns the appropriate header based on settings
 func (settings *Settings) Header() string {
 	if settings.AddMarkdown {
 		return settings.MarkdownHeader()
@@ -68,6 +76,7 @@ func (settings *Settings) Header() string {
 	return ""
 }
 
+// Footer returns the appropriate footer based on settings
 func (settings *Settings) Footer() string {
 	if settings.AddMarkdown {
 		return settings.MarkdownFooter()
