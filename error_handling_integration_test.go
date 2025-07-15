@@ -584,9 +584,11 @@ func TestErrorHandlingModeInteractions(t *testing.T) {
 						t.Error("lenient mode should collect errors")
 					}
 				case ErrorModeInteractive:
-					// Interactive mode currently behaves like strict mode
+					// Interactive mode should handle errors through user interaction
+					// Since we can't simulate user input in this test, we expect the error
+					// to be returned (as if user chose to abort)
 					if err == nil {
-						t.Error("interactive mode should return error immediately")
+						t.Error("interactive mode should return error when user interaction fails")
 					}
 				}
 			},

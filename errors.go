@@ -636,10 +636,9 @@ func (h *DefaultErrorHandler) handleLenient(err OutputError) error {
 
 // handleInteractive implements interactive mode error handling
 func (h *DefaultErrorHandler) handleInteractive(err OutputError) error {
-	// For now, interactive mode behaves like strict mode
-	// In a full implementation, this would prompt the user for resolution
-	// TODO: Implement user prompting and guided error resolution
-	return h.handleStrict(err)
+	// Use the interactive error resolver to handle the error
+	resolver := NewInteractiveErrorResolver()
+	return resolver.ResolveError(err)
 }
 
 // SetMode changes the error handling mode

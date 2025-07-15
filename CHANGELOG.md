@@ -2,6 +2,13 @@
 ## [Unreleased]
 
 ### Added
+- Interactive error resolution system for user-guided error handling
+  - InteractiveErrorResolver with customizable prompts and fix suggestions
+  - UserAction types for abort, skip, retry, apply fix, and ignore operations
+  - PromptOption system with keyboard shortcuts and automatic fix application
+  - Context-aware error prompts with detailed error information and suggestions
+  - Integration with existing error handling modes for seamless user experience
+  - Comprehensive test suite with mock input/output for interactive scenarios
 - Error injection testing utilities for comprehensive error scenario testing
   - ErrorInjector helper for injecting errors during testing with conditional triggers
   - MockValidator for configurable validation testing scenarios with performance awareness
