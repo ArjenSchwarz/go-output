@@ -68,7 +68,6 @@ func (m *MigrationHelper) HandleError(err error) error {
 	if m.legacyMode {
 		// Use panic to simulate log.Fatal behavior to avoid actual program termination in tests
 		panic(fmt.Sprintf("FATAL: %v", err))
-		return nil // This line should never be reached
 	}
 
 	if m.warnOnErrors {
