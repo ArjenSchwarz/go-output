@@ -644,7 +644,7 @@ func (h *LegacyMigrationHelper) GetMigrationPlan() []MigrationStep {
 // GetMigrationReport returns a detailed migration report
 func (h *LegacyMigrationHelper) GetMigrationReport() string {
 	report := "Legacy Migration Analysis Report:\n"
-	report += fmt.Sprintf("\nError Pattern Analysis:\n")
+	report += "\nError Pattern Analysis:\n"
 
 	for pattern, count := range h.errorAnalysis {
 		if count > 0 {
@@ -652,7 +652,7 @@ func (h *LegacyMigrationHelper) GetMigrationReport() string {
 		}
 	}
 
-	report += fmt.Sprintf("\nRecommended Migration Steps:\n")
+	report += "\nRecommended Migration Steps:\n"
 	steps := h.GetMigrationPlan()
 	for i, step := range steps {
 		report += fmt.Sprintf("  %d. %s - %s\n", i+1, step.Name, step.Description)

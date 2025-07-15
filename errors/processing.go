@@ -74,7 +74,7 @@ func (e *processingError) PartialResult() interface{} {
 // WithRetryable creates a new ProcessingError with the specified retryable flag
 func (e *processingError) WithRetryable(retryable bool) ProcessingError {
 	newErr := &processingError{
-		baseError:     e.baseError.clone(),
+		baseError:     e.clone(),
 		retryable:     retryable,
 		partialResult: e.partialResult,
 	}
@@ -84,7 +84,7 @@ func (e *processingError) WithRetryable(retryable bool) ProcessingError {
 // WithPartialResult creates a new ProcessingError with the specified partial result
 func (e *processingError) WithPartialResult(result interface{}) ProcessingError {
 	newErr := &processingError{
-		baseError:     e.baseError.clone(),
+		baseError:     e.clone(),
 		retryable:     e.retryable,
 		partialResult: result,
 	}
@@ -134,8 +134,8 @@ func (e *processingError) Wrap(cause error) OutputError {
 // MarshalJSON implements json.Marshaler interface for structured logging
 func (e *processingError) MarshalJSON() ([]byte, error) {
 	var causeStr string
-	if e.baseError.cause != nil {
-		causeStr = e.baseError.cause.Error()
+	if e.cause != nil {
+		causeStr = e.cause.Error()
 	}
 
 	return json.Marshal(struct {
@@ -148,11 +148,11 @@ func (e *processingError) MarshalJSON() ([]byte, error) {
 		Retryable     bool         `json:"retryable"`
 		PartialResult interface{}  `json:"partial_result,omitempty"`
 	}{
-		Code:          e.baseError.code,
-		Severity:      e.baseError.severity.String(),
-		Message:       e.baseError.message,
-		Context:       e.baseError.context,
-		Suggestions:   e.baseError.suggestions,
+		Code:          e.code,
+		Severity:      e.severity.String(),
+		Message:       e.message,
+		Context:       e.context,
+		Suggestions:   e.suggestions,
 		Cause:         causeStr,
 		Retryable:     e.retryable,
 		PartialResult: e.partialResult,

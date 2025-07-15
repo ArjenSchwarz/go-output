@@ -132,9 +132,9 @@ func (settings *OutputSettings) SetOutputFormat(format string) {
 
 func (settings *OutputSettings) GetDefaultExtension() string {
 	switch settings.OutputFormat {
-	case "markdown":
+	case formatMarkdown:
 		return ".md"
-	case "table":
+	case formatTable:
 		return ".txt"
 	default:
 		return "." + settings.OutputFormat
@@ -151,7 +151,7 @@ func (settings *OutputSettings) SetS3Bucket(client *s3.Client, bucket string, pa
 
 // NeedsFromToColumns verifies if a format requires from and to columns to be set
 func (settings *OutputSettings) NeedsFromToColumns() bool {
-	if settings.OutputFormat == "dot" || settings.OutputFormat == "mermaid" {
+	if settings.OutputFormat == formatDot || settings.OutputFormat == formatMermaid {
 		return true
 	}
 	return false
@@ -159,11 +159,11 @@ func (settings *OutputSettings) NeedsFromToColumns() bool {
 
 func (settings *OutputSettings) GetSeparator() string {
 	switch settings.OutputFormat {
-	case "table":
+	case formatTable:
 		return "\n"
-	case "markdown":
+	case formatMarkdown:
 		return "\n"
-	case "csv":
+	case formatCSV:
 		return "\n"
 	case "dot":
 		return ","
@@ -270,7 +270,7 @@ func (settings *OutputSettings) validateFormatSpecificRequirements() error {
 				"Or configure MermaidSettings for chart generation",
 			)
 		}
-	case "drawio":
+	case formatDrawio:
 		if !settings.DrawIOHeader.IsSet() {
 			return errors.NewValidationError(
 				errors.ErrMissingRequired,

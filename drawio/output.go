@@ -41,8 +41,7 @@ func CreateCSV(drawIOHeader Header, headerRow []string, contents []map[string]st
 	}
 	buf := new(bytes.Buffer)
 	fmt.Fprintf(buf, "%s", drawIOHeader.String())
-	_, err := buf.WriteTo(target)
-	if err != nil {
+	if _, err := buf.WriteTo(target); err != nil {
 		log.Fatal(err)
 	}
 	w := csv.NewWriter(target)

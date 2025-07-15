@@ -216,12 +216,12 @@ func (s *DefaultValueStrategy) Apply(err OutputError, context interface{}) (inte
 
 	data, exists := contextMap["Data"]
 	if !exists {
-		return nil, fmt.Errorf("Data not found in context")
+		return nil, fmt.Errorf("data not found in context")
 	}
 
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("Data must be map[string]interface{}")
+		return nil, fmt.Errorf("data must be map[string]interface{}")
 	}
 
 	// Create updated data with default value

@@ -174,8 +174,8 @@ func (v *FilePathValidator) validateFilePath(outputFile string) error {
 	if file, err := os.Create(tempFile); err != nil {
 		return v.createFilePathError(outputFile, fmt.Sprintf("Directory is not writable: %s", dir))
 	} else {
-		file.Close()
-		os.Remove(tempFile) // Clean up
+		_ = file.Close()
+		_ = os.Remove(tempFile) // Clean up
 	}
 
 	return nil

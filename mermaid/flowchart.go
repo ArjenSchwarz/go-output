@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// Flowchart represents a Mermaid flowchart diagram
 type Flowchart struct {
 	Direction string
 	Nodes     map[string]*Node
@@ -14,20 +15,24 @@ type Flowchart struct {
 	Settings  *Settings
 }
 
+// Node represents a node in a flowchart
 type Node struct {
 	id   string
 	name string
 }
 
+// Edge represents a connection between two nodes in a flowchart
 type Edge struct {
 	From *Node // Pointer to the Node where the Edge starts.
 	To   *Node // Pointer to the Node where the Edge ends.
 }
 
+// NewFlowchart creates a new flowchart with the specified settings
 func NewFlowchart(settings *Settings) *Flowchart {
 	return &Flowchart{Direction: "TB", Settings: settings}
 }
 
+// AddBasicNode adds a basic node to the flowchart
 func (flowchart *Flowchart) AddBasicNode(name string) {
 	if flowchart.Nodes == nil {
 		flowchart.Nodes = make(map[string]*Node)
@@ -40,6 +45,7 @@ func (flowchart *Flowchart) AddBasicNode(name string) {
 	flowchart.Nodes[name] = &node
 }
 
+// AddEdgeByNames adds an edge between two nodes specified by their names
 func (flowchart *Flowchart) AddEdgeByNames(from string, to string) {
 	var edges []*Edge
 	if flowchart.Edges != nil {
@@ -55,6 +61,7 @@ func (flowchart *Flowchart) AddEdgeByNames(from string, to string) {
 	flowchart.Edges = edges
 }
 
+// RenderString returns the Mermaid syntax representation of the flowchart
 func (flowchart *Flowchart) RenderString() string {
 	result := fmt.Sprintf("flowchart %s\n%s\n%s",
 		flowchart.Direction,

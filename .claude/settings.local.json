@@ -11,7 +11,9 @@
       "Bash(go build:*)",
       "Bash(rm:*)",
       "Bash(find:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(gh api:*)",
+      "Bash(golangci-lint run:*)"
     ],
     "deny": []
   }

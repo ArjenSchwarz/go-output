@@ -27,6 +27,17 @@ import (
 	"github.com/ArjenSchwarz/go-output/validators"
 )
 
+const (
+	formatCSV      = "csv"
+	formatHTML     = "html"
+	formatTable    = "table"
+	formatMarkdown = "markdown"
+	formatDrawio   = "drawio"
+	formatDot      = "dot"
+	formatYAML     = "yaml"
+	formatMermaid  = "mermaid"
+)
+
 var buffer bytes.Buffer
 var toc []string
 
@@ -81,25 +92,25 @@ func (output OutputArray) Write() {
 	stopActiveProgress()
 	var result []byte
 	switch output.Settings.OutputFormat {
-	case "csv":
+	case formatCSV:
 		if buffer.Len() == 0 {
 			result = output.toCSV()
 		} else {
 			result = buffer.Bytes()
 		}
-	case "html":
+	case formatHTML:
 		if buffer.Len() == 0 {
 			result = output.toHTML()
 		} else {
 			result = output.bufferToHTML()
 		}
-	case "table":
+	case formatTable:
 		if buffer.Len() == 0 {
 			result = output.toTable()
 		} else {
 			result = buffer.Bytes()
 		}
-	case "markdown":
+	case formatMarkdown:
 		if buffer.Len() == 0 {
 			result = output.toMarkdown()
 		} else {
@@ -110,17 +121,17 @@ func (output OutputArray) Write() {
 			log.Fatal("This command doesn't currently support the mermaid output format")
 		}
 		result = output.toMermaid()
-	case "drawio":
+	case formatDrawio:
 		if !output.Settings.DrawIOHeader.IsSet() {
 			log.Fatal("This command doesn't currently support the drawio output format")
 		}
 		drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
-	case "dot":
+	case formatDot:
 		if output.Settings.FromToColumns == nil {
 			log.Fatal("This command doesn't currently support the dot output format")
 		}
 		result = output.toDot()
-	case "yaml":
+	case formatYAML:
 		if buffer.Len() == 0 {
 			result = output.toYAML()
 		} else {
@@ -145,46 +156,46 @@ func (output OutputArray) Write() {
 			output.Settings.OutputFileFormat = output.Settings.OutputFormat
 		}
 		switch output.Settings.OutputFileFormat {
-		case "csv":
+		case formatCSV:
 			if buffer.Len() == 0 {
 				result = output.toCSV()
 			} else {
 				result = buffer.Bytes()
 			}
-		case "html":
+		case formatHTML:
 			if buffer.Len() == 0 {
 				result = output.toHTML()
 			} else {
 				result = output.bufferToHTML()
 			}
-		case "table":
+		case formatTable:
 			if buffer.Len() == 0 {
 				result = output.toTable()
 			} else {
 				result = buffer.Bytes()
 			}
-		case "markdown":
+		case formatMarkdown:
 			if buffer.Len() == 0 {
 				result = output.toMarkdown()
 			} else {
 				result = output.bufferToMarkdown()
 			}
-		case "mermaid":
+		case formatMermaid:
 			if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
 				log.Fatal("This command doesn't currently support the mermaid output format")
 			}
 			result = output.toMermaid()
-		case "drawio":
+		case formatDrawio:
 			if !output.Settings.DrawIOHeader.IsSet() {
 				log.Fatal("This command doesn't currently support the drawio output format")
 			}
 			drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
-		case "dot":
+		case formatDot:
 			if output.Settings.FromToColumns == nil {
 				log.Fatal("This command doesn't currently support the dot output format")
 			}
 			result = output.toDot()
-		case "yaml":
+		case formatYAML:
 			if buffer.Len() == 0 {
 				result = output.toYAML()
 			} else {
@@ -271,8 +282,7 @@ func (output OutputArray) toMermaid() []byte {
 		for _, holder := range output.Contents {
 			label := output.toString(holder.Contents[output.Settings.FromToColumns.From])
 			var value float64
-			switch converted := holder.Contents[output.Settings.FromToColumns.To].(type) {
-			case float64:
+			if converted, ok := holder.Contents[output.Settings.FromToColumns.To].(float64); ok {
 				value = converted
 			}
 			mermaid.AddValue(label, value)
@@ -315,13 +325,13 @@ func (output OutputArray) splitFromToValues() []fromToValues {
 
 func (output OutputArray) AddHeader(header string) {
 	switch output.Settings.OutputFormat {
-	case "html":
+	case formatHTML:
 		id := slug.Make(header)
 		buffer.Write([]byte(fmt.Sprintf("<h2 id='%s'>%s</h2>\n", id, header)))
 		toc = append(toc, fmt.Sprintf("<a href='#%s'>%s</a>", id, header))
-	case "table":
+	case formatTable:
 		buffer.Write([]byte(fmt.Sprintf("\n%s\n", header)))
-	case "markdown":
+	case formatMarkdown:
 		buffer.Write([]byte(fmt.Sprintf("## %s\n", header)))
 		id := slug.Make(header)
 		toc = append(toc, fmt.Sprintf("[%s](#%s)", header, id))
@@ -330,25 +340,25 @@ func (output OutputArray) AddHeader(header string) {
 
 func (output OutputArray) AddToBuffer() {
 	switch output.Settings.OutputFormat {
-	case "csv":
+	case formatCSV:
 		buffer.Write(output.toCSV())
-	case "html":
+	case formatHTML:
 		buffer.Write(output.HtmlTableOnly())
-	case "table":
+	case formatTable:
 		buffer.Write(output.toTable())
-	case "markdown":
+	case formatMarkdown:
 		buffer.Write(output.toMarkdown())
 	case "mermaid":
 		// if output.Settings.FromToColumns == nil {
 		// 	log.Fatal("This command doesn't currently support the mermaid output format")
 		// }
 		buffer.Write(output.toMermaid())
-	case "drawio":
+	case formatDrawio:
 		// if !output.Settings.DrawIOHeader.IsSet() {
 		// 	log.Fatal("This command doesn't currently support the drawio output format")
 		// }
 		// drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
-	case "dot":
+	case formatDot:
 		if output.Settings.FromToColumns == nil {
 			log.Fatal("This command doesn't currently support the dot output format")
 		}
@@ -493,7 +503,7 @@ func (output OutputArray) buildTable() table.Writer {
 	if output.Settings.OutputFile == "" || output.Settings.S3Bucket.Bucket != "" {
 		target = os.Stdout
 	} else {
-		//Always create if append flag isn't provided
+		// Always create if append flag isn't provided
 		if !output.Settings.ShouldAppend {
 			target, _ = os.Create(output.Settings.OutputFile)
 		} else {

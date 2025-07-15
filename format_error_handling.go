@@ -13,6 +13,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	chartTypeFlowchart  = "flowchart"
+	chartTypePiechart   = "piechart"
+	chartTypeGanttchart = "ganttchart"
+)
+
 // Enhanced format-specific error handling methods
 
 // toJSONWithErrorHandling generates JSON with comprehensive error handling
@@ -225,15 +231,15 @@ func (output *OutputArray) toMermaidWithErrorHandling() ([]byte, error) {
 	var result []byte
 
 	switch output.Settings.MermaidSettings.ChartType {
-	case "", "flowchart":
+	case "", chartTypeFlowchart:
 		result = output.generateFlowchartWithValidation()
-	case "piechart":
+	case chartTypePiechart:
 		data, err := output.generatePiechartWithValidation()
 		if err != nil {
 			return nil, err
 		}
 		result = data
-	case "ganttchart":
+	case chartTypeGanttchart:
 		data, err := output.generateGanttchartWithValidation()
 		if err != nil {
 			return nil, err
@@ -484,7 +490,7 @@ func (output *OutputArray) validateMermaidConfiguration() error {
 
 	chartType := output.Settings.MermaidSettings.ChartType
 	if chartType == "" {
-		chartType = "flowchart"
+		chartType = chartTypeFlowchart
 	}
 
 	switch chartType {
@@ -497,7 +503,7 @@ func (output *OutputArray) validateMermaidConfiguration() error {
 				"Use AddFromToColumns() to set source and target columns",
 			)
 		}
-	case "piechart":
+	case chartTypePiechart:
 		if output.Settings.FromToColumns == nil {
 			return errors.NewValidationError(
 				errors.ErrMissingRequired,
@@ -506,7 +512,7 @@ func (output *OutputArray) validateMermaidConfiguration() error {
 				"Use AddFromToColumns() to set label and value columns",
 			)
 		}
-	case "ganttchart":
+	case chartTypeGanttchart:
 		if output.Settings.MermaidSettings.GanttSettings == nil {
 			return errors.NewValidationError(
 				errors.ErrMissingRequired,

@@ -8,6 +8,7 @@ import (
 
 // DefaultConnectionStyle is the default style for connecting nodes.
 const DefaultConnectionStyle = "curved=1;endArrow=blockThin;endFill=1;fontSize=11;"
+// BidirectionalConnectionStyle is the style for bidirectional connections.
 const BidirectionalConnectionStyle = "curved=1;endArrow=blockThin;endFill=1;fontSize=11;startArrow=blockThin;startFill=1;"
 
 // DefaultParentStyle is the default style for parent-child relationships.
@@ -107,7 +108,8 @@ func (header *Header) AddConnection(connection Connection) {
 	if header.connections != nil {
 		connections = header.connections
 	}
-	header.connections = append(connections, connection)
+	connections = append(connections, connection)
+	header.connections = connections
 }
 
 // SetLayout sets the layout

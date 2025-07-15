@@ -7,6 +7,7 @@ import (
 // ErrorMode represents different error handling modes
 type ErrorMode int
 
+// Error handling modes
 const (
 	ErrorModeStrict      ErrorMode = iota // Fail fast on any error
 	ErrorModeLenient                      // Collect errors and continue where possible

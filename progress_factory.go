@@ -14,9 +14,9 @@ func NewProgress(settings *OutputSettings) Progress {
 		return newNoOpProgress(settings)
 	}
 	switch strings.ToLower(settings.OutputFormat) {
-	case "json", "yaml", "csv", "dot":
+	case "json", formatYAML, formatCSV, formatDot:
 		return newNoOpProgress(settings)
-	case "table", "markdown", "html":
+	case formatTable, formatMarkdown, formatHTML:
 		return newPrettyProgress(settings)
 	default:
 		return newNoOpProgress(settings)

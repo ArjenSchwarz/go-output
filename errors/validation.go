@@ -79,7 +79,7 @@ func (e *validationError) IsComposite() bool {
 // WithViolations creates a new ValidationError with the specified violations
 func (e *validationError) WithViolations(violations ...Violation) ValidationError {
 	newErr := &validationError{
-		baseError:  e.baseError.clone(),
+		baseError:  e.clone(),
 		violations: make([]Violation, len(violations)),
 	}
 	copy(newErr.violations, violations)
@@ -129,8 +129,8 @@ func (e *validationError) Wrap(cause error) OutputError {
 // MarshalJSON implements json.Marshaler interface for structured logging
 func (e *validationError) MarshalJSON() ([]byte, error) {
 	var causeStr string
-	if e.baseError.cause != nil {
-		causeStr = e.baseError.cause.Error()
+	if e.cause != nil {
+		causeStr = e.cause.Error()
 	}
 
 	return json.Marshal(struct {
@@ -143,11 +143,11 @@ func (e *validationError) MarshalJSON() ([]byte, error) {
 		Violations  []Violation  `json:"violations,omitempty"`
 		IsComposite bool         `json:"is_composite"`
 	}{
-		Code:        e.baseError.code,
-		Severity:    e.baseError.severity.String(),
-		Message:     e.baseError.message,
-		Context:     e.baseError.context,
-		Suggestions: e.baseError.suggestions,
+		Code:        e.code,
+		Severity:    e.severity.String(),
+		Message:     e.message,
+		Context:     e.context,
+		Suggestions: e.suggestions,
 		Cause:       causeStr,
 		Violations:  e.violations,
 		IsComposite: false,
@@ -191,7 +191,7 @@ func (e *compositeError) Error() string {
 	if totalViolations > 1 {
 		errorWord = "errors"
 	}
-	fmt.Fprintf(&b, "[%s] %d validation %s occurred", e.baseError.code, totalViolations, errorWord)
+	fmt.Fprintf(&b, "[%s] %d validation %s occurred", e.code, totalViolations, errorWord)
 
 	// Add violations from all errors
 	b.WriteString("\nValidation violations:\n")
@@ -204,9 +204,9 @@ func (e *compositeError) Error() string {
 	}
 
 	// Add suggestions from base error
-	if len(e.baseError.suggestions) > 0 {
+	if len(e.suggestions) > 0 {
 		b.WriteString("Suggestions:\n")
-		for _, suggestion := range e.baseError.suggestions {
+		for _, suggestion := range e.suggestions {
 			fmt.Fprintf(&b, "  - %s\n", suggestion)
 		}
 	}
@@ -231,7 +231,7 @@ func (e *compositeError) IsComposite() bool {
 // WithViolations creates a new CompositeError with additional violations
 func (e *compositeError) WithViolations(violations ...Violation) ValidationError {
 	newErr := &compositeError{
-		baseError: e.baseError.clone(),
+		baseError: e.clone(),
 		errors:    make([]ValidationError, len(e.errors)),
 	}
 	copy(newErr.errors, e.errors)
@@ -275,7 +275,7 @@ func (e *compositeError) ErrorOrNil() error {
 // Severity returns the highest severity level among all collected errors
 func (e *compositeError) Severity() ErrorSeverity {
 	if len(e.errors) == 0 {
-		return e.baseError.severity
+		return e.severity
 	}
 
 	maxSeverity := SeverityInfo
@@ -330,8 +330,8 @@ func (e *compositeError) Wrap(cause error) OutputError {
 // MarshalJSON implements json.Marshaler interface for structured logging
 func (e *compositeError) MarshalJSON() ([]byte, error) {
 	var causeStr string
-	if e.baseError.cause != nil {
-		causeStr = e.baseError.cause.Error()
+	if e.cause != nil {
+		causeStr = e.cause.Error()
 	}
 
 	return json.Marshal(struct {
@@ -345,11 +345,11 @@ func (e *compositeError) MarshalJSON() ([]byte, error) {
 		IsComposite bool         `json:"is_composite"`
 		ErrorCount  int          `json:"error_count"`
 	}{
-		Code:        e.baseError.code,
+		Code:        e.code,
 		Severity:    e.Severity().String(),
-		Message:     e.baseError.message,
-		Context:     e.baseError.context,
-		Suggestions: e.baseError.suggestions,
+		Message:     e.message,
+		Context:     e.context,
+		Suggestions: e.suggestions,
 		Cause:       causeStr,
 		Violations:  e.Violations(),
 		IsComposite: true,

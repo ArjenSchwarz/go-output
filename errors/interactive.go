@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const unknownString = "Unknown"
+
 // UserInteraction handles user interaction for error resolution
 type UserInteraction interface {
 	// PromptForResolution asks the user how to handle an error
@@ -25,6 +27,7 @@ type UserInteraction interface {
 // ResolutionChoice represents the user's choice for error resolution
 type ResolutionChoice int
 
+// User resolution choices
 const (
 	ResolutionIgnore    ResolutionChoice = iota // Ignore the error and continue
 	ResolutionRetry                             // Retry the operation
@@ -47,7 +50,7 @@ func (r ResolutionChoice) String() string {
 	case ResolutionAbort:
 		return "Abort"
 	default:
-		return "Unknown"
+		return unknownString
 	}
 }
 
@@ -498,7 +501,7 @@ func (h *InteractiveErrorHandler) handleInteractiveError(err OutputError) error 
 			return err
 
 		default:
-			// Unknown choice, treat as abort
+			// unknownString choice, treat as abort
 			return err
 		}
 	}
