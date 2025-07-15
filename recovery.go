@@ -9,7 +9,7 @@ import (
 // RecoveryHandler defines the interface for handling error recovery
 type RecoveryHandler interface {
 	// Recover attempts to recover from an error using configured strategies
-	Recover(err OutputError) error
+	Recover(err OutputError, context any) error
 	// CanRecover returns true if the error can be recovered from
 	CanRecover(err OutputError) bool
 	// AddStrategy adds a recovery strategy to the handler
@@ -61,7 +61,7 @@ func NewRecoveryHandlerWithStrategies(strategies ...RecoveryStrategy) *DefaultRe
 }
 
 // Recover attempts to recover from an error using configured strategies
-func (h *DefaultRecoveryHandler) Recover(err OutputError) error {
+func (h *DefaultRecoveryHandler) Recover(err OutputError, context any) error {
 	if !h.CanRecover(err) {
 		return err
 	}
@@ -69,9 +69,7 @@ func (h *DefaultRecoveryHandler) Recover(err OutputError) error {
 	// Try strategies in priority order
 	for _, strategy := range h.getSortedStrategies() {
 		if strategy.ApplicableFor(err) {
-			// For now, we pass nil as context - in a full implementation,
-			// this would be the actual context (OutputArray, OutputSettings, etc.)
-			if _, recoveryErr := strategy.Apply(err, nil); recoveryErr == nil {
+			if _, recoveryErr := strategy.Apply(err, context); recoveryErr == nil {
 				// Recovery successful
 				return nil
 			}

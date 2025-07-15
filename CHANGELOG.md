@@ -1,6 +1,15 @@
 
 ## [Unreleased]
 
+### Fixed
+- Recovery framework context handling in error recovery operations
+  - Updated RecoveryHandler.Recover() method to accept context parameter for proper recovery strategy execution
+  - Fixed integration tests to pass OutputArray context to recovery operations
+  - Improved DefaultRecoveryHandler to utilize provided context instead of nil values
+- OutputSettings validation constants
+  - Added DefaultTableMaxColumnWidth constant for better maintainability
+  - Replaced magic number 50 with named constant in validation logic
+
 ### Added
 - Interactive error resolution system for user-guided error handling
   - InteractiveErrorResolver with customizable prompts and fix suggestions

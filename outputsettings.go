@@ -12,6 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+// DefaultTableMaxColumnWidth is the default maximum column width for table output
+const DefaultTableMaxColumnWidth = 50
+
 // TableStyles is a lookup map for getting the table styles based on a string
 var TableStyles = map[string]table.Style{
 	"Default":                    table.StyleDefault,
@@ -92,7 +95,7 @@ type FromToColumns struct {
 func NewOutputSettings() *OutputSettings {
 	settings := OutputSettings{
 		TableStyle:          table.StyleDefault,
-		TableMaxColumnWidth: 50,
+		TableMaxColumnWidth: DefaultTableMaxColumnWidth,
 		MermaidSettings:     &mermaid.Settings{},
 	}
 	env := strings.ToLower(os.Getenv("GO_OUTPUT_PROGRESS"))
@@ -551,7 +554,7 @@ func (settings *OutputSettings) validateSettingCombinations() error {
 	// Validate table-specific settings with non-table formats
 	if settings.OutputFormat != "table" && settings.OutputFormat != "html" && settings.OutputFormat != "markdown" {
 		// Only warn if TableMaxColumnWidth has been explicitly set to a non-default value
-		if settings.TableMaxColumnWidth != 0 && settings.TableMaxColumnWidth != 50 { // 50 is the default
+		if settings.TableMaxColumnWidth != 0 && settings.TableMaxColumnWidth != DefaultTableMaxColumnWidth {
 			return NewErrorBuilder(ErrIncompatibleConfig, fmt.Sprintf("TableMaxColumnWidth setting is not applicable for %s format", settings.OutputFormat)).
 				WithField("TableMaxColumnWidth").
 				WithValue(settings.TableMaxColumnWidth).

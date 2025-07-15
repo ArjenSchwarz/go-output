@@ -364,8 +364,15 @@ func TestRecoveryAndContinuationScenarios(t *testing.T) {
 					t.Error("recovery handler should be able to recover from format errors")
 				}
 
-				// Test recovery attempt
-				recoveryErr := handler.Recover(formatError)
+				// Test recovery attempt - pass OutputArray as context
+				output := &OutputArray{
+					Settings: NewOutputSettings(),
+					Keys:     []string{"Name", "Value"},
+					Contents: []OutputHolder{
+						{Contents: map[string]interface{}{"Name": "test", "Value": 123}},
+					},
+				}
+				recoveryErr := handler.Recover(formatError, output)
 				if recoveryErr == formatError {
 					// Recovery didn't work, but that's expected in this test setup
 					// since we don't have the full context
@@ -409,8 +416,15 @@ func TestRecoveryAndContinuationScenarios(t *testing.T) {
 					t.Error("recovery handler should be able to recover from missing data errors")
 				}
 
-				// Test recovery attempt
-				recoveryErr := handler.Recover(missingDataError)
+				// Test recovery attempt - pass OutputArray as context
+				output := &OutputArray{
+					Settings: NewOutputSettings(),
+					Keys:     []string{"Name", "Value", "Optional"},
+					Contents: []OutputHolder{
+						{Contents: map[string]interface{}{"Name": "test", "Value": 123}},
+					},
+				}
+				recoveryErr := handler.Recover(missingDataError, output)
 				if recoveryErr != nil && recoveryErr != missingDataError {
 					t.Errorf("unexpected recovery error: %v", recoveryErr)
 				}
@@ -446,8 +460,15 @@ func TestRecoveryAndContinuationScenarios(t *testing.T) {
 					t.Error("recovery handler should be able to recover from retryable errors")
 				}
 
-				// Test recovery attempt
-				recoveryErr := handler.Recover(retryableError)
+				// Test recovery attempt - pass OutputArray as context
+				output := &OutputArray{
+					Settings: NewOutputSettings(),
+					Keys:     []string{"Name", "Value"},
+					Contents: []OutputHolder{
+						{Contents: map[string]interface{}{"Name": "test", "Value": 123}},
+					},
+				}
+				recoveryErr := handler.Recover(retryableError, output)
 				if recoveryErr != nil && recoveryErr != retryableError {
 					t.Errorf("unexpected recovery error: %v", recoveryErr)
 				}
