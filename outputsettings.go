@@ -34,6 +34,7 @@ var TableStyles = map[string]table.Style{
 	"ColoredYellowWhiteOnBlack":  table.StyleColoredYellowWhiteOnBlack,
 }
 
+// OutputSettings contains configuration for output generation
 type OutputSettings struct {
 	// Defines whether a table of contents should be added
 	HasTOC bool
@@ -77,6 +78,7 @@ type OutputSettings struct {
 	ProgressOptions ProgressOptions
 }
 
+// S3Output contains configuration for S3 output
 type S3Output struct {
 	S3Client *s3.Client
 	Bucket   string
@@ -115,7 +117,7 @@ func (settings *OutputSettings) AddFromToColumns(from string, to string) {
 	settings.FromToColumns = &result
 }
 
-// AddFromToColumns sets from to columns for graphical formats
+// AddFromToColumnsWithLabel sets from to columns with label for graphical formats
 func (settings *OutputSettings) AddFromToColumnsWithLabel(from string, to string, label string) {
 	result := FromToColumns{
 		From:  from,
@@ -130,6 +132,7 @@ func (settings *OutputSettings) SetOutputFormat(format string) {
 	settings.OutputFormat = strings.ToLower(format)
 }
 
+// GetDefaultExtension returns the default file extension for the output format
 func (settings *OutputSettings) GetDefaultExtension() string {
 	switch settings.OutputFormat {
 	case formatMarkdown:
@@ -141,6 +144,7 @@ func (settings *OutputSettings) GetDefaultExtension() string {
 	}
 }
 
+// SetS3Bucket sets the S3 bucket configuration for output
 func (settings *OutputSettings) SetS3Bucket(client *s3.Client, bucket string, path string) {
 	settings.S3Bucket = S3Output{
 		S3Client: client,
@@ -157,6 +161,7 @@ func (settings *OutputSettings) NeedsFromToColumns() bool {
 	return false
 }
 
+// GetSeparator returns the separator string for the output format
 func (settings *OutputSettings) GetSeparator() string {
 	switch settings.OutputFormat {
 	case formatTable:
@@ -165,7 +170,7 @@ func (settings *OutputSettings) GetSeparator() string {
 		return "\n"
 	case formatCSV:
 		return "\n"
-	case "dot":
+	case formatDot:
 		return ","
 	default:
 		return ", "
@@ -279,7 +284,7 @@ func (settings *OutputSettings) validateFormatSpecificRequirements() error {
 				"Configure DrawIOHeader before using drawio format",
 			)
 		}
-	case "dot":
+	case formatDot:
 		if settings.FromToColumns == nil {
 			return errors.NewValidationError(
 				errors.ErrMissingRequired,

@@ -172,7 +172,7 @@ func (output *OutputArray) validateForFormat() error {
 	}
 
 	switch output.Settings.OutputFormat {
-	case "mermaid":
+	case formatMermaid:
 		if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
 			return errors.NewError(
 				errors.ErrMissingRequired,
@@ -186,7 +186,7 @@ func (output *OutputArray) validateForFormat() error {
 				Value:     "mermaid",
 			})
 		}
-	case "drawio":
+	case formatDrawio:
 		if !output.Settings.DrawIOHeader.IsSet() {
 			return errors.NewError(
 				errors.ErrMissingRequired,
@@ -199,7 +199,7 @@ func (output *OutputArray) validateForFormat() error {
 				Value:     "drawio",
 			})
 		}
-	case "dot":
+	case formatDot:
 		if output.Settings.FromToColumns == nil {
 			return errors.NewError(
 				errors.ErrMissingRequired,
@@ -256,11 +256,11 @@ func (output *OutputArray) generateWithErrorHandling() ([]byte, error) {
 		} else {
 			result, err = output.bufferToMarkdownWithError()
 		}
-	case "mermaid":
+	case formatMermaid:
 		result, err = output.toMermaidWithError()
-	case "drawio":
+	case formatDrawio:
 		err = output.toDrawIOWithError()
-	case "dot":
+	case formatDot:
 		result, err = output.toDotWithError()
 	case "yaml":
 		if buffer.Len() == 0 {
@@ -351,11 +351,11 @@ func (output *OutputArray) generateFileOutput() ([]byte, error) {
 		} else {
 			result, err = output.bufferToMarkdownWithError()
 		}
-	case "mermaid":
+	case formatMermaid:
 		result, err = output.toMermaidWithError()
-	case "drawio":
+	case formatDrawio:
 		err = output.toDrawIOWithError()
-	case "dot":
+	case formatDot:
 		result, err = output.toDotWithError()
 	case "yaml":
 		if buffer.Len() == 0 {
@@ -461,11 +461,12 @@ func (output *OutputArray) bufferToMarkdownWithError() ([]byte, error) {
 	return output.bufferToMarkdown(), nil
 }
 
-// Adapter methods to implement validators.OutputArray interface
+// GetKeys returns the keys of the output array
 func (output *OutputArray) GetKeys() []string {
 	return output.Keys
 }
 
+// GetContents returns the contents of the output array
 func (output *OutputArray) GetContents() []validators.OutputHolder {
 	holders := make([]validators.OutputHolder, len(output.Contents))
 	for i, holder := range output.Contents {

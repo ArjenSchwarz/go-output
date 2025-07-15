@@ -8,6 +8,7 @@ import (
 
 // DefaultConnectionStyle is the default style for connecting nodes.
 const DefaultConnectionStyle = "curved=1;endArrow=blockThin;endFill=1;fontSize=11;"
+
 // BidirectionalConnectionStyle is the style for bidirectional connections.
 const BidirectionalConnectionStyle = "curved=1;endArrow=blockThin;endFill=1;fontSize=11;startArrow=blockThin;startFill=1;"
 

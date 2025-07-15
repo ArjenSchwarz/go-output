@@ -90,3 +90,13 @@ The library implements a sophisticated error handling system with:
 - Recovery mechanisms for common failures
 - Interactive error handling for user prompts
 - Comprehensive error reporting and metrics
+
+## Agentic tasks
+
+After finish of a task and before committing any code, ensure:
+
+1. All go files in the project are formatted correctly. Check the status using `gofmt -l $(git ls-files '*.go')`
+2. All tests in the project succeed using `go test ./...`
+3. All linting issues have been resolved, which can be checked using `golangci-lint run`
+
+If any of these fail, address that first.

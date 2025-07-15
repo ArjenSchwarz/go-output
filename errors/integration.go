@@ -449,6 +449,7 @@ func (s *IntegratedErrorSystem) processErrorInternal(err error) error {
 	if s.reporter != nil {
 		// Note: In a real implementation, this would call the reporter
 		// s.reporter.Report(outputErr)
+		_ = s.reporter // Avoid unused variable warning
 	}
 
 	// Try recovery first
@@ -492,6 +493,7 @@ func (s *IntegratedErrorSystem) Clear() {
 	if s.reporter != nil {
 		// Note: In a real implementation, this would call the reporter's Clear method
 		// s.reporter.Clear()
+		_ = s.reporter // Avoid unused variable warning
 	}
 	s.profiler.Clear()
 }

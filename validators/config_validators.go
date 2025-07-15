@@ -11,6 +11,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+const (
+	formatMermaid = "mermaid"
+	formatDot     = "dot"
+)
+
 // OutputSettings interface defines the methods required for configuration validation
 // This interface allows validators to work with different OutputSettings implementations
 type OutputSettings interface {
@@ -372,14 +377,14 @@ func (v *CompatibilityValidator) validateMockSettings(settings *mockOutputSettin
 
 	// Check format-specific requirements
 	switch settings.OutputFormat {
-	case "mermaid":
+	case formatMermaid:
 		if settings.FromToColumns == nil && settings.MermaidSettings == nil {
 			composite.Add(v.createRequirementError(
 				"mermaid format requires either FromToColumns or MermaidSettings",
 				"Configure FromToColumns for flowcharts or MermaidSettings for other chart types",
 			))
 		}
-	case "dot":
+	case formatDot:
 		if settings.FromToColumns == nil {
 			composite.Add(v.createRequirementError(
 				"dot format requires FromToColumns configuration",
@@ -405,14 +410,14 @@ func (v *CompatibilityValidator) validateSettings(settings OutputSettings) error
 
 	// Check format-specific requirements
 	switch settings.GetOutputFormat() {
-	case "mermaid":
+	case formatMermaid:
 		if settings.GetFromToColumns() == nil && settings.GetMermaidSettings() == nil {
 			composite.Add(v.createRequirementError(
 				"mermaid format requires either FromToColumns or MermaidSettings",
 				"Configure FromToColumns for flowcharts or MermaidSettings for other chart types",
 			))
 		}
-	case "dot":
+	case formatDot:
 		if settings.GetFromToColumns() == nil {
 			composite.Add(v.createRequirementError(
 				"dot format requires FromToColumns configuration",

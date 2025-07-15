@@ -116,7 +116,7 @@ func (output OutputArray) Write() {
 		} else {
 			result = output.bufferToMarkdown()
 		}
-	case "mermaid":
+	case formatMermaid:
 		if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
 			log.Fatal("This command doesn't currently support the mermaid output format")
 		}
@@ -323,6 +323,7 @@ func (output OutputArray) splitFromToValues() []fromToValues {
 	return resultList
 }
 
+// AddHeader adds a header to the output based on the output format
 func (output OutputArray) AddHeader(header string) {
 	switch output.Settings.OutputFormat {
 	case formatHTML:
@@ -338,6 +339,7 @@ func (output OutputArray) AddHeader(header string) {
 	}
 }
 
+// AddToBuffer adds the output array to the global buffer
 func (output OutputArray) AddToBuffer() {
 	switch output.Settings.OutputFormat {
 	case formatCSV:
@@ -348,7 +350,7 @@ func (output OutputArray) AddToBuffer() {
 		buffer.Write(output.toTable())
 	case formatMarkdown:
 		buffer.Write(output.toMarkdown())
-	case "mermaid":
+	case formatMermaid:
 		// if output.Settings.FromToColumns == nil {
 		// 	log.Fatal("This command doesn't currently support the mermaid output format")
 		// }
@@ -491,7 +493,7 @@ func (output OutputArray) buildTable() table.Writer {
 	t := table.NewWriter()
 	if output.Settings.Title != "" {
 		// Ugly hack because go-pretty uses a h1 (#) for the table title in Markdown
-		if (output.Settings.OutputFormat == "markdown") && buffer.Len() != 0 {
+		if (output.Settings.OutputFormat == formatMarkdown) && buffer.Len() != 0 {
 			buffer.WriteString(fmt.Sprintf("#### %s\n\n", output.Settings.Title))
 		} else {
 			t.SetTitle(output.Settings.Title)
@@ -528,6 +530,7 @@ func (output OutputArray) buildTable() table.Writer {
 	return t
 }
 
+// KeysAsInterface returns the keys as a slice of interfaces
 func (output *OutputArray) KeysAsInterface() []interface{} {
 	b := make([]interface{}, len(output.Keys))
 	for i := range output.Keys {
@@ -537,6 +540,7 @@ func (output *OutputArray) KeysAsInterface() []interface{} {
 	return b
 }
 
+// ContentsAsInterfaces returns the contents as a slice of slices of interfaces
 func (output *OutputArray) ContentsAsInterfaces() [][]interface{} {
 	total := make([][]interface{}, 0)
 
