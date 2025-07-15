@@ -9,28 +9,6 @@ import (
 	"github.com/ArjenSchwarz/go-output/validators"
 )
 
-// Add error handling fields to OutputArray struct (we'll modify the original struct after tests pass)
-type ErrorEnabledOutputArray struct {
-	*OutputArray
-	validators      []validators.Validator
-	errorHandler    errors.ErrorHandler
-	recoveryHandler errors.RecoveryHandler
-}
-
-// NewErrorEnabledOutputArray creates a new error-enabled OutputArray
-func NewErrorEnabledOutputArray(settings *OutputSettings) *ErrorEnabledOutputArray {
-	return &ErrorEnabledOutputArray{
-		OutputArray: &OutputArray{
-			Settings: settings,
-			Contents: make([]OutputHolder, 0),
-			Keys:     make([]string, 0),
-		},
-		validators:      make([]validators.Validator, 0),
-		errorHandler:    errors.NewDefaultErrorHandler(),
-		recoveryHandler: nil,
-	}
-}
-
 // Validate runs all validators against the OutputArray
 func (output *OutputArray) Validate() error {
 	// Initialize error handling fields if not present (for backward compatibility)

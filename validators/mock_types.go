@@ -47,11 +47,19 @@ func (m *mockOutputSettings) GetS3Bucket() S3Output {
 }
 
 func (m *mockOutputSettings) GetFromToColumns() *FromToColumns {
-	return nil // Simplify for now
+	if m.FromToColumns == nil {
+		return nil
+	}
+	var result FromToColumns = m.FromToColumns
+	return &result
 }
 
 func (m *mockOutputSettings) GetMermaidSettings() *MermaidSettings {
-	return nil // Simplify for now
+	if m.MermaidSettings == nil {
+		return nil
+	}
+	var result MermaidSettings = m.MermaidSettings
+	return &result
 }
 
 func (m *mockS3Output) GetS3Client() *s3.Client {
