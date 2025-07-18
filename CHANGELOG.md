@@ -1,3 +1,6 @@
+1.5.1 / 2025-07-18
+
+  * Add fix for bug where AddToBuffer and different output formats didn't work nice together.
 
 1.5.0 / 2025-07-18
 ==================
