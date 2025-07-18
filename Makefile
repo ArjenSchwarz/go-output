@@ -1,0 +1,39 @@
+# Declare all phony targets
+.PHONY: all build deps test local clean compile shapes go-functions help
+
+# Default target
+all: build
+
+# Help target
+help:
+	@echo "Available targets:"
+	@echo "  all         - Build the project (same as build)"
+	@echo "  build       - Run tests, clean, and compile"
+	@echo "  test        - Run tests"
+	@echo "  lint        - Run linters"
+	@echo "  clean       - Clean build artifacts"
+	@echo "  compile     - Compile the binary"
+	@echo "  go-functions - List all Go functions in the project"
+
+# Build targets
+build: test clean compile
+
+compile:
+	CGO_ENABLED=0 go build -buildvcs=false
+
+# Testing and linting
+test:
+	@echo "Running tests..."
+	CGO_ENABLED=0 go test ./...
+
+lint:
+	@echo "Running linters..."
+	golangci-lint run --timeout 5m
+
+# Utility targets
+clean:
+	go clean
+
+go-functions:
+	@echo "Finding all functions in the project..."
+	@grep -r "^func " . --include="*.go" | grep -v vendor/
