@@ -46,15 +46,20 @@ func TestOutputArray_AddToBuffer(t *testing.T) {
 	oa := OutputArray{Settings: s, Keys: []string{"Name"}}
 	oa.AddContents(map[string]interface{}{"Name": "A"})
 	resetGlobals()
+	expectedCSV := oa.toCSV()
 	oa.AddToBuffer()
-	if !bytes.Equal(buffer.Bytes(), oa.toCSV()) {
+	if !bytes.Equal(buffer.Bytes(), expectedCSV) {
 		t.Errorf("csv AddToBuffer output mismatch")
 	}
+	
+	// Reset for table test
 	s.OutputFormat = "table"
 	buffer.Reset()
 	oa.Settings = s
+	oa.AddContents(map[string]interface{}{"Name": "A"}) // Re-add content since AddToBuffer cleared it
+	expectedTable := oa.toTable()
 	oa.AddToBuffer()
-	if !bytes.Equal(buffer.Bytes(), oa.toTable()) {
+	if !bytes.Equal(buffer.Bytes(), expectedTable) {
 		t.Errorf("table AddToBuffer output mismatch")
 	}
 }

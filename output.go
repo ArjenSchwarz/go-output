@@ -133,7 +133,6 @@ func (output OutputArray) Write() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		buffer.Reset()
 	}
 	if output.Settings.OutputFile != "" {
 		if output.Settings.OutputFileFormat == "" {
@@ -308,7 +307,7 @@ func (output OutputArray) splitFromToValues() []fromToValues {
 	return resultList
 }
 
-func (output OutputArray) AddHeader(header string) {
+func (output *OutputArray) AddHeader(header string) {
 	switch output.Settings.OutputFormat {
 	case "html":
 		id := slug.Make(header)
@@ -323,7 +322,7 @@ func (output OutputArray) AddHeader(header string) {
 	}
 }
 
-func (output OutputArray) AddToBuffer() {
+func (output *OutputArray) AddToBuffer() {
 	switch output.Settings.OutputFormat {
 	case "csv":
 		buffer.Write(output.toCSV())
@@ -351,6 +350,8 @@ func (output OutputArray) AddToBuffer() {
 	default:
 		buffer.Write(output.toJSON())
 	}
+	// Clear contents after adding to buffer to prepare for next section
+	output.Contents = nil
 }
 
 func (output OutputArray) bufferToHTML() []byte {
