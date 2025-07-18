@@ -28,6 +28,19 @@ import (
 var buffer bytes.Buffer
 var toc []string
 
+// Store raw data for dual output format support
+var savedRawData []OutputHolder
+var savedAllKeys []string
+
+// Store section structure for table-based formats
+type SavedSection struct {
+	Title    string
+	Keys     []string
+	Contents []OutputHolder
+}
+
+var savedSections []SavedSection
+
 // OutputHolder holds key-value pairs that belong together in the output
 type OutputHolder struct {
 	Contents map[string]interface{}
@@ -56,6 +69,21 @@ func (output OutputArray) GetContentsMap() []map[string]string {
 	return total
 }
 
+// GetContentsMapWithAllKeys returns a stringmap of the output contents using all collected keys
+func (output OutputArray) GetContentsMapWithAllKeys() []map[string]string {
+	total := make([]map[string]string, 0, len(output.Contents))
+	for _, holder := range output.Contents {
+		values := make(map[string]string)
+		for _, key := range savedAllKeys {
+			if val, ok := holder.Contents[key]; ok {
+				values[key] = output.toString(val)
+			}
+		}
+		total = append(total, values)
+	}
+	return total
+}
+
 // GetContentsMapRaw returns a interface map of the output contents
 func (output OutputArray) GetContentsMapRaw() []map[string]interface{} {
 	total := make([]map[string]interface{}, 0, len(output.Contents))
@@ -71,10 +99,43 @@ func (output OutputArray) GetContentsMapRaw() []map[string]interface{} {
 	return total
 }
 
+// GetContentsMapRawWithAllKeys returns a interface map of the output contents using all collected keys
+func (output OutputArray) GetContentsMapRawWithAllKeys() []map[string]interface{} {
+	total := make([]map[string]interface{}, 0, len(output.Contents))
+	for _, holder := range output.Contents {
+		values := make(map[string]interface{})
+		for _, key := range savedAllKeys {
+			if val, ok := holder.Contents[key]; ok {
+				values[key] = val
+			}
+		}
+		total = append(total, values)
+	}
+	return total
+}
+
 // Write will provide the output as configured in the configuration
 func (output OutputArray) Write() {
 	stopActiveProgress()
 	var result []byte
+	var savedBufferContent []byte
+	var savedContents []OutputHolder
+
+	// Save buffer content and data if they exist for potential file output use
+	if buffer.Len() > 0 {
+		savedBufferContent = make([]byte, buffer.Len())
+		copy(savedBufferContent, buffer.Bytes())
+		// Note: Contents might be nil due to AddToBuffer clearing them
+		// We'll need to extract data from buffer for different format generation
+	}
+
+	// Save contents for file output regeneration if needed
+	if output.Contents != nil {
+		savedContents = make([]OutputHolder, len(output.Contents))
+		copy(savedContents, output.Contents)
+	}
+
+	// Handle stdout output
 	switch output.Settings.OutputFormat {
 	case "csv":
 		if buffer.Len() == 0 {
@@ -134,70 +195,212 @@ func (output OutputArray) Write() {
 			log.Fatal(err.Error())
 		}
 	}
+
+	// Handle file output with proper dual format support
 	if output.Settings.OutputFile != "" {
 		if output.Settings.OutputFileFormat == "" {
 			output.Settings.OutputFileFormat = output.Settings.OutputFormat
 		}
-		switch output.Settings.OutputFileFormat {
-		case "csv":
-			if buffer.Len() == 0 {
-				result = output.toCSV()
+
+		// Check if we need to generate different format for file or if we have multi-key sections
+		needsDifferentFormat := len(savedBufferContent) > 0 &&
+			output.Settings.OutputFileFormat != output.Settings.OutputFormat &&
+			!output.supportsBufferConversion(output.Settings.OutputFileFormat)
+
+		needsAllKeysGeneration := len(savedAllKeys) > 0 && len(savedRawData) > 0
+
+		if needsDifferentFormat || needsAllKeysGeneration {
+			// Generate content in the file format using saved raw data
+			if len(savedRawData) > 0 {
+				// Create a temporary OutputArray with saved data
+				// Use all collected keys if available, otherwise fall back to current keys
+				keysToUse := output.Keys
+				if len(savedAllKeys) > 0 {
+					keysToUse = savedAllKeys
+				}
+				tempOutput := OutputArray{
+					Settings: output.Settings,
+					Contents: savedRawData,
+					Keys:     keysToUse,
+				}
+
+				switch output.Settings.OutputFileFormat {
+				case "csv":
+					if len(savedSections) > 0 {
+						result = tempOutput.toCSVWithSections()
+					} else {
+						result = tempOutput.toCSV()
+					}
+				case "html":
+					if len(savedSections) > 0 {
+						result = tempOutput.toHTMLWithSections()
+					} else {
+						result = tempOutput.toHTML()
+					}
+				case "table":
+					if len(savedSections) > 0 {
+						result = tempOutput.toTableWithSections()
+					} else {
+						result = tempOutput.toTable()
+					}
+				case "markdown":
+					if len(savedSections) > 0 {
+						result = tempOutput.toMarkdownWithSections()
+					} else {
+						result = tempOutput.toMarkdown()
+					}
+				case "mermaid":
+					if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
+						log.Fatal("This command doesn't currently support the mermaid output format")
+					}
+					result = tempOutput.toMermaid()
+				case "drawio":
+					if !output.Settings.DrawIOHeader.IsSet() {
+						log.Fatal("This command doesn't currently support the drawio output format")
+					}
+					if len(savedAllKeys) > 0 {
+						drawio.CreateCSV(output.Settings.DrawIOHeader, savedAllKeys, tempOutput.GetContentsMapWithAllKeys(), output.Settings.OutputFile)
+					} else {
+						drawio.CreateCSV(output.Settings.DrawIOHeader, tempOutput.Keys, tempOutput.GetContentsMap(), output.Settings.OutputFile)
+					}
+					return
+				case "dot":
+					if output.Settings.FromToColumns == nil {
+						log.Fatal("This command doesn't currently support the dot output format")
+					}
+					result = tempOutput.toDot()
+				case "yaml":
+					if len(savedAllKeys) > 0 {
+						result = tempOutput.toYAMLWithAllKeys()
+					} else {
+						result = tempOutput.toYAML()
+					}
+				default:
+					if len(savedAllKeys) > 0 {
+						result = tempOutput.toJSONWithAllKeys()
+					} else {
+						result = tempOutput.toJSON()
+					}
+				}
 			} else {
-				result = buffer.Bytes()
+				// Fallback to existing behavior if no saved data
+				switch output.Settings.OutputFileFormat {
+				case "csv":
+					result = output.toCSV()
+				case "html":
+					result = output.toHTML()
+				case "table":
+					result = output.toTable()
+				case "markdown":
+					result = output.toMarkdown()
+				case "mermaid":
+					if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
+						log.Fatal("This command doesn't currently support the mermaid output format")
+					}
+					result = output.toMermaid()
+				case "drawio":
+					if !output.Settings.DrawIOHeader.IsSet() {
+						log.Fatal("This command doesn't currently support the drawio output format")
+					}
+					drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+					return
+				case "dot":
+					if output.Settings.FromToColumns == nil {
+						log.Fatal("This command doesn't currently support the dot output format")
+					}
+					result = output.toDot()
+				case "yaml":
+					result = output.toYAML()
+				default:
+					result = output.toJSON()
+				}
 			}
-		case "html":
-			if buffer.Len() == 0 {
-				result = output.toHTML()
-			} else {
-				result = output.bufferToHTML()
-			}
-		case "table":
-			if buffer.Len() == 0 {
-				result = output.toTable()
-			} else {
-				result = buffer.Bytes()
-			}
-		case "markdown":
-			if buffer.Len() == 0 {
-				result = output.toMarkdown()
-			} else {
-				result = output.bufferToMarkdown()
-			}
-		case "mermaid":
-			if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
-				log.Fatal("This command doesn't currently support the mermaid output format")
-			}
-			result = output.toMermaid()
-		case "drawio":
-			if !output.Settings.DrawIOHeader.IsSet() {
-				log.Fatal("This command doesn't currently support the drawio output format")
-			}
-			drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
-		case "dot":
-			if output.Settings.FromToColumns == nil {
-				log.Fatal("This command doesn't currently support the dot output format")
-			}
-			result = output.toDot()
-		case "yaml":
-			if buffer.Len() == 0 {
-				result = output.toYAML()
-			} else {
-				result = buffer.Bytes()
-			}
-		default:
-			if buffer.Len() == 0 {
-				result = output.toJSON()
-			} else {
-				result = buffer.Bytes()
+		} else {
+			// Use existing logic for file output
+			switch output.Settings.OutputFileFormat {
+			case "csv":
+				if buffer.Len() == 0 {
+					result = output.toCSV()
+				} else {
+					result = buffer.Bytes()
+				}
+			case "html":
+				if buffer.Len() == 0 {
+					result = output.toHTML()
+				} else {
+					result = output.bufferToHTML()
+				}
+			case "table":
+				if buffer.Len() == 0 {
+					result = output.toTable()
+				} else {
+					result = buffer.Bytes()
+				}
+			case "markdown":
+				if buffer.Len() == 0 {
+					result = output.toMarkdown()
+				} else {
+					result = output.bufferToMarkdown()
+				}
+			case "mermaid":
+				if output.Settings.FromToColumns == nil && output.Settings.MermaidSettings == nil {
+					log.Fatal("This command doesn't currently support the mermaid output format")
+				}
+				result = output.toMermaid()
+			case "drawio":
+				if !output.Settings.DrawIOHeader.IsSet() {
+					log.Fatal("This command doesn't currently support the drawio output format")
+				}
+				drawio.CreateCSV(output.Settings.DrawIOHeader, output.Keys, output.GetContentsMap(), output.Settings.OutputFile)
+				return
+			case "dot":
+				if output.Settings.FromToColumns == nil {
+					log.Fatal("This command doesn't currently support the dot output format")
+				}
+				result = output.toDot()
+			case "yaml":
+				if buffer.Len() == 0 {
+					result = output.toYAML()
+				} else {
+					result = buffer.Bytes()
+				}
+			default:
+				if buffer.Len() == 0 {
+					result = output.toJSON()
+				} else {
+					result = buffer.Bytes()
+				}
 			}
 		}
+
 		if len(result) != 0 {
 			err := PrintByteSlice(result, output.Settings.OutputFile, output.Settings.S3Bucket)
 			if err != nil {
 				log.Fatal(err.Error())
 			}
-			buffer.Reset()
 		}
+	}
+
+	// Reset buffer and saved raw data after all output operations
+	buffer.Reset()
+	savedRawData = nil
+	savedAllKeys = nil
+	savedSections = nil
+}
+
+// supportsBufferConversion checks if a format supports converting buffer content
+// rather than regenerating from raw data
+func (output OutputArray) supportsBufferConversion(format string) bool {
+	// Only HTML and Markdown support buffer conversion, and only when the source format
+	// is also HTML or Markdown respectively. If converting from table to HTML/Markdown,
+	// we need to regenerate from raw data.
+	switch format {
+	case "html":
+		return output.Settings.OutputFormat == "html" // Only if source is also HTML
+	case "markdown":
+		return output.Settings.OutputFormat == "markdown" // Only if source is also Markdown
+	default:
+		return false // Other formats like json, yaml, csv need to be regenerated from raw data
 	}
 }
 
@@ -212,6 +415,227 @@ func (output OutputArray) toCSV() []byte {
 func (output OutputArray) toJSON() []byte {
 	jsonString, _ := json.Marshal(output.GetContentsMapRaw())
 	return jsonString
+}
+
+// toJSONWithAllKeys generates JSON using all collected keys from AddToBuffer operations
+func (output OutputArray) toJSONWithAllKeys() []byte {
+	total := make([]map[string]interface{}, 0, len(output.Contents))
+	for _, holder := range output.Contents {
+		values := make(map[string]interface{})
+		for _, key := range savedAllKeys {
+			if val, ok := holder.Contents[key]; ok {
+				values[key] = val
+			}
+		}
+		total = append(total, values)
+	}
+	jsonString, _ := json.Marshal(total)
+	return jsonString
+}
+
+func (output OutputArray) toCSVWithAllKeys() []byte {
+	tableBuf := new(bytes.Buffer)
+	t := output.buildTableWithAllKeys()
+	t.SetOutputMirror(tableBuf)
+	t.RenderCSV()
+	return tableBuf.Bytes()
+}
+
+func (output OutputArray) toHTMLWithAllKeys() []byte {
+	var baseTemplate string
+	if output.Settings.ShouldAppend {
+		originalfile, err := os.ReadFile(output.Settings.OutputFile)
+		if err != nil {
+			panic(err)
+		}
+		baseTemplate = string(originalfile)
+	} else {
+		b := template.New("base")
+		b, _ = b.Parse(templates.BaseHTMLTemplate)
+		baseBuf := new(bytes.Buffer)
+		err := b.Execute(baseBuf, output)
+		if err != nil {
+			panic(err)
+		}
+		baseTemplate = baseBuf.String()
+	}
+	t := output.buildTableWithAllKeys()
+	tableBuf := new(bytes.Buffer)
+	t.SetOutputMirror(tableBuf)
+	t.SetHTMLCSSClass("responstable")
+	t.RenderHTML()
+	tableBuf.Write([]byte("<div id='end'></div>")) // Add the placeholder
+	return []byte(strings.Replace(baseTemplate, "<div id='end'></div>", tableBuf.String(), 1))
+}
+
+func (output OutputArray) toTableWithAllKeys() []byte {
+	tableBuf := new(bytes.Buffer)
+	if output.Settings.SeparateTables {
+		tableBuf.WriteString("\n")
+	}
+	t := output.buildTableWithAllKeys()
+	t.SetOutputMirror(tableBuf)
+	t.SetStyle(output.Settings.TableStyle)
+	t.Render()
+	if output.Settings.SeparateTables {
+		tableBuf.WriteString("\n")
+	}
+	return tableBuf.Bytes()
+}
+
+func (output OutputArray) toMarkdownWithAllKeys() []byte {
+	t := output.buildTableWithAllKeys()
+	tableBuf := new(bytes.Buffer)
+	t.SetOutputMirror(tableBuf)
+	t.RenderMarkdown()
+	tableBuf.WriteString("\n")
+	return tableBuf.Bytes()
+}
+
+func (output OutputArray) toYAMLWithAllKeys() []byte {
+	jsonString, _ := yaml.Marshal(output.GetContentsMapRawWithAllKeys())
+	return jsonString
+}
+
+func (output OutputArray) toMarkdownWithSections() []byte {
+	var result bytes.Buffer
+
+	for _, section := range savedSections {
+		// Add section header
+		if section.Title != "" {
+			result.WriteString(fmt.Sprintf("## %s\n", section.Title))
+		}
+
+		// Create a temporary OutputArray for this section
+		// Clear the title since we're adding it manually
+		tempSettings := *output.Settings
+		tempSettings.Title = ""
+		tempOutput := OutputArray{
+			Settings: &tempSettings,
+			Contents: section.Contents,
+			Keys:     section.Keys,
+		}
+
+		// Generate table for this section
+		t := tempOutput.buildTable()
+		tableBuf := new(bytes.Buffer)
+		t.SetOutputMirror(tableBuf)
+		t.RenderMarkdown()
+		result.Write(tableBuf.Bytes())
+		result.WriteString("\n")
+	}
+
+	return result.Bytes()
+}
+
+func (output OutputArray) toHTMLWithSections() []byte {
+	var baseTemplate string
+	if output.Settings.ShouldAppend {
+		originalfile, err := os.ReadFile(output.Settings.OutputFile)
+		if err != nil {
+			panic(err)
+		}
+		baseTemplate = string(originalfile)
+	} else {
+		b := template.New("base")
+		b, _ = b.Parse(templates.BaseHTMLTemplate)
+		baseBuf := new(bytes.Buffer)
+		err := b.Execute(baseBuf, output)
+		if err != nil {
+			panic(err)
+		}
+		baseTemplate = baseBuf.String()
+	}
+
+	var result bytes.Buffer
+
+	for _, section := range savedSections {
+		// Add section header
+		if section.Title != "" {
+			result.WriteString(fmt.Sprintf("<h2>%s</h2>\n", section.Title))
+		}
+
+		// Create a temporary OutputArray for this section
+		// Clear the title since we're adding it manually
+		tempSettings := *output.Settings
+		tempSettings.Title = ""
+		tempOutput := OutputArray{
+			Settings: &tempSettings,
+			Contents: section.Contents,
+			Keys:     section.Keys,
+		}
+
+		// Generate table for this section
+		t := tempOutput.buildTable()
+		tableBuf := new(bytes.Buffer)
+		t.SetOutputMirror(tableBuf)
+		t.SetHTMLCSSClass("responstable")
+		t.RenderHTML()
+		result.Write(tableBuf.Bytes())
+		result.WriteString("\n")
+	}
+
+	result.Write([]byte("<div id='end'></div>")) // Add the placeholder
+	return []byte(strings.Replace(baseTemplate, "<div id='end'></div>", result.String(), 1))
+}
+
+func (output OutputArray) toCSVWithSections() []byte {
+	var result bytes.Buffer
+
+	for i, section := range savedSections {
+		// Add section header as a comment or separator
+		if section.Title != "" {
+			result.WriteString(fmt.Sprintf("# %s\n", section.Title))
+		}
+
+		// Create a temporary OutputArray for this section
+		// Clear the title since we're adding it manually
+		tempSettings := *output.Settings
+		tempSettings.Title = ""
+		tempOutput := OutputArray{
+			Settings: &tempSettings,
+			Contents: section.Contents,
+			Keys:     section.Keys,
+		}
+
+		// Generate CSV for this section
+		sectionCSV := tempOutput.toCSV()
+		result.Write(sectionCSV)
+
+		// Add separator between sections
+		if i < len(savedSections)-1 {
+			result.WriteString("\n")
+		}
+	}
+
+	return result.Bytes()
+}
+
+func (output OutputArray) toTableWithSections() []byte {
+	var result bytes.Buffer
+
+	for _, section := range savedSections {
+		// Add section header
+		if section.Title != "" {
+			result.WriteString(fmt.Sprintf("\n%s\n", section.Title))
+		}
+
+		// Create a temporary OutputArray for this section
+		// Clear the title since we're adding it manually
+		tempSettings := *output.Settings
+		tempSettings.Title = ""
+		tempOutput := OutputArray{
+			Settings: &tempSettings,
+			Contents: section.Contents,
+			Keys:     section.Keys,
+		}
+
+		// Generate table for this section
+		sectionTable := tempOutput.toTable()
+		result.Write(sectionTable)
+	}
+
+	return result.Bytes()
 }
 
 func (output OutputArray) toYAML() []byte {
@@ -323,6 +747,55 @@ func (output *OutputArray) AddHeader(header string) {
 }
 
 func (output *OutputArray) AddToBuffer() {
+	// Save raw data for dual output format support before clearing contents
+	if output.Contents != nil {
+		var sectionContents []OutputHolder
+		for _, content := range output.Contents {
+			// Create a deep copy of the content
+			copiedContent := OutputHolder{
+				Contents: make(map[string]interface{}),
+			}
+			for k, v := range content.Contents {
+				copiedContent.Contents[k] = v
+				// Collect all unique keys for cross-section JSON generation
+				keyExists := false
+				for _, existingKey := range savedAllKeys {
+					if existingKey == k {
+						keyExists = true
+						break
+					}
+				}
+				if !keyExists {
+					savedAllKeys = append(savedAllKeys, k)
+				}
+			}
+			savedRawData = append(savedRawData, copiedContent)
+			sectionContents = append(sectionContents, copiedContent)
+		}
+
+		// Save section structure for table-based formats
+		// Extract the actual keys from this section's data
+		sectionKeys := make(map[string]bool)
+		for _, content := range sectionContents {
+			for key := range content.Contents {
+				sectionKeys[key] = true
+			}
+		}
+
+		// Convert map to slice
+		var keys []string
+		for key := range sectionKeys {
+			keys = append(keys, key)
+		}
+
+		section := SavedSection{
+			Title:    output.Settings.Title,
+			Keys:     keys,
+			Contents: sectionContents,
+		}
+		savedSections = append(savedSections, section)
+	}
+
 	switch output.Settings.OutputFormat {
 	case "csv":
 		buffer.Write(output.toCSV())
@@ -514,10 +987,60 @@ func (output OutputArray) buildTable() table.Writer {
 	return t
 }
 
+func (output OutputArray) buildTableWithAllKeys() table.Writer {
+	t := table.NewWriter()
+	if output.Settings.Title != "" {
+		// Ugly hack because go-pretty uses a h1 (#) for the table title in Markdown
+		if (output.Settings.OutputFormat == "markdown") && buffer.Len() != 0 {
+			buffer.WriteString(fmt.Sprintf("#### %s\n\n", output.Settings.Title))
+		} else {
+			t.SetTitle(output.Settings.Title)
+		}
+	}
+	var target io.Writer
+	// var err error
+	// pretend it's stdout when writing a bucket to prevent files from being created
+	if output.Settings.OutputFile == "" || output.Settings.S3Bucket.Bucket != "" {
+		target = os.Stdout
+	} else {
+		//Always create if append flag isn't provided
+		if !output.Settings.ShouldAppend {
+			target, _ = os.Create(output.Settings.OutputFile)
+		} else {
+			target, _ = os.OpenFile(output.Settings.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		}
+	}
+	t.SetOutputMirror(target)
+	t.AppendHeader(output.KeysAsInterfaceWithAllKeys())
+	for _, cont := range output.ContentsAsInterfacesWithAllKeys() {
+		t.AppendRow(cont)
+	}
+	columnConfigs := make([]table.ColumnConfig, 0)
+	for _, key := range savedAllKeys {
+		columnConfig := table.ColumnConfig{
+			Name:     key,
+			WidthMin: 6,
+			WidthMax: output.Settings.TableMaxColumnWidth,
+		}
+		columnConfigs = append(columnConfigs, columnConfig)
+	}
+	t.SetColumnConfigs(columnConfigs)
+	return t
+}
+
 func (output *OutputArray) KeysAsInterface() []interface{} {
 	b := make([]interface{}, len(output.Keys))
 	for i := range output.Keys {
 		b[i] = output.Keys[i]
+	}
+
+	return b
+}
+
+func (output *OutputArray) KeysAsInterfaceWithAllKeys() []interface{} {
+	b := make([]interface{}, len(savedAllKeys))
+	for i := range savedAllKeys {
+		b[i] = savedAllKeys[i]
 	}
 
 	return b
@@ -529,6 +1052,21 @@ func (output *OutputArray) ContentsAsInterfaces() [][]interface{} {
 	for _, holder := range output.Contents {
 		values := make([]interface{}, len(output.Keys))
 		for counter, key := range output.Keys {
+			if val, ok := holder.Contents[key]; ok {
+				values[counter] = output.toString(val)
+			}
+		}
+		total = append(total, values)
+	}
+	return total
+}
+
+func (output *OutputArray) ContentsAsInterfacesWithAllKeys() [][]interface{} {
+	total := make([][]interface{}, 0)
+
+	for _, holder := range output.Contents {
+		values := make([]interface{}, len(savedAllKeys))
+		for counter, key := range savedAllKeys {
 			if val, ok := holder.Contents[key]; ok {
 				values[counter] = output.toString(val)
 			}
