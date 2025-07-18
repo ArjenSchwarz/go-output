@@ -1,4 +1,19 @@
 
+1.5.0 / 2025-07-18
+==================
+
+  * Add comprehensive progress indicator system with visual progress bars for terminal output
+  * Implement progress factory with format-aware behavior (visual for table/markdown/HTML, no-op for JSON/YAML/CSV/DOT)
+  * Add progress context support for cancellation and proper cleanup
+  * Fix issue where not all tables were shown when writing to file
+  * Improve error handling for DrawIO shape tests and file operations
+  * Refactor HTML generation for better performance (return bytes instead of strings)
+  * Simplify number formatting logic for consistent numeric value handling
+  * Add extensive test coverage for helper functions and progress indicators
+  * Expand documentation with progress examples and enhanced Mermaid package README
+  * Add gofmt checks and improve code quality across modules
+  * Enhance GitHub Actions workflow efficiency
+
 1.4.0 / 2023-11-14
 ==================
 
