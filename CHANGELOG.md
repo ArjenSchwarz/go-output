@@ -1,3 +1,18 @@
+## [Unreleased]
+
+### Added
+- Initial v2.0 module structure with clean architecture and no global state
+- Core Content interface with encoding.TextAppender and encoding.BinaryAppender support
+- Document struct for holding content collections with thread-safe operations
+- Builder pattern implementation with fluent API for document construction
+- Comprehensive test coverage including thread-safety and concurrent operation tests
+- Design and requirements documentation for complete v2 redesign
+- Task tracking system for incremental implementation
+
+### Changed
+- Complete architectural redesign eliminating all global variables
+- Minimum Go version requirement updated to 1.24
+
 1.5.1 / 2025-07-18
 
   * Add fix for bug where AddToBuffer and different output formats didn't work nice together.

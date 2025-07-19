@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go test:*)",
+      "Bash(go fmt:*)",
+      "Bash(git --no-pager status)",
+      "Bash(git --no-pager add output.go output_additional_test.go)",
+      "Bash(git --no-pager diff --cached)",
+      "Bash(mkdir:*)",
+      "Bash(go:*)"
+    ],
+    "deny": []
+  }
+}
