@@ -79,13 +79,13 @@ This document provides a series of discrete, manageable coding tasks to implemen
   - Write tests for raw content and section nesting (Requirements 4.3, 4.8, 15.2)
 
 ### 5. Rendering Pipeline Foundation
-- [ ] 5.1. Define Renderer interface and format system
+- [x] 5.1. Define Renderer interface and format system
   - Create Renderer interface with Format(), Render(), and RenderTo() methods (Requirements 8.1, 8.2, 14.1)
   - Define Format struct with Name, Renderer, and Options (Requirements 7.1)
   - Add SupportsStreaming() method for streaming capability detection (Requirements 8.1)
   - Write interface tests and mock implementations (Requirements 15.2)
 
-- [ ] 5.2. Implement base renderer functionality
+- [x] 5.2. Implement base renderer functionality
   - Create base renderer struct with common functionality (Requirements 8.5, 8.6)
   - Add context cancellation support for all renderers (Requirements 8.6)
   - Implement memory-efficient rendering patterns (Requirements 8.4, 11.1)
