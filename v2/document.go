@@ -1,6 +1,7 @@
 package output
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -37,8 +38,9 @@ func (d *Document) GetMetadata() map[string]any {
 
 // Builder constructs documents with a fluent API
 type Builder struct {
-	doc *Document
-	mu  sync.Mutex // Ensure thread-safe building
+	doc    *Document
+	mu     sync.Mutex // Ensure thread-safe building
+	errors []error    // Track errors during building
 }
 
 // New creates a new document builder
@@ -59,6 +61,34 @@ func (b *Builder) Build() *Document {
 	doc := b.doc
 	b.doc = nil // Clear the reference to prevent further modifications
 	return doc
+}
+
+// HasErrors returns true if any errors occurred during building
+func (b *Builder) HasErrors() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return len(b.errors) > 0
+}
+
+// Errors returns a copy of all errors that occurred during building
+func (b *Builder) Errors() []error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if len(b.errors) == 0 {
+		return nil
+	}
+
+	errors := make([]error, len(b.errors))
+	copy(errors, b.errors)
+	return errors
+}
+
+// addError safely adds an error to the builder
+func (b *Builder) addError(err error) {
+	if err != nil {
+		b.errors = append(b.errors, err)
+	}
 }
 
 // SetMetadata sets a metadata key-value pair
@@ -87,8 +117,9 @@ func (b *Builder) AddContent(content Content) *Builder {
 func (b *Builder) Table(title string, data any, opts ...TableOption) *Builder {
 	table, err := NewTableContent(title, data, opts...)
 	if err != nil {
-		// In a real implementation, we might want to return an error or store it
-		// For now, we'll skip adding invalid tables
+		b.mu.Lock()
+		b.addError(fmt.Errorf("failed to create table %q: %w", title, err))
+		b.mu.Unlock()
 		return b
 	}
 	return b.AddContent(table)
@@ -109,8 +140,9 @@ func (b *Builder) Header(text string) *Builder {
 func (b *Builder) Raw(format string, data []byte, opts ...RawOption) *Builder {
 	rawContent, err := NewRawContent(format, data, opts...)
 	if err != nil {
-		// In a real implementation, we might want to return an error or store it
-		// For now, we'll skip adding invalid raw content
+		b.mu.Lock()
+		b.addError(fmt.Errorf("failed to create raw content with format %q: %w", format, err))
+		b.mu.Unlock()
 		return b
 	}
 	return b.AddContent(rawContent)
