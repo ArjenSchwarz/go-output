@@ -98,16 +98,16 @@ func TestBuilder_SetMetadata(t *testing.T) {
 	}
 }
 
-func TestBuilder_addContent(t *testing.T) {
+func TestBuilder_AddContent(t *testing.T) {
 	builder := New()
 
 	content1 := &testContent{id: "test1", contentType: ContentTypeText}
 	content2 := &testContent{id: "test2", contentType: ContentTypeTable}
 
-	// Test fluent API with addContent
-	result := builder.addContent(content1).addContent(content2)
+	// Test fluent API with AddContent
+	result := builder.AddContent(content1).AddContent(content2)
 	if result != builder {
-		t.Error("addContent should return the same builder instance (fluent API)")
+		t.Error("AddContent should return the same builder instance (fluent API)")
 	}
 
 	doc := builder.Build()
@@ -128,7 +128,7 @@ func TestBuilder_addContent(t *testing.T) {
 func TestDocument_GetContents(t *testing.T) {
 	builder := New()
 	content := &testContent{id: "test1", contentType: ContentTypeText}
-	builder.addContent(content)
+	builder.AddContent(content)
 
 	doc := builder.Build()
 
@@ -205,10 +205,10 @@ func TestBuilder_ThreadSafety(t *testing.T) {
 		go func(index int) {
 			defer wg.Done()
 			content := &testContent{
-				id:          generateID(),
+				id:          GenerateID(),
 				contentType: ContentType(index % 4),
 			}
-			builder.addContent(content)
+			builder.AddContent(content)
 		}(i)
 	}
 
@@ -234,8 +234,8 @@ func TestDocument_ThreadSafety(t *testing.T) {
 
 	// Add some initial content
 	for i := 0; i < 10; i++ {
-		builder.addContent(&testContent{
-			id:          generateID(),
+		builder.AddContent(&testContent{
+			id:          GenerateID(),
 			contentType: ContentType(i % 4),
 		})
 	}
@@ -280,7 +280,7 @@ func TestBuilder_NilSafety(t *testing.T) {
 
 	// These operations should not panic even though builder.doc is nil
 	builder.SetMetadata("key", "value")
-	builder.addContent(&testContent{id: "test", contentType: ContentTypeText})
+	builder.AddContent(&testContent{id: "test", contentType: ContentTypeText})
 
 	// The document should remain unchanged
 	if len(doc.GetContents()) != 0 {

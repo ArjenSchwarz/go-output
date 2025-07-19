@@ -7,7 +7,7 @@ import (
 // Document represents a collection of content to be output
 type Document struct {
 	contents []Content
-	metadata map[string]interface{}
+	metadata map[string]any
 	mu       sync.RWMutex // For thread-safety
 }
 
@@ -23,12 +23,12 @@ func (d *Document) GetContents() []Content {
 }
 
 // GetMetadata returns a copy of the document's metadata
-func (d *Document) GetMetadata() map[string]interface{} {
+func (d *Document) GetMetadata() map[string]any {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
 	// Return a copy of the map to prevent external modification
-	metadata := make(map[string]interface{}, len(d.metadata))
+	metadata := make(map[string]any, len(d.metadata))
 	for k, v := range d.metadata {
 		metadata[k] = v
 	}
@@ -45,7 +45,7 @@ type Builder struct {
 func New() *Builder {
 	return &Builder{
 		doc: &Document{
-			metadata: make(map[string]interface{}),
+			metadata: make(map[string]any),
 		},
 	}
 }
@@ -62,7 +62,7 @@ func (b *Builder) Build() *Document {
 }
 
 // SetMetadata sets a metadata key-value pair
-func (b *Builder) SetMetadata(key string, value interface{}) *Builder {
+func (b *Builder) SetMetadata(key string, value any) *Builder {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -72,8 +72,8 @@ func (b *Builder) SetMetadata(key string, value interface{}) *Builder {
 	return b
 }
 
-// addContent is a helper method to safely add content
-func (b *Builder) addContent(content Content) *Builder {
+// AddContent is a helper method to safely add content
+func (b *Builder) AddContent(content Content) *Builder {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

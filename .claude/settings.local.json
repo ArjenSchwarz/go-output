@@ -7,7 +7,10 @@
       "Bash(git --no-pager add output.go output_additional_test.go)",
       "Bash(git --no-pager diff --cached)",
       "Bash(mkdir:*)",
-      "Bash(go:*)"
+      "Bash(go:*)",
+      "Bash(git --no-pager branch --show-current)",
+      "Bash(git add:*)",
+      "Bash(git --no-pager diff)"
     ],
     "deny": []
   }
