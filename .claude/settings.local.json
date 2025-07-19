@@ -10,7 +10,8 @@
       "Bash(go:*)",
       "Bash(git --no-pager branch --show-current)",
       "Bash(git add:*)",
-      "Bash(git --no-pager diff)"
+      "Bash(git --no-pager diff)",
+      "Bash(git --no-pager diff --staged --name-status)"
     ],
     "deny": []
   }
