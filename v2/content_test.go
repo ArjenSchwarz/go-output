@@ -30,20 +30,20 @@ func TestContentType_String(t *testing.T) {
 // TestGenerateID tests the ID generation function
 func TestGenerateID(t *testing.T) {
 	// Test that IDs are generated
-	id1 := generateID()
+	id1 := GenerateID()
 	if id1 == "" {
-		t.Error("generateID() returned empty string")
+		t.Error("GenerateID() returned empty string")
 	}
 
 	// Test that IDs are unique
-	id2 := generateID()
+	id2 := GenerateID()
 	if id1 == id2 {
-		t.Error("generateID() returned duplicate IDs")
+		t.Error("GenerateID() returned duplicate IDs")
 	}
 
 	// Test that IDs have the expected prefix
 	if len(id1) < 8 || id1[:8] != "content-" {
-		t.Errorf("generateID() = %v, expected to start with 'content-'", id1)
+		t.Errorf("GenerateID() = %v, expected to start with 'content-'", id1)
 	}
 }
 
@@ -53,9 +53,9 @@ func TestGenerateID_Uniqueness(t *testing.T) {
 	const numIDs = 1000
 
 	for i := 0; i < numIDs; i++ {
-		id := generateID()
+		id := GenerateID()
 		if ids[id] {
-			t.Errorf("generateID() generated duplicate ID: %v", id)
+			t.Errorf("GenerateID() generated duplicate ID: %v", id)
 		}
 		ids[id] = true
 	}

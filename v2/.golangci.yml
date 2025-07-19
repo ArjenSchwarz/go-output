@@ -1,0 +1,39 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - unused
+    - revive
+    - goconst
+    - gocritic
+    - unconvert
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: false
+          arguments:
+            - "disableStutteringCheck"
+
+formatters:
+  enable:
+    - gofmt
+  settings:
+    gofmt:
+      simplify: false
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

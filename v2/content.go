@@ -10,9 +10,13 @@ import (
 type ContentType int
 
 const (
+	// ContentTypeTable represents tabular data content
 	ContentTypeTable ContentType = iota
+	// ContentTypeText represents unstructured text content
 	ContentTypeText
+	// ContentTypeRaw represents format-specific raw content
 	ContentTypeRaw
+	// ContentTypeSection represents grouped content with a heading
 	ContentTypeSection
 )
 
@@ -45,8 +49,8 @@ type Content interface {
 	encoding.BinaryAppender
 }
 
-// generateID creates a unique identifier for content
-func generateID() string {
+// GenerateID creates a unique identifier for content
+func GenerateID() string {
 	// Generate 8 random bytes
 	bytes := make([]byte, 8)
 	if _, err := rand.Read(bytes); err != nil {

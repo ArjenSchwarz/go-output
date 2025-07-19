@@ -20,13 +20,13 @@ This document provides a series of discrete, manageable coding tasks to implemen
   - Implement thread-safety tests for document operations (Requirements 1.2, 1.3)
 
 ### 2. Schema System with Key Ordering
-- [ ] 2.1. Implement Schema and Field structures
+- [x] 2.1. Implement Schema and Field structures
   - Create Schema struct with Fields slice and keyOrder preservation (Requirements 5.1, 5.2, 5.6)
   - Implement Field struct with Name, Type, Formatter, and Hidden properties (Requirements 5.3, 5.4)
   - Add extractKeyOrder function to preserve exact field order (Requirements 5.2, 5.3)
   - Write comprehensive tests for key order preservation across different input patterns (Requirements 5.1-5.7, 15.2)
 
-- [ ] 2.2. Create functional options for schema configuration
+- [x] 2.2. Create functional options for schema configuration
   - Implement WithSchema() option for explicit field definitions (Requirements 2.2, 5.1)
   - Implement WithKeys() option for simple key ordering (Requirements 2.2, 5.2)
   - Add auto-schema detection that preserves source data key order (Requirements 5.6)
