@@ -1,6 +1,8 @@
 package output
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -288,5 +290,132 @@ func TestBuilder_NilSafety(t *testing.T) {
 	}
 	if len(doc.GetMetadata()) != 0 {
 		t.Error("Document metadata was modified after Build()")
+	}
+}
+
+func TestBuilder_ErrorHandling(t *testing.T) {
+	builder := New()
+
+	// Add valid content first
+	builder.Table("ValidTable", []map[string]any{{"key": "value"}}, WithKeys("key"))
+
+	// Add invalid content that should generate errors
+	builder.Table("InvalidTable", "invalid data type", WithKeys("key"))
+	builder.Raw("invalid-format", []byte("data"))
+
+	// Check that errors were recorded
+	if !builder.HasErrors() {
+		t.Error("Builder should have errors after invalid operations")
+	}
+
+	errors := builder.Errors()
+	if len(errors) != 2 {
+		t.Errorf("Expected 2 errors, got %d", len(errors))
+	}
+
+	// Check error messages contain expected information
+	errorMessages := make([]string, len(errors))
+	for i, err := range errors {
+		errorMessages[i] = err.Error()
+	}
+
+	foundTableError := false
+	foundRawError := false
+	for _, msg := range errorMessages {
+		if strings.Contains(msg, "InvalidTable") && strings.Contains(msg, "failed to create table") {
+			foundTableError = true
+		}
+		if strings.Contains(msg, "invalid-format") && strings.Contains(msg, "failed to create raw content") {
+			foundRawError = true
+		}
+	}
+
+	if !foundTableError {
+		t.Error("Expected table error not found in error messages")
+	}
+	if !foundRawError {
+		t.Error("Expected raw content error not found in error messages")
+	}
+
+	// Build should still work and return a document with valid content only
+	doc := builder.Build()
+	contents := doc.GetContents()
+	if len(contents) != 1 {
+		t.Errorf("Expected 1 valid content, got %d", len(contents))
+	}
+
+	// After build, errors should still be accessible
+	if !builder.HasErrors() {
+		t.Error("Errors should still be accessible after Build()")
+	}
+}
+
+func TestBuilder_ErrorHandling_NoErrors(t *testing.T) {
+	builder := New()
+
+	// Add only valid content
+	builder.Table("ValidTable", []map[string]any{{"key": "value"}}, WithKeys("key"))
+	builder.Text("Valid text")
+
+	// Should have no errors
+	if builder.HasErrors() {
+		t.Error("Builder should not have errors after valid operations")
+	}
+
+	errors := builder.Errors()
+	if errors != nil {
+		t.Errorf("Expected nil errors, got %v", errors)
+	}
+
+	// Build and verify
+	doc := builder.Build()
+	contents := doc.GetContents()
+	if len(contents) != 2 {
+		t.Errorf("Expected 2 contents, got %d", len(contents))
+	}
+}
+
+func TestBuilder_ErrorHandling_ThreadSafety(t *testing.T) {
+	builder := New()
+	var wg sync.WaitGroup
+
+	// Number of concurrent operations
+	const numGoroutines = 50
+
+	wg.Add(numGoroutines * 2)
+
+	// Concurrent valid operations
+	for i := 0; i < numGoroutines; i++ {
+		go func(index int) {
+			defer wg.Done()
+			builder.Table(fmt.Sprintf("Table%d", index), []map[string]any{{"key": fmt.Sprintf("value%d", index)}}, WithKeys("key"))
+		}(i)
+	}
+
+	// Concurrent invalid operations (should generate errors)
+	for i := 0; i < numGoroutines; i++ {
+		go func(index int) {
+			defer wg.Done()
+			builder.Table(fmt.Sprintf("InvalidTable%d", index), "invalid data", WithKeys("key"))
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Should have errors
+	if !builder.HasErrors() {
+		t.Error("Builder should have errors after invalid operations")
+	}
+
+	errors := builder.Errors()
+	if len(errors) != numGoroutines {
+		t.Errorf("Expected %d errors, got %d", numGoroutines, len(errors))
+	}
+
+	// Build should work
+	doc := builder.Build()
+	contents := doc.GetContents()
+	if len(contents) != numGoroutines {
+		t.Errorf("Expected %d valid contents, got %d", numGoroutines, len(contents))
 	}
 }

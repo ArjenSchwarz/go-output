@@ -59,20 +59,20 @@ This document provides a series of discrete, manageable coding tasks to implemen
   - Write tests for nested content order preservation (Requirements 4.4, 4.8, 15.2)
 
 ### 4. Builder Pattern Methods
-- [ ] 4.1. Implement Table() builder method
+- [x] 4.1. Implement Table() builder method
   - Add Table() method with title, data, and options (Requirements 2.1, 4.1)
   - Implement TableOption functional options pattern (Requirements 2.2)
   - Add data type conversion and validation (Requirements 9.1, 9.2)
   - Write tests for table creation with various data types (Requirements 9.1, 15.2)
   - Test key order preservation through builder (Requirements 5.1, 5.2)
 
-- [ ] 4.2. Implement Text() and Header() builder methods
+- [x] 4.2. Implement Text() and Header() builder methods
   - Add Text() method with styling options (Requirements 2.1, 4.2)
   - Implement Header() method for v1 compatibility (Requirements 7.1, 13.1)
   - Add TextOption functional options (Requirements 2.2)
   - Write tests for text content creation and styling (Requirements 4.2, 15.2)
 
-- [ ] 4.3. Implement Raw() and Section() builder methods
+- [x] 4.3. Implement Raw() and Section() builder methods
   - Add Raw() method for format-specific content (Requirements 2.1, 4.3)
   - Implement Section() method with nested builders (Requirements 2.1, 4.8)
   - Add proper content ordering in sections (Requirements 4.4)
