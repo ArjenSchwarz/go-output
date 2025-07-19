@@ -9,10 +9,17 @@
 - Schema and Field structures with explicit key ordering
 - Functional options pattern for table configuration (WithSchema, WithKeys, WithAutoSchema)
 - Table options system with automatic schema detection
+- TableContent implementation with preserved key ordering and encoding interface support
+- TextContent and TextStyle for unstructured text with styling options (bold, italic, color, size, header)
+- Text and Header builder methods with functional options pattern
+- RawContent for format-specific content (HTML, CSS, JSON, XML, etc.) with format validation
+- SectionContent for hierarchical document structure with nested content and indentation
+- Section builder method with function-based content definition and level support
+- Comprehensive functional options for all content types (text, raw, section)
 - golangci-lint configuration with interface{} to any conversion
 - CLAUDE.md development guide for v2 architecture
-- Comprehensive test coverage for schema and table options
-- Comprehensive test coverage including thread-safety and concurrent operation tests
+- Comprehensive test coverage for all content types including thread-safety and concurrent operations
+- Integration tests demonstrating mixed content scenarios and key order preservation
 - Design and requirements documentation for complete v2 redesign
 - Task tracking system for incremental implementation
 
@@ -22,10 +29,11 @@
 - Updated exported function names for better API consistency (generateID → GenerateID, addContent → AddContent)
 - Replaced interface{} with any type throughout codebase per Go 1.24 best practices
 - Enhanced Content interface documentation with proper comments
-- Updated task tracking to mark schema system implementation as completed
+- Updated task tracking to mark content system implementation as completed (tasks 3.1-3.4)
+- Refactored if-else chain to switch statement for better code quality and linting compliance
 
 ### Fixed
-- Resolved all linting issues identified by golangci-lint
+- Resolved all linting issues identified by golangci-lint including gocritic ifElseChain warnings
 - Ensured proper code formatting and Go conventions compliance
 
 1.5.1 / 2025-07-18
