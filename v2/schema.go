@@ -84,3 +84,8 @@ func (s *Schema) VisibleFieldCount() int {
 	}
 	return count
 }
+
+// GetFieldNames returns the field names in their preserved order
+func (s *Schema) GetFieldNames() []string {
+	return s.GetKeyOrder()
+}

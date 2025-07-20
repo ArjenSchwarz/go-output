@@ -97,7 +97,21 @@ This document outlines the requirements for go-output v2.0, a complete redesign 
 7.7. The system SHALL support all v1 table styling options.
 7.8. The system SHALL support table of contents generation for applicable formats.
 7.9. The system SHALL support front matter for markdown output.
-7.10. The system SHALL support all graph-related features (DOT, Mermaid from/to relationships).
+7.10. The system SHALL support all v1 chart and diagram features including:
+  - DOT format for Graphviz diagrams with node relationships
+  - Mermaid flowcharts for process visualization
+  - Mermaid Gantt charts for project timeline visualization  
+  - Mermaid pie charts for data proportion visualization
+  - Draw.io CSV format for diagram import with layout and styling configuration
+7.11. The system SHALL automatically detect appropriate chart types based on data structure and content.
+7.12. The Draw.io CSV renderer SHALL support all v1 Draw.io features including:
+  - Header configuration with placeholders (%Name%, %Image%) for dynamic content
+  - Layout options (auto, horizontalflow, verticalflow, horizontaltree, etc.)
+  - Connection definitions with from/to mappings and styling
+  - Hierarchical diagrams with parent-child relationships
+  - Node and edge spacing control
+  - AWS service shape integration with pre-defined shapes
+  - Manual positioning via coordinate columns
 
 ### 8. Rendering Requirements
 
@@ -235,4 +249,19 @@ The following v1 features will be removed or significantly changed:
 6. **Global state**: Completely eliminated
 7. **String-based configuration**: Replaced with type-safe options
 8. **Import path**: Changed to /v2
+
+## Future Enhancements
+
+The following features are planned for future versions but out of scope for v2.0:
+
+1. **Plugin System**: Dynamic loading of formats/transformers
+2. **Template System**: User-defined templates for custom output formatting
+3. **Performance Metrics**: Built-in performance tracking and optimization
+4. **Extended Graph Support**: Additional graph visualization options and formats
+5. **Advanced Table Features**: Grouping, aggregation, and complex table operations
+6. **Draw.io XML Format**: Native XML export for advanced diagram features (currently using CSV for v1 compatibility)
+7. **Real-time Collaboration**: Live editing and sharing capabilities
+8. **Data Persistence**: Built-in caching and storage beyond rendering
+9. **Automatic Schema Detection**: Enhanced schema inference from complex data structures
+10. **Advanced Transformers**: AI-powered content transformation and optimization
 

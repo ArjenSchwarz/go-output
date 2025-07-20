@@ -17,7 +17,11 @@
       "Bash(cat:*)",
       "Bash(mv:*)",
       "Bash(rm:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git --no-pager diff --cached --stat)",
+      "Bash(git --no-pager diff --cached v2/renderer.go)",
+      "Bash(git --no-pager diff --cached -- v2/renderer.go)",
+      "Bash(git --no-pager log --oneline -5)"
     ],
     "deny": []
   }

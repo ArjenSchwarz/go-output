@@ -335,7 +335,7 @@ var (
     DrawIO   = Format{Name: "drawio", Renderer: &drawioRenderer{}}
 )
 
-// Graph support for DOT and Mermaid
+// Chart and diagram support for DOT, Mermaid, and Draw.io
 type GraphContent struct {
     id    string
     title string
@@ -348,6 +348,69 @@ type Edge struct {
     Label string
 }
 
+// ChartContent for specialized chart types (Gantt, Pie, etc.)
+type ChartContent struct {
+    id       string
+    title    string
+    chartType string // "gantt", "pie", "flowchart"
+    data     any     // Chart-specific data structure
+}
+
+// GanttTask represents a task in a Gantt chart
+type GanttTask struct {
+    ID          string
+    Title       string
+    StartDate   string
+    EndDate     string
+    Dependencies []string
+    Status      string // "active", "done", "crit"
+}
+
+// PieSlice represents a slice in a pie chart
+type PieSlice struct {
+    Label string
+    Value float64
+}
+
+// DrawIOContent represents Draw.io diagram data for CSV export
+type DrawIOContent struct {
+    id          string
+    title       string
+    header      DrawIOHeader
+    records     []Record
+}
+
+// DrawIOHeader configures Draw.io CSV import behavior (v1 compatibility)
+type DrawIOHeader struct {
+    Label        string            // Node label with placeholders (%Name%)
+    Style        string            // Node style with placeholders (%Image%)
+    Ignore       string            // Columns to ignore in metadata
+    Connections  []DrawIOConnection // Connection definitions
+    Link         string            // Link column
+    Layout       string            // Layout type (auto, horizontalflow, etc.)
+    NodeSpacing  int              // Spacing between nodes
+    LevelSpacing int              // Spacing between levels
+    EdgeSpacing  int              // Spacing between edges
+    Parent       string            // Parent column for hierarchical diagrams
+    ParentStyle  string            // Style for parent nodes
+    Height       string            // Node height
+    Width        string            // Node width
+    Padding      int              // Padding when auto-sizing
+    Left         string            // X coordinate column
+    Top          string            // Y coordinate column
+    Identity     string            // Identity column
+    Namespace    string            // Namespace prefix
+}
+
+// DrawIOConnection defines relationships between nodes
+type DrawIOConnection struct {
+    From   string // Source column
+    To     string // Target column
+    Invert bool   // Invert direction
+    Label  string // Connection label
+    Style  string // Connection style (curved, straight, etc.)
+}
+
 // GraphOption for configuring graph content
 type GraphOption func(*graphConfig)
 
@@ -355,6 +418,43 @@ func WithFromTo(from, to string) GraphOption {
     return func(gc *graphConfig) {
         gc.fromColumn = from
         gc.toColumn = to
+    }
+}
+
+// ChartOption for configuring chart content
+type ChartOption func(*chartConfig)
+
+func WithChartType(chartType string) ChartOption {
+    return func(cc *chartConfig) {
+        cc.chartType = chartType
+    }
+}
+
+// DrawIOOption for configuring Draw.io content
+type DrawIOOption func(*DrawIOHeader)
+
+func WithDrawIOLayout(layout string) DrawIOOption {
+    return func(h *DrawIOHeader) {
+        h.Layout = layout
+    }
+}
+
+func WithDrawIOSpacing(nodeSpacing, levelSpacing, edgeSpacing int) DrawIOOption {
+    return func(h *DrawIOHeader) {
+        h.NodeSpacing = nodeSpacing
+        h.LevelSpacing = levelSpacing
+        h.EdgeSpacing = edgeSpacing
+    }
+}
+
+func WithDrawIOConnection(from, to, label, style string) DrawIOOption {
+    return func(h *DrawIOHeader) {
+        h.Connections = append(h.Connections, DrawIOConnection{
+            From:  from,
+            To:    to,
+            Label: label,
+            Style: style,
+        })
     }
 }
 ```
@@ -771,5 +871,6 @@ out := output.NewOutput(
 3. **Performance Metrics**: Built-in performance tracking
 4. **Extended Graph Support**: More graph visualization options
 5. **Advanced Table Features**: Grouping, aggregation
+6. **Draw.io XML Format**: Native XML export for advanced diagram features (currently using CSV for v1 compatibility)
 
 Does the design look good?
