@@ -164,3 +164,33 @@ func (b *Builder) Section(title string, fn func(*Builder), opts ...SectionOption
 
 	return b.AddContent(section)
 }
+
+// Graph adds graph content with edges
+func (b *Builder) Graph(title string, edges []Edge) *Builder {
+	graphContent := NewGraphContent(title, edges)
+	return b.AddContent(graphContent)
+}
+
+// Chart adds a generic chart content
+func (b *Builder) Chart(title, chartType string, data any) *Builder {
+	chartContent := NewChartContent(title, chartType, data)
+	return b.AddContent(chartContent)
+}
+
+// GanttChart adds a Gantt chart with tasks
+func (b *Builder) GanttChart(title string, tasks []GanttTask) *Builder {
+	chartContent := NewGanttChart(title, tasks)
+	return b.AddContent(chartContent)
+}
+
+// PieChart adds a pie chart with slices
+func (b *Builder) PieChart(title string, slices []PieSlice, showData bool) *Builder {
+	chartContent := NewPieChart(title, slices, showData)
+	return b.AddContent(chartContent)
+}
+
+// DrawIO adds Draw.io diagram content with CSV configuration
+func (b *Builder) DrawIO(title string, records []Record, header DrawIOHeader) *Builder {
+	drawioContent := NewDrawIOContent(title, records, header)
+	return b.AddContent(drawioContent)
+}

@@ -117,23 +117,41 @@ This document provides a series of discrete, manageable coding tasks to implemen
   - Write tests for markdown structure and metadata (Requirements 7.8, 7.9, 15.2)
 
 ### 7. Graph Format Renderers
-- [ ] 7.1. Implement DOT renderer for graph visualization
+- [x] 7.1. Implement DOT renderer for graph visualization
   - Create DOTRenderer for Graphviz output (Requirements 7.1, 7.10)
   - Add support for from/to relationship extraction (Requirements 7.10)
   - Implement proper DOT syntax generation (Requirements 7.1)
   - Write tests for graph generation and DOT syntax (Requirements 7.10, 15.2)
 
-- [ ] 7.2. Implement Mermaid renderer
+- [x] 7.2. Implement Mermaid renderer
   - Create MermaidRenderer for diagram generation (Requirements 7.1, 7.10)
   - Add relationship mapping from table data (Requirements 7.10)
   - Implement Mermaid syntax generation (Requirements 7.1)
   - Write tests for Mermaid diagram generation (Requirements 7.10, 15.2)
 
-- [ ] 7.3. Implement Draw.io renderer
+- [x] 7.3. Implement Draw.io renderer (Basic XML - needs CSV update)
   - Create DrawIORenderer for XML diagram output (Requirements 7.1, 7.10)
   - Add Draw.io XML format generation (Requirements 7.1)
   - Implement relationship visualization (Requirements 7.10)
   - Write tests for Draw.io XML structure (Requirements 7.10, 15.2)
+
+- [ ] 7.4. Extend Mermaid renderer for additional chart types
+  - Add Mermaid Gantt chart support for project timelines (Requirements 7.10, 7.11)
+  - Implement Mermaid pie chart generation for data proportions (Requirements 7.10, 7.11)
+  - Add flowchart improvements and enhanced syntax support (Requirements 7.10)
+  - Create ChartContent type for specialized chart data structures (Requirements 7.10, 7.11)
+  - Write comprehensive tests for all Mermaid chart types (Requirements 7.10, 15.2)
+
+- [x] 7.5. Update Draw.io renderer to CSV format (v1 compatibility)
+  - Replace XML output with Draw.io CSV format for better import compatibility (Requirements 7.12)
+  - Implement DrawIOHeader configuration with placeholders (%Name%, %Image%) (Requirements 7.12)
+  - Add layout options (auto, horizontalflow, verticalflow, horizontaltree, etc.) (Requirements 7.12)
+  - Support connection definitions with from/to mappings and styling (Requirements 7.12)
+  - Add hierarchical diagram support with parent-child relationships (Requirements 7.12)
+  - Implement node and edge spacing control (Requirements 7.12)
+  - Integrate AWS service shape definitions from v1 (Requirements 7.12)
+  - Support manual positioning via coordinate columns (Requirements 7.12)
+  - Write comprehensive tests for CSV format and all configuration options (Requirements 7.12, 15.2)
 
 ### 8. Transform System Implementation
 - [ ] 8.1. Create Transformer interface and pipeline

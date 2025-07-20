@@ -42,7 +42,15 @@
   - Table renderer with multiple style options (Default, Bold, ColoredBright, Light, Rounded)
   - Markdown renderer with nested section support and table of contents generation
   - Graph renderers (DOT, Mermaid, DrawIO) with format-specific output
+- Complete chart content system with support for Gantt and pie charts
+- Draw.io CSV renderer with full header configuration and layout options
+- Graph content system with edge-based relationship modeling
+- Builder methods for charts, graphs, and Draw.io diagrams
+- Support for hierarchical diagrams with parent-child relationships
+- Connection definitions with from/to mappings and styling for Draw.io
+- AWS service shape integration and manual positioning support
 - Comprehensive renderer test suite with format-specific validation and edge case coverage
+- Comprehensive test coverage for chart, graph, and Draw.io functionality
 
 ### Changed
 - Complete architectural redesign eliminating all global variables
@@ -56,6 +64,8 @@
 - Updated task tracking to mark builder pattern methods as completed (tasks 4.1-4.3)
 - Updated task tracking to mark rendering pipeline foundation as completed (tasks 5.1-5.2)
 - Updated task tracking to mark renderer implementations as completed (tasks 6.1-6.9)
+- Enhanced schema system with improved field type detection
+- Agent task documentation with completed v2 implementation milestones
 
 ### Fixed
 - Resolved all linting issues identified by golangci-lint including gocritic ifElseChain warnings
