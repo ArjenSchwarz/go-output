@@ -92,25 +92,25 @@ This document provides a series of discrete, manageable coding tasks to implemen
   - Write tests for context cancellation and memory usage (Requirements 8.6, 15.2)
 
 ### 6. Core Format Renderers
-- [ ] 6.1. Implement JSON and YAML renderers
+- [x] 6.1. Implement JSON and YAML renderers
   - Create JSONRenderer with proper data type preservation (Requirements 7.1, 9.1)
   - Implement YAMLRenderer with key order preservation (Requirements 7.1, 5.4)
   - Add streaming support for large datasets (Requirements 8.1, 11.3)
   - Write tests for data integrity and key ordering (Requirements 9.1, 5.4, 15.2)
 
-- [ ] 6.2. Implement CSV renderer with key order preservation
+- [x] 6.2. Implement CSV renderer with key order preservation
   - Create CSVRenderer that respects schema key order (Requirements 7.1, 5.2)
   - Add proper CSV escaping and encoding (Requirements 9.5, 12.3)
   - Implement streaming output for large tables (Requirements 8.1)
   - Write tests for CSV output correctness and key ordering (Requirements 5.2, 9.5, 15.2)
 
-- [ ] 6.3. Implement Table and HTML renderers
+- [x] 6.3. Implement Table and HTML renderers
   - Create TableRenderer with styling support (Requirements 7.1, 7.7)
   - Implement HTMLRenderer with proper escaping (Requirements 7.1, 12.3)
   - Add table styling options from v1 (Requirements 7.7)
   - Write tests for table formatting and HTML safety (Requirements 7.7, 12.3, 15.2)
 
-- [ ] 6.4. Implement Markdown renderer with v1 features
+- [x] 6.4. Implement Markdown renderer with v1 features
   - Create MarkdownRenderer with table of contents support (Requirements 7.1, 7.8)
   - Add front matter support for metadata (Requirements 7.9)
   - Implement proper markdown escaping (Requirements 12.3)

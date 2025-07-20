@@ -12,7 +12,12 @@
       "Bash(git add:*)",
       "Bash(git --no-pager diff)",
       "Bash(git --no-pager diff --staged --name-status)",
-      "Bash(git --no-pager diff --staged)"
+      "Bash(git --no-pager diff --staged)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
