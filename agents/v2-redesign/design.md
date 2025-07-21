@@ -502,25 +502,93 @@ func (l *LineSplitTransformer) Name() string { return "linesplit" }
 func (l *LineSplitTransformer) Priority() int { return 150 }
 ```
 
-### Progress Support
+### Progress Support with v1 Feature Parity
 
 ```go
-// Progress provides progress indication for long operations
+// ProgressColor defines visual feedback colors (v1 compatibility)
+type ProgressColor int
+
+const (
+    ProgressColorDefault ProgressColor = iota
+    ProgressColorGreen   // Success state
+    ProgressColorRed     // Error state  
+    ProgressColorYellow  // Warning state
+    ProgressColorBlue    // Informational state
+)
+
+// Progress provides progress indication for long operations with full v1 compatibility
 type Progress interface {
+    // Core progress methods
     SetTotal(total int)
     SetCurrent(current int)
     Increment(delta int)
     SetStatus(status string)
     Complete()
     Fail(err error)
+    
+    // v1 compatibility methods
+    SetColor(color ProgressColor)
+    IsActive() bool
+    SetContext(ctx context.Context)
+    
+    // v2 enhancements
+    Close() error
 }
 
-// ProgressOption configures progress display
-type ProgressOption func(*progressConfig)
+// ProgressOptions configures progress behavior (v1 compatibility)
+type ProgressOptions struct {
+    Color         ProgressColor
+    Status        string
+    TrackerLength int
+    Writer        io.Writer
+    UpdateInterval time.Duration
+    ShowPercentage bool
+    ShowETA       bool
+    ShowRate      bool
+}
 
-// NewProgress creates a progress indicator
-func NewProgress(opts ...ProgressOption) Progress {
-    // Implementation based on output format
+// PrettyProgress uses go-pretty library for professional progress bars
+type PrettyProgress struct {
+    writer  progress.Writer
+    tracker *progress.Tracker
+    options ProgressOptions
+    active  bool
+    mutex   sync.Mutex
+    ctx     context.Context
+    signals chan os.Signal
+}
+
+// TextProgress provides simple text-based progress (fallback)
+type TextProgress struct {
+    config    *ProgressOptions
+    mu        sync.RWMutex
+    total     int
+    current   int
+    status    string
+    startTime time.Time
+    completed bool
+    failed    bool
+    err       error
+}
+
+// NoOpProgress implements no-operation progress (v1 compatibility)
+type NoOpProgress struct {
+    total   int
+    current int
+    options ProgressOptions
+}
+
+// NewProgress creates format-aware progress indicator (v1 compatibility)
+func NewProgress(format string, opts ...ProgressOption) Progress {
+    // Auto-select implementation based on format:
+    // - PrettyProgress for table/html/markdown (if TTY detected)
+    // - NoOpProgress for json/csv/yaml/dot
+    // - TextProgress as fallback
+}
+
+// NewProgressForFormats creates progress for multiple output formats
+func NewProgressForFormats(formats []Format, opts ...ProgressOption) Progress {
+    // Smart selection based on format mix
 }
 
 // WithProgress adds progress tracking to output
@@ -529,6 +597,18 @@ func WithProgress(p Progress) Option {
         o.progress = p
     }
 }
+
+// v1 Compatible options
+func WithProgressColor(color ProgressColor) ProgressOption
+func WithProgressStatus(status string) ProgressOption  
+func WithTrackerLength(length int) ProgressOption
+
+// v2 Enhanced options
+func WithProgressWriter(w io.Writer) ProgressOption
+func WithUpdateInterval(interval time.Duration) ProgressOption
+func WithPercentage(show bool) ProgressOption
+func WithETA(show bool) ProgressOption
+func WithRate(show bool) ProgressOption
 ```
 
 ### Output Configuration with All v1 Features
@@ -832,6 +912,52 @@ out := output.NewOutput(
 )
 ```
 
+#### Pattern 4: Progress Indicators
+
+```go
+// v1 - Format-aware progress creation
+settings := format.NewOutputSettings()
+settings.SetOutputFormat("table")
+settings.ProgressOptions = format.ProgressOptions{
+    Color:         format.ProgressColorGreen,
+    Status:        "Processing data",
+    TrackerLength: 50,
+}
+
+p := format.NewProgress(settings)
+p.SetTotal(100)
+p.SetColor(format.ProgressColorBlue)
+for i := 0; i < 100; i++ {
+    p.Increment(1)
+    p.SetStatus(fmt.Sprintf("Processing item %d", i))
+}
+p.Complete()
+
+// v2 - Enhanced progress with v1 compatibility
+progress := output.NewProgress(output.FormatTable,
+    output.WithProgressColor(output.ProgressColorGreen),
+    output.WithProgressStatus("Processing data"),
+    output.WithTrackerLength(50),
+)
+
+// OR use with Output system
+out := output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithWriter(output.NewStdoutWriter()),
+    output.WithProgress(progress),
+)
+
+// Auto-format-aware progress (recommended)
+out := output.NewOutput(
+    output.WithFormats(output.Table, output.JSON),
+    output.WithWriter(output.NewStdoutWriter()),
+    output.WithAutoProgress( // Automatically selects appropriate progress type
+        output.WithProgressColor(output.ProgressColorGreen),
+        output.WithProgressStatus("Processing data"),
+    ),
+)
+```
+
 ### Complete Migration Checklist
 
 - [ ] Update import from v1 to v2
@@ -845,6 +971,8 @@ out := output.NewOutput(
 - [ ] Add context to Render calls
 - [ ] Convert file output to FileWriter
 - [ ] Convert S3 output to S3Writer
+- [ ] Convert format.NewProgress() to output.NewProgress() or WithAutoProgress()
+- [ ] Update progress color constants (format.ProgressColorGreen → output.ProgressColorGreen)
 - [ ] Ensure all key orders are explicitly preserved
 
 ## Performance Considerations
