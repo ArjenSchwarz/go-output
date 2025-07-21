@@ -1,6 +1,16 @@
 ## [Unreleased]
 
 ### Added
+- Enhanced error handling system with detailed context and source tracking
+- Extended RenderError with renderer type, operation, and context information
+- New WriterError type for write operation failures with detailed context
+- Enhanced MultiError with source mapping and error aggregation capabilities
+- StructuredError type for machine-readable error analysis and programmatic handling
+- Error source tracking throughout the rendering pipeline with component identification
+- ToStructuredError() function for converting any error type to structured format
+- Comprehensive error context preservation across all rendering operations
+- Enhanced error message formatting with structured information display
+- Complete test suite for enhanced error reporting and context preservation
 - Transform system implementation with Transformer interface and priority-based pipeline
 - Format-aware transformation capabilities with enhanced format detection
 - FormatDetector for identifying format capabilities (text-based, structured, tabular, graph, color support, emoji support)

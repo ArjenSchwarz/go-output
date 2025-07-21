@@ -116,6 +116,13 @@ This document provides a series of discrete, manageable coding tasks to implemen
   - Implement proper markdown escaping (Requirements 12.3)
   - Write tests for markdown structure and metadata (Requirements 7.8, 7.9, 15.2)
 
+- [x] 6.5. Complete TOC generation implementation
+  - Implement generateTableOfContents() method for automatic TOC creation (Requirements 7.8)
+  - Add addSubsectionsToToC() for nested section support (Requirements 7.8)
+  - Support TOC generation for SectionContent and TextContent with headers (Requirements 7.8)
+  - Add proper anchor link generation and markdown escaping for TOC links (Requirements 7.8)
+  - Write comprehensive tests for TOC generation with various content structures (Requirements 7.8, 15.2)
+
 ### 7. Graph Format Renderers
 - [x] 7.1. Implement DOT renderer for graph visualization
   - Create DOTRenderer for Graphviz output (Requirements 7.1, 7.10)
@@ -271,6 +278,13 @@ This document provides a series of discrete, manageable coding tasks to implemen
   - Add panic recovery and conversion to errors (Requirements 10.5)
   - Create exported error types for programmatic handling (Requirements 10.6)
   - Write tests for debug features and panic recovery (Requirements 10.4, 10.5, 15.2)
+
+- [x] 12.3. Enhance error context and reporting
+  - Add more detailed error context including content type, format, and transformer information (Requirements 10.3)
+  - Implement error aggregation for multiple format rendering failures (Requirements 10.1)
+  - Add error source tracking through the rendering pipeline (Requirements 10.3)
+  - Create structured error responses for programmatic error analysis (Requirements 10.6)
+  - Write tests for enhanced error reporting and context preservation (Requirements 10.1, 10.3, 15.2)
 
 ### 13. Migration Tool Development
 - [ ] 13.1. Create AST-based migration tool

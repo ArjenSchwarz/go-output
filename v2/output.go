@@ -202,8 +202,13 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 				// Render the document in this format
 				data, err := f.Renderer.Render(ctx, doc)
 				if err != nil {
-					// Create a detailed render error with context
-					return ErrorWithContext("render", err, "format", f.Name, "renderer", fmt.Sprintf("%T", f.Renderer))
+					// Create a detailed render error with enhanced context
+					renderErr := NewRenderErrorWithDetails(f.Name, fmt.Sprintf("%T", f.Renderer), "render", nil, err)
+					renderErr.AddContext("renderer_type", fmt.Sprintf("%T", f.Renderer))
+					if data != nil {
+						renderErr.AddContext("data_size", len(data))
+					}
+					return renderErr
 				}
 
 				GlobalTrace("render", "rendered %s format successfully, %d bytes", f.Name, len(data))
@@ -221,10 +226,46 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 	wg.Wait()
 	close(errChan)
 
-	// Collect all errors using the new error handling system
+	// Collect all errors using the enhanced error handling system
 	multiErr := NewMultiError("render")
+	multiErr.AddContext("total_formats", len(o.formats))
+	multiErr.AddContext("document_contents", len(doc.GetContents()))
 	for err := range errChan {
-		multiErr.Add(err)
+		// Add error with source tracking - determine source component from error type
+		component := "unknown"
+		details := make(map[string]any)
+
+		var renderErr *RenderError
+		if AsError(err, &renderErr) {
+			component = "renderer"
+			details["format"] = renderErr.Format
+			details["renderer"] = renderErr.Renderer
+		} else {
+			var transformErr *TransformError
+			if AsError(err, &transformErr) {
+				component = "transformer"
+				details["transformer"] = transformErr.Transformer
+				details["format"] = transformErr.Format
+			} else {
+				var writerErr *WriterError
+				if AsError(err, &writerErr) {
+					component = "writer"
+					details["writer"] = writerErr.Writer
+					details["format"] = writerErr.Format
+					details["operation"] = writerErr.Operation
+				} else {
+					var contextErr *ContextError
+					if AsError(err, &contextErr) {
+						component = contextErr.Operation
+						for k, v := range contextErr.Context {
+							details[k] = v
+						}
+					}
+				}
+			}
+		}
+
+		multiErr.AddWithSource(err, component, details)
 	}
 
 	if multiErr.HasErrors() {
@@ -273,10 +314,11 @@ func (o *Output) processFormatData(ctx context.Context, format Format, data []by
 
 		err := writer.Write(ctx, format.Name, transformedData)
 		if err != nil {
-			return ErrorWithContext("write", err,
-				"format", format.Name,
-				"writer", fmt.Sprintf("%T", writer),
-				"data_size", len(transformedData))
+			// Create a detailed writer error with enhanced context
+			writerErr := NewWriterErrorWithDetails(fmt.Sprintf("%T", writer), format.Name, "write", err)
+			writerErr.AddContext("data_size", len(transformedData))
+			writerErr.AddContext("writer_type", fmt.Sprintf("%T", writer))
+			return writerErr
 		}
 
 		// Update progress safely
