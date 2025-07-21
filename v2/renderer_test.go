@@ -1764,17 +1764,17 @@ func TestTableRenderer_StyleConfiguration(t *testing.T) {
 		},
 		{
 			name:      "bold style",
-			renderer:  NewTableRendererWithStyle("Bold"),
+			renderer:  NewTableRendererWithStyle("Bold").(*tableRenderer),
 			styleName: "Bold",
 		},
 		{
 			name:      "light style",
-			renderer:  NewTableRendererWithStyle("Light"),
+			renderer:  NewTableRendererWithStyle("Light").(*tableRenderer),
 			styleName: "Light",
 		},
 		{
 			name:      "rounded style",
-			renderer:  NewTableRendererWithStyle("Rounded"),
+			renderer:  NewTableRendererWithStyle("Rounded").(*tableRenderer),
 			styleName: "Rounded",
 		},
 	}

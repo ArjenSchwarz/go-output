@@ -59,7 +59,7 @@ func main() {
 
 	// Example 3: Multiple tables with different key orders in same document
 	fmt.Println("Example 3: Multiple Tables with Different Key Orders")
-	
+
 	customerData := []map[string]any{
 		{"ID": "C001", "Name": "ACME Corp", "Revenue": 50000, "Region": "North"},
 		{"ID": "C002", "Name": "Beta Inc", "Revenue": 75000, "Region": "South"},

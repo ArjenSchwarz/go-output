@@ -21,7 +21,7 @@ func main() {
 		SetMetadata("generated_by", "inventory_system").
 		SetMetadata("version", "2.0").
 		Header("Product Inventory Report").
-		Table("Products", products, 
+		Table("Products", products,
 			output.WithKeys("ID", "Name", "Price", "Stock", "Category")).
 		Text("Report Summary:").
 		Text("- Total products: 4").
@@ -39,10 +39,10 @@ func main() {
 	out := output.NewOutput(
 		// Multiple formats - each will be rendered independently
 		output.WithFormats(
-			output.JSON,     // Machine-readable data
-			output.CSV,      // Spreadsheet import
-			output.HTML,     // Web display
-			output.Table,    // Console display
+			output.JSON,  // Machine-readable data
+			output.CSV,   // Spreadsheet import
+			output.HTML,  // Web display
+			output.Table, // Console display
 		),
 		// Multiple writers - stdout and files
 		output.WithWriters(
@@ -59,6 +59,6 @@ func main() {
 	log.Println("Successfully generated:")
 	log.Println("- Console output (table format)")
 	log.Println("- ./output/inventory.json")
-	log.Println("- ./output/inventory.csv") 
+	log.Println("- ./output/inventory.csv")
 	log.Println("- ./output/inventory.html")
 }

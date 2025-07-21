@@ -6,16 +6,17 @@ run:
 
 linters:
   enable:
-    - errcheck
     - govet
     - ineffassign
     - misspell
     - staticcheck
-    - unused
     - revive
     - goconst
     - gocritic
     - unconvert
+  disable:
+    - errcheck  # Fluent API methods intentionally discard return values
+    - unused    # Some methods may be used via reflection/interfaces
   settings:
     revive:
       rules:

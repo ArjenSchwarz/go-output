@@ -145,7 +145,6 @@ func WithSuffix(suffix string) ProgressOption {
 	}
 }
 
-// v1 Compatible options
 // WithProgressColor sets the progress color (v1 compatibility)
 func WithProgressColor(color ProgressColor) ProgressOption {
 	return func(pc *ProgressConfig) {
@@ -253,16 +252,17 @@ func NewProgressForFormats(formats []Format, opts ...ProgressOption) Progress {
 	// - If only visual formats: use appropriate progress for TTY
 	// - If mixed formats: use visual progress if TTY available, otherwise NoOp
 
-	if hasVisualFormat && !hasNonVisualFormat {
+	switch {
+	case hasVisualFormat && !hasNonVisualFormat:
 		// Only visual formats
 		if isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) {
 			return NewPrettyProgress(opts...)
 		}
 		return NewProgress(opts...)
-	} else if hasNonVisualFormat && !hasVisualFormat {
+	case hasNonVisualFormat && !hasVisualFormat:
 		// Only non-visual formats
 		return NewNoOpProgress()
-	} else if hasVisualFormat && hasNonVisualFormat {
+	case hasVisualFormat && hasNonVisualFormat:
 		// Mixed formats - be conservative and use visual progress only if TTY
 		if isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) {
 			return NewPrettyProgress(opts...)

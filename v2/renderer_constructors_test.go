@@ -182,8 +182,9 @@ func TestNewTableRendererWithStyle(t *testing.T) {
 				t.Fatal("NewTableRendererWithStyle returned nil")
 			}
 
-			if renderer.styleName != tt.styleName {
-				t.Errorf("styleName = %q, want %q", renderer.styleName, tt.styleName)
+			tableRenderer := renderer.(*tableRenderer)
+			if tableRenderer.StyleName() != tt.styleName {
+				t.Errorf("styleName = %q, want %q", tableRenderer.StyleName(), tt.styleName)
 			}
 		})
 	}
@@ -242,8 +243,9 @@ func TestTableRendererStyles(t *testing.T) {
 			if renderer == nil {
 				t.Errorf("NewTableRendererWithStyle(%q) returned nil", style)
 			}
-			if renderer.styleName != style {
-				t.Errorf("Expected style %q, got %q", style, renderer.styleName)
+			tableRenderer := renderer.(*tableRenderer)
+			if tableRenderer.StyleName() != style {
+				t.Errorf("Expected style %q, got %q", style, tableRenderer.StyleName())
 			}
 		})
 	}

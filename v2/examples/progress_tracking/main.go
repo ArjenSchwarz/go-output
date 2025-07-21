@@ -20,7 +20,7 @@ func main() {
 
 	// Example 1: Auto-selected progress based on format
 	fmt.Println("Example 1: Format-aware progress (Table format = visual progress)")
-	
+
 	doc1 := output.New().
 		Header("Large Dataset Processing").
 		Table("Sample Data", largeDataset[:5], // Show only first 5 rows
@@ -165,11 +165,11 @@ func generateLargeDataset(size int) []map[string]any {
 // simulateProgressUpdates mimics a background process updating progress
 func simulateProgressUpdates(progress output.Progress, total int, delay time.Duration) {
 	progress.SetTotal(total)
-	
+
 	for i := 0; i <= total; i++ {
 		time.Sleep(delay)
 		progress.SetCurrent(i)
-		
+
 		// Update status at key milestones
 		if i == total/4 {
 			progress.SetStatus("25% complete")
