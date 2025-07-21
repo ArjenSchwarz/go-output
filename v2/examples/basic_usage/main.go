@@ -20,7 +20,7 @@ func main() {
 	// Key feature: WithKeys preserves exact column ordering
 	doc := output.New().
 		Text("Company Employee Report").
-		Text("Generated: " + "2024-01-15").
+		Text("Generated: "+"2024-01-15").
 		Table("Employees", users, output.WithKeys("Name", "Department", "Age", "Status")).
 		Text("Total employees: 4").
 		Build()

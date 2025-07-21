@@ -1,3 +1,7 @@
+// Package output provides a flexible output generation library for Go applications.
+// It supports multiple output formats (JSON, YAML, CSV, HTML, Markdown, etc.)
+// with a document-builder pattern that eliminates global state and provides
+// thread-safe operations.
 package output
 
 import (

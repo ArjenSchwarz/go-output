@@ -106,7 +106,7 @@ func (p *textProgress) draw() {
 	}
 
 	// Clear line and write progress
-	fmt.Fprintf(p.config.Writer, "\r%s\r%s",
+	_, _ = fmt.Fprintf(p.config.Writer, "\r%s\r%s",
 		fmt.Sprintf("%*s", len(line), ""), line)
 }
 
@@ -120,7 +120,7 @@ func (p *textProgress) drawFinal() {
 	}
 
 	// Write final state with newline
-	fmt.Fprintf(p.config.Writer, "\r%s\r%s\n",
+	_, _ = fmt.Fprintf(p.config.Writer, "\r%s\r%s\n",
 		fmt.Sprintf("%*s", len(line), ""), line)
 }
 

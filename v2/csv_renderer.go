@@ -33,13 +33,13 @@ func (c *csvRenderer) SupportsStreaming() bool {
 }
 
 // renderDocumentCSV renders entire document as CSV with proper key order preservation
-func (cr *csvRenderer) renderDocumentCSV(ctx context.Context, doc *Document) ([]byte, error) {
+func (c *csvRenderer) renderDocumentCSV(ctx context.Context, doc *Document) ([]byte, error) {
 	if doc == nil {
 		return nil, fmt.Errorf("document cannot be nil")
 	}
 
 	var buf bytes.Buffer
-	err := cr.renderDocumentCSVTo(ctx, doc, &buf)
+	err := c.renderDocumentCSVTo(ctx, doc, &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (cr *csvRenderer) renderDocumentCSV(ctx context.Context, doc *Document) ([]
 }
 
 // renderDocumentCSVTo streams CSV output with proper key order preservation
-func (cr *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w io.Writer) error {
+func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w io.Writer) error {
 	if doc == nil {
 		return fmt.Errorf("document cannot be nil")
 	}
@@ -84,7 +84,7 @@ func (cr *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w
 
 			// Write headers for first table or when headers differ
 			writeHeaders := !hasWrittenHeaders
-			if err := cr.renderTableContentCSV(table, csvWriter, writeHeaders); err != nil {
+			if err := c.renderTableContentCSV(table, csvWriter, writeHeaders); err != nil {
 				return fmt.Errorf("failed to render table %s: %w", content.ID(), err)
 			}
 
@@ -98,7 +98,7 @@ func (cr *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w
 				if err := csvWriter.Write([]string{"content"}); err != nil {
 					return fmt.Errorf("failed to write content header: %w", err)
 				}
-				if err := csvWriter.Write([]string{cr.formatValueForCSV(string(contentText))}); err != nil {
+				if err := csvWriter.Write([]string{c.formatValueForCSV(string(contentText))}); err != nil {
 					return fmt.Errorf("failed to write content row: %w", err)
 				}
 				hasWrittenHeaders = true
@@ -110,7 +110,7 @@ func (cr *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w
 }
 
 // renderTableContentCSV renders table content to CSV with key order preservation
-func (cr *csvRenderer) renderTableContentCSV(table *TableContent, csvWriter *csv.Writer, writeHeaders bool) error {
+func (c *csvRenderer) renderTableContentCSV(table *TableContent, csvWriter *csv.Writer, writeHeaders bool) error {
 	keyOrder := table.Schema().GetKeyOrder()
 	if len(keyOrder) == 0 {
 		return nil // No columns to write
@@ -128,7 +128,7 @@ func (cr *csvRenderer) renderTableContentCSV(table *TableContent, csvWriter *csv
 		row := make([]string, len(keyOrder))
 		for i, key := range keyOrder {
 			if val, exists := record[key]; exists {
-				row[i] = cr.formatValueForCSV(val)
+				row[i] = c.formatValueForCSV(val)
 			}
 			// Empty string for missing values (row[i] is already "")
 		}
@@ -142,7 +142,7 @@ func (cr *csvRenderer) renderTableContentCSV(table *TableContent, csvWriter *csv
 }
 
 // formatValueForCSV converts any value to its CSV string representation
-func (cr *csvRenderer) formatValueForCSV(val any) string {
+func (c *csvRenderer) formatValueForCSV(val any) string {
 	if val == nil {
 		return ""
 	}

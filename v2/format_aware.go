@@ -275,10 +275,10 @@ type DataIntegrityValidator struct {
 // NewDataIntegrityValidator creates a validator for the original data
 func NewDataIntegrityValidator(originalData []byte) *DataIntegrityValidator {
 	// Create a deep copy of the original data
-	copy := make([]byte, len(originalData))
-	copy = append(copy[:0], originalData...)
+	dataCopy := make([]byte, len(originalData))
+	dataCopy = append(dataCopy[:0], originalData...)
 	return &DataIntegrityValidator{
-		originalData: copy,
+		originalData: dataCopy,
 	}
 }
 
@@ -299,7 +299,7 @@ func (div *DataIntegrityValidator) ValidateIntegrity(currentData []byte) bool {
 
 // GetOriginalData returns a copy of the original data
 func (div *DataIntegrityValidator) GetOriginalData() []byte {
-	copy := make([]byte, len(div.originalData))
-	copy = append(copy[:0], div.originalData...)
-	return copy
+	dataCopy := make([]byte, len(div.originalData))
+	dataCopy = append(dataCopy[:0], div.originalData...)
+	return dataCopy
 }

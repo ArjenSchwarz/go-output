@@ -232,7 +232,8 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 	multiErr.AddContext("document_contents", len(doc.GetContents()))
 	for err := range errChan {
 		// Add error with source tracking - determine source component from error type
-		component := "unknown"
+		const unknownComponent = "unknown"
+		component := unknownComponent
 		details := make(map[string]any)
 
 		var renderErr *RenderError

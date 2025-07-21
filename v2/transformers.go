@@ -30,7 +30,7 @@ func (e *EmojiTransformer) CanTransform(format string) bool {
 }
 
 // Transform converts text indicators to emoji
-func (e *EmojiTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
+func (e *EmojiTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
 	output := string(input)
 
 	// Common emoji substitutions based on v1 patterns
@@ -110,20 +110,21 @@ func (c *ColorTransformer) CanTransform(format string) bool {
 }
 
 // Transform adds ANSI color codes to the output
-func (c *ColorTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
+func (c *ColorTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
 	output := string(input)
 
 	// Apply colors based on content patterns
-	if strings.Contains(output, "✅") || strings.Contains(output, "Yes") || strings.Contains(output, "true") {
+	switch {
+	case strings.Contains(output, "✅") || strings.Contains(output, "Yes") || strings.Contains(output, "true"):
 		green := color.New(color.FgGreen).Add(color.Bold)
 		output = green.Sprint(output)
-	} else if strings.Contains(output, "❌") || strings.Contains(output, "No") || strings.Contains(output, "false") {
+	case strings.Contains(output, "❌") || strings.Contains(output, "No") || strings.Contains(output, "false"):
 		red := color.New(color.FgRed).Add(color.Bold)
 		output = red.Sprint(output)
-	} else if strings.Contains(output, "🚨") || strings.Contains(output, "!!") {
+	case strings.Contains(output, "🚨") || strings.Contains(output, "!!"):
 		red := color.New(color.FgRed).Add(color.Bold)
 		output = red.Sprint(output)
-	} else if strings.Contains(output, "ℹ️") {
+	case strings.Contains(output, "ℹ️"):
 		blue := color.New(color.FgBlue)
 		output = blue.Sprint(output)
 	}
@@ -167,7 +168,7 @@ func (s *SortTransformer) CanTransform(format string) bool {
 }
 
 // Transform sorts the tabular data by the specified key
-func (s *SortTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
+func (s *SortTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
 	if s.key == "" {
 		return input, nil
 	}
@@ -315,7 +316,7 @@ func (l *LineSplitTransformer) CanTransform(format string) bool {
 }
 
 // Transform splits multi-line cells into separate rows
-func (l *LineSplitTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
+func (l *LineSplitTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
 	content := string(input)
 	lines := strings.Split(content, "\n")
 
@@ -409,13 +410,13 @@ func (r *RemoveColorsTransformer) Priority() int {
 }
 
 // CanTransform checks if this transformer applies to the given format
-func (r *RemoveColorsTransformer) CanTransform(format string) bool {
+func (r *RemoveColorsTransformer) CanTransform(_ string) bool {
 	// Remove colors from all formats when writing to files
 	return true
 }
 
 // Transform removes ANSI color codes from the output
-func (r *RemoveColorsTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
+func (r *RemoveColorsTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
 	// Remove ANSI escape sequences (colors)
 	re := regexp.MustCompile(`\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]`)
 	output := re.ReplaceAll(input, []byte(""))

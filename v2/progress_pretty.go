@@ -80,8 +80,7 @@ func (p *prettyProgress) handleSignals() {
 	for {
 		select {
 		case sig := <-p.signals:
-			switch sig {
-			case syscall.SIGWINCH:
+			if sig == syscall.SIGWINCH {
 				// Terminal was resized - go-pretty handles this automatically
 				continue
 			}

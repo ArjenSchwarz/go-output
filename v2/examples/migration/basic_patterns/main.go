@@ -24,7 +24,7 @@ func main() {
 	// Pattern 1: Simple Table Output
 	fmt.Println("Pattern 1: Simple Table Output")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	
+
 	fmt.Println("\nv1 Code:")
 	fmt.Println(`// v1 - Global state, unpredictable key ordering
 output := &format.OutputArray{}
@@ -32,7 +32,7 @@ output.AddContents(userData)
 output.Write()`)
 
 	fmt.Println("\nv2 Equivalent:")
-	
+
 	// v2 Implementation
 	doc1 := output.New().
 		Table("", userData). // Auto-detects schema but order may vary
@@ -52,7 +52,7 @@ output.Write()`)
 	// Pattern 2: Key Ordering (Most Important Migration)
 	fmt.Println("Pattern 2: Key Ordering Preservation")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	
+
 	fmt.Println("\nv1 Code:")
 	fmt.Println(`// v1 - Keys field for column ordering (but unreliable)
 output := &format.OutputArray{
@@ -62,7 +62,7 @@ output.AddContents(userData)
 output.Write()`)
 
 	fmt.Println("\nv2 Equivalent (Exact Key Order Preserved):")
-	
+
 	// v2 Implementation - exact key preservation
 	doc2 := output.New().
 		Table("", userData, output.WithKeys("Name", "Department", "Email", "Status")).
@@ -82,7 +82,7 @@ output.Write()`)
 	// Pattern 3: Multiple Tables (Buffer Pattern)
 	fmt.Println("Pattern 3: Multiple Tables")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	
+
 	fmt.Println("\nv1 Code:")
 	fmt.Println(`// v1 - Required buffer pattern for multiple tables
 output := &format.OutputArray{
@@ -107,13 +107,13 @@ output.Write()`)
 	}
 
 	fmt.Println("\nv2 Equivalent (Clean Multiple Tables):")
-	
+
 	// v2 Implementation - multiple tables with different schemas
 	doc3 := output.New().
 		Header("User Report").
-		Table("Active Users", activeUsers, 
+		Table("Active Users", activeUsers,
 			output.WithKeys("Name", "Email")).
-		Table("Department Summary", summaryData, 
+		Table("Department Summary", summaryData,
 			output.WithKeys("ID", "Department", "Status")). // Different keys!
 		Build()
 
@@ -131,7 +131,7 @@ output.Write()`)
 	// Pattern 4: File Output
 	fmt.Println("Pattern 4: File Output")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━")
-	
+
 	fmt.Println("\nv1 Code:")
 	fmt.Println(`// v1 - Settings-based file output
 settings := format.NewOutputSettings()
@@ -146,7 +146,7 @@ output.Write()`)
 
 	// v2 Implementation - FileWriter pattern
 	doc4 := output.New().
-		Table("User Export", userData, 
+		Table("User Export", userData,
 			output.WithKeys("Name", "Department", "Status")).
 		Build()
 

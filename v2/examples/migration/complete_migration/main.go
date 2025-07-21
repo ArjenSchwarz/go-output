@@ -48,10 +48,10 @@ func main() {
 		SetMetadata("report_type", "infrastructure").
 		SetMetadata("generated_at", time.Now().Unix()).
 		SetMetadata("version", "2.0").
-		
+
 		// Document header
 		Header("Infrastructure Monitoring Report").
-		Text("Generated: " + time.Now().Format("Monday, January 2, 2006 at 15:04:05 MST")).
+		Text("Generated: "+time.Now().Format("Monday, January 2, 2006 at 15:04:05 MST")).
 		Text("Coverage: Production Environment").
 		Text("").
 
@@ -90,7 +90,7 @@ func main() {
 			b.Text("• Scheduled maintenance: db-replica-02 (Sunday 02:00-04:00)")
 		}).
 
-		// Performance metrics section  
+		// Performance metrics section
 		Section("Performance Metrics", func(b *output.Builder) {
 			b.Text("Key performance indicators for the last 24 hours:")
 			b.Table("System Metrics", metrics,
@@ -148,23 +148,23 @@ func main() {
 				"team":        "Infrastructure",
 				"environment": "Production",
 			}),
-			output.HTML,                               // Web dashboard
-			output.JSON,                               // API consumption
-			output.TableWithStyle("ColoredBright"),    // Console/terminal
+			output.HTML,                            // Web dashboard
+			output.JSON,                            // API consumption
+			output.TableWithStyle("ColoredBright"), // Console/terminal
 		),
-		
+
 		// Data transformations
 		output.WithTransformers(
-			output.NewEnhancedEmojiTransformer(),  // Convert emoji codes
-			output.NewColorTransformer(),          // Add colors
+			output.NewEnhancedEmojiTransformer(), // Convert emoji codes
+			output.NewColorTransformer(),         // Add colors
 		),
-		
+
 		// Multiple output destinations
 		output.WithWriters(
 			output.NewStdoutWriter(), // Console display
 			fileWriter,               // File export
 		),
-		
+
 		// Progress tracking for large datasets
 		output.WithProgress(output.NewProgressForFormats(
 			[]output.Format{output.Markdown, output.HTML, output.JSON, output.Table},
@@ -183,7 +183,7 @@ func main() {
 	fmt.Printf("\n✅ Report Generation Complete (%v)\n", duration)
 	fmt.Println("Generated files:")
 	fmt.Println("📄 ./output/infrastructure_report.md   - Technical documentation")
-	fmt.Println("🌐 ./output/infrastructure_report.html - Web dashboard")  
+	fmt.Println("🌐 ./output/infrastructure_report.html - Web dashboard")
 	fmt.Println("📊 ./output/infrastructure_report.json - API/automation")
 	fmt.Println("💻 Console output                      - Terminal display")
 	fmt.Println()
@@ -252,7 +252,7 @@ func showMigrationComparison(v2Duration time.Duration) {
 	fmt.Println("📈 Migration Benefits Analysis:")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
-	
+
 	fmt.Println("🎯 **Key Improvements:**")
 	fmt.Printf("   ⚡ Performance: Single operation (%v total)\n", v2Duration)
 	fmt.Println("   🎨 Visual: Exact key order preservation")

@@ -16,9 +16,9 @@ func main() {
 
 	// Example 1: Builder Error Handling
 	fmt.Println("Example 1: Builder validation and error accumulation")
-	
+
 	builder := output.New()
-	
+
 	// Add some valid content
 	builder.Table("Valid Table", []map[string]any{
 		{"Name": "Alice", "Age": 30},
@@ -27,7 +27,7 @@ func main() {
 	// Attempt to add invalid content (this will create an error)
 	builder.Table("Invalid Table", "invalid data type") // Wrong data type
 	builder.Raw("invalid_format", []byte("test"))       // Invalid format
-	
+
 	// Check for builder errors before building
 	if builder.HasErrors() {
 		fmt.Println("❌ Builder has errors:")
@@ -54,7 +54,7 @@ func main() {
 
 	// Create output with invalid writer to demonstrate error handling
 	invalidWriter := &failingWriter{shouldFail: true}
-	
+
 	out := output.NewOutput(
 		output.WithFormat(output.JSON),
 		output.WithWriter(invalidWriter),
@@ -64,7 +64,7 @@ func main() {
 	if err != nil {
 		fmt.Println("❌ Render error caught:")
 		fmt.Printf("  Error: %v\n", err)
-		
+
 		// Check if it's a specific error type
 		var writerErr *output.WriterError
 		if errors.As(err, &writerErr) {
@@ -96,7 +96,7 @@ func main() {
 	err = multiOut.Render(context.Background(), multiFailDoc)
 	if err != nil {
 		fmt.Println("❌ Multiple errors occurred:")
-		
+
 		// Check if it's a multi-error
 		var multiErr *output.MultiError
 		if errors.As(err, &multiErr) {
@@ -117,7 +117,7 @@ func main() {
 
 	// Create a context that will be cancelled
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Cancel immediately to demonstrate cancellation handling
 	cancel()
 
@@ -130,7 +130,7 @@ func main() {
 	if err != nil {
 		fmt.Println("❌ Cancellation error:")
 		fmt.Printf("  Error: %v\n", err)
-		
+
 		if errors.Is(err, context.Canceled) {
 			fmt.Println("  ✓ Properly detected context cancellation")
 		}

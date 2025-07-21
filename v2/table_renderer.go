@@ -20,12 +20,12 @@ func (t *tableRenderer) Format() string {
 	return FormatTable
 }
 
-func (tr *tableRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
-	return tr.renderDocumentTable(ctx, doc)
+func (t *tableRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
+	return t.renderDocumentTable(ctx, doc)
 }
 
-func (tr *tableRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
-	data, err := tr.renderDocumentTable(ctx, doc)
+func (t *tableRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	data, err := t.renderDocumentTable(ctx, doc)
 	if err != nil {
 		return err
 	}
@@ -37,8 +37,13 @@ func (t *tableRenderer) SupportsStreaming() bool {
 	return true
 }
 
+// StyleName returns the style name for testing purposes
+func (t *tableRenderer) StyleName() string {
+	return t.styleName
+}
+
 // renderDocumentTable renders entire document as formatted console tables
-func (tr *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) ([]byte, error) {
+func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) ([]byte, error) {
 	if doc == nil {
 		return nil, fmt.Errorf("document cannot be nil")
 	}
@@ -60,7 +65,7 @@ func (tr *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document)
 				result.WriteString("\n")
 			}
 
-			tableWriter := tr.renderTable(c)
+			tableWriter := t.renderTable(c)
 			result.WriteString(tableWriter.Render())
 			result.WriteString("\n")
 
@@ -96,7 +101,7 @@ func (tr *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document)
 					if j > 0 {
 						result.WriteString("\n")
 					}
-					tableWriter := tr.renderTable(subTable)
+					tableWriter := t.renderTable(subTable)
 					result.WriteString(tableWriter.Render())
 					result.WriteString("\n")
 				} else if subText, ok := subContent.(*TextContent); ok {
@@ -132,19 +137,19 @@ func (tr *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document)
 }
 
 // renderTable creates a formatted table from TableContent
-func (tr *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
-	t := table.NewWriter()
-	t.SetStyle(tr.getTableStyle())
+func (t *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
+	tw := table.NewWriter()
+	tw.SetStyle(t.getTableStyle())
 
 	// Add title if present
 	if tableContent.Title() != "" {
-		t.SetTitle(tableContent.Title())
+		tw.SetTitle(tableContent.Title())
 	}
 
 	// Get key order from schema
 	keyOrder := tableContent.Schema().GetKeyOrder()
 	if len(keyOrder) == 0 {
-		return t // Return empty table
+		return tw // Return empty table
 	}
 
 	// Set headers with proper order
@@ -152,7 +157,7 @@ func (tr *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 	for i, key := range keyOrder {
 		headerRow[i] = key
 	}
-	t.AppendHeader(headerRow)
+	tw.AppendHeader(headerRow)
 
 	// Add data rows preserving key order
 	for _, record := range tableContent.Records() {
@@ -170,15 +175,15 @@ func (tr *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 				row[i] = ""
 			}
 		}
-		t.AppendRow(row)
+		tw.AppendRow(row)
 	}
 
-	return t
+	return tw
 }
 
 // getTableStyle returns the table style configuration
-func (tr *tableRenderer) getTableStyle() table.Style {
-	switch tr.styleName {
+func (t *tableRenderer) getTableStyle() table.Style {
+	switch t.styleName {
 	case "ColoredBright":
 		return table.Style{
 			Name: "ColoredBright",
@@ -279,7 +284,7 @@ func (tr *tableRenderer) getTableStyle() table.Style {
 }
 
 // NewTableRendererWithStyle creates a table renderer with specific style
-func NewTableRendererWithStyle(styleName string) *tableRenderer {
+func NewTableRendererWithStyle(styleName string) Renderer {
 	return &tableRenderer{
 		styleName: styleName,
 	}
