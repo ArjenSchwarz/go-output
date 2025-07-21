@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **Complete v2 API documentation and examples**
+  - Comprehensive API documentation with detailed interface reference for all public types and methods
+  - Working examples for basic usage, multiple formats, key ordering, error handling, and concurrent operations
+  - Chart generation examples including Gantt charts, pie charts, and flow diagrams with Mermaid and Draw.io support
+  - Migration examples demonstrating patterns for transitioning from v1 to v2 architecture
+  - Mixed content document examples showing hierarchical content organization
+  - Progress tracking examples with visual feedback and format-aware behavior
+  - Performance examples for large datasets and streaming operations
 - **AST-based migration tool** for automated code conversion from v1 to v2
   - Comprehensive pattern recognition for all v1 usage patterns
   - Advanced transformation engine with type-aware code generation
