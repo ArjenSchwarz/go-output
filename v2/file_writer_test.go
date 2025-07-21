@@ -358,3 +358,79 @@ func TestGenerateFilename(t *testing.T) {
 		})
 	}
 }
+
+func TestFileWriterAbsolutePaths(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Test that absolute paths are rejected by default
+	t.Run("absolute_paths_rejected_by_default", func(t *testing.T) {
+		fw, err := NewFileWriter(tempDir, "{format}")
+		if err != nil {
+			t.Fatalf("failed to create FileWriter: %v", err)
+		}
+
+		ctx := context.Background()
+		testData := []byte("test content")
+
+		// Try to write to an absolute path
+		absolutePath := filepath.Join(tempDir, "subdir", "absolute_test.txt")
+		err = fw.Write(ctx, absolutePath, testData)
+		if err == nil {
+			t.Error("expected error for absolute path, but got nil")
+		}
+		if !strings.Contains(err.Error(), "must be relative") {
+			t.Errorf("expected 'must be relative' error, got: %v", err)
+		}
+	})
+
+	// Test that absolute paths work when enabled
+	t.Run("absolute_paths_allowed_with_option", func(t *testing.T) {
+		fw, err := NewFileWriterWithOptions(tempDir, "{format}", WithAbsolutePaths())
+		if err != nil {
+			t.Fatalf("failed to create FileWriter: %v", err)
+		}
+
+		ctx := context.Background()
+		testData := []byte("test content")
+
+		// Create a temporary file path outside the base directory
+		externalDir := t.TempDir()
+		absolutePath := filepath.Join(externalDir, "absolute_test.txt")
+
+		// Write to absolute path should succeed
+		err = fw.Write(ctx, absolutePath, testData)
+		if err != nil {
+			t.Fatalf("failed to write to absolute path: %v", err)
+		}
+
+		// Verify the file was created and contains correct content
+		content, err := os.ReadFile(absolutePath)
+		if err != nil {
+			t.Fatalf("failed to read absolute path file: %v", err)
+		}
+
+		if string(content) != string(testData) {
+			t.Errorf("file content = %q, want %q", content, testData)
+		}
+	})
+
+	// Test that directory traversal is still blocked even with absolute paths enabled
+	t.Run("directory_traversal_still_blocked", func(t *testing.T) {
+		fw, err := NewFileWriterWithOptions(tempDir, "{format}", WithAbsolutePaths())
+		if err != nil {
+			t.Fatalf("failed to create FileWriter: %v", err)
+		}
+
+		ctx := context.Background()
+		testData := []byte("test content")
+
+		// Try directory traversal - should still be blocked
+		err = fw.Write(ctx, "../../../etc/passwd", testData)
+		if err == nil {
+			t.Error("expected error for directory traversal, but got nil")
+		}
+		if !strings.Contains(err.Error(), "contains '..'") {
+			t.Errorf("expected directory traversal error, got: %v", err)
+		}
+	})
+}

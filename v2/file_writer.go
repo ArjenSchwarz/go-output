@@ -12,10 +12,11 @@ import (
 // FileWriter writes rendered output to files using a pattern
 type FileWriter struct {
 	baseWriter
-	dir        string            // Base directory for files
-	pattern    string            // e.g., "report-{format}.{ext}"
-	extensions map[string]string // format to extension mapping
-	mu         sync.Mutex        // For concurrent access protection
+	dir           string            // Base directory for files
+	pattern       string            // e.g., "report-{format}.{ext}"
+	extensions    map[string]string // format to extension mapping
+	allowAbsolute bool              // Allow absolute paths in filenames
+	mu            sync.Mutex        // For concurrent access protection
 }
 
 // NewFileWriter creates a new FileWriter with the specified directory and pattern
@@ -46,10 +47,11 @@ func NewFileWriter(dir, pattern string) (*FileWriter, error) {
 	}
 
 	return &FileWriter{
-		baseWriter: baseWriter{name: "file"},
-		dir:        absDir,
-		pattern:    pattern,
-		extensions: defaultExtensions(),
+		baseWriter:    baseWriter{name: "file"},
+		dir:           absDir,
+		pattern:       pattern,
+		extensions:    defaultExtensions(),
+		allowAbsolute: false,
 	}, nil
 }
 
@@ -83,11 +85,15 @@ func (fw *FileWriter) Write(ctx context.Context, format string, data []byte) (re
 	defer fw.mu.Unlock()
 
 	// Create the full file path
-	fullPath := filepath.Join(fw.dir, filename)
-
-	// Ensure the path is still within our directory (defense in depth)
-	if !strings.HasPrefix(fullPath, fw.dir) {
-		return fw.wrapError(format, fmt.Errorf("path escapes directory: %q", filename))
+	var fullPath string
+	if fw.allowAbsolute && filepath.IsAbs(filename) {
+		fullPath = filename
+	} else {
+		fullPath = filepath.Join(fw.dir, filename)
+		// Ensure the path is still within our directory (defense in depth)
+		if !strings.HasPrefix(fullPath, fw.dir) {
+			return fw.wrapError(format, fmt.Errorf("path escapes directory: %q", filename))
+		}
 	}
 
 	// Create any necessary subdirectories
@@ -155,24 +161,9 @@ func (fw *FileWriter) generateFilename(format string) (string, error) {
 
 // validateFilename ensures the filename is safe
 func (fw *FileWriter) validateFilename(filename string) error {
-	// Check for directory traversal attempts
+	// Always check for directory traversal attempts
 	if strings.Contains(filename, "..") {
 		return fmt.Errorf("invalid filename %q: contains '..'", filename)
-	}
-
-	// Check for absolute paths (Unix and Windows)
-	if filepath.IsAbs(filename) {
-		return fmt.Errorf("invalid filename %q: must be relative", filename)
-	}
-
-	// Check for Windows absolute paths (C:, D:, etc.)
-	if len(filename) >= 2 && filename[1] == ':' {
-		return fmt.Errorf("invalid filename %q: contains drive letter", filename)
-	}
-
-	// Check for UNC paths
-	if strings.HasPrefix(filename, "\\\\") || strings.HasPrefix(filename, "//") {
-		return fmt.Errorf("invalid filename %q: UNC paths not allowed", filename)
 	}
 
 	// Check for invalid characters (basic check)
@@ -180,14 +171,32 @@ func (fw *FileWriter) validateFilename(filename string) error {
 		return fmt.Errorf("invalid filename %q: contains null bytes", filename)
 	}
 
-	// Ensure the filename doesn't start with a separator
-	if strings.HasPrefix(filename, string(filepath.Separator)) {
-		return fmt.Errorf("invalid filename %q: starts with separator", filename)
-	}
+	// If absolute paths are not allowed, perform additional validation
+	if !fw.allowAbsolute {
+		// Check for absolute paths (Unix and Windows)
+		if filepath.IsAbs(filename) {
+			return fmt.Errorf("invalid filename %q: must be relative", filename)
+		}
 
-	// Additional check for backslash on Unix systems
-	if filepath.Separator != '\\' && strings.HasPrefix(filename, "\\") {
-		return fmt.Errorf("invalid filename %q: starts with backslash", filename)
+		// Check for Windows absolute paths (C:, D:, etc.)
+		if len(filename) >= 2 && filename[1] == ':' {
+			return fmt.Errorf("invalid filename %q: contains drive letter", filename)
+		}
+
+		// Check for UNC paths
+		if strings.HasPrefix(filename, "\\\\") || strings.HasPrefix(filename, "//") {
+			return fmt.Errorf("invalid filename %q: UNC paths not allowed", filename)
+		}
+
+		// Ensure the filename doesn't start with a separator
+		if strings.HasPrefix(filename, string(filepath.Separator)) {
+			return fmt.Errorf("invalid filename %q: starts with separator", filename)
+		}
+
+		// Additional check for backslash on Unix systems
+		if filepath.Separator != '\\' && strings.HasPrefix(filename, "\\") {
+			return fmt.Errorf("invalid filename %q: starts with backslash", filename)
+		}
 	}
 
 	return nil
@@ -218,6 +227,13 @@ func WithExtensions(extensions map[string]string) FileWriterOption {
 		for format, ext := range extensions {
 			fw.extensions[format] = ext
 		}
+	}
+}
+
+// WithAbsolutePaths allows absolute paths in filenames
+func WithAbsolutePaths() FileWriterOption {
+	return func(fw *FileWriter) {
+		fw.allowAbsolute = true
 	}
 }
 

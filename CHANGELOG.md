@@ -1,6 +1,11 @@
 ## 2.0.0 / 2025-07-22
 
 ### Added
+- **FileWriter absolute path support**
+  - New `WithAbsolutePaths()` option to allow writing to absolute file paths
+  - Maintains security with directory traversal protection even when absolute paths are enabled
+  - Conditional validation that respects the absolute path configuration
+  - Comprehensive test coverage for absolute path functionality and security edge cases
 - **Complete v2 API documentation and examples**
   - Comprehensive API documentation with detailed interface reference for all public types and methods
   - Working examples for basic usage, multiple formats, key ordering, error handling, and concurrent operations
