@@ -92,7 +92,7 @@ func TestNewTransformPipeline(t *testing.T) {
 
 func TestTransformPipeline_Add(t *testing.T) {
 	pipeline := NewTransformPipeline()
-	transformer := newMockTransformer("test", 100, []string{"json"}, "")
+	transformer := newMockTransformer("test", 100, []string{FormatJSON}, "")
 
 	pipeline.Add(transformer)
 
@@ -107,7 +107,7 @@ func TestTransformPipeline_Add(t *testing.T) {
 
 func TestTransformPipeline_Remove(t *testing.T) {
 	pipeline := NewTransformPipeline()
-	transformer := newMockTransformer("test", 100, []string{"json"}, "")
+	transformer := newMockTransformer("test", 100, []string{FormatJSON}, "")
 
 	pipeline.Add(transformer)
 
@@ -133,7 +133,7 @@ func TestTransformPipeline_Remove(t *testing.T) {
 
 func TestTransformPipeline_Get(t *testing.T) {
 	pipeline := NewTransformPipeline()
-	transformer := newMockTransformer("test", 100, []string{"json"}, "")
+	transformer := newMockTransformer("test", 100, []string{FormatJSON}, "")
 
 	pipeline.Add(transformer)
 
@@ -155,8 +155,8 @@ func TestTransformPipeline_Get(t *testing.T) {
 
 func TestTransformPipeline_Clear(t *testing.T) {
 	pipeline := NewTransformPipeline()
-	pipeline.Add(newMockTransformer("test1", 100, []string{"json"}, ""))
-	pipeline.Add(newMockTransformer("test2", 200, []string{"yaml"}, ""))
+	pipeline.Add(newMockTransformer("test1", 100, []string{FormatJSON}, ""))
+	pipeline.Add(newMockTransformer("test2", 200, []string{FormatYAML}, ""))
 
 	pipeline.Clear()
 
@@ -171,16 +171,16 @@ func TestTransformPipeline_PriorityOrdering(t *testing.T) {
 	pipeline := NewTransformPipeline()
 
 	// Add transformers in reverse priority order
-	high := newMockTransformer("high", 300, []string{"json"}, "HIGH")
-	medium := newMockTransformer("medium", 200, []string{"json"}, "MEDIUM")
-	low := newMockTransformer("low", 100, []string{"json"}, "LOW")
+	high := newMockTransformer("high", 300, []string{FormatJSON}, "HIGH")
+	medium := newMockTransformer("medium", 200, []string{FormatJSON}, "MEDIUM")
+	low := newMockTransformer("low", 100, []string{FormatJSON}, "LOW")
 
 	pipeline.Add(high)
 	pipeline.Add(medium)
 	pipeline.Add(low)
 
 	// Transform should apply in priority order (low to high)
-	result, err := pipeline.Transform(context.Background(), []byte("input"), "json")
+	result, err := pipeline.Transform(context.Background(), []byte("input"), FormatJSON)
 	if err != nil {
 		t.Fatalf("Transform() error = %v", err)
 	}
@@ -194,16 +194,16 @@ func TestTransformPipeline_PriorityOrdering(t *testing.T) {
 func TestTransformPipeline_FormatFiltering(t *testing.T) {
 	pipeline := NewTransformPipeline()
 
-	jsonTransformer := newMockTransformer("json", 100, []string{"json"}, "JSON")
-	yamlTransformer := newMockTransformer("yaml", 200, []string{"yaml"}, "YAML")
-	universalTransformer := newMockTransformer("universal", 300, []string{"json", "yaml", "html"}, "UNIVERSAL")
+	jsonTransformer := newMockTransformer("json", 100, []string{FormatJSON}, "JSON")
+	yamlTransformer := newMockTransformer("yaml", 200, []string{FormatYAML}, "YAML")
+	universalTransformer := newMockTransformer("universal", 300, []string{FormatJSON, FormatYAML, FormatHTML}, "UNIVERSAL")
 
 	pipeline.Add(jsonTransformer)
 	pipeline.Add(yamlTransformer)
 	pipeline.Add(universalTransformer)
 
 	// Test JSON format - should only apply json and universal transformers
-	result, err := pipeline.Transform(context.Background(), []byte("input"), "json")
+	result, err := pipeline.Transform(context.Background(), []byte("input"), FormatJSON)
 	if err != nil {
 		t.Fatalf("Transform() error = %v", err)
 	}
@@ -214,7 +214,7 @@ func TestTransformPipeline_FormatFiltering(t *testing.T) {
 	}
 
 	// Test YAML format - should only apply yaml and universal transformers
-	result, err = pipeline.Transform(context.Background(), []byte("input"), "yaml")
+	result, err = pipeline.Transform(context.Background(), []byte("input"), FormatYAML)
 	if err != nil {
 		t.Fatalf("Transform() error = %v", err)
 	}
@@ -225,7 +225,7 @@ func TestTransformPipeline_FormatFiltering(t *testing.T) {
 	}
 
 	// Test HTML format - should only apply universal transformer
-	result, err = pipeline.Transform(context.Background(), []byte("input"), "html")
+	result, err = pipeline.Transform(context.Background(), []byte("input"), FormatHTML)
 	if err != nil {
 		t.Fatalf("Transform() error = %v", err)
 	}
@@ -252,15 +252,15 @@ func TestTransformPipeline_FormatFiltering(t *testing.T) {
 func TestTransformPipeline_TransformError(t *testing.T) {
 	pipeline := NewTransformPipeline()
 
-	goodTransformer := newMockTransformer("good", 100, []string{"json"}, "GOOD")
-	badTransformer := newMockTransformer("bad", 200, []string{"json"}, "BAD")
+	goodTransformer := newMockTransformer("good", 100, []string{FormatJSON}, "GOOD")
+	badTransformer := newMockTransformer("bad", 200, []string{FormatJSON}, "BAD")
 
 	badTransformer.SetError(errors.New("transform failed"))
 
 	pipeline.Add(goodTransformer)
 	pipeline.Add(badTransformer)
 
-	_, err := pipeline.Transform(context.Background(), []byte("input"), "json")
+	_, err := pipeline.Transform(context.Background(), []byte("input"), FormatJSON)
 	if err == nil {
 		t.Error("Transform() should return error when transformer fails")
 	}
@@ -287,7 +287,7 @@ func TestTransformPipeline_ContextCancellation(t *testing.T) {
 		mockTransformer: mockTransformer{
 			name:     "slow",
 			priority: 100,
-			formats:  []string{"json"},
+			formats:  []string{FormatJSON},
 		},
 	}
 
@@ -296,7 +296,7 @@ func TestTransformPipeline_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := pipeline.Transform(ctx, []byte("input"), "json")
+	_, err := pipeline.Transform(ctx, []byte("input"), FormatJSON)
 	if err == nil {
 		t.Error("Transform() should return error when context is cancelled")
 	}
@@ -331,9 +331,9 @@ func TestTransformPipeline_Info(t *testing.T) {
 	pipeline := NewTransformPipeline()
 
 	// Add transformers with different priorities and format support
-	pipeline.Add(newMockTransformer("high", 300, []string{"json", "yaml"}, ""))
-	pipeline.Add(newMockTransformer("low", 100, []string{"json"}, ""))
-	pipeline.Add(newMockTransformer("medium", 200, []string{"html", "markdown"}, ""))
+	pipeline.Add(newMockTransformer("high", 300, []string{FormatJSON, FormatYAML}, ""))
+	pipeline.Add(newMockTransformer("low", 100, []string{FormatJSON}, ""))
+	pipeline.Add(newMockTransformer("medium", 200, []string{FormatHTML, FormatMarkdown}, ""))
 
 	info := pipeline.Info()
 
@@ -355,7 +355,7 @@ func TestTransformPipeline_Info(t *testing.T) {
 	}
 
 	// Check format support
-	if len(info[0].Formats) != 1 || info[0].Formats[0] != "json" {
+	if len(info[0].Formats) != 1 || info[0].Formats[0] != FormatJSON {
 		t.Errorf("low transformer should support [json], got %v", info[0].Formats)
 	}
 
@@ -377,14 +377,14 @@ func TestTransformPipeline_ConcurrentAccess(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			name := fmt.Sprintf("transformer-%d", i)
-			pipeline.Add(newMockTransformer(name, i*100, []string{"json"}, ""))
+			pipeline.Add(newMockTransformer(name, i*100, []string{FormatJSON}, ""))
 		}(i)
 
 		go func(i int) {
 			defer wg.Done()
 			// Transform with some transformers
 			ctx := context.Background()
-			_, _ = pipeline.Transform(ctx, []byte("test"), "json")
+			_, _ = pipeline.Transform(ctx, []byte("test"), FormatJSON)
 		}(i)
 	}
 
@@ -400,13 +400,13 @@ func TestTransformPipeline_ConcurrentAccess(t *testing.T) {
 
 func TestTransformError(t *testing.T) {
 	originalErr := errors.New("original error")
-	transformErr := NewTransformError("test-transformer", "json", []byte("input"), originalErr)
+	transformErr := NewTransformError("test-transformer", FormatJSON, []byte("input"), originalErr)
 
 	if transformErr.Transformer != "test-transformer" {
 		t.Errorf("TransformError.Transformer = %s, want test-transformer", transformErr.Transformer)
 	}
 
-	if transformErr.Format != "json" {
+	if transformErr.Format != FormatJSON {
 		t.Errorf("TransformError.Format = %s, want json", transformErr.Format)
 	}
 
@@ -432,7 +432,7 @@ func BenchmarkTransformPipeline_Transform(b *testing.B) {
 
 	// Add several transformers
 	for i := 0; i < 5; i++ {
-		transformer := newMockTransformer(fmt.Sprintf("bench-%d", i), i*100, []string{"json"}, "")
+		transformer := newMockTransformer(fmt.Sprintf("bench-%d", i), i*100, []string{FormatJSON}, "")
 		pipeline.Add(transformer)
 	}
 
@@ -441,7 +441,7 @@ func BenchmarkTransformPipeline_Transform(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := pipeline.Transform(ctx, input, "json")
+		_, err := pipeline.Transform(ctx, input, FormatJSON)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -454,7 +454,7 @@ func BenchmarkTransformPipeline_PrioritySort(b *testing.B) {
 	// Add many transformers in random order
 	for i := 0; i < 100; i++ {
 		priority := (i * 37) % 1000 // Pseudo-random priorities
-		transformer := newMockTransformer(fmt.Sprintf("bench-%d", i), priority, []string{"json"}, "")
+		transformer := newMockTransformer(fmt.Sprintf("bench-%d", i), priority, []string{FormatJSON}, "")
 		pipeline.Add(transformer)
 	}
 
@@ -463,7 +463,7 @@ func BenchmarkTransformPipeline_PrioritySort(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := pipeline.Transform(ctx, input, "json")
+		_, err := pipeline.Transform(ctx, input, FormatJSON)
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -14,7 +14,7 @@ type htmlRenderer struct {
 }
 
 func (h *htmlRenderer) Format() string {
-	return "html"
+	return FormatHTML
 }
 
 func (h *htmlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
@@ -164,7 +164,7 @@ func (h *htmlRenderer) renderTextContentHTML(text *TextContent) ([]byte, error) 
 func (h *htmlRenderer) renderRawContentHTML(raw *RawContent) ([]byte, error) {
 	// If the raw content is HTML format, include it directly (with warning)
 	// Otherwise, escape it for safety
-	if raw.Format() == "html" {
+	if raw.Format() == FormatHTML {
 		// Include raw HTML directly - this is a security risk and should be documented
 		return raw.Data(), nil
 	} else {

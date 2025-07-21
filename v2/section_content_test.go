@@ -73,7 +73,7 @@ func TestSectionContent_AddContent(t *testing.T) {
 
 	// Add some content
 	textContent := NewTextContent("Test text")
-	rawContent, _ := NewRawContent("html", []byte("<p>Test HTML</p>"))
+	rawContent, _ := NewRawContent(FormatHTML, []byte("<p>Test HTML</p>"))
 	tableContent, _ := NewTableContent("Test Table", []map[string]any{{"key": "value"}})
 
 	section.AddContent(textContent)
@@ -377,7 +377,7 @@ func TestBuilder_MixedContentWithSections(t *testing.T) {
 			b.Table("Users", []map[string]any{{"name": "Alice", "age": 30}})
 			b.Text("Table description")
 		}).
-		Raw("html", []byte("<hr>")).
+		Raw(FormatHTML, []byte("<hr>")).
 		Section("Conclusion", func(b *Builder) {
 			b.Text("Final thoughts")
 		})

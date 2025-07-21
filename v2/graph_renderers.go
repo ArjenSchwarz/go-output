@@ -69,7 +69,7 @@ func (d *dotRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphContent)
 	// Add title as graph label if present
 	if title := graph.GetTitle(); title != "" {
 		// Always quote labels in DOT format
-		buf.WriteString(fmt.Sprintf("  label=\"%s\";\n", title))
+		fmt.Fprintf(buf, "  label=\"%s\";\n", title)
 	}
 
 	// Render edges
@@ -81,7 +81,7 @@ func (d *dotRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphContent)
 
 		if edge.Label != "" {
 			// Always quote edge labels
-			buf.WriteString(fmt.Sprintf(" [label=\"%s\"]", edge.Label))
+			fmt.Fprintf(buf, " [label=\"%s\"]", edge.Label)
 		}
 
 		buf.WriteString(";\n")
@@ -174,8 +174,8 @@ func (m *mermaidRenderer) Render(ctx context.Context, doc *Document) ([]byte, er
 
 	// If no graph-related content, fall back to base renderer
 	if !hasGraphContent {
-		return m.baseRenderer.renderDocument(ctx, doc, func(content Content) ([]byte, error) {
-			return m.baseRenderer.renderContent(content)
+		return m.renderDocument(ctx, doc, func(content Content) ([]byte, error) {
+			return m.renderContent(content)
 		})
 	}
 
@@ -239,7 +239,7 @@ func (m *mermaidRenderer) SupportsStreaming() bool {
 func (m *mermaidRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphContent) {
 	// Add title as a comment if present
 	if title := graph.GetTitle(); title != "" {
-		buf.WriteString(fmt.Sprintf("  %% %s\n", title))
+		fmt.Fprintf(buf, "  %% %s\n", title)
 	}
 
 	// Render edges
@@ -248,7 +248,7 @@ func (m *mermaidRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphCont
 		buf.WriteString(sanitizeMermaidID(edge.From))
 
 		if edge.Label != "" {
-			buf.WriteString(fmt.Sprintf(" -->|%s| ", edge.Label))
+			fmt.Fprintf(buf, " -->|%s| ", edge.Label)
 		} else {
 			buf.WriteString(" --> ")
 		}
@@ -270,15 +270,15 @@ func (m *mermaidRenderer) renderGanttChart(buf *bytes.Buffer, chart *ChartConten
 
 	// Add title if present
 	if title := chart.GetTitle(); title != "" {
-		buf.WriteString(fmt.Sprintf("    title %s\n", title))
+		fmt.Fprintf(buf, "    title %s\n", title)
 	}
 
 	// Add date format
-	buf.WriteString(fmt.Sprintf("    dateFormat %s\n", ganttData.DateFormat))
+	fmt.Fprintf(buf, "    dateFormat %s\n", ganttData.DateFormat)
 
 	// Add axis format if different from default
 	if ganttData.AxisFormat != "" && ganttData.AxisFormat != "%Y-%m-%d" {
-		buf.WriteString(fmt.Sprintf("    axisFormat %s\n", ganttData.AxisFormat))
+		fmt.Fprintf(buf, "    axisFormat %s\n", ganttData.AxisFormat)
 	}
 
 	// Group tasks by section
@@ -296,7 +296,7 @@ func (m *mermaidRenderer) renderGanttChart(buf *bytes.Buffer, chart *ChartConten
 	// Render sections and tasks
 	for sectionName, tasks := range sections {
 		if sectionName != defaultSection || len(sections) > 1 {
-			buf.WriteString(fmt.Sprintf("    section %s\n", sectionName))
+			fmt.Fprintf(buf, "    section %s\n", sectionName)
 		}
 
 		for _, task := range tasks {
@@ -349,12 +349,12 @@ func (m *mermaidRenderer) renderPieChart(buf *bytes.Buffer, chart *ChartContent)
 
 	// Add title if present
 	if title := chart.GetTitle(); title != "" {
-		buf.WriteString(fmt.Sprintf("    title %s\n", title))
+		fmt.Fprintf(buf, "    title %s\n", title)
 	}
 
 	// Render slices
 	for _, slice := range pieData.Slices {
-		buf.WriteString(fmt.Sprintf("    \"%s\" : %.2f\n", slice.Label, slice.Value))
+		fmt.Fprintf(buf, "    \"%s\" : %.2f\n", slice.Label, slice.Value)
 	}
 }
 
@@ -363,7 +363,7 @@ func (m *mermaidRenderer) renderFlowchartContent(buf *bytes.Buffer, chart *Chart
 	// For flowchart type, expect the data to be compatible with GraphContent
 	// This is for future extensibility when flowchart-specific data structures are needed
 	if title := chart.GetTitle(); title != "" {
-		buf.WriteString(fmt.Sprintf("  %% %s\n", title))
+		fmt.Fprintf(buf, "  %% %s\n", title)
 	}
 }
 
@@ -454,14 +454,13 @@ func (d *drawioRenderer) Render(ctx context.Context, doc *Document) ([]byte, err
 		switch content.(type) {
 		case *DrawIOContent, *GraphContent, *TableContent:
 			hasDrawIOContent = true
-			break
 		}
 	}
 
 	// If no Draw.io-compatible content, fall back to base renderer
 	if !hasDrawIOContent {
-		return d.baseRenderer.renderDocument(ctx, doc, func(content Content) ([]byte, error) {
-			return d.baseRenderer.renderContent(content)
+		return d.renderDocument(ctx, doc, func(content Content) ([]byte, error) {
+			return d.renderContent(content)
 		})
 	}
 
@@ -596,86 +595,86 @@ func (d *drawioRenderer) renderTableAsDrawIO(buf *bytes.Buffer, table *TableCont
 func (d *drawioRenderer) writeDrawIOHeader(buf *bytes.Buffer, header DrawIOHeader) {
 	// Label
 	if header.Label != "" {
-		buf.WriteString(fmt.Sprintf("# label: %s\n", header.Label))
+		fmt.Fprintf(buf, "# label: %s\n", header.Label)
 	}
 
 	// Style
 	if header.Style != "" {
-		buf.WriteString(fmt.Sprintf("# style: %s\n", header.Style))
+		fmt.Fprintf(buf, "# style: %s\n", header.Style)
 	}
 
 	// Identity
 	if header.Identity != "" {
-		buf.WriteString(fmt.Sprintf("# identity: %s\n", header.Identity))
+		fmt.Fprintf(buf, "# identity: %s\n", header.Identity)
 	}
 
 	// Parent
 	if header.Parent != "" {
-		buf.WriteString(fmt.Sprintf("# parent: %s\n", header.Parent))
+		fmt.Fprintf(buf, "# parent: %s\n", header.Parent)
 		if header.ParentStyle != "" {
-			buf.WriteString(fmt.Sprintf("# parentstyle: %s\n", header.ParentStyle))
+			fmt.Fprintf(buf, "# parentstyle: %s\n", header.ParentStyle)
 		}
 	}
 
 	// Namespace
 	if header.Namespace != "" {
-		buf.WriteString(fmt.Sprintf("# namespace: %s\n", header.Namespace))
+		fmt.Fprintf(buf, "# namespace: %s\n", header.Namespace)
 	}
 
 	// Connections
 	for _, conn := range header.Connections {
 		connJSON := fmt.Sprintf(`{"from":"%s","to":"%s","invert":%t,"label":"%s","style":"%s"}`,
 			conn.From, conn.To, conn.Invert, conn.Label, conn.Style)
-		buf.WriteString(fmt.Sprintf("# connect: %s\n", connJSON))
+		fmt.Fprintf(buf, "# connect: %s\n", connJSON)
 	}
 
 	// Dimensions
 	if header.Height != "" {
-		buf.WriteString(fmt.Sprintf("# height: %s\n", header.Height))
+		fmt.Fprintf(buf, "# height: %s\n", header.Height)
 	}
 	if header.Width != "" {
-		buf.WriteString(fmt.Sprintf("# width: %s\n", header.Width))
+		fmt.Fprintf(buf, "# width: %s\n", header.Width)
 	}
 
 	// Ignore
 	if header.Ignore != "" {
-		buf.WriteString(fmt.Sprintf("# ignore: %s\n", header.Ignore))
+		fmt.Fprintf(buf, "# ignore: %s\n", header.Ignore)
 	}
 
 	// Spacing
 	if header.NodeSpacing > 0 {
-		buf.WriteString(fmt.Sprintf("# nodespacing: %d\n", header.NodeSpacing))
+		fmt.Fprintf(buf, "# nodespacing: %d\n", header.NodeSpacing)
 	}
 	if header.LevelSpacing > 0 {
-		buf.WriteString(fmt.Sprintf("# levelspacing: %d\n", header.LevelSpacing))
+		fmt.Fprintf(buf, "# levelspacing: %d\n", header.LevelSpacing)
 	}
 	if header.EdgeSpacing > 0 {
-		buf.WriteString(fmt.Sprintf("# edgespacing: %d\n", header.EdgeSpacing))
+		fmt.Fprintf(buf, "# edgespacing: %d\n", header.EdgeSpacing)
 	}
 
 	// Padding
 	if header.Padding > 0 {
-		buf.WriteString(fmt.Sprintf("# padding: %d\n", header.Padding))
+		fmt.Fprintf(buf, "# padding: %d\n", header.Padding)
 	}
 
 	// Link
 	if header.Link != "" {
-		buf.WriteString(fmt.Sprintf("# link: %s\n", header.Link))
+		fmt.Fprintf(buf, "# link: %s\n", header.Link)
 	}
 
 	// Position columns (only for layout=none)
 	if header.Layout == DrawIOLayoutNone {
 		if header.Left != "" {
-			buf.WriteString(fmt.Sprintf("# left: %s\n", header.Left))
+			fmt.Fprintf(buf, "# left: %s\n", header.Left)
 		}
 		if header.Top != "" {
-			buf.WriteString(fmt.Sprintf("# top: %s\n", header.Top))
+			fmt.Fprintf(buf, "# top: %s\n", header.Top)
 		}
 	}
 
 	// Layout
 	if header.Layout != "" {
-		buf.WriteString(fmt.Sprintf("# layout: %s\n", header.Layout))
+		fmt.Fprintf(buf, "# layout: %s\n", header.Layout)
 	}
 }
 
@@ -689,7 +688,7 @@ func (d *drawioRenderer) writeCSVRow(buf *bytes.Buffer, row []string) {
 		// Escape field if it contains comma, quote, or newline
 		if strings.ContainsAny(field, ",\"\n\r") {
 			escaped := strings.ReplaceAll(field, "\"", "\"\"")
-			buf.WriteString(fmt.Sprintf("\"%s\"", escaped))
+			fmt.Fprintf(buf, "\"%s\"", escaped)
 		} else {
 			buf.WriteString(field)
 		}

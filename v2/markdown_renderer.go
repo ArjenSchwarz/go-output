@@ -17,7 +17,7 @@ type markdownRenderer struct {
 }
 
 func (m *markdownRenderer) Format() string {
-	return "markdown"
+	return FormatMarkdown
 }
 
 func (m *markdownRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
@@ -97,7 +97,7 @@ func (m *markdownRenderer) generateTableOfContents(doc *Document) string {
 			}
 			indent := strings.Repeat("  ", level-1)
 			anchor := m.createMarkdownAnchor(c.Title())
-			toc.WriteString(fmt.Sprintf("%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Title()), anchor))
+			fmt.Fprintf(&toc, "%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Title()), anchor)
 
 			// Recursively add subsections
 			m.addSubsectionsToToC(&toc, c.Contents(), c.Level())
@@ -106,7 +106,7 @@ func (m *markdownRenderer) generateTableOfContents(doc *Document) string {
 			// Check if it's a header
 			if c.Style().Header {
 				anchor := m.createMarkdownAnchor(c.Text())
-				toc.WriteString(fmt.Sprintf("- [%s](#%s)\n", m.escapeMarkdown(c.Text()), anchor))
+				fmt.Fprintf(&toc, "- [%s](#%s)\n", m.escapeMarkdown(c.Text()), anchor)
 			}
 		}
 	}
@@ -125,7 +125,7 @@ func (m *markdownRenderer) addSubsectionsToToC(toc *strings.Builder, contents []
 			}
 			indent := strings.Repeat("  ", level-1)
 			anchor := m.createMarkdownAnchor(c.Title())
-			toc.WriteString(fmt.Sprintf("%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Title()), anchor))
+			fmt.Fprintf(toc, "%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Title()), anchor)
 			m.addSubsectionsToToC(toc, c.Contents(), level)
 		case *TextContent:
 			if c.Style().Header {
@@ -135,7 +135,7 @@ func (m *markdownRenderer) addSubsectionsToToC(toc *strings.Builder, contents []
 				}
 				indent := strings.Repeat("  ", level-1)
 				anchor := m.createMarkdownAnchor(c.Text())
-				toc.WriteString(fmt.Sprintf("%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Text()), anchor))
+				fmt.Fprintf(toc, "%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Text()), anchor)
 			}
 		}
 	}
@@ -262,7 +262,7 @@ func (m *markdownRenderer) renderTextContentMarkdown(text *TextContent) ([]byte,
 
 // renderRawContentMarkdown renders raw content for Markdown
 func (m *markdownRenderer) renderRawContentMarkdown(raw *RawContent) ([]byte, error) {
-	if raw.Format() == "markdown" || raw.Format() == "md" {
+	if raw.Format() == FormatMarkdown || raw.Format() == "md" {
 		// Include raw markdown directly
 		return raw.Data(), nil
 	} else {

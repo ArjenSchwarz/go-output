@@ -26,7 +26,7 @@ func (e *EmojiTransformer) Priority() int {
 // CanTransform checks if this transformer applies to the given format
 func (e *EmojiTransformer) CanTransform(format string) bool {
 	// Apply emoji transformation to all text-based formats
-	return format == "table" || format == "markdown" || format == "html" || format == "csv"
+	return format == FormatTable || format == FormatMarkdown || format == FormatHTML || format == FormatCSV
 }
 
 // Transform converts text indicators to emoji
@@ -106,7 +106,7 @@ func (c *ColorTransformer) Priority() int {
 // CanTransform checks if this transformer applies to the given format
 func (c *ColorTransformer) CanTransform(format string) bool {
 	// Only apply colors to terminal/console outputs
-	return format == "table"
+	return format == FormatTable
 }
 
 // Transform adds ANSI color codes to the output
@@ -163,7 +163,7 @@ func (s *SortTransformer) Priority() int {
 // CanTransform checks if this transformer applies to the given format
 func (s *SortTransformer) CanTransform(format string) bool {
 	// Apply sorting to tabular formats
-	return format == "table" || format == "csv" || format == "html" || format == "markdown"
+	return format == FormatTable || format == FormatCSV || format == FormatHTML || format == FormatMarkdown
 }
 
 // Transform sorts the tabular data by the specified key
@@ -220,21 +220,11 @@ func (s *SortTransformer) Transform(ctx context.Context, input []byte, format st
 	}
 
 	// Parse header to find sort column index
-	var separator string
-	var headers []string
-
-	if strings.Contains(headerLine, "\t") {
-		separator = "\t"
-		headers = strings.Split(headerLine, "\t")
-	} else if strings.Contains(headerLine, ",") {
-		separator = ","
-		headers = strings.Split(headerLine, ",")
-	} else if strings.Contains(headerLine, "|") {
-		separator = "|"
-		headers = strings.Split(headerLine, "|")
-	} else {
+	separator := detectSeparator(headerLine)
+	if separator == "" {
 		return input, nil
 	}
+	headers := strings.Split(headerLine, separator)
 
 	// Find the column index for our sort key
 	sortColumnIndex := -1
@@ -321,7 +311,7 @@ func (l *LineSplitTransformer) Priority() int {
 // CanTransform checks if this transformer applies to the given format
 func (l *LineSplitTransformer) CanTransform(format string) bool {
 	// Apply line splitting to tabular formats
-	return format == "table" || format == "csv" || format == "html" || format == "markdown"
+	return format == FormatTable || format == FormatCSV || format == FormatHTML || format == FormatMarkdown
 }
 
 // Transform splits multi-line cells into separate rows
@@ -345,13 +335,7 @@ func (l *LineSplitTransformer) Transform(ctx context.Context, input []byte, form
 		}
 
 		if columnSeparator == "" {
-			if strings.Contains(line, "\t") {
-				columnSeparator = "\t"
-			} else if strings.Contains(line, ",") {
-				columnSeparator = ","
-			} else if strings.Contains(line, "|") {
-				columnSeparator = "|"
-			}
+			columnSeparator = detectSeparator(line)
 		}
 
 		if columnSeparator == "" {
@@ -436,4 +420,18 @@ func (r *RemoveColorsTransformer) Transform(ctx context.Context, input []byte, f
 	re := regexp.MustCompile(`\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]`)
 	output := re.ReplaceAll(input, []byte(""))
 	return output, nil
+}
+
+// detectSeparator detects the separator used in a line
+func detectSeparator(line string) string {
+	if strings.Contains(line, "\t") {
+		return "\t"
+	}
+	if strings.Contains(line, ",") {
+		return ","
+	}
+	if strings.Contains(line, "|") {
+		return "|"
+	}
+	return ""
 }

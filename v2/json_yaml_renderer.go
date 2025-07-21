@@ -16,7 +16,7 @@ type jsonRenderer struct {
 }
 
 func (j *jsonRenderer) Format() string {
-	return "json"
+	return FormatJSON
 }
 
 func (j *jsonRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
@@ -151,7 +151,7 @@ func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, erro
 // renderTextContentJSON renders text content as JSON
 func (j *jsonRenderer) renderTextContentJSON(text *TextContent) ([]byte, error) {
 	result := map[string]any{
-		"type":    "text",
+		"type":    FormatText,
 		"content": text.Text(),
 	}
 
@@ -355,7 +355,7 @@ func (j *jsonRenderer) renderTextContentJSONStream(text *TextContent, w io.Write
 	encoder.SetIndent("", "  ")
 
 	result := map[string]any{
-		"type":    "text",
+		"type":    FormatText,
 		"content": text.Text(),
 	}
 
@@ -455,7 +455,7 @@ type yamlRenderer struct {
 }
 
 func (y *yamlRenderer) Format() string {
-	return "yaml"
+	return FormatYAML
 }
 
 func (y *yamlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
@@ -637,7 +637,7 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 // renderTextContentYAML renders text content as YAML
 func (y *yamlRenderer) renderTextContentYAML(text *TextContent) ([]byte, error) {
 	result := map[string]any{
-		"type":    "text",
+		"type":    FormatText,
 		"content": text.Text(),
 	}
 
@@ -776,7 +776,7 @@ func (y *yamlRenderer) renderTextContentYAMLStream(text *TextContent, w io.Write
 	}()
 
 	result := map[string]any{
-		"type":    "text",
+		"type":    FormatText,
 		"content": text.Text(),
 	}
 

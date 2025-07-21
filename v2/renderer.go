@@ -5,6 +5,20 @@ import (
 	"io"
 )
 
+// Format name constants
+const (
+	FormatJSON     = "json"
+	FormatYAML     = "yaml"
+	FormatMarkdown = "markdown"
+	FormatTable    = "table"
+	FormatCSV      = "csv"
+	FormatHTML     = "html"
+	FormatText     = "text"
+	FormatDOT      = "dot"
+	FormatMermaid  = "mermaid"
+	FormatDrawIO   = "drawio"
+)
+
 // Renderer converts a document to a specific format
 type Renderer interface {
 	// Format returns the output format name
@@ -29,30 +43,30 @@ type Format struct {
 
 // Built-in format constants for common output formats
 var (
-	JSON     = Format{Name: "json", Renderer: &jsonRenderer{}}
-	YAML     = Format{Name: "yaml", Renderer: &yamlRenderer{}}
-	CSV      = Format{Name: "csv", Renderer: &csvRenderer{}}
-	HTML     = Format{Name: "html", Renderer: &htmlRenderer{}}
-	Table    = Format{Name: "table", Renderer: &tableRenderer{}}
-	Markdown = Format{Name: "markdown", Renderer: &markdownRenderer{headingLevel: 1}}
-	DOT      = Format{Name: "dot", Renderer: &dotRenderer{}}
-	Mermaid  = Format{Name: "mermaid", Renderer: &mermaidRenderer{}}
-	DrawIO   = Format{Name: "drawio", Renderer: &drawioRenderer{}}
+	JSON     = Format{Name: FormatJSON, Renderer: &jsonRenderer{}}
+	YAML     = Format{Name: FormatYAML, Renderer: &yamlRenderer{}}
+	CSV      = Format{Name: FormatCSV, Renderer: &csvRenderer{}}
+	HTML     = Format{Name: FormatHTML, Renderer: &htmlRenderer{}}
+	Table    = Format{Name: FormatTable, Renderer: &tableRenderer{}}
+	Markdown = Format{Name: FormatMarkdown, Renderer: &markdownRenderer{headingLevel: 1}}
+	DOT      = Format{Name: FormatDOT, Renderer: &dotRenderer{}}
+	Mermaid  = Format{Name: FormatMermaid, Renderer: &mermaidRenderer{}}
+	DrawIO   = Format{Name: FormatDrawIO, Renderer: &drawioRenderer{}}
 )
 
 // Table style format constants for v1 compatibility
 var (
-	TableDefault       = Format{Name: "table", Renderer: NewTableRendererWithStyle("Default")}
-	TableBold          = Format{Name: "table", Renderer: NewTableRendererWithStyle("Bold")}
-	TableColoredBright = Format{Name: "table", Renderer: NewTableRendererWithStyle("ColoredBright")}
-	TableLight         = Format{Name: "table", Renderer: NewTableRendererWithStyle("Light")}
-	TableRounded       = Format{Name: "table", Renderer: NewTableRendererWithStyle("Rounded")}
+	TableDefault       = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("Default")}
+	TableBold          = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("Bold")}
+	TableColoredBright = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("ColoredBright")}
+	TableLight         = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("Light")}
+	TableRounded       = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("Rounded")}
 )
 
 // TableWithStyle creates a table format with the specified style for v1 compatibility
 func TableWithStyle(styleName string) Format {
 	return Format{
-		Name:     "table",
+		Name:     FormatTable,
 		Renderer: NewTableRendererWithStyle(styleName),
 	}
 }
@@ -60,7 +74,7 @@ func TableWithStyle(styleName string) Format {
 // MarkdownWithToC creates a markdown format with table of contents for v1 compatibility
 func MarkdownWithToC(enabled bool) Format {
 	return Format{
-		Name:     "markdown",
+		Name:     FormatMarkdown,
 		Renderer: NewMarkdownRendererWithToC(enabled),
 	}
 }
@@ -68,7 +82,7 @@ func MarkdownWithToC(enabled bool) Format {
 // MarkdownWithFrontMatter creates a markdown format with front matter for v1 compatibility
 func MarkdownWithFrontMatter(frontMatter map[string]string) Format {
 	return Format{
-		Name:     "markdown",
+		Name:     FormatMarkdown,
 		Renderer: NewMarkdownRendererWithFrontMatter(frontMatter),
 	}
 }
@@ -76,7 +90,7 @@ func MarkdownWithFrontMatter(frontMatter map[string]string) Format {
 // MarkdownWithOptions creates a markdown format with ToC and front matter for v1 compatibility
 func MarkdownWithOptions(includeToC bool, frontMatter map[string]string) Format {
 	return Format{
-		Name:     "markdown",
+		Name:     FormatMarkdown,
 		Renderer: NewMarkdownRendererWithOptions(includeToC, frontMatter),
 	}
 }
