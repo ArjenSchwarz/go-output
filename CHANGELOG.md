@@ -1,4 +1,4 @@
-## [Unreleased]
+## 2.0.0 / 2025-07-22
 
 ### Added
 - **Complete v2 API documentation and examples**
