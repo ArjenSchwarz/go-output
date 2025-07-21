@@ -1,25 +1,29 @@
-# go-output
+# go-output v2
 
-A comprehensive Go library for outputting structured data in multiple formats. This library provides a unified interface to convert your data into JSON, YAML, CSV, HTML, tables, markdown, DOT graphs, Mermaid diagrams, and Draw.io files.
+A comprehensive Go library for outputting structured data in multiple formats with thread-safe operations and preserved key ordering. This library provides a unified interface to convert your data into JSON, YAML, CSV, HTML, tables, markdown, DOT graphs, Mermaid diagrams, and Draw.io files.
+
+**Version 2.0** represents a complete redesign with no backward compatibility, eliminating global state and providing modern Go 1.24+ features.
 
 ## Features
 
-- **Multiple Output Formats**: Support for 9 different output formats
-- **Unified Interface**: Single API for all output types
-- **Rich Formatting**: Colors, styling, table of contents, section headers
-- **File & Cloud Output**: Write to local files or S3 buckets
-- **Graph Generation**: Create flowcharts and diagrams from relationship data
-- **CLI Integration**: Perfect for adding multiple output options to command-line tools
-- **Progress Indicators**: Visual progress bars for long-running tasks
+- **Thread-Safe Operations**: All components designed for concurrent use
+- **Key Order Preservation**: Maintains exact user-specified column ordering
+- **Multiple Output Formats**: Support for 9 different output formats with simultaneous rendering
+- **Document-Builder Pattern**: Immutable documents with fluent API construction
+- **Rich Content Types**: Tables, text, raw content, and hierarchical sections
+- **Transform Pipeline**: Emoji conversion, colors, sorting, and custom transformations
+- **Multiple Writers**: Output to stdout, files, S3, or multiple destinations simultaneously
+- **Progress Indicators**: Visual progress bars for long-running operations
+- **Chart Generation**: Gantt charts, pie charts, and flow diagrams
 
 ## Supported Output Formats
 
-- **json** - Standard JSON output
+- **json** - Standard JSON output with preserved key ordering
 - **yaml** - YAML format for configuration files
 - **csv** - Comma-separated values for spreadsheets
 - **html** - Full HTML pages with styling and navigation
-- **table** - Console-friendly tables with various styles
-- **markdown** - GitHub-flavored markdown with table support
+- **table** - Console-friendly tables with various styles and colors
+- **markdown** - GitHub-flavored markdown with table support and TOC
 - **dot** - GraphViz DOT format for graph visualization
 - **mermaid** - Mermaid diagrams (flowcharts, pie charts, Gantt charts)
 - **drawio** - Draw.io/Diagrams.net CSV import format
@@ -27,80 +31,141 @@ A comprehensive Go library for outputting structured data in multiple formats. T
 ## Quick Start
 
 ```bash
-go get github.com/ArjenSchwarz/go-output
+go get github.com/ArjenSchwarz/go-output/v2
 ```
 
 ```go
 package main
 
-import format "github.com/ArjenSchwarz/go-output"
+import (
+    "context"
+    "log"
+    
+    output "github.com/ArjenSchwarz/go-output/v2"
+)
 
 func main() {
-    settings := format.NewOutputSettings()
-    settings.SetOutputFormat("table")
-    settings.Title = "Employee Report"
+    // Create document using builder pattern
+    doc := output.New().
+        Table("Employees", []map[string]any{
+            {"Name": "Alice Johnson", "Department": "Engineering", "Active": true},
+            {"Name": "Bob Smith", "Department": "Marketing", "Active": false},
+        }, output.WithKeys("Name", "Department", "Active")).
+        Text("Report generated successfully").
+        Build()
 
-    output := format.OutputArray{
-        Settings: settings,
-        Keys:     []string{"Name", "Department", "Active"},
+    // Configure output with multiple formats and destinations
+    out := output.NewOutput(
+        output.WithFormats(output.Table, output.JSON),
+        output.WithWriter(output.NewStdoutWriter()),
+    )
+
+    // Render the document
+    if err := out.Render(context.Background(), doc); err != nil {
+        log.Fatal(err)
     }
-
-    output.AddContents(map[string]interface{}{
-        "Name":       "Alice Johnson",
-        "Department": "Engineering",
-        "Active":     true,
-    })
-
-    output.Write()
 }
 ```
 
-## Progress Indicators
+## Key Order Preservation
 
-Progress bars can be displayed for supported formats (table, markdown and html).
+One of v2's core features is **exact key order preservation**:
 
 ```go
-settings := format.NewOutputSettings()
-settings.SetOutputFormat("table")
+// Keys will appear in exact order: Name, Email, Status, Department
+doc := output.New().
+    Table("Users", userData, output.WithKeys("Name", "Email", "Status", "Department")).
+    Build()
+```
 
-p := format.NewProgress(settings)
-p.SetTotal(2)
-for i := 0; i < 2; i++ {
-    p.Increment(1)
-}
-p.Complete()
+## Multiple Formats & Destinations
+
+Output to multiple formats and destinations simultaneously:
+
+```go
+fileWriter, _ := output.NewFileWriter("./reports", "report.{format}")
+
+out := output.NewOutput(
+    output.WithFormats(output.JSON, output.CSV, output.HTML),
+    output.WithWriter(output.NewStdoutWriter()),
+    output.WithWriter(fileWriter), // Creates report.json, report.csv, report.html
+)
+```
+
+## Mixed Content Documents
+
+Create rich documents with multiple content types:
+
+```go
+doc := output.New().
+    Header("System Report").
+    Section("User Statistics", func(b *output.Builder) {
+        b.Table("Active Users", activeUsers, output.WithKeys("Name", "LastLogin"))
+        b.Table("User Roles", roles, output.WithKeys("Role", "Count"))
+    }).
+    Text("All systems operational").
+    Chart("Resource Usage", "pie", resourceData).
+    Build()
 ```
 
 ## Documentation
 
-📖 **[Complete Documentation](DOCUMENTATION.md)** - Comprehensive guide covering all features, configuration options, and API reference
+📖 **[Complete API Documentation](v2/API.md)** - Comprehensive interface reference and examples
 
-🚀 **[Getting Started Guide](GETTING_STARTED.md)** - Quick introduction and setup instructions
+🚀 **[Migration Guide](v2/MIGRATION.md)** - Complete migration guide from v1 to v2
 
-💡 **[Examples](examples/)** - Working code examples demonstrating all features
+💡 **[Migration Examples](v2/MIGRATION_EXAMPLES.md)** - Before/after code examples  
+
+📋 **[Quick Reference](v2/MIGRATION_QUICK_REFERENCE.md)** - Common patterns lookup table
+
+🔧 **[Working Examples](v2/examples/)** - Runnable examples for all major features
+
+## Migration from v1
+
+**v2 is a complete rewrite with no backward compatibility.** If you're using v1, you'll need to migrate your code.
+
+### Migration Resources
+
+- **[Migration Guide](v2/MIGRATION.md)** - Complete step-by-step migration instructions
+- **[Migration Examples](v2/MIGRATION_EXAMPLES.md)** - Real before/after code examples
+- **[Breaking Changes](v2/BREAKING_CHANGES.md)** - Detailed list of all breaking changes
+
+### Automated Migration Tool
+
+An experimental AST-based migration tool is available in `v2/migrate/` but is **untested and may not work reliably**. Manual migration following the guides above is recommended.
+
+### v1 Documentation
+
+For v1 users who aren't ready to migrate, see **[README-v1.md](README-v1.md)** for the original v1 documentation.
 
 ## Dependencies
 
 This library uses several excellent external packages:
 - [go-pretty](https://github.com/jedib0t/go-pretty) - Table formatting and styling
-- [dot](https://github.com/emicklei/dot) - DOT graph generation
+- [dot](https://github.com/emicklei/dot) - DOT graph generation  
 - [aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) - S3 integration
 - [yaml.v3](https://gopkg.in/yaml.v3) - YAML processing
 - [slug](https://github.com/gosimple/slug) - URL-safe string generation
 - [color](https://github.com/fatih/color) - Terminal colors
 
+## Requirements
+
+- **Go 1.24+** - Uses modern Go features including `any` type and latest testing patterns
+- **Thread-safe usage** - All components designed for concurrent operations
+
 ## Usage in Projects
 
-This library is used by various CLI tools for flexible output formatting. If you only need specific functionality, consider using the underlying packages directly. However, if you need multiple output formats with a consistent interface, go-output provides significant value.
+This library is ideal for CLI tools and applications requiring flexible output formatting with maintained data structure integrity. The v2 architecture supports complex scenarios including:
+
+- Multi-format simultaneous output
+- Large dataset processing with streaming
+- Complex document hierarchies with sections
+- Custom transformation pipelines
+- Progress tracking for long operations
 
 ## Contributing
 
 Contributions are welcome! Here's how you can help:
-
-### Reporting Issues
-- Use the GitHub issue tracker for bug reports and feature requests
-- Provide clear examples and steps to reproduce issues
-- Include Go version and operating system information
 
 ### Development Setup
 ```bash
@@ -108,32 +173,32 @@ Contributions are welcome! Here's how you can help:
 git clone https://github.com/ArjenSchwarz/go-output.git
 cd go-output
 
+# Work in v2 directory
+cd v2
+
 # Run tests
 go test ./...
 
+# Run linter
+golangci-lint run
+
 # Run examples
 cd examples
-go run basic_usage.go
+go run basic_usage/main.go
 ```
 
 ### Code Contributions
 - Fork the repository and create a feature branch
 - Follow Go best practices and maintain existing code style
-- Add tests for new functionality
+- Add tests for new functionality with thread-safety testing
 - Update documentation for new features
-- Ensure all tests pass before submitting
-
-### Code Style
-- Use `gofmt` for formatting
-- Follow standard Go naming conventions
-- Add comments for exported functions and types
-- Keep functions focused and testable
+- Ensure all tests pass and linting succeeds
 
 ### Testing
-- Add unit tests for new features
-- Maintain or improve test coverage
-- Test with multiple Go versions when possible
-- Include integration tests for complex features
+- Add unit tests with concurrent operation coverage
+- Test key order preservation for table functionality
+- Include integration tests for complex scenarios
+- Test with Go 1.24+ features
 
 ## License
 
@@ -145,4 +210,6 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
 
 ---
 
-**Need help?** Check the [documentation](DOCUMENTATION.md), browse the [examples](examples/), or create an issue for support.
+**Need help?** Check the [API documentation](v2/API.md), browse the [examples](v2/examples/), or create an issue for support.
+
+**Still using v1?** See [README-v1.md](README-v1.md) for v1 documentation and migration guidance.

@@ -4,8 +4,8 @@
 
 Go-Output v2 is a complete redesign of the library providing thread-safe document generation with preserved key ordering and multiple output formats. This API documentation covers all public interfaces and methods.
 
-**Version**: v2.0.0  
-**Go Version**: 1.24+  
+**Version**: v2.0.0
+**Go Version**: 1.24+
 **Import Path**: `github.com/ArjenSchwarz/go-output/v2`
 
 ## Quick Start
@@ -16,7 +16,7 @@ package main
 import (
     "context"
     "fmt"
-    
+
     output "github.com/ArjenSchwarz/go-output/v2"
 )
 
@@ -77,7 +77,7 @@ type Document struct {
 // GetContents returns a copy of the document's contents
 func (d *Document) GetContents() []Content
 
-// GetMetadata returns a copy of the document's metadata  
+// GetMetadata returns a copy of the document's metadata
 func (d *Document) GetMetadata() map[string]any
 ```
 
@@ -120,10 +120,10 @@ All content types implement this interface:
 type Content interface {
     // Type returns the content type
     Type() ContentType
-    
+
     // ID returns a unique identifier for this content
     ID() string
-    
+
     // Encoding interfaces for efficient serialization
     encoding.TextAppender
     encoding.BinaryAppender
@@ -250,7 +250,7 @@ func (b *Builder) Header(text string) *Builder
 
 **Text Options**:
 - `WithBold(bold bool)` - Bold text
-- `WithItalic(italic bool)` - Italic text  
+- `WithItalic(italic bool)` - Italic text
 - `WithColor(color string)` - Text color
 - `WithHeader(header bool)` - Header styling
 
@@ -286,7 +286,7 @@ doc := output.New().
 // Graph adds graph content with edges
 func (b *Builder) Graph(title string, edges []Edge) *Builder
 
-// Chart adds a generic chart content  
+// Chart adds a generic chart content
 func (b *Builder) Chart(title, chartType string, data any) *Builder
 
 // GanttChart adds a Gantt chart with tasks
@@ -370,7 +370,7 @@ Configuration options for Output:
 func WithFormat(format Format) OutputOption
 func WithFormats(formats ...Format) OutputOption
 
-// Writer options  
+// Writer options
 func WithWriter(writer Writer) OutputOption
 func WithWriters(writers ...Writer) OutputOption
 
@@ -409,7 +409,7 @@ Pre-configured formats:
 ```go
 var (
     JSON     Format  // JSON output
-    YAML     Format  // YAML output  
+    YAML     Format  // YAML output
     CSV      Format  // CSV output
     HTML     Format  // HTML output
     Table    Format  // Table output
@@ -453,13 +453,13 @@ Custom renderers implement this interface:
 type Renderer interface {
     // Format returns the output format name
     Format() string
-    
+
     // Render converts the document to bytes
     Render(ctx context.Context, doc *Document) ([]byte, error)
-    
+
     // RenderTo streams output to a writer
     RenderTo(ctx context.Context, doc *Document, w io.Writer) error
-    
+
     // SupportsStreaming indicates if streaming is supported
     SupportsStreaming() bool
 }
@@ -506,13 +506,13 @@ func NewMultiWriter(writers ...Writer) Writer
 type Transformer interface {
     // Name returns the transformer name
     Name() string
-    
+
     // Transform modifies the input bytes
     Transform(ctx context.Context, input []byte, format string) ([]byte, error)
-    
+
     // CanTransform checks if this transformer applies
     CanTransform(format string) bool
-    
+
     // Priority determines transform order (lower = earlier)
     Priority() int
 }
@@ -520,20 +520,59 @@ type Transformer interface {
 
 #### Built-in Transformers
 
-Pre-implemented transformers:
+Pre-implemented transformers with two usage patterns:
 
+**Direct Struct Instantiation** (for simple transformers):
 ```go
-// NewEmojiTransformer converts :emoji: syntax
-func NewEmojiTransformer() Transformer
+// Basic emoji conversion - no constructor needed
+&EmojiTransformer{}
 
-// NewColorTransformer applies color codes
-func NewColorTransformer(scheme ColorScheme) Transformer
+// Remove color codes - no constructor needed  
+&RemoveColorsTransformer{}
+```
 
-// NewSortTransformer sorts table data
-func NewSortTransformer(key string, ascending bool) Transformer
+**Constructor Functions** (for configurable transformers):
+```go
+// Color transformers
+func NewColorTransformer() *ColorTransformer
+func NewColorTransformerWithScheme(scheme ColorScheme) *ColorTransformer
 
-// NewLineSplitTransformer splits long lines
-func NewLineSplitTransformer(separator string, maxLength int) Transformer
+// Sorting transformers
+func NewSortTransformer(key string, ascending bool) *SortTransformer
+func NewSortTransformerAscending(key string) *SortTransformer
+
+// Line splitting transformers
+func NewLineSplitTransformer(separator string) *LineSplitTransformer
+func NewLineSplitTransformerDefault() *LineSplitTransformer
+
+// Enhanced transformers with format awareness
+func NewEnhancedEmojiTransformer() *EnhancedEmojiTransformer
+func NewEnhancedColorTransformer() *EnhancedColorTransformer
+func NewEnhancedSortTransformer(key string, ascending bool) *EnhancedSortTransformer
+
+// Format-aware wrapper for existing transformers
+func NewFormatAwareTransformer(transformer Transformer) *FormatAwareTransformer
+
+// Transform pipeline for multiple transformers
+func NewTransformPipeline() *TransformPipeline
+```
+
+**Struct Instantiation with Configuration** (alternative to constructors):
+```go
+// Configure transformers directly
+&SortTransformer{Key: "Name", Ascending: true}
+&LineSplitTransformer{Column: "Description", Separator: ","}
+&ColorTransformer{Scheme: ColorScheme{Success: "green", Error: "red"}}
+```
+
+**ColorScheme Structure**:
+```go
+type ColorScheme struct {
+    Success string // Color for positive/success values
+    Warning string // Color for warning values
+    Error   string // Color for error/failure values
+    Info    string // Color for informational values
+}
 ```
 
 ### Progress System
@@ -549,12 +588,12 @@ type Progress interface {
     SetStatus(status string)
     Complete()
     Fail(err error)
-    
+
     // v1 compatibility methods
     SetColor(color ProgressColor)
     IsActive() bool
     SetContext(ctx context.Context)
-    
+
     // v2 enhancements
     Close() error
 }
@@ -569,7 +608,7 @@ type ProgressColor int
 const (
     ProgressColorDefault ProgressColor = iota
     ProgressColorGreen   // Success state
-    ProgressColorRed     // Error state  
+    ProgressColorRed     // Error state
     ProgressColorYellow  // Warning state
     ProgressColorBlue    // Informational state
 )
@@ -610,7 +649,7 @@ type ValidationError struct {
     Message string
 }
 
-// TransformError indicates transformation failure  
+// TransformError indicates transformation failure
 type TransformError struct {
     Transformer string
     Format      string
@@ -705,18 +744,37 @@ doc := output.New().
     Build()
 ```
 
-### Custom Transformers
+### Transformer Usage Patterns
 
 ```go
-colorTransformer := output.NewColorTransformer(output.ColorScheme{
-    Header: "blue",
-    Data:   "white",
-    Error:  "red",
-})
-
+// Pattern 1: Direct struct instantiation (simple transformers)
 out := output.NewOutput(
     output.WithFormat(output.Table),
-    output.WithTransformer(colorTransformer),
+    output.WithTransformer(&output.EmojiTransformer{}),
+    output.WithTransformer(&output.RemoveColorsTransformer{}),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+// Pattern 2: Constructor functions (configurable transformers)
+colorTransformer := output.NewColorTransformerWithScheme(output.ColorScheme{
+    Success: "green",
+    Info:    "blue", 
+    Warning: "yellow",
+    Error:   "red",
+})
+sortTransformer := output.NewSortTransformer("Name", true)
+
+out = output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithTransformers(colorTransformer, sortTransformer),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+// Pattern 3: Struct instantiation with configuration
+out = output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithTransformer(&output.SortTransformer{Key: "Name", Ascending: true}),
+    output.WithTransformer(&output.LineSplitTransformer{Column: "Description", Separator: ","}),
     output.WithWriter(output.NewStdoutWriter()),
 )
 ```
