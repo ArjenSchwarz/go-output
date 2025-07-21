@@ -683,6 +683,69 @@ func NewS3Writer(client *s3.Client, bucket, key string) *S3Writer {
 }
 ```
 
+### Table of Contents Implementation
+
+```go
+// MarkdownRenderer with TOC support
+type markdownRenderer struct {
+    frontMatter  map[string]string
+    includeToC   bool
+}
+
+// generateTableOfContents creates a markdown table of contents from document sections
+func (m *markdownRenderer) generateTableOfContents(doc *Document) string {
+    var toc strings.Builder
+    
+    for _, content := range doc.Contents() {
+        switch c := content.(type) {
+        case *SectionContent:
+            // Generate anchor-safe identifier
+            anchor := m.generateAnchor(c.Title())
+            indent := strings.Repeat("  ", c.Level())
+            
+            // Add section to ToC with proper indentation
+            fmt.Fprintf(&toc, "%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Title()), anchor)
+            
+            // Recursively add subsections
+            m.addSubsectionsToToC(&toc, c.Contents(), c.Level())
+            
+        case *TextContent:
+            if c.Style().Header {
+                // Include header text in TOC
+                anchor := m.generateAnchor(c.Text())
+                fmt.Fprintf(&toc, "- [%s](#%s)\n", m.escapeMarkdown(c.Text()), anchor)
+            }
+        }
+    }
+    
+    return toc.String()
+}
+
+// generateAnchor creates URL-safe anchor links for TOC
+func (m *markdownRenderer) generateAnchor(text string) string {
+    // Convert to lowercase, replace spaces with hyphens, remove special chars
+    anchor := strings.ToLower(text)
+    anchor = strings.ReplaceAll(anchor, " ", "-")
+    anchor = regexp.MustCompile(`[^a-z0-9\-]`).ReplaceAllString(anchor, "")
+    return anchor
+}
+
+// NewMarkdownRendererWithToC creates a markdown renderer with TOC enabled
+func NewMarkdownRendererWithToC(enabled bool) *markdownRenderer {
+    return &markdownRenderer{
+        includeToC: enabled,
+    }
+}
+
+// NewMarkdownRendererWithOptions creates a markdown renderer with both ToC and front matter
+func NewMarkdownRendererWithOptions(includeToC bool, frontMatter map[string]string) *markdownRenderer {
+    return &markdownRenderer{
+        includeToC:   includeToC,
+        frontMatter:  frontMatter,
+    }
+}
+```
+
 ## Data Models
 
 ### Content Types

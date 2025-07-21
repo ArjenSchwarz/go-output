@@ -21,21 +21,21 @@ func TestRenderError(t *testing.T) {
 			format:   "json",
 			content:  &TableContent{id: "test-123"},
 			cause:    errors.New("serialization failed"),
-			expected: "render json for table content test-123: serialization failed",
+			expected: "render failed; format=json; content_type=table; content_id=test-123; cause: serialization failed",
 		},
 		{
 			name:     "with text content",
 			format:   "html",
 			content:  &TextContent{id: "text-456"},
 			cause:    errors.New("encoding error"),
-			expected: "render html for text content text-456: encoding error",
+			expected: "render failed; format=html; content_type=text; content_id=text-456; cause: encoding error",
 		},
 		{
 			name:     "with nil content",
 			format:   "csv",
 			content:  nil,
 			cause:    errors.New("content missing"),
-			expected: "render csv for unknown content unknown: content missing",
+			expected: "render failed; format=csv; cause: content missing",
 		},
 	}
 
@@ -454,4 +454,392 @@ func TestErrorHelpers(t *testing.T) {
 			t.Errorf("CollectErrors should return nil when all errors are nil")
 		}
 	})
+}
+
+// TestEnhancedRenderError tests the enhanced RenderError with detailed context
+func TestEnhancedRenderError(t *testing.T) {
+	tests := []struct {
+		name        string
+		format      string
+		renderer    string
+		operation   string
+		content     Content
+		context     map[string]any
+		cause       error
+		expectParts []string
+	}{
+		{
+			name:      "detailed render error",
+			format:    "json",
+			renderer:  "JSONRenderer",
+			operation: "encode",
+			content:   &TableContent{id: "test-123"},
+			context:   map[string]any{"data_size": 1024, "encoding": "utf-8"},
+			cause:     errors.New("json encoding failed"),
+			expectParts: []string{
+				"operation \"encode\" failed",
+				"format=json",
+				"renderer=JSONRenderer",
+				"content_type=table",
+				"content_id=test-123",
+				"data_size=1024",
+				"encoding=utf-8",
+				"cause: json encoding failed",
+			},
+		},
+		{
+			name:    "minimal render error",
+			format:  "csv",
+			content: nil,
+			cause:   errors.New("content missing"),
+			expectParts: []string{
+				"render failed",
+				"format=csv",
+				"cause: content missing",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var err *RenderError
+			if tt.renderer != "" && tt.operation != "" {
+				err = NewRenderErrorWithDetails(tt.format, tt.renderer, tt.operation, tt.content, tt.cause)
+			} else {
+				err = NewRenderError(tt.format, tt.content, tt.cause)
+			}
+
+			// Add context if provided
+			for k, v := range tt.context {
+				err.AddContext(k, v)
+			}
+
+			errorStr := err.Error()
+			for _, part := range tt.expectParts {
+				if !strings.Contains(errorStr, part) {
+					t.Errorf("RenderError.Error() should contain %q, got: %s", part, errorStr)
+				}
+			}
+
+			// Test unwrapping
+			if !errors.Is(err, tt.cause) {
+				t.Errorf("RenderError should wrap the cause error")
+			}
+		})
+	}
+}
+
+// TestWriterError tests the new WriterError type
+func TestWriterError(t *testing.T) {
+	tests := []struct {
+		name        string
+		writer      string
+		format      string
+		operation   string
+		context     map[string]any
+		cause       error
+		expectParts []string
+	}{
+		{
+			name:      "detailed writer error",
+			writer:    "FileWriter",
+			format:    "html",
+			operation: "write",
+			context:   map[string]any{"file_path": "/tmp/output.html", "data_size": 2048},
+			cause:     errors.New("permission denied"),
+			expectParts: []string{
+				"operation \"write\" failed",
+				"format=html",
+				"writer=FileWriter",
+				"file_path=/tmp/output.html",
+				"data_size=2048",
+				"cause: permission denied",
+			},
+		},
+		{
+			name:   "minimal writer error",
+			writer: "S3Writer",
+			format: "json",
+			cause:  errors.New("network timeout"),
+			expectParts: []string{
+				"write failed",
+				"format=json",
+				"writer=S3Writer",
+				"cause: network timeout",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var err *WriterError
+			if tt.operation != "" {
+				err = NewWriterErrorWithDetails(tt.writer, tt.format, tt.operation, tt.cause)
+			} else {
+				err = NewWriterError(tt.writer, tt.format, tt.cause)
+			}
+
+			// Add context if provided
+			for k, v := range tt.context {
+				err.AddContext(k, v)
+			}
+
+			errorStr := err.Error()
+			for _, part := range tt.expectParts {
+				if !strings.Contains(errorStr, part) {
+					t.Errorf("WriterError.Error() should contain %q, got: %s", part, errorStr)
+				}
+			}
+
+			// Test unwrapping
+			if !errors.Is(err, tt.cause) {
+				t.Errorf("WriterError should wrap the cause error")
+			}
+		})
+	}
+}
+
+// TestMultiErrorWithSourceTracking tests enhanced MultiError with source tracking
+func TestMultiErrorWithSourceTracking(t *testing.T) {
+	multiErr := NewMultiError("render")
+	multiErr.AddContext("total_formats", 3)
+	multiErr.AddContext("document_contents", 5)
+
+	// Add errors with source tracking
+	renderErr := NewRenderError("json", &TableContent{id: "table-1"}, errors.New("serialization failed"))
+	multiErr.AddWithSource(renderErr, "renderer", map[string]any{
+		"format":   "json",
+		"renderer": "JSONRenderer",
+	})
+
+	writerErr := NewWriterError("FileWriter", "html", errors.New("permission denied"))
+	multiErr.AddWithSource(writerErr, "writer", map[string]any{
+		"format": "html",
+		"writer": "FileWriter",
+	})
+
+	// Test error message includes source information
+	errorStr := multiErr.Error()
+
+	// Should contain context information
+	if !strings.Contains(errorStr, "total_formats=3") || !strings.Contains(errorStr, "document_contents=5") {
+		t.Errorf("MultiError should include context information")
+	}
+
+	// Should contain source information for each error
+	if !strings.Contains(errorStr, "component=renderer") || !strings.Contains(errorStr, "format=json") || !strings.Contains(errorStr, "renderer=JSONRenderer") {
+		t.Errorf("MultiError should include source information for renderer error")
+	}
+
+	if !strings.Contains(errorStr, "component=writer") || !strings.Contains(errorStr, "format=html") || !strings.Contains(errorStr, "writer=FileWriter") {
+		t.Errorf("MultiError should include source information for writer error")
+	}
+
+	// Test error count
+	if len(multiErr.Errors) != 2 {
+		t.Errorf("MultiError should have 2 errors, got %d", len(multiErr.Errors))
+	}
+
+	// Test source map
+	if len(multiErr.SourceMap) != 2 {
+		t.Errorf("MultiError should have 2 source mappings, got %d", len(multiErr.SourceMap))
+	}
+}
+
+// TestStructuredError tests the new StructuredError type
+func TestStructuredError(t *testing.T) {
+	tests := []struct {
+		name        string
+		code        string
+		component   string
+		operation   string
+		message     string
+		context     map[string]any
+		details     map[string]any
+		cause       error
+		expectParts []string
+	}{
+		{
+			name:      "complete structured error",
+			code:      "RENDER_001",
+			component: "renderer",
+			operation: "encode",
+			message:   "JSON encoding failed",
+			context:   map[string]any{"format": "json", "content_type": "table"},
+			details:   map[string]any{"input_size": 1024},
+			cause:     errors.New("invalid character"),
+			expectParts: []string{
+				"code=RENDER_001",
+				"component=renderer",
+				"operation=encode",
+				"message=JSON encoding failed",
+				"context=[format=json, content_type=table]",
+				"cause: invalid character",
+			},
+		},
+		{
+			name:      "minimal structured error",
+			code:      "GENERIC_001",
+			component: "system",
+			operation: "process",
+			message:   "Operation failed",
+			expectParts: []string{
+				"code=GENERIC_001",
+				"component=system",
+				"operation=process",
+				"message=Operation failed",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var err *StructuredError
+			if tt.cause != nil {
+				err = NewStructuredErrorWithCause(tt.code, tt.component, tt.operation, tt.message, tt.cause)
+			} else {
+				err = NewStructuredError(tt.code, tt.component, tt.operation, tt.message)
+			}
+
+			// Add context and details
+			for k, v := range tt.context {
+				err.AddContext(k, v)
+			}
+			for k, v := range tt.details {
+				err.AddDetail(k, v)
+			}
+
+			errorStr := err.Error()
+			for _, part := range tt.expectParts {
+				if !strings.Contains(errorStr, part) {
+					t.Errorf("StructuredError.Error() should contain %q, got: %s", part, errorStr)
+				}
+			}
+
+			// Test fields
+			if err.Code != tt.code {
+				t.Errorf("StructuredError.Code = %q, want %q", err.Code, tt.code)
+			}
+
+			if err.Component != tt.component {
+				t.Errorf("StructuredError.Component = %q, want %q", err.Component, tt.component)
+			}
+
+			// Test unwrapping
+			if tt.cause != nil && !errors.Is(err, tt.cause) {
+				t.Errorf("StructuredError should wrap the cause error")
+			}
+		})
+	}
+}
+
+// TestToStructuredError tests conversion of various error types to StructuredError
+func TestToStructuredError(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputError     error
+		defaultCode    string
+		defaultComp    string
+		defaultOp      string
+		expectedCode   string
+		expectedComp   string
+		expectedFields map[string]any
+	}{
+		{
+			name:         "render error conversion",
+			inputError:   NewRenderError("json", &TableContent{id: "test"}, errors.New("failed")),
+			defaultCode:  "DEFAULT",
+			defaultComp:  "default",
+			defaultOp:    "default",
+			expectedCode: "RENDER_ERROR",
+			expectedComp: "renderer",
+			expectedFields: map[string]any{
+				"format":       "json",
+				"content_type": "table",
+				"content_id":   "test",
+			},
+		},
+		{
+			name:         "transform error conversion",
+			inputError:   NewTransformError("emoji", "html", []byte("test"), errors.New("failed")),
+			defaultCode:  "DEFAULT",
+			defaultComp:  "default",
+			defaultOp:    "default",
+			expectedCode: "TRANSFORM_ERROR",
+			expectedComp: "transformer",
+			expectedFields: map[string]any{
+				"transformer": "emoji",
+				"format":      "html",
+				"input_size":  4,
+			},
+		},
+		{
+			name:         "writer error conversion",
+			inputError:   NewWriterError("FileWriter", "csv", errors.New("failed")),
+			defaultCode:  "DEFAULT",
+			defaultComp:  "default",
+			defaultOp:    "default",
+			expectedCode: "WRITER_ERROR",
+			expectedComp: "writer",
+			expectedFields: map[string]any{
+				"writer": "FileWriter",
+				"format": "csv",
+			},
+		},
+		{
+			name:         "unknown error conversion",
+			inputError:   errors.New("unknown error"),
+			defaultCode:  "UNKNOWN_001",
+			defaultComp:  "system",
+			defaultOp:    "process",
+			expectedCode: "UNKNOWN_001",
+			expectedComp: "system",
+		},
+		{
+			name:         "nil error",
+			inputError:   nil,
+			defaultCode:  "DEFAULT",
+			defaultComp:  "default",
+			defaultOp:    "default",
+			expectedCode: "",
+			expectedComp: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ToStructuredError(tt.inputError, tt.defaultCode, tt.defaultComp, tt.defaultOp)
+
+			if tt.inputError == nil {
+				if result != nil {
+					t.Errorf("ToStructuredError(nil) should return nil")
+				}
+				return
+			}
+
+			if result == nil {
+				t.Fatalf("ToStructuredError() should not return nil for non-nil input")
+			}
+
+			if result.Code != tt.expectedCode {
+				t.Errorf("StructuredError.Code = %q, want %q", result.Code, tt.expectedCode)
+			}
+
+			if result.Component != tt.expectedComp {
+				t.Errorf("StructuredError.Component = %q, want %q", result.Component, tt.expectedComp)
+			}
+
+			// Check expected fields in context
+			for key, expectedValue := range tt.expectedFields {
+				if value, exists := result.Context[key]; !exists || value != expectedValue {
+					t.Errorf("StructuredError.Context[%q] = %v, want %v", key, value, expectedValue)
+				}
+			}
+
+			// Test that it wraps the original error
+			if !errors.Is(result, tt.inputError) {
+				t.Errorf("StructuredError should wrap the original error")
+			}
+		})
+	}
 }

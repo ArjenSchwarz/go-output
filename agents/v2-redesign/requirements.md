@@ -105,6 +105,10 @@ This document outlines the requirements for go-output v2.0, a complete redesign 
   - Context cancellation support for early termination
 7.7. The system SHALL support all v1 table styling options.
 7.8. The system SHALL support table of contents generation for applicable formats.
+  - Automatic TOC generation from SectionContent and TextContent headers in markdown output
+  - Proper anchor link generation with markdown-safe identifiers
+  - Nested section support with appropriate indentation levels
+  - Integration with WithTOC() option for enabling/disabling TOC output
 7.9. The system SHALL support front matter for markdown output.
 7.10. The system SHALL support all v1 chart and diagram features including:
   - DOT format for Graphviz diagrams with node relationships
@@ -273,4 +277,6 @@ The following features are planned for future versions but out of scope for v2.0
 8. **Data Persistence**: Built-in caching and storage beyond rendering
 9. **Automatic Schema Detection**: Enhanced schema inference from complex data structures
 10. **Advanced Transformers**: AI-powered content transformation and optimization
+11. **Auto-Managed Progress System**: Automatic progress indicator lifecycle management integrated with Output.Render() method, eliminating manual progress setup and cleanup
+12. **Lazy Evaluation Transformers**: On-demand transformer execution for better performance with large datasets, applying transformations only when needed during rendering
 
