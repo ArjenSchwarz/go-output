@@ -141,7 +141,7 @@ func (tp *TransformPipeline) Transform(ctx context.Context, input []byte, format
 		var err error
 		output, err = transformer.Transform(ctx, output, format)
 		if err != nil {
-			return nil, fmt.Errorf("transformer %q failed: %w", transformer.Name(), err)
+			return nil, NewTransformError(transformer.Name(), format, output, err)
 		}
 	}
 

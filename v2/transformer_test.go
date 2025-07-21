@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -265,8 +266,18 @@ func TestTransformPipeline_TransformError(t *testing.T) {
 		t.Error("Transform() should return error when transformer fails")
 	}
 
-	if err.Error() != `transformer "bad" failed: transform failed` {
-		t.Errorf("Transform() error should wrap transformer error, got: %v", err)
+	// The new error system uses TransformError which has a different format
+	expectedSubstrings := []string{"bad", "failed", "json", "transform failed"}
+	for _, substr := range expectedSubstrings {
+		if !strings.Contains(err.Error(), substr) {
+			t.Errorf("Transform() error should contain %q, got: %v", substr, err)
+		}
+	}
+
+	// Verify it's a TransformError
+	var transformErr *TransformError
+	if !AsError(err, &transformErr) {
+		t.Errorf("Transform() error should be TransformError, got: %T", err)
 	}
 
 	// Verify the good transformer was called but bad one caused failure

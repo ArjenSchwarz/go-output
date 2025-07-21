@@ -247,26 +247,26 @@ This document provides a series of discrete, manageable coding tasks to implemen
   - Write integration tests for Output system with enhanced progress (Requirements 7.6, 15.2)
 
 ### 11. Output Configuration System
-- [ ] 11.1. Implement Output struct and options
+- [x] 11.1. Implement Output struct and options
   - Create Output struct with formats, pipeline, writers (Requirements 2.2, 2.3)
   - Implement functional options pattern for configuration (Requirements 2.2)
   - Add v1 compatibility options (TableStyle, TOC, FrontMatter) (Requirements 7.7, 7.8, 7.9)
   - Write tests for option composition (Requirements 2.2, 15.2)
 
-- [ ] 11.2. Implement main rendering orchestration
+- [x] 11.2. Implement main rendering orchestration
   - Create Render() method that coordinates all components (Requirements 2.3, 8.5)
   - Add concurrent rendering for multiple formats (Requirements 3.3, 11.2)
   - Implement proper error handling and context cancellation (Requirements 10.1, 8.6)
   - Write integration tests for end-to-end rendering (Requirements 15.3)
 
 ### 12. Error Handling System
-- [ ] 12.1. Implement error types and handling
+- [x] 12.1. Implement error types and handling
   - Create RenderError, ValidationError, TransformError types (Requirements 10.1, 10.3)
   - Add error wrapping and context information (Requirements 10.3)
   - Implement early validation with helpful messages (Requirements 10.2)
   - Write tests for error conditions and messages (Requirements 10.1, 15.2)
 
-- [ ] 12.2. Add debug tracing and panic recovery
+- [x] 12.2. Add debug tracing and panic recovery
   - Implement optional debug tracing for pipeline (Requirements 10.4)
   - Add panic recovery and conversion to errors (Requirements 10.5)
   - Create exported error types for programmatic handling (Requirements 10.6)
