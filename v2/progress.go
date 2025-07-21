@@ -216,7 +216,7 @@ func NewProgressForFormatName(formatName string, opts ...ProgressOption) Progres
 	case FormatJSON, FormatCSV, FormatYAML, FormatDOT:
 		// Non-visual formats should use no-op progress
 		return NewNoOpProgress()
-	case FormatTable, FormatHTML, FormatMarkdown, FormatMermaid, FormatDrawio:
+	case FormatTable, FormatHTML, FormatMarkdown, FormatMermaid, FormatDrawIO:
 		// Visual formats should use pretty progress when TTY available
 		if isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()) {
 			return NewPrettyProgress(opts...)
@@ -243,7 +243,7 @@ func NewProgressForFormats(formats []Format, opts ...ProgressOption) Progress {
 		switch format.Name {
 		case FormatJSON, FormatCSV, FormatYAML, FormatDOT:
 			hasNonVisualFormat = true
-		case FormatTable, FormatHTML, FormatMarkdown, FormatMermaid, FormatDrawio:
+		case FormatTable, FormatHTML, FormatMarkdown, FormatMermaid, FormatDrawIO:
 			hasVisualFormat = true
 		}
 	}

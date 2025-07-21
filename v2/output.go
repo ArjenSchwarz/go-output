@@ -128,28 +128,55 @@ func WithMetadata(key string, value any) OutputOption {
 
 // Render processes a document through all configured formats, transformers, and writers
 func (o *Output) Render(ctx context.Context, doc *Document) error {
-	o.mu.RLock()
-	formats := make([]Format, len(o.formats))
-	copy(formats, o.formats)
-	writers := make([]Writer, len(o.writers))
-	copy(writers, o.writers)
-	transformers := make([]Transformer, len(o.transformers))
-	copy(transformers, o.transformers)
-	progress := o.progress
-	o.mu.RUnlock()
+	return SafeExecuteWithTracer(GetGlobalDebugTracer(), "render", func() error {
+		// Validate inputs early
+		if err := FailFast(
+			ValidateNonNil("context", ctx),
+			ValidateNonNil("document", doc),
+		); err != nil {
+			return err
+		}
 
-	if len(formats) == 0 {
-		return fmt.Errorf("no output formats configured")
-	}
+		GlobalTrace("render", "starting document render process")
 
-	if len(writers) == 0 {
-		return fmt.Errorf("no writers configured")
+		o.mu.RLock()
+		formats := make([]Format, len(o.formats))
+		copy(formats, o.formats)
+		writers := make([]Writer, len(o.writers))
+		copy(writers, o.writers)
+		transformers := make([]Transformer, len(o.transformers))
+		copy(transformers, o.transformers)
+		progress := o.progress
+		o.mu.RUnlock()
+
+		GlobalTrace("render", "loaded configuration: %d formats, %d writers, %d transformers",
+			len(formats), len(writers), len(transformers))
+
+		// Validate configuration
+		if err := FailFast(
+			ValidateSliceNonEmpty("formats", formats),
+			ValidateSliceNonEmpty("writers", writers),
+		); err != nil {
+			return err
+		}
+
+		return o.renderWithConfig(ctx, doc, formats, writers, transformers, progress)
+	})
+}
+
+// renderWithConfig performs the actual rendering with the given configuration
+func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []Format, writers []Writer, transformers []Transformer, progress Progress) error {
+	// Check for cancellation early
+	if IsCancelled(ctx.Err()) {
+		return NewCancelledError("render", ctx.Err())
 	}
 
 	// Calculate total work units for progress tracking
 	totalWork := len(formats) * len(writers)
 	progress.SetTotal(totalWork)
 	progress.SetStatus("Starting render process")
+
+	GlobalTrace("render", "starting concurrent processing of %d format(s) to %d writer(s)", len(formats), len(writers))
 
 	var wg sync.WaitGroup
 	errChan := make(chan error, totalWork)
@@ -162,79 +189,105 @@ func (o *Output) Render(ctx context.Context, doc *Document) error {
 		go func(f Format) {
 			defer wg.Done()
 
-			// Check for cancellation
-			select {
-			case <-ctx.Done():
-				errChan <- ctx.Err()
-				return
-			default:
-			}
-
-			progress.SetStatus(fmt.Sprintf("Rendering %s format", f.Name))
-
-			// Render the document in this format
-			data, err := f.Renderer.Render(ctx, doc)
-			if err != nil {
-				errChan <- fmt.Errorf("failed to render %s format: %w", f.Name, err)
-				return
-			}
-
-			// Apply transformers to the rendered data
-			transformedData := data
-			for _, transformer := range transformers {
-				if transformer.CanTransform(f.Name) {
-					progress.SetStatus(fmt.Sprintf("Applying %s transformer to %s", transformer.Name(), f.Name))
-					transformedData, err = transformer.Transform(ctx, transformedData, f.Name)
-					if err != nil {
-						errChan <- fmt.Errorf("failed to transform %s with %s: %w", f.Name, transformer.Name(), err)
-						return
-					}
-				}
-			}
-
-			// Write to all configured writers
-			for _, writer := range writers {
-				// Check for cancellation before each write
-				select {
-				case <-ctx.Done():
-					errChan <- ctx.Err()
-					return
-				default:
+			// Use safe execution with panic recovery for each format
+			err := SafeExecuteWithTracer(GetGlobalDebugTracer(), fmt.Sprintf("render-%s", f.Name), func() error {
+				// Check for cancellation
+				if IsCancelled(ctx.Err()) {
+					return NewCancelledError(fmt.Sprintf("render-%s", f.Name), ctx.Err())
 				}
 
-				progress.SetStatus(fmt.Sprintf("Writing %s format", f.Name))
-				err := writer.Write(ctx, f.Name, transformedData)
+				GlobalTrace("render", "starting render for format: %s", f.Name)
+				progress.SetStatus(fmt.Sprintf("Rendering %s format", f.Name))
+
+				// Render the document in this format
+				data, err := f.Renderer.Render(ctx, doc)
 				if err != nil {
-					errChan <- fmt.Errorf("failed to write %s format: %w", f.Name, err)
-					return
+					// Create a detailed render error with context
+					return ErrorWithContext("render", err, "format", f.Name, "renderer", fmt.Sprintf("%T", f.Renderer))
 				}
 
-				// Update progress
-				workMu.Lock()
-				workDone++
-				progress.SetCurrent(workDone)
-				workMu.Unlock()
+				GlobalTrace("render", "rendered %s format successfully, %d bytes", f.Name, len(data))
+				return o.processFormatData(ctx, f, data, transformers, writers, progress, &workDone, &workMu)
+			})
+
+			if err != nil {
+				errChan <- err
 			}
 		}(format)
 	}
 
 	// Wait for all renders to complete
+	GlobalTrace("render", "waiting for all format processing to complete")
 	wg.Wait()
 	close(errChan)
 
-	// Check for any errors
-	var errors []error
+	// Collect all errors using the new error handling system
+	multiErr := NewMultiError("render")
 	for err := range errChan {
-		errors = append(errors, err)
+		multiErr.Add(err)
 	}
 
-	if len(errors) > 0 {
-		// Report the first error to progress and return it
-		progress.Fail(errors[0])
-		return errors[0]
+	if multiErr.HasErrors() {
+		GlobalError("render", "render process failed with %d error(s)", len(multiErr.Errors))
+		progress.Fail(multiErr)
+		return multiErr
 	}
 
+	GlobalTrace("render", "all format processing completed successfully")
 	progress.Complete()
+	return nil
+}
+
+// processFormatData applies transformers and writes the data to all configured writers
+func (o *Output) processFormatData(ctx context.Context, format Format, data []byte, transformers []Transformer, writers []Writer, progress Progress, workDone *int, workMu *sync.Mutex) error {
+	// Apply transformers to the rendered data
+	transformedData := data
+	for _, transformer := range transformers {
+		if transformer.CanTransform(format.Name) {
+			GlobalTrace("transform", "applying %s transformer to %s format", transformer.Name(), format.Name)
+			progress.SetStatus(fmt.Sprintf("Applying %s transformer to %s", transformer.Name(), format.Name))
+
+			var err error
+			transformedData, err = transformer.Transform(ctx, transformedData, format.Name)
+			if err != nil {
+				return ErrorWithContext("transform", err,
+					"format", format.Name,
+					"transformer", transformer.Name(),
+					"input_size", len(data))
+			}
+
+			GlobalTrace("transform", "applied %s transformer to %s format, %d -> %d bytes",
+				transformer.Name(), format.Name, len(data), len(transformedData))
+		}
+	}
+
+	// Write to all configured writers
+	for _, writer := range writers {
+		// Check for cancellation before each write
+		if IsCancelled(ctx.Err()) {
+			return NewCancelledError(fmt.Sprintf("write-%s", format.Name), ctx.Err())
+		}
+
+		GlobalTrace("write", "writing %s format using %T writer", format.Name, writer)
+		progress.SetStatus(fmt.Sprintf("Writing %s format", format.Name))
+
+		err := writer.Write(ctx, format.Name, transformedData)
+		if err != nil {
+			return ErrorWithContext("write", err,
+				"format", format.Name,
+				"writer", fmt.Sprintf("%T", writer),
+				"data_size", len(transformedData))
+		}
+
+		// Update progress safely
+		workMu.Lock()
+		*workDone++
+		progress.SetCurrent(*workDone)
+		workMu.Unlock()
+
+		GlobalTrace("write", "successfully wrote %s format using %T writer", format.Name, writer)
+	}
+
 	return nil
 }
 
