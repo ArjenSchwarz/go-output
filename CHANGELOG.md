@@ -1,6 +1,17 @@
 ## [Unreleased]
 
 ### Added
+- **AST-based migration tool** for automated code conversion from v1 to v2
+  - Comprehensive pattern recognition for all v1 usage patterns
+  - Advanced transformation engine with type-aware code generation
+  - Support for complex scenarios including multiple outputs and custom settings
+  - Extensive test coverage including real-world code examples
+  - Command-line interface with dry-run and verbose modes
+- **Migration documentation suite**
+  - `BREAKING_CHANGES.md`: Detailed before/after examples for all breaking changes
+  - `MIGRATION.md`: Comprehensive migration guide with patterns and examples
+  - `MIGRATION_EXAMPLES.md`: Practical migration examples for common use cases
+  - `MIGRATION_QUICK_REFERENCE.md`: Quick reference table for common replacements
 - Enhanced error handling system with detailed context and source tracking
 - Extended RenderError with renderer type, operation, and context information
 - New WriterError type for write operation failures with detailed context
@@ -91,6 +102,7 @@
 - Global debug tracer functionality for cross-package debugging
 
 ### Changed
+- Updated v2 redesign tasks to mark migration tool development as completed (tasks 13.1-13.2)
 - Complete architectural redesign eliminating all global variables
 - Minimum Go version requirement updated to 1.24
 - Updated exported function names for better API consistency (generateID → GenerateID, addContent → AddContent)
