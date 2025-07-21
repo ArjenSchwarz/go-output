@@ -22,7 +22,8 @@
       "Bash(git --no-pager diff --cached v2/renderer.go)",
       "Bash(git --no-pager diff --cached -- v2/renderer.go)",
       "Bash(git --no-pager log --oneline -5)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

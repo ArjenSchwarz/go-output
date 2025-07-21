@@ -135,6 +135,7 @@ func (m *Migrator) detectWriteCall(n ast.Node) bool {
 
 // detectKeysFieldAssignment detects v1 Keys field assignments
 func (m *Migrator) detectKeysFieldAssignment(n ast.Node) bool {
+	// Check for assignment like: output.Keys = []string{...}
 	if assignStmt, ok := n.(*ast.AssignStmt); ok {
 		for _, lhs := range assignStmt.Lhs {
 			if selectorExpr, ok := lhs.(*ast.SelectorExpr); ok {
@@ -144,6 +145,23 @@ func (m *Migrator) detectKeysFieldAssignment(n ast.Node) bool {
 			}
 		}
 	}
+
+	// Check for composite literal like: &OutputArray{Keys: []string{...}}
+	if compositeLit, ok := n.(*ast.CompositeLit); ok {
+		if selectorExpr, ok := compositeLit.Type.(*ast.SelectorExpr); ok {
+			if selectorExpr.Sel.Name == "OutputArray" {
+				// Check if Keys field is present in the composite literal
+				for _, elt := range compositeLit.Elts {
+					if kv, ok := elt.(*ast.KeyValueExpr); ok {
+						if ident, ok := kv.Key.(*ast.Ident); ok && ident.Name == "Keys" {
+							return true
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return false
 }
 
@@ -152,8 +170,18 @@ func (m *Migrator) detectSettingsFieldAssignment(n ast.Node) bool {
 	if assignStmt, ok := n.(*ast.AssignStmt); ok {
 		for _, lhs := range assignStmt.Lhs {
 			if selectorExpr, ok := lhs.(*ast.SelectorExpr); ok {
+				// Check for assignments like: output.Settings = settings
 				if selectorExpr.Sel.Name == "Settings" && m.isOutputReceiver(selectorExpr.X) {
 					return true
+				}
+				// Check for assignments like: settings.OutputFormat = "table"
+				if ident, ok := selectorExpr.X.(*ast.Ident); ok {
+					settingsFields := []string{"OutputFormat", "UseEmoji", "UseColors", "TableStyle", "HasTOC", "ProgressTimeout"}
+					for _, field := range settingsFields {
+						if selectorExpr.Sel.Name == field && strings.Contains(strings.ToLower(ident.Name), "setting") {
+							return true
+						}
+					}
 				}
 			}
 		}

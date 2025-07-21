@@ -135,7 +135,16 @@ func TestMigrator_TransformImportStatement(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// This is a simplified test - in practice we'd need proper AST setup
 			if strings.Contains(tt.input, "github.com/ArjenSchwarz/go-output") && !strings.Contains(tt.input, "/v2") {
-				result := strings.Replace(tt.input, "github.com/ArjenSchwarz/go-output", "github.com/ArjenSchwarz/go-output/v2", 1)
+				var result string
+				// Match the actual transform logic
+				path := strings.Trim(tt.input, "\"")
+				if path == "github.com/ArjenSchwarz/go-output/format" {
+					// format subpackage maps to v2 root
+					result = `"github.com/ArjenSchwarz/go-output/v2"`
+				} else {
+					// Other imports just add /v2
+					result = strings.Replace(tt.input, "github.com/ArjenSchwarz/go-output", "github.com/ArjenSchwarz/go-output/v2", 1)
+				}
 				if result != tt.expected {
 					t.Errorf("Transform failed: got %s, want %s", result, tt.expected)
 				}

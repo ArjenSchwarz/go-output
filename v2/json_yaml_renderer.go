@@ -85,9 +85,19 @@ func (j *jsonRenderer) renderContent(content Content) ([]byte, error) {
 		return j.renderRawContentJSON(c)
 	case *SectionContent:
 		return j.renderSectionContentJSON(c)
+	case *ChartContent:
+		return j.renderChartContentJSON(c)
+	case *GraphContent:
+		return j.renderGraphContentJSON(c)
+	case *DrawIOContent:
+		return j.renderDrawIOContentJSON(c)
 	default:
-		// Fallback to basic rendering
-		return j.baseRenderer.renderContent(content)
+		// Fallback to basic rendering - wrap plain text as JSON string
+		textData, err := j.baseRenderer.renderContent(content)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(string(textData))
 	}
 }
 
@@ -102,6 +112,14 @@ func (j *jsonRenderer) renderContentTo(content Content, w io.Writer) error {
 		return j.renderRawContentJSONStream(c, w)
 	case *SectionContent:
 		return j.renderSectionContentJSONStream(c, w)
+	case *ChartContent, *GraphContent, *DrawIOContent:
+		// These complex types fall back to buffered rendering
+		data, err := j.renderContent(content)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(data)
+		return err
 	default:
 		// Fallback to buffered rendering
 		data, err := j.renderContent(content)
@@ -449,6 +467,39 @@ func (j *jsonRenderer) renderSectionContentJSONStream(section *SectionContent, w
 	return nil
 }
 
+// renderChartContentJSON renders ChartContent as JSON
+func (j *jsonRenderer) renderChartContentJSON(content *ChartContent) ([]byte, error) {
+	chartData := map[string]any{
+		"type":       content.Type(),
+		"title":      content.GetTitle(),
+		"chart_type": content.GetChartType(),
+		"data":       content.GetData(),
+	}
+	return json.MarshalIndent(chartData, "", "  ")
+}
+
+// renderGraphContentJSON renders GraphContent as JSON
+func (j *jsonRenderer) renderGraphContentJSON(content *GraphContent) ([]byte, error) {
+	graphData := map[string]any{
+		"type":  content.Type(),
+		"title": content.GetTitle(),
+		"nodes": content.GetNodes(),
+		"edges": content.GetEdges(),
+	}
+	return json.MarshalIndent(graphData, "", "  ")
+}
+
+// renderDrawIOContentJSON renders DrawIOContent as JSON
+func (j *jsonRenderer) renderDrawIOContentJSON(content *DrawIOContent) ([]byte, error) {
+	drawioData := map[string]any{
+		"type":    content.Type(),
+		"title":   content.GetTitle(),
+		"records": content.GetRecords(),
+		"header":  content.GetHeader(),
+	}
+	return json.MarshalIndent(drawioData, "", "  ")
+}
+
 // yamlRenderer implements YAML output format
 type yamlRenderer struct {
 	baseRenderer
@@ -524,9 +575,19 @@ func (y *yamlRenderer) renderContent(content Content) ([]byte, error) {
 		return y.renderRawContentYAML(c)
 	case *SectionContent:
 		return y.renderSectionContentYAML(c)
+	case *ChartContent:
+		return y.renderChartContentYAML(c)
+	case *GraphContent:
+		return y.renderGraphContentYAML(c)
+	case *DrawIOContent:
+		return y.renderDrawIOContentYAML(c)
 	default:
-		// Fallback to basic rendering
-		return y.baseRenderer.renderContent(content)
+		// Fallback to basic rendering - wrap plain text as YAML string
+		textData, err := y.baseRenderer.renderContent(content)
+		if err != nil {
+			return nil, err
+		}
+		return yaml.Marshal(string(textData))
 	}
 }
 
@@ -541,6 +602,14 @@ func (y *yamlRenderer) renderContentTo(content Content, w io.Writer) error {
 		return y.renderRawContentYAMLStream(c, w)
 	case *SectionContent:
 		return y.renderSectionContentYAMLStream(c, w)
+	case *ChartContent, *GraphContent, *DrawIOContent:
+		// These complex types fall back to buffered rendering
+		data, err := y.renderContent(content)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(data)
+		return err
 	default:
 		// Fallback to buffered rendering
 		data, err := y.renderContent(content)
@@ -840,4 +909,37 @@ func (y *yamlRenderer) renderSectionContentYAMLStream(section *SectionContent, w
 	result["contents"] = contents
 
 	return encoder.Encode(result)
+}
+
+// renderChartContentYAML renders ChartContent as YAML
+func (y *yamlRenderer) renderChartContentYAML(content *ChartContent) ([]byte, error) {
+	chartData := map[string]any{
+		"type":       content.Type(),
+		"title":      content.GetTitle(),
+		"chart_type": content.GetChartType(),
+		"data":       content.GetData(),
+	}
+	return yaml.Marshal(chartData)
+}
+
+// renderGraphContentYAML renders GraphContent as YAML
+func (y *yamlRenderer) renderGraphContentYAML(content *GraphContent) ([]byte, error) {
+	graphData := map[string]any{
+		"type":  content.Type(),
+		"title": content.GetTitle(),
+		"nodes": content.GetNodes(),
+		"edges": content.GetEdges(),
+	}
+	return yaml.Marshal(graphData)
+}
+
+// renderDrawIOContentYAML renders DrawIOContent as YAML
+func (y *yamlRenderer) renderDrawIOContentYAML(content *DrawIOContent) ([]byte, error) {
+	drawioData := map[string]any{
+		"type":    content.Type(),
+		"title":   content.GetTitle(),
+		"records": content.GetRecords(),
+		"header":  content.GetHeader(),
+	}
+	return yaml.Marshal(drawioData)
 }
