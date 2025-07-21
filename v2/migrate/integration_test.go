@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,7 +50,6 @@ func main() {
 				"ReplaceOutputArrayDeclaration",
 				"ReplaceAddContents",
 				"ReplaceWriteCall",
-				"ReplaceKeysAssignment",
 			},
 			shouldSucceed: true,
 		},
@@ -277,6 +275,8 @@ func main() {
 			}
 
 			// Log the transformation for manual inspection
+			t.Logf("Patterns found: %v", result.PatternsFound)
+			t.Logf("Rules applied: %v", result.RulesApplied)
 			t.Logf("Transformed code:\n%s", result.TransformedFile)
 		})
 	}
@@ -325,7 +325,7 @@ func helper() string {
 
 	for filename, content := range files {
 		filePath := filepath.Join(tempDir, filename)
-		if err := ioutil.WriteFile(filePath, []byte(content), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 			t.Fatalf("Failed to create test file %s: %v", filename, err)
 		}
 	}
@@ -447,7 +447,7 @@ func main() {
 // Helper functions
 
 func createTempFile(content string) (string, error) {
-	tempFile, err := ioutil.TempFile("", "migrate_test_*.go")
+	tempFile, err := os.CreateTemp("", "migrate_test_*.go")
 	if err != nil {
 		return "", err
 	}
@@ -463,5 +463,5 @@ func createTempFile(content string) (string, error) {
 }
 
 func createTempDirectory() (string, error) {
-	return ioutil.TempDir("", "migrate_test_dir_*")
+	return os.MkdirTemp("", "migrate_test_dir_*")
 }

@@ -16,6 +16,7 @@ type Migrator struct {
 	fset           *token.FileSet
 	patterns       []Pattern
 	transformRules []TransformRule
+	storedKeys     ast.Expr // Temporary storage for Keys during transformation
 }
 
 // Pattern represents a v1 usage pattern to detect
@@ -137,33 +138,131 @@ func (m *Migrator) applyTransformRules(file *ast.File) (ast.Node, []string, []er
 	var rulesApplied []string
 	var errors []error
 
-	// Create a copy of the file to transform
-	transformed := m.copyNode(file).(*ast.File)
-
 	// Apply rules in priority order
 	for _, rule := range m.transformRules {
-		applied := false
-		ast.Inspect(transformed, func(n ast.Node) bool {
-			if newNode, err := rule.Transform(n); err != nil {
-				errors = append(errors, fmt.Errorf("applying rule %s: %w", rule.Name, err))
-			} else if newNode != n {
-				// Replace the node (this is simplified - in practice we'd need more sophisticated replacement)
-				applied = true
-			}
-			return true
-		})
+		rewriter := &astRewriter{
+			transform: rule.Transform,
+			applied:   false,
+		}
 
-		if applied {
+		result := rewriter.rewrite(file)
+
+		if rewriter.err != nil {
+			errors = append(errors, fmt.Errorf("applying rule %s: %w", rule.Name, rewriter.err))
+		} else if rewriter.applied {
 			rulesApplied = append(rulesApplied, rule.Name)
+			file = result.(*ast.File)
 		}
 	}
 
-	return transformed, rulesApplied, errors
+	return file, rulesApplied, errors
 }
 
-// copyNode creates a deep copy of an AST node
-func (m *Migrator) copyNode(node ast.Node) ast.Node {
-	// This is a simplified implementation
-	// In practice, we'd need a more sophisticated deep copy
+// astRewriter implements AST rewriting with proper node replacement
+type astRewriter struct {
+	transform func(ast.Node) (ast.Node, error)
+	applied   bool
+	err       error
+}
+
+// rewrite recursively rewrites the AST, replacing nodes as needed
+func (r *astRewriter) rewrite(node ast.Node) ast.Node {
+	if node == nil || r.err != nil {
+		return node
+	}
+
+	// First, try to transform this node
+	newNode, err := r.transform(node)
+	if err != nil {
+		r.err = err
+		return node
+	}
+
+	if newNode != node {
+		r.applied = true
+		// If the node was transformed, we still need to rewrite its children
+		node = newNode
+	}
+
+	// Rewrite children based on node type
+	switch n := node.(type) {
+	case *ast.File:
+		for i, decl := range n.Decls {
+			n.Decls[i] = r.rewrite(decl).(ast.Decl)
+		}
+	case *ast.FuncDecl:
+		if n.Body != nil {
+			n.Body = r.rewrite(n.Body).(*ast.BlockStmt)
+		}
+	case *ast.BlockStmt:
+		for i, stmt := range n.List {
+			n.List[i] = r.rewrite(stmt).(ast.Stmt)
+		}
+	case *ast.AssignStmt:
+		for i, expr := range n.Lhs {
+			n.Lhs[i] = r.rewrite(expr).(ast.Expr)
+		}
+		for i, expr := range n.Rhs {
+			n.Rhs[i] = r.rewrite(expr).(ast.Expr)
+		}
+	case *ast.ExprStmt:
+		n.X = r.rewrite(n.X).(ast.Expr)
+	case *ast.CallExpr:
+		n.Fun = r.rewrite(n.Fun).(ast.Expr)
+		for i, arg := range n.Args {
+			n.Args[i] = r.rewrite(arg).(ast.Expr)
+		}
+	case *ast.CompositeLit:
+		if n.Type != nil {
+			n.Type = r.rewrite(n.Type).(ast.Expr)
+		}
+		for i, elt := range n.Elts {
+			n.Elts[i] = r.rewrite(elt).(ast.Expr)
+		}
+	case *ast.SelectorExpr:
+		n.X = r.rewrite(n.X).(ast.Expr)
+	case *ast.ValueSpec:
+		if n.Type != nil {
+			n.Type = r.rewrite(n.Type).(ast.Expr)
+		}
+		for i, value := range n.Values {
+			n.Values[i] = r.rewrite(value).(ast.Expr)
+		}
+	case *ast.GenDecl:
+		for i, spec := range n.Specs {
+			n.Specs[i] = r.rewrite(spec).(ast.Spec)
+		}
+	case *ast.IfStmt:
+		if n.Init != nil {
+			n.Init = r.rewrite(n.Init).(ast.Stmt)
+		}
+		if n.Cond != nil {
+			n.Cond = r.rewrite(n.Cond).(ast.Expr)
+		}
+		if n.Body != nil {
+			n.Body = r.rewrite(n.Body).(*ast.BlockStmt)
+		}
+		if n.Else != nil {
+			n.Else = r.rewrite(n.Else).(ast.Stmt)
+		}
+	case *ast.ReturnStmt:
+		for i, expr := range n.Results {
+			n.Results[i] = r.rewrite(expr).(ast.Expr)
+		}
+	case *ast.DeclStmt:
+		n.Decl = r.rewrite(n.Decl).(ast.Decl)
+	case *ast.UnaryExpr:
+		n.X = r.rewrite(n.X).(ast.Expr)
+	case *ast.KeyValueExpr:
+		n.Key = r.rewrite(n.Key).(ast.Expr)
+		n.Value = r.rewrite(n.Value).(ast.Expr)
+	case *ast.ArrayType:
+		if n.Elt != nil {
+			n.Elt = r.rewrite(n.Elt).(ast.Expr)
+		}
+	case *ast.StarExpr:
+		n.X = r.rewrite(n.X).(ast.Expr)
+	}
+
 	return node
 }
