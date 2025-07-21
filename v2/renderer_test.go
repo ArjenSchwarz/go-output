@@ -73,15 +73,15 @@ func TestFormatConstants(t *testing.T) {
 	}
 
 	expectedNames := []string{
-		"json",
-		"yaml",
-		"csv",
-		"html",
-		"table",
-		"markdown",
-		"dot",
-		"mermaid",
-		"drawio",
+		FormatJSON,
+		FormatYAML,
+		FormatCSV,
+		FormatHTML,
+		FormatTable,
+		FormatMarkdown,
+		FormatDOT,
+		FormatMermaid,
+		FormatDrawIO,
 	}
 
 	if len(formats) != len(expectedNames) {
@@ -117,25 +117,25 @@ func TestFormatConstants(t *testing.T) {
 
 // TestStreamingSupportCategories ensures streaming support is categorized correctly
 func TestStreamingSupportCategories(t *testing.T) {
-	streamingFormats := []string{"json", "yaml", "csv", "html", "table", "markdown"}
-	nonStreamingFormats := []string{"dot", "mermaid", "drawio"}
+	streamingFormats := []string{FormatJSON, FormatYAML, FormatCSV, FormatHTML, FormatTable, FormatMarkdown}
+	nonStreamingFormats := []string{FormatDOT, FormatMermaid, FormatDrawIO}
 
 	// Test streaming formats
 	for _, formatName := range streamingFormats {
 		t.Run("streaming_"+formatName, func(t *testing.T) {
 			var renderer Renderer
 			switch formatName {
-			case "json":
+			case FormatJSON:
 				renderer = &jsonRenderer{}
-			case "yaml":
+			case FormatYAML:
 				renderer = &yamlRenderer{}
-			case "csv":
+			case FormatCSV:
 				renderer = &csvRenderer{}
-			case "html":
+			case FormatHTML:
 				renderer = &htmlRenderer{}
-			case "table":
+			case FormatTable:
 				renderer = &tableRenderer{}
-			case "markdown":
+			case FormatMarkdown:
 				renderer = &markdownRenderer{headingLevel: 1}
 			}
 
@@ -150,11 +150,11 @@ func TestStreamingSupportCategories(t *testing.T) {
 		t.Run("non_streaming_"+formatName, func(t *testing.T) {
 			var renderer Renderer
 			switch formatName {
-			case "dot":
+			case FormatDOT:
 				renderer = &dotRenderer{}
-			case "mermaid":
+			case FormatMermaid:
 				renderer = &mermaidRenderer{}
-			case "drawio":
+			case FormatDrawIO:
 				renderer = &drawioRenderer{}
 			}
 
@@ -741,7 +741,7 @@ func TestJSONRenderer_StreamingVsBuffered(t *testing.T) {
 			{"id": 2, "name": "Bob", "score": 87.2},
 			{"id": 3, "name": "Charlie", "score": 92.1},
 		}, WithKeys("id", "name", "score")).
-		Raw("json", []byte(`{"custom": "data"}`)).
+		Raw(FormatJSON, []byte(`{"custom": "data"}`)).
 		Section("Details", func(b *Builder) {
 			b.Text("Section content")
 		}).
@@ -979,7 +979,7 @@ func TestJSONYAMLRenderers_MixedContentTypes(t *testing.T) {
 			{"id": 1, "name": "Alice"},
 			{"id": 2, "name": "Bob"},
 		}, WithKeys("id", "name")).
-		Raw("html", []byte("<p>Custom HTML</p>")).
+		Raw(FormatHTML, []byte("<p>Custom HTML</p>")).
 		Section("Summary", func(b *Builder) {
 			b.Text("This is a summary")
 			b.Table("stats", []map[string]any{
@@ -992,8 +992,8 @@ func TestJSONYAMLRenderers_MixedContentTypes(t *testing.T) {
 		name     string
 		renderer Renderer
 	}{
-		{"json", &jsonRenderer{}},
-		{"yaml", &yamlRenderer{}},
+		{FormatJSON, &jsonRenderer{}},
+		{FormatYAML, &yamlRenderer{}},
 	}
 
 	for _, r := range renderers {
@@ -1053,8 +1053,8 @@ func TestJSONYAMLRenderers_LargeDataset(t *testing.T) {
 		name     string
 		renderer Renderer
 	}{
-		{"json", &jsonRenderer{}},
-		{"yaml", &yamlRenderer{}},
+		{FormatJSON, &jsonRenderer{}},
+		{FormatYAML, &yamlRenderer{}},
 	}
 
 	for _, r := range renderers {
@@ -1668,8 +1668,8 @@ func TestHTMLRenderer_TextContentStyling(t *testing.T) {
 
 func TestHTMLRenderer_RawContent(t *testing.T) {
 	doc := New().
-		Raw("html", []byte("<div>Safe HTML</div>")).
-		Raw("text", []byte("<script>alert('danger')</script>")).
+		Raw(FormatHTML, []byte("<div>Safe HTML</div>")).
+		Raw(FormatText, []byte("<script>alert('danger')</script>")).
 		Build()
 
 	renderer := &htmlRenderer{}
@@ -1871,8 +1871,8 @@ func TestTableWithStyle_Function(t *testing.T) {
 	// Test the TableWithStyle function
 	customStyle := TableWithStyle("Double")
 
-	if customStyle.Name != "table" {
-		t.Errorf("TableWithStyle should have name 'table', got %s", customStyle.Name)
+	if customStyle.Name != FormatTable {
+		t.Errorf("TableWithStyle should have name %q, got %s", FormatTable, customStyle.Name)
 	}
 
 	renderer, ok := customStyle.Renderer.(*tableRenderer)
@@ -2128,7 +2128,7 @@ func TestMarkdownRenderer_MarkdownEscaping(t *testing.T) {
 
 func TestMarkdownRenderer_RawContent(t *testing.T) {
 	doc := New().
-		Raw("markdown", []byte("# Raw Markdown\n\nThis is **raw** markdown content.")).
+		Raw(FormatMarkdown, []byte("# Raw Markdown\n\nThis is **raw** markdown content.")).
 		Raw("html", []byte("<div>HTML content</div>")).
 		Build()
 
@@ -2286,7 +2286,7 @@ func TestMarkdownRenderer_CombinedFeatures(t *testing.T) {
 			b.Text("This document demonstrates all features")
 		}).
 		Table("Users", userData, WithKeys("name", "role")).
-		Raw("markdown", []byte("**Bold raw markdown**")).
+		Raw(FormatMarkdown, []byte("**Bold raw markdown**")).
 		Build()
 
 	renderer := NewMarkdownRendererWithOptions(true, frontMatter)

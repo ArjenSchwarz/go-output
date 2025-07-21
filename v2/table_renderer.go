@@ -17,7 +17,7 @@ type tableRenderer struct {
 }
 
 func (t *tableRenderer) Format() string {
-	return "table"
+	return FormatTable
 }
 
 func (tr *tableRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {

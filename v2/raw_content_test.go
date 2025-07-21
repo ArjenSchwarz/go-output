@@ -5,7 +5,7 @@ import (
 )
 
 func TestRawContent_Basic(t *testing.T) {
-	format := "html"
+	format := FormatHTML
 	data := []byte("<div>Hello, World!</div>")
 
 	content, err := NewRawContent(format, data)
@@ -48,14 +48,14 @@ func TestRawContent_FormatValidation(t *testing.T) {
 	}{
 		{
 			name:        "valid html format",
-			format:      "html",
+			format:      FormatHTML,
 			data:        []byte("<p>test</p>"),
 			opts:        []RawOption{WithFormatValidation(true)},
 			expectError: false,
 		},
 		{
 			name:        "valid json format",
-			format:      "json",
+			format:      FormatJSON,
 			data:        []byte(`{"key": "value"}`),
 			opts:        []RawOption{WithFormatValidation(true)},
 			expectError: false,
@@ -100,8 +100,8 @@ func TestRawContent_FormatValidation(t *testing.T) {
 
 func TestRawContent_ValidFormats(t *testing.T) {
 	validFormats := []string{
-		"html", "css", "js", "json", "xml", "yaml",
-		"markdown", "text", "csv", "dot", "mermaid", "drawio", "svg",
+		FormatHTML, "css", "js", FormatJSON, "xml", FormatYAML,
+		FormatMarkdown, FormatText, FormatCSV, FormatDOT, FormatMermaid, FormatDrawIO, "svg",
 	}
 
 	data := []byte("test data")
@@ -118,7 +118,7 @@ func TestRawContent_ValidFormats(t *testing.T) {
 
 func TestRawContent_DataPreservation(t *testing.T) {
 	originalData := []byte("original data")
-	format := "text"
+	format := FormatText
 
 	// Test with data preservation enabled (default)
 	content1, err := NewRawContent(format, originalData, WithDataPreservation(true))
@@ -160,21 +160,21 @@ func TestRawContent_AppendText(t *testing.T) {
 	}{
 		{
 			name:     "html content",
-			format:   "html",
+			format:   FormatHTML,
 			data:     []byte("<div>Hello</div>"),
 			input:    []byte("Prefix: "),
 			expected: "Prefix: <div>Hello</div>",
 		},
 		{
 			name:     "json content",
-			format:   "json",
+			format:   FormatJSON,
 			data:     []byte(`{"key": "value"}`),
 			input:    []byte{},
 			expected: `{"key": "value"}`,
 		},
 		{
 			name:     "empty data",
-			format:   "text",
+			format:   FormatText,
 			data:     []byte{},
 			input:    []byte("Start: "),
 			expected: "Start: ",
@@ -221,7 +221,7 @@ func TestRawContent_AppendBinary(t *testing.T) {
 }
 
 func TestRawContent_UniqueIDs(t *testing.T) {
-	format := "html"
+	format := FormatHTML
 	data := []byte("<p>test</p>")
 
 	content1, err := NewRawContent(format, data)
@@ -241,7 +241,7 @@ func TestRawContent_UniqueIDs(t *testing.T) {
 
 func TestBuilder_Raw(t *testing.T) {
 	builder := New()
-	format := "html"
+	format := FormatHTML
 	data := []byte("<div>Test content</div>")
 
 	result := builder.Raw(format, data)
@@ -326,7 +326,7 @@ func TestBuilder_MixedContentWithRaw(t *testing.T) {
 
 	builder.
 		Text("Introduction").
-		Raw("html", []byte("<div class='content'>HTML content</div>")).
+		Raw(FormatHTML, []byte("<div class='content'>HTML content</div>")).
 		Table("Data", []map[string]any{{"key": "value"}}).
 		Raw("css", []byte(".content { color: blue; }"))
 
@@ -356,7 +356,7 @@ func TestBuilder_MixedContentWithRaw(t *testing.T) {
 
 	// Check raw content formats
 	htmlContent := contents[1].(*RawContent)
-	if htmlContent.Format() != "html" {
+	if htmlContent.Format() != FormatHTML {
 		t.Errorf("Expected HTML format, got %q", htmlContent.Format())
 	}
 

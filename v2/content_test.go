@@ -11,8 +11,8 @@ func TestContentType_String(t *testing.T) {
 		ct       ContentType
 		expected string
 	}{
-		{"Table", ContentTypeTable, "table"},
-		{"Text", ContentTypeText, "text"},
+		{"Table", ContentTypeTable, FormatTable},
+		{"Text", ContentTypeText, FormatText},
 		{"Raw", ContentTypeRaw, "raw"},
 		{"Section", ContentTypeSection, "section"},
 		{"Unknown", ContentType(999), "unknown"},

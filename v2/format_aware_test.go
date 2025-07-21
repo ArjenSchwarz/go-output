@@ -14,15 +14,15 @@ func TestFormatDetector_IsTextBasedFormat(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},
-		{"markdown", true},
-		{"html", true},
-		{"csv", true},
-		{"yaml", true},
-		{"json", false},
-		{"dot", false},
-		{"mermaid", false},
-		{"drawio", false},
+		{FormatTable, true},
+		{FormatMarkdown, true},
+		{FormatHTML, true},
+		{FormatCSV, true},
+		{FormatYAML, true},
+		{FormatJSON, false},
+		{FormatDOT, false},
+		{FormatMermaid, false},
+		{FormatDrawIO, false},
 	}
 
 	for _, test := range tests {
@@ -40,12 +40,12 @@ func TestFormatDetector_IsStructuredFormat(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"json", true},
-		{"yaml", true},
-		{"table", false},
-		{"html", false},
-		{"csv", false},
-		{"markdown", false},
+		{FormatJSON, true},
+		{FormatYAML, true},
+		{FormatTable, false},
+		{FormatHTML, false},
+		{FormatCSV, false},
+		{FormatMarkdown, false},
 	}
 
 	for _, test := range tests {
@@ -63,13 +63,13 @@ func TestFormatDetector_IsTabularFormat(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},
-		{"csv", true},
-		{"html", true},
-		{"markdown", true},
-		{"json", false},
-		{"yaml", false},
-		{"dot", false},
+		{FormatTable, true},
+		{FormatCSV, true},
+		{FormatHTML, true},
+		{FormatMarkdown, true},
+		{FormatJSON, false},
+		{FormatYAML, false},
+		{FormatDOT, false},
 	}
 
 	for _, test := range tests {
@@ -87,12 +87,12 @@ func TestFormatDetector_IsGraphFormat(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"dot", true},
-		{"mermaid", true},
-		{"drawio", true},
-		{"table", false},
-		{"json", false},
-		{"html", false},
+		{FormatDOT, true},
+		{FormatMermaid, true},
+		{FormatDrawIO, true},
+		{FormatTable, false},
+		{FormatJSON, false},
+		{FormatHTML, false},
 	}
 
 	for _, test := range tests {
@@ -110,11 +110,11 @@ func TestFormatDetector_SupportsColors(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},
-		{"html", false},
-		{"markdown", false},
-		{"csv", false},
-		{"json", false},
+		{FormatTable, true},
+		{FormatHTML, false},
+		{FormatMarkdown, false},
+		{FormatCSV, false},
+		{FormatJSON, false},
 	}
 
 	for _, test := range tests {
@@ -132,13 +132,13 @@ func TestFormatDetector_SupportsEmoji(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},
-		{"html", true},
-		{"markdown", true},
-		{"csv", true},
-		{"yaml", false}, // Structured format
-		{"json", false}, // Structured format
-		{"dot", false},  // Not text-based
+		{FormatTable, true},
+		{FormatHTML, true},
+		{FormatMarkdown, true},
+		{FormatCSV, true},
+		{FormatYAML, false}, // Structured format
+		{FormatJSON, false}, // Structured format
+		{FormatDOT, false},  // Not text-based
 	}
 
 	for _, test := range tests {
@@ -156,13 +156,13 @@ func TestFormatDetector_RequiresEscaping(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"html", true},
-		{"markdown", true},
-		{"csv", true},
-		{"json", true},
-		{"yaml", true},
-		{"table", false},
-		{"dot", false},
+		{FormatHTML, true},
+		{FormatMarkdown, true},
+		{FormatCSV, true},
+		{FormatJSON, true},
+		{FormatYAML, true},
+		{FormatTable, false},
+		{FormatDOT, false},
 	}
 
 	for _, test := range tests {
@@ -196,13 +196,13 @@ func TestFormatAwareTransformer_EmojiCanTransform(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},    // Text-based and supports emoji
-		{"html", true},     // Text-based and supports emoji
-		{"markdown", true}, // Text-based and supports emoji
-		{"csv", true},      // Text-based and supports emoji
-		{"yaml", false},    // Structured format, no emoji
-		{"json", false},    // Structured format, no emoji
-		{"dot", false},     // Not text-based
+		{FormatTable, true},    // Text-based and supports emoji
+		{FormatHTML, true},     // Text-based and supports emoji
+		{FormatMarkdown, true}, // Text-based and supports emoji
+		{FormatCSV, true},      // Text-based and supports emoji
+		{FormatYAML, false},    // Structured format, no emoji
+		{FormatJSON, false},    // Structured format, no emoji
+		{FormatDOT, false},     // Not text-based
 	}
 
 	for _, test := range tests {
@@ -221,10 +221,10 @@ func TestFormatAwareTransformer_ColorCanTransform(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},     // Supports colors
-		{"html", false},     // No color support
-		{"markdown", false}, // No color support
-		{"csv", false},      // No color support
+		{FormatTable, true},     // Supports colors
+		{FormatHTML, false},     // No color support
+		{FormatMarkdown, false}, // No color support
+		{FormatCSV, false},      // No color support
 	}
 
 	for _, test := range tests {
@@ -243,13 +243,13 @@ func TestFormatAwareTransformer_SortCanTransform(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},
-		{"csv", true},
-		{"html", true},
-		{"markdown", true},
-		{"json", false}, // Not tabular
-		{"yaml", false}, // Not tabular
-		{"dot", false},  // Not tabular
+		{FormatTable, true},
+		{FormatCSV, true},
+		{FormatHTML, true},
+		{FormatMarkdown, true},
+		{FormatJSON, false}, // Not tabular
+		{FormatYAML, false}, // Not tabular
+		{FormatDOT, false},  // Not tabular
 	}
 
 	for _, test := range tests {
@@ -266,7 +266,7 @@ func TestFormatAwareTransformer_DataIntegrity(t *testing.T) {
 	wrapper := NewFormatAwareTransformer(emojiTransformer)
 
 	ctx := context.Background()
-	result, err := wrapper.Transform(ctx, originalData, "table")
+	result, err := wrapper.Transform(ctx, originalData, FormatTable)
 	if err != nil {
 		t.Fatalf("FormatAwareTransformer.Transform() error = %v", err)
 	}
@@ -293,13 +293,13 @@ func TestEnhancedEmojiTransformer_CanTransform(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},
-		{"html", true},
-		{"markdown", true},
-		{"csv", true},
-		{"yaml", false}, // Structured format
-		{"json", false}, // Structured format
-		{"dot", false},  // Graph format
+		{FormatTable, true},
+		{FormatHTML, true},
+		{FormatMarkdown, true},
+		{FormatCSV, true},
+		{FormatYAML, false}, // Structured format
+		{FormatJSON, false}, // Structured format
+		{FormatDOT, false},  // Graph format
 	}
 
 	for _, test := range tests {
@@ -322,19 +322,19 @@ func TestEnhancedEmojiTransformer_FormatSpecificTransform(t *testing.T) {
 	}{
 		{
 			name:     "markdown format conservative emoji",
-			format:   "markdown",
+			format:   FormatMarkdown,
 			input:    "!! Warning OK",
 			expected: "⚠️ Warning ✅",
 		},
 		{
 			name:     "html format with HTML entities",
-			format:   "html",
+			format:   FormatHTML,
 			input:    "!! Warning OK Yes No",
 			expected: "&#x1F6A8; Warning &#x2705; &#x2705; &#x274C;",
 		},
 		{
 			name:     "table format default behavior",
-			format:   "table",
+			format:   FormatTable,
 			input:    "!! Warning OK",
 			expected: "🚨 Warning ✅",
 		},
@@ -363,11 +363,11 @@ func TestEnhancedColorTransformer_CanTransform(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true}, // Only format that supports colors
-		{"html", false},
-		{"markdown", false},
-		{"csv", false},
-		{"json", false},
+		{FormatTable, true}, // Only format that supports colors
+		{FormatHTML, false},
+		{FormatMarkdown, false},
+		{FormatCSV, false},
+		{FormatJSON, false},
 	}
 
 	for _, test := range tests {
@@ -383,7 +383,7 @@ func TestEnhancedColorTransformer_NonColorFormat(t *testing.T) {
 	ctx := context.Background()
 
 	input := []byte("Status: ✅")
-	result, err := transformer.Transform(ctx, input, "html")
+	result, err := transformer.Transform(ctx, input, FormatHTML)
 	if err != nil {
 		t.Fatalf("EnhancedColorTransformer.Transform() error = %v", err)
 	}
@@ -403,13 +403,13 @@ func TestEnhancedSortTransformer_CanTransform(t *testing.T) {
 		format   string
 		expected bool
 	}{
-		{"table", true},
-		{"csv", true},
-		{"html", true},
-		{"markdown", true},
-		{"json", false}, // Not tabular
-		{"yaml", false}, // Not tabular
-		{"dot", false},  // Not tabular
+		{FormatTable, true},
+		{FormatCSV, true},
+		{FormatHTML, true},
+		{FormatMarkdown, true},
+		{FormatJSON, false}, // Not tabular
+		{FormatYAML, false}, // Not tabular
+		{FormatDOT, false},  // Not tabular
 	}
 
 	for _, test := range tests {
@@ -425,7 +425,7 @@ func TestEnhancedSortTransformer_NonTabularFormat(t *testing.T) {
 	ctx := context.Background()
 
 	input := []byte(`{"name": "Alice", "age": 30}`)
-	result, err := transformer.Transform(ctx, input, "json")
+	result, err := transformer.Transform(ctx, input, FormatJSON)
 	if err != nil {
 		t.Fatalf("EnhancedSortTransformer.Transform() error = %v", err)
 	}
@@ -491,7 +491,7 @@ func TestFormatAware_Integration(t *testing.T) {
 	input := []byte("Status: OK, Error: !!")
 
 	// Apply emoji transformation first
-	result1, err := emojiTransformer.Transform(ctx, input, "table")
+	result1, err := emojiTransformer.Transform(ctx, input, FormatTable)
 	if err != nil {
 		t.Fatalf("Enhanced emoji transform error: %v", err)
 	}
@@ -502,7 +502,7 @@ func TestFormatAware_Integration(t *testing.T) {
 	}
 
 	// Apply color transformation
-	result2, err := colorTransformer.Transform(ctx, result1, "table")
+	result2, err := colorTransformer.Transform(ctx, result1, FormatTable)
 	if err != nil {
 		t.Fatalf("Enhanced color transform error: %v", err)
 	}
@@ -527,12 +527,12 @@ func TestFormatAware_UnsupportedFormat(t *testing.T) {
 	input := []byte(`{"status": "OK", "error": "!!"}`)
 
 	// JSON doesn't support emoji
-	if emojiTransformer.CanTransform("json") {
+	if emojiTransformer.CanTransform(FormatJSON) {
 		t.Error("Enhanced emoji transformer should not support JSON format")
 	}
 
 	// Transformation should not be attempted
-	result, err := emojiTransformer.Transform(ctx, input, "json")
+	result, err := emojiTransformer.Transform(ctx, input, FormatJSON)
 	if err != nil {
 		t.Fatalf("Transform should not error on unsupported format: %v", err)
 	}
@@ -550,10 +550,10 @@ func BenchmarkFormatDetector_SupportsEmoji(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		detector.SupportsEmoji("table")
-		detector.SupportsEmoji("html")
-		detector.SupportsEmoji("json")
-		detector.SupportsEmoji("dot")
+		detector.SupportsEmoji(FormatTable)
+		detector.SupportsEmoji(FormatHTML)
+		detector.SupportsEmoji(FormatJSON)
+		detector.SupportsEmoji(FormatDOT)
 	}
 }
 
@@ -564,7 +564,7 @@ func BenchmarkEnhancedEmojiTransformer_Transform(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := transformer.Transform(ctx, input, "table")
+		_, err := transformer.Transform(ctx, input, FormatTable)
 		if err != nil {
 			b.Fatal(err)
 		}

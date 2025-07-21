@@ -8,7 +8,7 @@ import (
 // FormatDetector provides advanced format detection capabilities
 type FormatDetector struct{}
 
-// NewFormatDetector creates a new format detector
+// NewFormatDetector creates a new format detetcor
 func NewFormatDetector() *FormatDetector {
 	return &FormatDetector{}
 }
@@ -94,14 +94,14 @@ func (fd *FormatDetector) SupportsLineSplitting(format string) bool {
 // FormatAwareTransformer wraps existing transformers with enhanced format detection
 type FormatAwareTransformer struct {
 	transformer Transformer
-	detector    *FormatDetector
+	detetcor    *FormatDetector
 }
 
 // NewFormatAwareTransformer wraps a transformer with format awareness
 func NewFormatAwareTransformer(transformer Transformer) *FormatAwareTransformer {
 	return &FormatAwareTransformer{
 		transformer: transformer,
-		detector:    NewFormatDetector(),
+		detetcor:    NewFormatDetector(),
 	}
 }
 
@@ -125,13 +125,13 @@ func (fat *FormatAwareTransformer) CanTransform(format string) bool {
 	// Add additional format-specific logic based on transformer type
 	switch fat.transformer.Name() {
 	case "emoji":
-		return fat.detector.SupportsEmoji(format)
+		return fat.detetcor.SupportsEmoji(format)
 	case "color":
-		return fat.detector.SupportsColors(format)
+		return fat.detetcor.SupportsColors(format)
 	case "sort":
-		return fat.detector.SupportsSorting(format)
+		return fat.detetcor.SupportsSorting(format)
 	case "linesplit":
-		return fat.detector.SupportsLineSplitting(format)
+		return fat.detetcor.SupportsLineSplitting(format)
 	case "remove-colors":
 		// Color removal is needed for all formats when writing to files
 		return true
@@ -153,20 +153,20 @@ func (fat *FormatAwareTransformer) Transform(ctx context.Context, input []byte, 
 // EnhancedEmojiTransformer provides format-specific emoji transformations
 type EnhancedEmojiTransformer struct {
 	*EmojiTransformer
-	detector *FormatDetector
+	detetcor *FormatDetector
 }
 
 // NewEnhancedEmojiTransformer creates an enhanced emoji transformer
 func NewEnhancedEmojiTransformer() *EnhancedEmojiTransformer {
 	return &EnhancedEmojiTransformer{
 		EmojiTransformer: &EmojiTransformer{},
-		detector:         NewFormatDetector(),
+		detetcor:         NewFormatDetector(),
 	}
 }
 
 // CanTransform provides enhanced format detection for emoji
 func (eet *EnhancedEmojiTransformer) CanTransform(format string) bool {
-	return eet.detector.SupportsEmoji(format)
+	return eet.detetcor.SupportsEmoji(format)
 }
 
 // Transform applies format-specific emoji transformations
@@ -188,7 +188,7 @@ func (eet *EnhancedEmojiTransformer) Transform(ctx context.Context, input []byte
 		// In markdown, be more conservative with emoji to maintain readability
 		output = strings.ReplaceAll(output, "!!", "⚠️")
 		output = strings.ReplaceAll(output, "OK", "✅")
-	case "html":
+	case FormatHTML:
 		// In HTML, use emoji but ensure proper encoding
 		output = strings.ReplaceAll(output, "!!", "&#x1F6A8;") // 🚨
 		output = strings.ReplaceAll(output, "OK", "&#x2705;")  // ✅
@@ -205,53 +205,53 @@ func (eet *EnhancedEmojiTransformer) Transform(ctx context.Context, input []byte
 // EnhancedColorTransformer provides format-specific color handling
 type EnhancedColorTransformer struct {
 	*ColorTransformer
-	detector *FormatDetector
+	detetcor *FormatDetector
 }
 
 // NewEnhancedColorTransformer creates an enhanced color transformer
 func NewEnhancedColorTransformer() *EnhancedColorTransformer {
 	return &EnhancedColorTransformer{
 		ColorTransformer: NewColorTransformer(),
-		detector:         NewFormatDetector(),
+		detetcor:         NewFormatDetector(),
 	}
 }
 
 // CanTransform checks if colors are supported for the format
-func (ect *EnhancedColorTransformer) CanTransform(format string) bool {
-	return ect.detector.SupportsColors(format)
+func (etc *EnhancedColorTransformer) CanTransform(format string) bool {
+	return etc.detetcor.SupportsColors(format)
 }
 
 // Transform applies format-specific color transformations
-func (ect *EnhancedColorTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
+func (etc *EnhancedColorTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
 	// Create a copy to preserve original data
 	inputCopy := make([]byte, len(input))
 	copy(inputCopy, input)
 
 	// Only apply colors to terminal formats
-	if !ect.detector.SupportsColors(format) {
+	if !etc.detetcor.SupportsColors(format) {
 		return inputCopy, nil
 	}
 
-	return ect.ColorTransformer.Transform(ctx, inputCopy, format)
+	return etc.ColorTransformer.Transform(ctx, inputCopy, format)
 }
 
 // EnhancedSortTransformer provides format-specific sorting
 type EnhancedSortTransformer struct {
 	*SortTransformer
-	detector *FormatDetector
+	detetcor *FormatDetector
 }
 
 // NewEnhancedSortTransformer creates an enhanced sort transformer
 func NewEnhancedSortTransformer(key string, ascending bool) *EnhancedSortTransformer {
 	return &EnhancedSortTransformer{
 		SortTransformer: NewSortTransformer(key, ascending),
-		detector:        NewFormatDetector(),
+		detetcor:        NewFormatDetector(),
 	}
 }
 
 // CanTransform checks if sorting is supported for the format
 func (est *EnhancedSortTransformer) CanTransform(format string) bool {
-	return est.detector.SupportsSorting(format)
+	return est.detetcor.SupportsSorting(format)
 }
 
 // Transform applies format-specific sorting
@@ -260,7 +260,7 @@ func (est *EnhancedSortTransformer) Transform(ctx context.Context, input []byte,
 	inputCopy := make([]byte, len(input))
 	copy(inputCopy, input)
 
-	if !est.detector.SupportsSorting(format) {
+	if !est.detetcor.SupportsSorting(format) {
 		return inputCopy, nil
 	}
 
