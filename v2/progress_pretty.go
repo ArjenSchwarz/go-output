@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/progress"
@@ -66,7 +65,7 @@ func NewPrettyProgress(opts ...ProgressOption) Progress {
 	}
 
 	// Setup signal handling for terminal resize
-	signal.Notify(p.signals, syscall.SIGWINCH)
+	p.setupSignals()
 	go p.handleSignals()
 
 	// Start the progress writer
@@ -80,7 +79,7 @@ func (p *prettyProgress) handleSignals() {
 	for {
 		select {
 		case sig := <-p.signals:
-			if sig == syscall.SIGWINCH {
+			if p.isSIGWINCH(sig) {
 				// Terminal was resized - go-pretty handles this automatically
 				continue
 			}
