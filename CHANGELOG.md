@@ -143,6 +143,10 @@
   - Thread-safety testing for concurrent document building
 
 ### Fixed
+- **Windows build compatibility**: Fixed progress system to work on Windows by using build constraints for Unix-only signals
+  - Split signal handling into platform-specific files (`progress_pretty_unix.go` and `progress_pretty_windows.go`)
+  - Removed `syscall.SIGWINCH` dependency on Windows where the signal doesn't exist
+  - Fixed typo in v2 format detector ("detetcor" → "detector")
 - Resolved all linting issues identified by golangci-lint including gocritic ifElseChain warnings
 - Ensured proper code formatting and Go conventions compliance
 

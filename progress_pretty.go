@@ -6,7 +6,6 @@ import (
 	"os/signal"
 	"runtime"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/progress"
@@ -75,10 +74,10 @@ func (pp *PrettyProgress) start() {
 	pp.active = true
 	pp.mutex.Unlock()
 	pp.signals = make(chan os.Signal, 1)
-	signal.Notify(pp.signals, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGWINCH)
+	pp.setupSignals()
 	go func() {
 		for sig := range pp.signals {
-			if sig == syscall.SIGWINCH {
+			if pp.isSIGWINCH(sig) {
 				// trigger re-render on resize
 				if pp.writer != nil {
 					pp.writer.Render()
