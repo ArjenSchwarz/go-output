@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 // tableRenderer implements console table output format
@@ -181,106 +180,35 @@ func (t *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 	return tw
 }
 
+// tableStyles is a lookup map for getting the table styles based on a string
+var tableStyles = map[string]table.Style{
+	"Default":                    table.StyleDefault,
+	"Bold":                       table.StyleBold,
+	"ColoredBright":              table.StyleColoredBright,
+	"ColoredDark":                table.StyleColoredDark,
+	"ColoredBlackOnBlueWhite":    table.StyleColoredBlackOnBlueWhite,
+	"ColoredBlackOnCyanWhite":    table.StyleColoredBlackOnCyanWhite,
+	"ColoredBlackOnGreenWhite":   table.StyleColoredBlackOnGreenWhite,
+	"ColoredBlackOnMagentaWhite": table.StyleColoredBlackOnMagentaWhite,
+	"ColoredBlackOnYellowWhite":  table.StyleColoredBlackOnYellowWhite,
+	"ColoredBlackOnRedWhite":     table.StyleColoredBlackOnRedWhite,
+	"ColoredBlueWhiteOnBlack":    table.StyleColoredBlueWhiteOnBlack,
+	"ColoredCyanWhiteOnBlack":    table.StyleColoredCyanWhiteOnBlack,
+	"ColoredGreenWhiteOnBlack":   table.StyleColoredGreenWhiteOnBlack,
+	"ColoredMagentaWhiteOnBlack": table.StyleColoredMagentaWhiteOnBlack,
+	"ColoredRedWhiteOnBlack":     table.StyleColoredRedWhiteOnBlack,
+	"ColoredYellowWhiteOnBlack":  table.StyleColoredYellowWhiteOnBlack,
+	"Double":                     table.StyleDouble,
+	"Light":                      table.StyleLight,
+	"Rounded":                    table.StyleRounded,
+}
+
 // getTableStyle returns the table style configuration
 func (t *tableRenderer) getTableStyle() table.Style {
-	switch t.styleName {
-	case "ColoredBright":
-		return table.Style{
-			Name: "ColoredBright",
-			Box: table.BoxStyle{
-				BottomLeft:       "└",
-				BottomRight:      "┘",
-				BottomSeparator:  "┴",
-				Left:             "│",
-				LeftSeparator:    "├",
-				MiddleHorizontal: "─",
-				MiddleSeparator:  "┼",
-				MiddleVertical:   "│",
-				PaddingLeft:      " ",
-				PaddingRight:     " ",
-				Right:            "│",
-				RightSeparator:   "┤",
-				TopLeft:          "┌",
-				TopRight:         "┐",
-				TopSeparator:     "┬",
-				UnfinishedRow:    " ~~",
-			},
-			Color: table.ColorOptions{
-				Footer:       text.Colors{text.BgBlack, text.FgRed},
-				Header:       text.Colors{text.BgHiBlack, text.FgHiWhite, text.Bold},
-				Row:          text.Colors{text.BgHiBlack, text.FgWhite},
-				RowAlternate: text.Colors{text.BgBlack, text.FgHiWhite},
-			},
-			Format: table.FormatOptions{
-				Footer: text.FormatDefault,
-				Header: text.FormatDefault,
-				Row:    text.FormatDefault,
-			},
-			Options: table.Options{
-				DrawBorder:      true,
-				SeparateColumns: true,
-				SeparateFooter:  true,
-				SeparateHeader:  true,
-				SeparateRows:    false,
-			},
-		}
-
-	case "ColoredDark":
-		return table.Style{
-			Name: "ColoredDark",
-			Box: table.BoxStyle{
-				BottomLeft:       "└",
-				BottomRight:      "┘",
-				BottomSeparator:  "┴",
-				Left:             "│",
-				LeftSeparator:    "├",
-				MiddleHorizontal: "─",
-				MiddleSeparator:  "┼",
-				MiddleVertical:   "│",
-				PaddingLeft:      " ",
-				PaddingRight:     " ",
-				Right:            "│",
-				RightSeparator:   "┤",
-				TopLeft:          "┌",
-				TopRight:         "┐",
-				TopSeparator:     "┬",
-				UnfinishedRow:    " ~~",
-			},
-			Color: table.ColorOptions{
-				Footer:       text.Colors{text.BgHiBlack, text.FgHiRed},
-				Header:       text.Colors{text.BgHiRed, text.FgHiWhite, text.Bold},
-				Row:          text.Colors{text.BgBlack, text.FgHiWhite},
-				RowAlternate: text.Colors{text.BgHiBlack, text.FgWhite},
-			},
-			Format: table.FormatOptions{
-				Footer: text.FormatDefault,
-				Header: text.FormatDefault,
-				Row:    text.FormatDefault,
-			},
-			Options: table.Options{
-				DrawBorder:      true,
-				SeparateColumns: true,
-				SeparateFooter:  true,
-				SeparateHeader:  true,
-				SeparateRows:    false,
-			},
-		}
-
-	case "Light":
-		return table.StyleLight
-
-	case "Bold":
-		return table.StyleBold
-
-	case "Double":
-		return table.StyleDouble
-
-	case "Rounded":
-		return table.StyleRounded
-
-	default:
-		return table.StyleDefault
+	if style, exists := tableStyles[t.styleName]; exists {
+		return style
 	}
+	return table.StyleDefault
 }
 
 // NewTableRendererWithStyle creates a table renderer with specific style

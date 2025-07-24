@@ -1,3 +1,14 @@
+## 2.0.0 / 2025-07-24
+
+### Added
+- **CLAUDE.md configuration file** for v2 project guidance and development workflow
+
+### Changed
+- **Table renderer refactoring**: Replaced large switch statement with lookup map for table styles
+  - Simplified getTableStyle() method using tableStyles map
+  - Removed unused text import
+  - Improved code maintainability and reduced cyclomatic complexity
+
 ## 2.0.0 / 2025-07-22
 
 ### Added
