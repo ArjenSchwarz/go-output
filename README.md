@@ -130,9 +130,6 @@ doc := output.New().
 - **[Migration Examples](v2/MIGRATION_EXAMPLES.md)** - Real before/after code examples
 - **[Breaking Changes](v2/BREAKING_CHANGES.md)** - Detailed list of all breaking changes
 
-### Automated Migration Tool
-
-An experimental AST-based migration tool is available in `v2/migrate/` but is **untested and may not work reliably**. Manual migration following the guides above is recommended.
 
 ### v1 Documentation
 
