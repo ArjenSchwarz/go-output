@@ -167,7 +167,8 @@ func (t *TableContent) AppendText(b []byte) ([]byte, error) {
 			if val, ok := record[key]; ok {
 				field := t.schema.FindField(key)
 				if field != nil && field.Formatter != nil {
-					b = append(b, field.Formatter(val)...)
+					formatted := field.Formatter(val)
+					b = append(b, formatValue(formatted)...)
 				} else {
 					b = append(b, formatValue(val)...)
 				}

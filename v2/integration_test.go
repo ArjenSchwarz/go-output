@@ -140,7 +140,7 @@ func TestIntegration_SchemaWithFormatters(t *testing.T) {
 		{
 			Name: "Amount",
 			Type: "float",
-			Formatter: func(v any) string {
+			Formatter: func(v any) any {
 				if f, ok := v.(float64); ok {
 					return "$" + formatValue(f)
 				}

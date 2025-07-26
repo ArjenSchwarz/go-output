@@ -201,7 +201,8 @@ func (m *markdownRenderer) renderTableContentMarkdown(table *TableContent) ([]by
 				// Apply field formatter if available
 				field := table.Schema().FindField(key)
 				if field != nil && field.Formatter != nil {
-					cellValue = field.Formatter(val)
+					formatted := field.Formatter(val)
+					cellValue = fmt.Sprint(formatted)
 				} else {
 					cellValue = fmt.Sprint(val)
 				}
