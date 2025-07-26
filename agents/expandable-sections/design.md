@@ -76,7 +76,7 @@ The collapsible content system integrates with the existing v2 architecture at t
 
 ## Components and Interfaces
 
-### Core Interface
+### Core Interfaces
 
 ```go
 // CollapsibleValue represents a value that can be expanded/collapsed across formats
@@ -93,13 +93,31 @@ type CollapsibleValue interface {
     // FormatHint provides renderer-specific hints
     FormatHint(format string) map[string]any
 }
+
+// CollapsibleSection represents entire content blocks that can be expanded/collapsed (Requirement 15)
+type CollapsibleSection interface {
+    // Title returns the section title/summary
+    Title() string
+    
+    // Content returns the nested content items
+    Content() []Content
+    
+    // IsExpanded returns whether this section should be expanded by default
+    IsExpanded() bool
+    
+    // Level returns the nesting level (0-3 supported per Requirement 15.9)
+    Level() int
+    
+    // FormatHint provides renderer-specific hints
+    FormatHint(format string) map[string]any
+}
 ```
 
 **Design Decisions:**
-- **Summary() string**: Always returns string for consistent display across formats
-- **Details() any**: Accepts any type to support structured data (arrays, maps, etc.) as required
-- **IsExpanded() bool**: Required for per-value default expansion control in requirements
-- **FormatHint()**: Required for renderer-specific customization (JSON hints, YAML formatting, etc.)
+- **CollapsibleValue**: Same as before for field-level collapsible content
+- **CollapsibleSection**: New interface for section-level expandability (Requirement 15.1)
+- **Content() []Content**: Supports multiple content items in one section (Requirement 15.3)
+- **Level() int**: Enables hierarchical nesting up to 3 levels (Requirement 15.9)
 
 ### Default Implementation
 
@@ -187,6 +205,85 @@ func (d *DefaultCollapsibleValue) FormatHint(format string) map[string]any {
     }
     return nil
 }
+
+// DefaultCollapsibleSection provides a standard implementation for section-level collapsible content
+type DefaultCollapsibleSection struct {
+    title           string
+    content         []Content
+    defaultExpanded bool
+    level           int
+    formatHints     map[string]map[string]any
+}
+
+// NewCollapsibleSection creates a new collapsible section
+func NewCollapsibleSection(title string, content []Content, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
+    cs := &DefaultCollapsibleSection{
+        title:           title,
+        content:         content,
+        defaultExpanded: false,
+        level:           0,
+        formatHints:     make(map[string]map[string]any),
+    }
+    
+    for _, opt := range opts {
+        opt(cs)
+    }
+    
+    return cs
+}
+
+// Functional options for CollapsibleSection configuration
+type CollapsibleSectionOption func(*DefaultCollapsibleSection)
+
+func WithSectionExpanded(expanded bool) CollapsibleSectionOption {
+    return func(cs *DefaultCollapsibleSection) {
+        cs.defaultExpanded = expanded
+    }
+}
+
+func WithSectionLevel(level int) CollapsibleSectionOption {
+    return func(cs *DefaultCollapsibleSection) {
+        // Limit to 3 levels per Requirement 15.9
+        if level >= 0 && level <= 3 {
+            cs.level = level
+        }
+    }
+}
+
+func WithSectionFormatHint(format string, hints map[string]any) CollapsibleSectionOption {
+    return func(cs *DefaultCollapsibleSection) {
+        cs.formatHints[format] = hints
+    }
+}
+
+func (cs *DefaultCollapsibleSection) Title() string {
+    if cs.title == "" {
+        return "[untitled section]"
+    }
+    return cs.title
+}
+
+func (cs *DefaultCollapsibleSection) Content() []Content {
+    // Return copy to prevent external modification
+    content := make([]Content, len(cs.content))
+    copy(content, cs.content)
+    return content
+}
+
+func (cs *DefaultCollapsibleSection) IsExpanded() bool {
+    return cs.defaultExpanded
+}
+
+func (cs *DefaultCollapsibleSection) Level() int {
+    return cs.level
+}
+
+func (cs *DefaultCollapsibleSection) FormatHint(format string) map[string]any {
+    if hints, exists := cs.formatHints[format]; exists {
+        return hints
+    }
+    return nil
+}
 ```
 
 ### Helper Functions
@@ -263,6 +360,27 @@ func JSONFormatter(maxLength int, opts ...CollapsibleOption) func(any) any {
         },
         opts...,
     )
+}
+
+// Helper functions for creating collapsible sections
+
+// NewCollapsibleTable creates a collapsible section containing a single table
+func NewCollapsibleTable(title string, table *TableContent, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
+    return NewCollapsibleSection(title, []Content{table}, opts...)
+}
+
+// NewCollapsibleMultiTable creates a collapsible section containing multiple tables
+func NewCollapsibleMultiTable(title string, tables []*TableContent, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
+    content := make([]Content, len(tables))
+    for i, table := range tables {
+        content[i] = table
+    }
+    return NewCollapsibleSection(title, content, opts...)
+}
+
+// NewCollapsibleReport creates a collapsible section with mixed content types
+func NewCollapsibleReport(title string, content []Content, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
+    return NewCollapsibleSection(title, content, opts...)
 }
 ```
 
@@ -417,7 +535,7 @@ sequenceDiagram
 
 ## Format-Specific Renderer Implementations
 
-### JSON Renderer Implementation (Requirements 4.1-4.5)
+### JSON Renderer Implementation (Requirements 4.1-4.5, 15.5)
 
 ```go
 // Enhanced JSON renderer processing
@@ -445,6 +563,236 @@ func (j *jsonRenderer) formatValueForJSON(val any, field *Field) any {
     }
     
     return processed
+}
+
+// Enhanced JSON renderer for CollapsibleSection (Requirement 15.5)
+func (j *jsonRenderer) renderCollapsibleSection(section CollapsibleSection) (map[string]any, error) {
+    result := map[string]any{
+        "type":     "collapsible_section",
+        "title":    section.Title(),
+        "level":    section.Level(),
+        "expanded": section.IsExpanded(),
+    }
+    
+    // Render nested content
+    var contentArray []any
+    for _, content := range section.Content() {
+        contentJSON, err := j.renderContent(content)
+        if err != nil {
+            return nil, fmt.Errorf("failed to render section content: %w", err)
+        }
+        
+        var contentData any
+        if err := json.Unmarshal(contentJSON, &contentData); err != nil {
+            return nil, fmt.Errorf("failed to unmarshal section content: %w", err)
+        }
+        contentArray = append(contentArray, contentData)
+    }
+    
+    result["content"] = contentArray
+    
+    // Add format-specific hints
+    if hints := section.FormatHint(FormatJSON); hints != nil {
+        for k, v := range hints {
+            result[k] = v
+        }
+    }
+    
+    return result, nil
+}
+
+// Enhanced YAML renderer for CollapsibleSection (Requirement 15.5)
+func (y *yamlRenderer) renderCollapsibleSection(section CollapsibleSection) (map[string]any, error) {
+    result := map[string]any{
+        "type":     "collapsible_section",
+        "title":    section.Title(),
+        "level":    section.Level(),
+        "expanded": section.IsExpanded(),
+    }
+    
+    // Render nested content as YAML structures
+    var contentArray []any
+    for _, content := range section.Content() {
+        contentYAML, err := y.renderContentToYAML(content)
+        if err != nil {
+            return nil, fmt.Errorf("failed to render section content: %w", err)
+        }
+        contentArray = append(contentArray, contentYAML)
+    }
+    
+    result["content"] = contentArray
+    
+    // Add format-specific hints for YAML structure
+    if hints := section.FormatHint(FormatYAML); hints != nil {
+        for k, v := range hints {
+            result[k] = v
+        }
+    }
+    
+    return result, nil
+}
+```
+
+### Markdown Renderer Implementation for CollapsibleSection (Requirement 15.4)
+
+```go
+// Enhanced markdown renderer for CollapsibleSection
+func (m *markdownRenderer) renderCollapsibleSection(section CollapsibleSection) ([]byte, error) {
+    var result strings.Builder
+    
+    // Create nested details structure
+    openAttr := ""
+    if section.IsExpanded() {
+        openAttr = " open"
+    }
+    
+    // Use nested details with section title
+    result.WriteString(fmt.Sprintf("<details%s>\n", openAttr))
+    result.WriteString(fmt.Sprintf("<summary>%s</summary>\n\n", m.escapeMarkdown(section.Title())))
+    
+    // Render all nested content within the collapsible section
+    for i, content := range section.Content() {
+        if i > 0 {
+            result.WriteString("\n")
+        }
+        
+        contentMD, err := m.renderContent(content)
+        if err != nil {
+            return nil, fmt.Errorf("failed to render section content: %w", err)
+        }
+        
+        result.Write(contentMD)
+    }
+    
+    result.WriteString("\n</details>\n\n")
+    
+    return []byte(result.String()), nil
+}
+```
+
+### HTML Renderer Implementation for CollapsibleSection (Requirement 15.6)
+
+```go
+// Enhanced HTML renderer for CollapsibleSection
+func (h *htmlRenderer) renderCollapsibleSection(section CollapsibleSection) ([]byte, error) {
+    var result strings.Builder
+    
+    openAttr := ""
+    if section.IsExpanded() {
+        openAttr = " open"
+    }
+    
+    // Create semantic section with collapsible behavior
+    cssClasses := h.collapsibleConfig.HTMLCSSClasses
+    sectionClass := cssClasses["section"]
+    if sectionClass == "" {
+        sectionClass = "collapsible-section"
+    }
+    
+    result.WriteString(fmt.Sprintf(`<section class="%s">`, sectionClass))
+    result.WriteString(fmt.Sprintf(`<details%s class="%s">`, openAttr, cssClasses["details"]))
+    result.WriteString(fmt.Sprintf(`<summary class="%s">%s</summary>`, 
+        cssClasses["summary"], html.EscapeString(section.Title())))
+    
+    result.WriteString(`<div class="section-content">`)
+    
+    // Render all nested content
+    for _, content := range section.Content() {
+        contentHTML, err := h.renderContent(content)
+        if err != nil {
+            return nil, fmt.Errorf("failed to render section content: %w", err)
+        }
+        result.Write(contentHTML)
+    }
+    
+    result.WriteString(`</div>`)
+    result.WriteString(`</details>`)
+    result.WriteString(`</section>`)
+    
+    return []byte(result.String()), nil
+}
+```
+
+### Table Renderer Implementation for CollapsibleSection (Requirement 15.7)
+
+```go
+// Enhanced table renderer for CollapsibleSection
+func (t *tableRenderer) renderCollapsibleSection(section CollapsibleSection) ([]byte, error) {
+    var result strings.Builder
+    
+    // Show section title with expansion indicator
+    expandIndicator := ""
+    if !section.IsExpanded() && !t.collapsibleConfig.GlobalExpansion {
+        expandIndicator = " " + t.collapsibleConfig.TableHiddenIndicator
+    }
+    
+    // Create section header
+    result.WriteString(fmt.Sprintf("=== %s%s ===\n", section.Title(), expandIndicator))
+    
+    if section.IsExpanded() || t.collapsibleConfig.GlobalExpansion {
+        // Render nested content when expanded
+        for i, content := range section.Content() {
+            if i > 0 {
+                result.WriteString("\n")
+            }
+            
+            contentTable, err := t.renderContent(content)
+            if err != nil {
+                return nil, fmt.Errorf("failed to render section content: %w", err)
+            }
+            
+            // Indent nested content
+            lines := strings.Split(string(contentTable), "\n")
+            for _, line := range lines {
+                if strings.TrimSpace(line) != "" {
+                    result.WriteString("  " + line + "\n")
+                }
+            }
+        }
+    } else {
+        // Show collapsed indicator
+        result.WriteString(fmt.Sprintf("  [Section collapsed - contains %d item(s)]\n", 
+            len(section.Content())))
+    }
+    
+    result.WriteString("\n")
+    return []byte(result.String()), nil
+}
+```
+
+### CSV Renderer Implementation for CollapsibleSection (Requirement 15.8)
+
+```go
+// Enhanced CSV renderer for CollapsibleSection
+func (c *csvRenderer) renderCollapsibleSection(section CollapsibleSection) ([]byte, error) {
+    var result strings.Builder
+    
+    // Add section metadata as CSV comments or special rows
+    result.WriteString(fmt.Sprintf("# Section: %s (Level: %d, Expanded: %t)\n", 
+        section.Title(), section.Level(), section.IsExpanded()))
+    
+    // Process each content item in the section
+    for i, content := range section.Content() {
+        if tableContent, ok := content.(*TableContent); ok {
+            // For table content, add section context to CSV
+            contentCSV, err := c.renderTableContentCSV(tableContent)
+            if err != nil {
+                return nil, fmt.Errorf("failed to render section table: %w", err)
+            }
+            
+            // Add section prefix to table title
+            if tableContent.Title() != "" {
+                result.WriteString(fmt.Sprintf("# %s - %s\n", section.Title(), tableContent.Title()))
+            }
+            
+            result.Write(contentCSV)
+        } else {
+            // For non-table content, add as metadata
+            result.WriteString(fmt.Sprintf("# Content %d: %s\n", i+1, content.Type()))
+        }
+    }
+    
+    return []byte(result.String()), nil
 }
 ```
 
@@ -848,6 +1196,202 @@ var CollapsibleTestData = []struct {
         EdgeCase:    "nil handling",
     },
 }
+
+// CollapsibleSection test data
+var CollapsibleSectionTestData = []struct {
+    Description string
+    Section     CollapsibleSection
+    EdgeCase    string
+}{
+    {
+        Description: "Single table section",
+        Section: NewCollapsibleTable("Database Results", 
+            createTestTable("Users", []map[string]any{
+                {"ID": 1, "Name": "Alice"},
+                {"ID": 2, "Name": "Bob"},
+            })),
+        EdgeCase: "simple section with table",
+    },
+    {
+        Description: "Multi-content section",
+        Section: NewCollapsibleReport("Analysis Report", []Content{
+            createTestText("Summary: Found 5 issues"),
+            createTestTable("Issues", []map[string]any{
+                {"Type": "Error", "Count": 3},
+                {"Type": "Warning", "Count": 2},
+            }),
+        }),
+        EdgeCase: "mixed content types",
+    },
+    {
+        Description: "Nested sections",
+        Section: NewCollapsibleSection("Main Report", []Content{
+            createTestSection("Sub-section 1", []Content{
+                createTestText("Nested content"),
+            }),
+            createTestSection("Sub-section 2", []Content{
+                createTestTable("Nested Table", []map[string]any{
+                    {"Key": "Value"},
+                }),
+            }),
+        }),
+        EdgeCase: "hierarchical nesting",
+    },
+}
+```
+
+## Usage Examples
+
+### Basic CollapsibleSection Usage
+
+```go
+// Example 1: Simple collapsible table
+func ExampleCollapsibleTable() {
+    // Create table data
+    tableData := []map[string]any{
+        {"File": "main.go", "Lines": 150, "Issues": 3},
+        {"File": "utils.go", "Lines": 75, "Issues": 1},
+        {"File": "config.go", "Lines": 200, "Issues": 0},
+    }
+    
+    // Create table content
+    table := output.NewTableContent("Code Analysis", tableData, 
+        output.WithKeys("File", "Lines", "Issues"))
+    
+    // Wrap in collapsible section
+    section := output.NewCollapsibleTable("Detailed Analysis Results", table,
+        output.WithSectionExpanded(false),
+        output.WithSectionLevel(2))
+    
+    // Build document
+    doc := output.New().
+        Header("Project Analysis Report").
+        Text("Analysis completed successfully.").
+        Add(section).  // Add CollapsibleSection as content
+        Build()
+    
+    // Render to different formats
+    output.NewOutput(output.WithFormat(output.FormatMarkdown)).Render(ctx, doc)
+    // Output: <details><summary>Detailed Analysis Results</summary>...</details>
+    
+    output.NewOutput(output.WithFormat(output.FormatJSON)).Render(ctx, doc)
+    // Output: {"type": "collapsible_section", "title": "Detailed Analysis Results", ...}
+}
+
+// Example 2: Multi-content collapsible section
+func ExampleCollapsibleReport() {
+    // Create mixed content
+    summaryText := output.NewTextContent("Found 5 critical issues requiring attention")
+    
+    issuesTable := output.NewTableContent("Issues by Type", []map[string]any{
+        {"Type": "Security", "Count": 2, "Severity": "High"},
+        {"Type": "Performance", "Count": 2, "Severity": "Medium"},
+        {"Type": "Style", "Count": 1, "Severity": "Low"},
+    }, output.WithKeys("Type", "Count", "Severity"))
+    
+    recommendationsText := output.NewTextContent("Review security issues immediately")
+    
+    // Group content in collapsible section
+    report := output.NewCollapsibleReport("Security Analysis", []output.Content{
+        summaryText,
+        issuesTable,
+        recommendationsText,
+    }, output.WithSectionExpanded(true))
+    
+    // Build and render
+    doc := output.New().Add(report).Build()
+    output.NewOutput(output.WithFormat(output.FormatTable)).Render(ctx, doc)
+    // Output: === Security Analysis === (expanded with indented content)
+}
+
+// Example 3: Nested collapsible sections
+func ExampleNestedSections() {
+    // Create sub-sections
+    dbSection := output.NewCollapsibleSection("Database Analysis", []output.Content{
+        output.NewTextContent("Connection pool: 95% utilization"),
+        output.NewTableContent("Query Performance", []map[string]any{
+            {"Query": "SELECT users", "Time": "150ms", "Status": "Slow"},
+            {"Query": "INSERT orders", "Time": "25ms", "Status": "Good"},
+        }, output.WithKeys("Query", "Time", "Status")),
+    }, output.WithSectionLevel(3))
+    
+    apiSection := output.NewCollapsibleSection("API Analysis", []output.Content{
+        output.NewTextContent("Response time: 250ms average"),
+        output.NewTableContent("Endpoint Performance", []map[string]any{
+            {"Endpoint": "/api/users", "Requests": 1500, "Errors": 5},
+            {"Endpoint": "/api/orders", "Requests": 800, "Errors": 0},
+        }, output.WithKeys("Endpoint", "Requests", "Errors")),
+    }, output.WithSectionLevel(3))
+    
+    // Create main section with nested sections
+    mainReport := output.NewCollapsibleSection("Performance Report", []output.Content{
+        output.NewTextContent("System performance analysis for Q4 2024"),
+        dbSection,
+        apiSection,
+    }, output.WithSectionLevel(2), output.WithSectionExpanded(false))
+    
+    doc := output.New().Add(mainReport).Build()
+    
+    // Markdown will create nested <details> elements
+    output.NewOutput(output.WithFormat(output.FormatMarkdown)).Render(ctx, doc)
+}
+
+// Example 4: Integration with existing table formatters
+func ExampleCollapsibleWithFormatters() {
+    data := []map[string]any{
+        {
+            "file": "/very/long/path/to/project/src/components/UserProfile.tsx",
+            "errors": []string{
+                "Missing import for React",
+                "Unused variable 'userData'", 
+                "Type annotation missing for 'props'",
+            },
+            "config": map[string]any{
+                "eslint": true,
+                "typescript": true,
+                "prettier": false,
+            },
+        },
+    }
+    
+    // Use collapsible formatters for specific fields
+    table := output.NewTableContent("Code Issues", data,
+        output.WithSchema(
+            output.Field{
+                Name: "file",
+                Type: "string",
+                Formatter: output.FilePathFormatter(30), // Creates CollapsibleValue
+            },
+            output.Field{
+                Name: "errors", 
+                Type: "array",
+                Formatter: output.ErrorListFormatter(), // Creates CollapsibleValue
+            },
+            output.Field{
+                Name: "config",
+                Type: "object", 
+                Formatter: output.JSONFormatter(50), // Creates CollapsibleValue
+            },
+        ))
+    
+    // Wrap entire table in collapsible section
+    section := output.NewCollapsibleTable("Detailed Code Analysis", table)
+    
+    doc := output.New().Add(section).Build()
+    
+    // Table format shows both field-level and section-level expansion
+    tableOutput := output.NewOutput(
+        output.WithFormat(output.FormatTable),
+        output.WithCollapsibleConfig(output.CollapsibleConfig{
+            GlobalExpansion: false,
+            TableHiddenIndicator: "[expand for details]",
+        }))
+    tableOutput.Render(ctx, doc)
+    
+    // Markdown format creates nested collapsible structure
+    mdOutput := output.NewOutput(output.WithFormat(output.FormatMarkdown))
+    mdOutput.Render(ctx, doc)
+}
 ```
 
 ## Implementation Plan
@@ -884,7 +1428,25 @@ var CollapsibleTestData = []struct {
 3. Cross-format integration tests
 4. Error handling and fallback mechanisms
 
-### Phase 3: Advanced Features (Week 3)
+### Phase 3: Section-Level Expandability (Week 3)
+
+**Files to Create:**
+- `v2/collapsible_section.go` - CollapsibleSection interface and implementation
+- `v2/collapsible_section_test.go` - Section-specific unit tests
+
+**Files to Modify:**
+- `v2/content.go` - Add CollapsibleSection as content type
+- `v2/builder.go` - Add methods for creating collapsible sections
+- All renderer files - Add CollapsibleSection support
+
+**Key Deliverables:**
+1. CollapsibleSection interface and DefaultCollapsibleSection
+2. Helper functions: NewCollapsibleTable, NewCollapsibleReport
+3. Section-level renderer implementations for all formats
+4. Hierarchical nesting support (up to 3 levels)
+5. Integration with existing Builder API
+
+### Phase 4: Advanced Features (Week 4)
 
 **Files to Modify:**
 - `v2/csv_renderer.go` - Add detail column generation
@@ -900,7 +1462,7 @@ var CollapsibleTestData = []struct {
 3. Configurable truncation and indicators
 4. Documentation and examples
 
-### Phase 4: Polish and Optimization (Week 4)
+### Phase 5: Polish and Optimization (Week 5)
 
 **Key Deliverables:**
 1. Performance optimization for large datasets
@@ -908,6 +1470,7 @@ var CollapsibleTestData = []struct {
 3. Documentation updates
 4. Migration guide for existing users
 5. Example applications demonstrating features
+6. Benchmarks for CollapsibleSection performance
 
 ## Technical Decisions and Rationales
 

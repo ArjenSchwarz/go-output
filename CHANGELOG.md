@@ -1,3 +1,18 @@
+## 2.0.0 / 2025-07-26
+
+### Added
+- **Expandable Sections Feature Implementation Plan**
+  - Complete requirements specification for cross-format collapsible content system
+  - Comprehensive design document with full renderer implementations for all formats (Markdown, JSON, YAML, HTML, Table, CSV)
+  - CollapsibleValue interface with Summary(), Details(), IsExpanded(), and FormatHint() methods
+  - CollapsibleSection interface for section-level expandability with hierarchical nesting support (up to 3 levels)
+  - Pre-built formatter functions for common patterns (ErrorListFormatter, FilePathFormatter, JSONFormatter)
+  - Detailed implementation tasks with 15 main tasks and 46 sub-tasks covering core infrastructure, renderer integration, section support, and optimization
+  - Format-specific collapsible rendering specifications for all supported output formats
+  - Backward compatibility strategy for Field.Formatter signature changes
+  - Global expansion control and configurable renderer settings
+  - Error handling and edge case specifications with graceful degradation
+
 ## 2.0.0 / 2025-07-24
 
 ### Added

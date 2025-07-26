@@ -168,6 +168,22 @@ This feature implements a cross-format collapsible content system for the go-out
 4. **WHEN** renderer settings are not explicitly configured, **THEN** the system **SHALL** use sensible defaults
 5. **WHEN** multiple renderer instances are created, **THEN** each **SHALL** maintain its own configuration settings independently
 
+### 15. Expandable Content Sections
+
+**User Story**: As a developer creating analysis reports, I want to make entire tables, sections, or content blocks expandable, so that I can organize large amounts of information hierarchically with progressive disclosure.
+
+**Acceptance Criteria**:
+1. **WHEN** a user creates a CollapsibleSection with title and content, **THEN** the system **SHALL** provide expandable/collapsible behavior for the entire content block
+2. **WHEN** a CollapsibleSection contains table content, **THEN** the entire table **SHALL** be expandable/collapsible as a unit
+3. **WHEN** a CollapsibleSection contains multiple content items, **THEN** all content **SHALL** be grouped together in the expandable section
+4. **WHEN** markdown renderer processes a CollapsibleSection, **THEN** it **SHALL** generate appropriate `<details>` structure containing all nested content
+5. **WHEN** JSON/YAML renderers process a CollapsibleSection, **THEN** they **SHALL** create structured data with section metadata and nested content
+6. **WHEN** HTML renderer processes a CollapsibleSection, **THEN** it **SHALL** generate semantic section elements with collapsible behavior
+7. **WHEN** table renderer processes a CollapsibleSection, **THEN** it **SHALL** show section title with expansion indicator and render nested content when expanded
+8. **WHEN** CSV renderer processes a CollapsibleSection containing tables, **THEN** it **SHALL** include section information as metadata in the output
+9. **WHEN** CollapsibleSections are nested, **THEN** the system **SHALL** support hierarchical expansion up to 3 levels deep
+10. **WHEN** a CollapsibleSection has IsExpanded() true, **THEN** all nested content **SHALL** be visible by default across all renderers
+
 ## Implementation Clarifications
 
 Based on feedback, the following design decisions have been made:
