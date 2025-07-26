@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Comprehensive collapsible content documentation in API.md with examples and cross-format rendering
+- V2 collapsible features migration guide (V2_UPDATES_MIGRATION_EXAMPLES.md) with step-by-step examples
+- Enhanced Field.Formatter documentation showing new signature and backward compatibility
+- Built-in collapsible formatters documentation (ErrorListFormatter, FilePathFormatter, JSONFormatter)
+
+### Changed  
+- Updated main README.md links to reflect new migration documentation structure
+- Renamed MIGRATION_EXAMPLES.md to V1_V2_MIGRATION_EXAMPLES.md for clarity
+- Enhanced MIGRATION.md with extensive collapsible content and Field.Formatter guidance
+
+### Fixed
+- Test cases for collapsible backward compatibility and integration scenarios
+
+### Added
 - Performance optimization system with ProcessedValue caching to minimize type assertions for CollapsibleValue detection (Requirement 10.1)
 - Memory-efficient processing with MemoryOptimizedProcessor featuring buffer and string slice pooling for large content (Requirements 10.4, 10.6, 10.7)
 - Streaming capabilities for large datasets with StreamingValueProcessor and lazy evaluation to avoid unnecessary processing (Requirements 10.2, 10.3)
