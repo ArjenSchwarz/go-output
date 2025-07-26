@@ -1,4 +1,24 @@
-## 2.0.0 / 2025-07-26
+## Unreleased
+
+### Added
+- **Comprehensive integration tests for collapsible content system**
+  - Real-world scenario testing in `v2/collapsible_integration_test.go` including GitHub PR comments, API responses, and terminal output
+  - Cross-format consistency validation ensuring collapsible behavior works identically across all renderers (JSON, YAML, CSV, HTML, Table, Markdown, DOT, Mermaid, Draw.io)
+  - End-to-end pipeline testing from data input to formatted output with collapsible content preservation
+- **Backward compatibility validation for collapsible features**
+  - Comprehensive backward compatibility tests in `v2/collapsible_backward_compatibility_test.go`
+  - Validation that existing Field.Formatter functions continue working without modification (Requirement 12.1)
+  - Performance regression testing ensuring zero overhead when collapsible features are unused (Requirement 12.4)
+  - API signature compatibility testing ensuring seamless migration path from existing code
+- **Production-ready example applications demonstrating collapsible feature usage**
+  - GitHub PR comment generation example with collapsible error details (`v2/examples/collapsible_github_pr/`)
+  - Terminal analysis tool with expandable section reports (`v2/examples/collapsible_terminal_analysis/`)
+  - CSV export example with detail columns for spreadsheet analysis (`v2/examples/collapsible_csv_export/`)
+  - Each example includes complete Go modules with dependencies and practical usage patterns
+
+### Changed
+- Updated Claude settings configuration to allow timeout commands for testing example applications
+- Marked integration testing and example creation tasks as completed in expandable-sections feature roadmap
 
 ### Added
 - **Table Renderer Collapsible Value Support**
@@ -25,8 +45,6 @@
   - Enhanced table row rendering to use new `formatCellValue` method instead of direct formatter application
   - Updated table renderer to integrate with existing collapsible infrastructure from base renderer
   - Maintained backward compatibility with existing field formatters
-
-## 2.0.0 / 2025-07-24
 
 ### Added
 - **CLAUDE.md configuration file** for v2 project guidance and development workflow

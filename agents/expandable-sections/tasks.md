@@ -273,17 +273,17 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 14. Integration Testing and Cross-Format Validation
 
-- [ ] 14.1 Create comprehensive integration tests in `v2/collapsible_integration_test.go`
+- [x] 14.1 Create comprehensive integration tests in `v2/collapsible_integration_test.go`
   - Test real-world scenarios: GitHub PR comments, API responses, terminal output
   - Test cross-format consistency for same data across all renderers
   - Test end-to-end pipeline from data input to formatted output
 
-- [ ] 14.2 Implement backward compatibility validation tests
+- [x] 14.2 Implement backward compatibility validation tests
   - Test existing Field.Formatter functions continue working (Requirement 12.1)
   - Test identical output for non-collapsible content (Requirement 12.3)
   - Test zero overhead when collapsible features unused (Requirement 12.4)
 
-- [ ] 14.3 Create example applications demonstrating feature usage
+- [x] 14.3 Create example applications demonstrating feature usage
   - Build GitHub PR comment generation example with collapsible error details
   - Build terminal analysis tool with expandable section reports
   - Build CSV export example with detail columns for spreadsheet analysis
