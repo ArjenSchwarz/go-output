@@ -69,6 +69,17 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 			result.WriteString(tableWriter.Render())
 			result.WriteString("\n")
 
+		case *DefaultCollapsibleSection:
+			if i > 0 {
+				result.WriteString("\n")
+			}
+
+			sectionOutput, err := t.renderCollapsibleSection(c)
+			if err != nil {
+				return nil, fmt.Errorf("failed to render collapsible section: %w", err)
+			}
+			result.Write(sectionOutput)
+
 		case *TextContent:
 			if i > 0 {
 				result.WriteString("\n")
@@ -275,4 +286,71 @@ func NewTableRendererWithStyle(styleName string) Renderer {
 	return &tableRenderer{
 		styleName: styleName,
 	}
+}
+
+// renderCollapsibleSection renders a CollapsibleSection for table output (Requirement 15.7)
+func (t *tableRenderer) renderCollapsibleSection(section *DefaultCollapsibleSection) ([]byte, error) {
+	var result strings.Builder
+
+	// Show section title with expansion indicator (Requirement 15.7)
+	expandIndicator := ""
+	if !section.IsExpanded() && !t.collapsibleConfig.ForceExpansion {
+		expandIndicator = " " + t.collapsibleConfig.TableHiddenIndicator
+	}
+
+	// Create section header (Requirement 15.7)
+	result.WriteString(fmt.Sprintf("=== %s%s ===\n", section.Title(), expandIndicator))
+
+	if section.IsExpanded() || t.collapsibleConfig.ForceExpansion {
+		// Render nested content when expanded (Requirement 15.7)
+		for i, content := range section.Content() {
+			if i > 0 {
+				result.WriteString("\n")
+			}
+
+			switch c := content.(type) {
+			case *TableContent:
+				tableWriter := t.renderTable(c)
+				// Indent nested content (Requirement 15.7)
+				lines := strings.Split(tableWriter.Render(), "\n")
+				for _, line := range lines {
+					if strings.TrimSpace(line) != "" {
+						result.WriteString("  " + line + "\n")
+					}
+				}
+			case *TextContent:
+				style := c.Style()
+				text := c.Text()
+
+				if style.Header {
+					// Create a simple header format
+					indentedText := "  " + strings.ToUpper(text)
+					result.WriteString(indentedText + "\n")
+					result.WriteString("  " + strings.Repeat("=", len(text)) + "\n")
+				} else {
+					result.WriteString("  " + text + "\n")
+				}
+			default:
+				// Fallback for other content types
+				contentBytes, err := content.AppendText(nil)
+				if err != nil {
+					return nil, fmt.Errorf("failed to render nested content: %w", err)
+				}
+				// Indent the content
+				lines := strings.Split(string(contentBytes), "\n")
+				for _, line := range lines {
+					if strings.TrimSpace(line) != "" {
+						result.WriteString("  " + line + "\n")
+					}
+				}
+			}
+		}
+	} else {
+		// Show collapsed indicator (Requirement 15.7)
+		result.WriteString(fmt.Sprintf("  [Section collapsed - contains %d item(s)]\n",
+			len(section.Content())))
+	}
+
+	result.WriteString("\n")
+	return []byte(result.String()), nil
 }

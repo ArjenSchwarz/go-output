@@ -85,6 +85,8 @@ func (j *jsonRenderer) renderContent(content Content) ([]byte, error) {
 		return j.renderRawContentJSON(c)
 	case *SectionContent:
 		return j.renderSectionContentJSON(c)
+	case *DefaultCollapsibleSection:
+		return j.renderCollapsibleSectionJSON(c)
 	case *ChartContent:
 		return j.renderChartContentJSON(c)
 	case *GraphContent:
@@ -610,6 +612,8 @@ func (y *yamlRenderer) renderContent(content Content) ([]byte, error) {
 		return y.renderRawContentYAML(c)
 	case *SectionContent:
 		return y.renderSectionContentYAML(c)
+	case *DefaultCollapsibleSection:
+		return y.renderCollapsibleSectionYAML(c)
 	case *ChartContent:
 		return y.renderChartContentYAML(c)
 	case *GraphContent:
@@ -1035,4 +1039,76 @@ func (y *yamlRenderer) renderDrawIOContentYAML(content *DrawIOContent) ([]byte, 
 		"header":  content.GetHeader(),
 	}
 	return yaml.Marshal(drawioData)
+}
+
+// renderCollapsibleSectionJSON renders a CollapsibleSection as structured JSON (Requirement 15.5)
+func (j *jsonRenderer) renderCollapsibleSectionJSON(section *DefaultCollapsibleSection) ([]byte, error) {
+	result := map[string]any{
+		"type":     "collapsible_section", // Requirement 15.5: type indication
+		"title":    section.Title(),       // Requirement 15.5: section metadata
+		"level":    section.Level(),       // Requirement 15.5: section metadata
+		"expanded": section.IsExpanded(),  // Requirement 15.5: section metadata
+	}
+
+	// Render nested content (Requirement 15.5: nested content)
+	var contentArray []any
+	for _, content := range section.Content() {
+		contentJSON, err := j.renderContent(content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render section content: %w", err)
+		}
+
+		var contentData any
+		if err := json.Unmarshal(contentJSON, &contentData); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal section content: %w", err)
+		}
+		contentArray = append(contentArray, contentData)
+	}
+
+	result["content"] = contentArray // Requirement 15.5: nested content array
+
+	// Add format-specific hints (Requirement 15.5)
+	if hints := section.FormatHint(FormatJSON); hints != nil {
+		for k, v := range hints {
+			result[k] = v
+		}
+	}
+
+	return json.MarshalIndent(result, "", "  ")
+}
+
+// renderCollapsibleSectionYAML renders a CollapsibleSection as structured YAML (Requirement 15.5)
+func (y *yamlRenderer) renderCollapsibleSectionYAML(section *DefaultCollapsibleSection) ([]byte, error) {
+	result := map[string]any{
+		"type":     "collapsible_section", // Requirement 15.5: type indication
+		"title":    section.Title(),       // Requirement 15.5: section metadata
+		"level":    section.Level(),       // Requirement 15.5: section metadata
+		"expanded": section.IsExpanded(),  // Requirement 15.5: section metadata
+	}
+
+	// Render nested content as YAML structures (Requirement 15.5: nested content)
+	var contentArray []any
+	for _, content := range section.Content() {
+		contentYAML, err := y.renderContent(content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render section content: %w", err)
+		}
+
+		var contentData any
+		if err := yaml.Unmarshal(contentYAML, &contentData); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal section content: %w", err)
+		}
+		contentArray = append(contentArray, contentData)
+	}
+
+	result["content"] = contentArray // Requirement 15.5: nested content array
+
+	// Add format-specific hints for YAML structure (Requirement 15.5)
+	if hints := section.FormatHint(FormatYAML); hints != nil {
+		for k, v := range hints {
+			result[k] = v
+		}
+	}
+
+	return yaml.Marshal(result)
 }

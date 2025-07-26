@@ -71,8 +71,9 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 		default:
 		}
 
-		// Only handle table content for CSV output
-		if table, ok := content.(*TableContent); ok {
+		// Handle different content types for CSV output
+		switch content := content.(type) {
+		case *TableContent:
 			// Add a blank line between tables (except for the first table)
 			if i > 0 && hasWrittenHeaders {
 				if err := csvWriter.Write([]string{}); err != nil {
@@ -85,24 +86,33 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 
 			// Write headers for first table or when headers differ
 			writeHeaders := !hasWrittenHeaders
-			if err := c.renderTableContentCSV(table, csvWriter, writeHeaders); err != nil {
+			if err := c.renderTableContentCSV(content, csvWriter, writeHeaders); err != nil {
 				return fmt.Errorf("failed to render table %s: %w", content.ID(), err)
 			}
 
 			hasWrittenHeaders = true
-		} else if !hasWrittenHeaders {
-			// For non-table content, write as a single-column CSV row
-			// Only if no tables have been written yet (to avoid mixing formats)
-			contentText, err := content.AppendText(nil)
-			if err == nil && len(contentText) > 0 {
-				// Write simple header and content as CSV
-				if err := csvWriter.Write([]string{"content"}); err != nil {
-					return fmt.Errorf("failed to write content header: %w", err)
+
+		case *DefaultCollapsibleSection:
+			// Handle CollapsibleSection with metadata comments (Requirement 15.8)
+			if err := c.renderCollapsibleSectionCSV(content, csvWriter, &hasWrittenHeaders); err != nil {
+				return fmt.Errorf("failed to render collapsible section %s: %w", content.ID(), err)
+			}
+
+		default:
+			if !hasWrittenHeaders {
+				// For non-table content, write as a single-column CSV row
+				// Only if no tables have been written yet (to avoid mixing formats)
+				contentText, err := content.AppendText(nil)
+				if err == nil && len(contentText) > 0 {
+					// Write simple header and content as CSV
+					if err := csvWriter.Write([]string{"content"}); err != nil {
+						return fmt.Errorf("failed to write content header: %w", err)
+					}
+					if err := csvWriter.Write([]string{c.formatValueForCSV(string(contentText))}); err != nil {
+						return fmt.Errorf("failed to write content row: %w", err)
+					}
+					hasWrittenHeaders = true
 				}
-				if err := csvWriter.Write([]string{c.formatValueForCSV(string(contentText))}); err != nil {
-					return fmt.Errorf("failed to write content row: %w", err)
-				}
-				hasWrittenHeaders = true
 			}
 		}
 	}
@@ -354,4 +364,61 @@ func (c *csvRenderer) flattenDetails(details any) string {
 		str = strings.ReplaceAll(str, "\t", " ")
 		return str
 	}
+}
+
+// renderCollapsibleSectionCSV renders a CollapsibleSection with metadata comments (Requirement 15.8)
+func (c *csvRenderer) renderCollapsibleSectionCSV(section *DefaultCollapsibleSection, csvWriter *csv.Writer, hasWrittenHeaders *bool) error {
+	// Add section metadata as CSV comments or special rows (Requirement 15.8)
+
+	// Since CSV doesn't support comments officially, we'll use a special metadata row format
+	// This creates a recognizable pattern that can be parsed later if needed
+	metadataRow := []string{
+		fmt.Sprintf("# Section: %s", section.Title()),
+		fmt.Sprintf("Level: %d", section.Level()),
+		fmt.Sprintf("Expanded: %t", section.IsExpanded()),
+		"Type: collapsible_section",
+	}
+
+	if err := csvWriter.Write(metadataRow); err != nil {
+		return fmt.Errorf("failed to write section metadata: %w", err)
+	}
+
+	// Process each content item in the section (Requirement 15.8)
+	for i, content := range section.Content() {
+		switch contentItem := content.(type) {
+		case *TableContent:
+			// For table content, add section context to CSV (Requirement 15.8)
+			if contentItem.Title() != "" {
+				// Add table title with section context
+				titleRow := []string{fmt.Sprintf("# %s - %s", section.Title(), contentItem.Title())}
+				if err := csvWriter.Write(titleRow); err != nil {
+					return fmt.Errorf("failed to write table title: %w", err)
+				}
+			}
+
+			// Render the table content
+			writeHeaders := !*hasWrittenHeaders
+			if err := c.renderTableContentCSV(contentItem, csvWriter, writeHeaders); err != nil {
+				return fmt.Errorf("failed to render section table: %w", err)
+			}
+			*hasWrittenHeaders = true
+
+		default:
+			// For non-table content, add as metadata (Requirement 15.8)
+			metadataRow := []string{fmt.Sprintf("# Content %d: %s", i+1, content.Type())}
+			if err := csvWriter.Write(metadataRow); err != nil {
+				return fmt.Errorf("failed to write content metadata: %w", err)
+			}
+
+			// Try to get text representation
+			if contentText, err := content.AppendText(nil); err == nil && len(contentText) > 0 {
+				contentRow := []string{c.formatValueForCSV(string(contentText))}
+				if err := csvWriter.Write(contentRow); err != nil {
+					return fmt.Errorf("failed to write content: %w", err)
+				}
+			}
+		}
+	}
+
+	return nil
 }
