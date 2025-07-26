@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- CollapsibleSection renderer integration across all output formats with renderCollapsibleSection methods
+- Markdown renderer CollapsibleSection support with nested HTML `<details>` structures for section-level expandability
+- JSON/YAML renderer CollapsibleSection support with structured metadata (type, title, level, expanded) and nested content arrays
+- HTML renderer CollapsibleSection support with semantic HTML5 section elements and configurable CSS classes
+- Table renderer CollapsibleSection support with section headers, expansion indicators, and indented nested content
+- CSV renderer CollapsibleSection support with metadata comments and special row formatting for section context
+- Content interface implementation for DefaultCollapsibleSection with ID(), Type(), AppendText(), and AppendBinary() methods
+- Integration of CollapsibleSection into existing renderer content processing pipelines
 - CollapsibleSection interface for section-level expandable content with Title(), Content(), IsExpanded(), Level(), and FormatHint() methods
 - DefaultCollapsibleSection implementation with functional options pattern supporting up to 3 nesting levels
 - NewCollapsibleSection constructor with configurable expansion state, nesting levels, and format-specific hints

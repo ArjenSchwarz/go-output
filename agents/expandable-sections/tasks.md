@@ -194,27 +194,27 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 10. CollapsibleSection Renderer Integration
 
-- [ ] 10.1 Implement CollapsibleSection support in markdown renderer
+- [x] 10.1 Implement CollapsibleSection support in markdown renderer
   - Add renderCollapsibleSection method generating nested `<details>` structure (Requirement 15.4)
   - Render all nested content within collapsible section
   - Handle section title with proper markdown escaping
 
-- [ ] 10.2 Implement CollapsibleSection support in JSON/YAML renderers
+- [x] 10.2 Implement CollapsibleSection support in JSON/YAML renderers
   - Add renderCollapsibleSection methods creating structured data (Requirement 15.5)
   - Include type, title, level, expanded fields and content array
   - Handle nested content rendering and proper data structure creation
 
-- [ ] 10.3 Implement CollapsibleSection support in HTML renderer
+- [x] 10.3 Implement CollapsibleSection support in HTML renderer
   - Add renderCollapsibleSection method with semantic section elements (Requirement 15.6)
   - Generate proper HTML structure with CSS classes and accessibility
   - Handle nested content rendering within section containers
 
-- [ ] 10.4 Implement CollapsibleSection support in table renderer
+- [x] 10.4 Implement CollapsibleSection support in table renderer
   - Add renderCollapsibleSection method with section headers (Requirement 15.7)
   - Show section title with expansion indicator
   - Indent nested content when expanded, show collapsed indicator when collapsed
 
-- [ ] 10.5 Implement CollapsibleSection support in CSV renderer
+- [x] 10.5 Implement CollapsibleSection support in CSV renderer
   - Add renderCollapsibleSection method with metadata comments (Requirement 15.8)
   - Include section information as CSV comments or special rows
   - Handle table content within sections with appropriate context

@@ -1,7 +1,13 @@
 package output
 
+import (
+	"fmt"
+)
+
 // CollapsibleSection represents entire content blocks that can be expanded/collapsed (Requirement 15)
 type CollapsibleSection interface {
+	Content // Implement the Content interface to integrate with the content system
+
 	// Title returns the section title/summary
 	Title() string
 
@@ -20,6 +26,7 @@ type CollapsibleSection interface {
 
 // DefaultCollapsibleSection provides a standard implementation for section-level collapsible content
 type DefaultCollapsibleSection struct {
+	id              string
 	title           string
 	content         []Content
 	defaultExpanded bool
@@ -30,6 +37,7 @@ type DefaultCollapsibleSection struct {
 // NewCollapsibleSection creates a new collapsible section
 func NewCollapsibleSection(title string, content []Content, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
 	cs := &DefaultCollapsibleSection{
+		id:              GenerateID(),
 		title:           title,
 		content:         content,
 		defaultExpanded: false,
@@ -103,6 +111,53 @@ func (cs *DefaultCollapsibleSection) FormatHint(format string) map[string]any {
 		return hints
 	}
 	return nil
+}
+
+// Content interface implementation
+
+// Type returns the content type for CollapsibleSection
+func (cs *DefaultCollapsibleSection) Type() ContentType {
+	return ContentTypeSection // Reuse the existing section content type
+}
+
+// ID returns the unique identifier for this content
+func (cs *DefaultCollapsibleSection) ID() string {
+	return cs.id
+}
+
+// AppendText implements encoding.TextAppender with collapsible section rendering
+func (cs *DefaultCollapsibleSection) AppendText(b []byte) ([]byte, error) {
+	// Basic text representation - this will be overridden by specific renderers
+	// Add section title
+	if cs.title != "" {
+		b = append(b, cs.title...)
+		b = append(b, '\n')
+		if len(cs.content) > 0 {
+			b = append(b, '\n')
+		}
+	}
+
+	// Render all nested content
+	for i, content := range cs.content {
+		if i > 0 {
+			b = append(b, '\n')
+		}
+
+		contentBytes, err := content.AppendText(nil)
+		if err != nil {
+			return b, fmt.Errorf("failed to render nested content %s: %w", content.ID(), err)
+		}
+
+		b = append(b, contentBytes...)
+	}
+
+	return b, nil
+}
+
+// AppendBinary implements encoding.BinaryAppender
+func (cs *DefaultCollapsibleSection) AppendBinary(b []byte) ([]byte, error) {
+	// For binary append, we'll use the same text representation
+	return cs.AppendText(b)
 }
 
 // Helper functions for creating collapsible sections

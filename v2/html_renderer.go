@@ -41,6 +41,8 @@ func (h *htmlRenderer) renderContent(content Content) ([]byte, error) {
 		return h.renderRawContentHTML(c)
 	case *SectionContent:
 		return h.renderSectionContentHTML(c)
+	case *DefaultCollapsibleSection:
+		return h.renderCollapsibleSection(c)
 	default:
 		// Fallback to basic rendering with HTML escaping
 		data, err := h.baseRenderer.renderContent(content)
@@ -276,4 +278,43 @@ func (h *htmlRenderer) formatDetailsAsHTML(details any) string {
 	default:
 		return html.EscapeString(fmt.Sprint(details))
 	}
+}
+
+// renderCollapsibleSection renders a CollapsibleSection as semantic HTML5 elements (Requirement 15.6)
+func (h *htmlRenderer) renderCollapsibleSection(section *DefaultCollapsibleSection) ([]byte, error) {
+	var result strings.Builder
+
+	openAttr := ""
+	if section.IsExpanded() || h.collapsibleConfig.ForceExpansion {
+		openAttr = " open"
+	}
+
+	// Create semantic section with collapsible behavior (Requirement 15.6)
+	cssClasses := h.collapsibleConfig.HTMLCSSClasses
+	sectionClass := cssClasses["section"]
+	if sectionClass == "" {
+		sectionClass = "collapsible-section"
+	}
+
+	result.WriteString(fmt.Sprintf(`<section class="%s">`, sectionClass))
+	result.WriteString(fmt.Sprintf(`<details%s class="%s">`, openAttr, cssClasses["details"]))
+	result.WriteString(fmt.Sprintf(`<summary class="%s">%s</summary>`,
+		cssClasses["summary"], html.EscapeString(section.Title())))
+
+	result.WriteString(`<div class="section-content">`)
+
+	// Render all nested content (Requirement 15.6)
+	for _, content := range section.Content() {
+		contentHTML, err := h.renderContent(content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render section content: %w", err)
+		}
+		result.Write(contentHTML)
+	}
+
+	result.WriteString(`</div>`)
+	result.WriteString(`</details>`)
+	result.WriteString(`</section>`)
+
+	return []byte(result.String()), nil
 }

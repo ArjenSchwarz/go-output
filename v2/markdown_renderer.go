@@ -153,6 +153,8 @@ func (m *markdownRenderer) renderContent(content Content) ([]byte, error) {
 		return m.renderRawContentMarkdown(c)
 	case *SectionContent:
 		return m.renderSectionContentMarkdown(c)
+	case *DefaultCollapsibleSection:
+		return m.renderCollapsibleSection(c)
 	default:
 		// Fallback to basic rendering with markdown escaping
 		data, err := m.baseRenderer.renderContent(content)
@@ -438,4 +440,37 @@ func (m *markdownRenderer) formatDetailsForMarkdown(details any) string {
 	default:
 		return fmt.Sprint(details)
 	}
+}
+
+// renderCollapsibleSection renders a CollapsibleSection as nested HTML details structure (Requirement 15.4)
+func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleSection) ([]byte, error) {
+	var result strings.Builder
+
+	// Create nested details structure
+	openAttr := ""
+	if section.IsExpanded() || m.collapsibleConfig.ForceExpansion {
+		openAttr = " open"
+	}
+
+	// Use nested details with section title (Requirement 15.4)
+	result.WriteString(fmt.Sprintf("<details%s>\n", openAttr))
+	result.WriteString(fmt.Sprintf("<summary>%s</summary>\n\n", m.escapeMarkdown(section.Title())))
+
+	// Render all nested content within the collapsible section (Requirement 15.4)
+	for i, content := range section.Content() {
+		if i > 0 {
+			result.WriteString("\n")
+		}
+
+		contentMD, err := m.renderContent(content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render section content: %w", err)
+		}
+
+		result.Write(contentMD)
+	}
+
+	result.WriteString("\n</details>\n\n")
+
+	return []byte(result.String()), nil
 }
