@@ -91,19 +91,19 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 5. JSON and YAML Renderer Collapsible Support
 
-- [ ] 5.1 Implement CollapsibleValue handling in JSON renderer in `v2/json_yaml_renderer.go`
+- [x] 5.1 Implement CollapsibleValue handling in JSON renderer in `v2/json_yaml_renderer.go`
   - Add formatValueForJSON method with CollapsibleValue detection (Requirement 4.1)
   - Generate JSON object with "type": "collapsible" indicator (Requirement 4.1)
   - Include "summary", "details", and "expanded" fields (Requirement 4.2)
   - Incorporate format hints as additional object properties (Requirement 4.3)
 
-- [ ] 5.2 Implement CollapsibleValue handling in YAML renderer
+- [x] 5.2 Implement CollapsibleValue handling in YAML renderer
   - Add formatValueForYAML method creating YAML mapping (Requirement 5.1)
   - Include summary, details, and expanded fields in YAML structure (Requirement 5.1)
   - Handle nested details content with proper YAML indentation (Requirement 5.3)
   - Convert string arrays to YAML sequences and maps to YAML mappings (Requirement 5.4, 5.5)
 
-- [ ] 5.3 Write tests for JSON/YAML collapsible rendering
+- [x] 5.3 Write tests for JSON/YAML collapsible rendering
   - Test JSON structure generation with type indicators and format hints
   - Test YAML mapping creation with proper field inclusion
   - Test key order preservation with collapsible values (Requirement 4.4)

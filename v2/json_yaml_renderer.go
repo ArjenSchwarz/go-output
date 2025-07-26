@@ -150,7 +150,11 @@ func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, erro
 		// Add keys in the specified order
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
-				orderedRecord[key] = val
+				// Find field for this key to apply formatter
+				field := table.Schema().FindField(key)
+				// Process field value and handle CollapsibleValue
+				processedVal := j.formatValueForJSON(val, field)
+				orderedRecord[key] = processedVal
 			}
 		}
 
@@ -164,6 +168,33 @@ func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, erro
 	}
 
 	return json.MarshalIndent(result, "", "  ")
+}
+
+// formatValueForJSON processes field values and handles CollapsibleValue interface
+func (j *jsonRenderer) formatValueForJSON(val any, field *Field) any {
+	// Apply field formatter if present
+	processed := j.processFieldValue(val, field)
+
+	// Check if result is CollapsibleValue (Requirement 4.1)
+	if cv, ok := processed.(CollapsibleValue); ok {
+		result := map[string]any{
+			"type":     "collapsible",   // Requirement 4.1: type indication
+			"summary":  cv.Summary(),    // Requirement 4.2: include summary
+			"details":  cv.Details(),    // Requirement 4.2: include details
+			"expanded": cv.IsExpanded(), // Requirement 4.2: include expanded
+		}
+
+		// Add format-specific hints (Requirement 4.3)
+		if hints := cv.FormatHint(FormatJSON); hints != nil {
+			for k, v := range hints {
+				result[k] = v
+			}
+		}
+
+		return result
+	}
+
+	return processed
 }
 
 // renderTextContentJSON renders text content as JSON
@@ -342,7 +373,11 @@ func (j *jsonRenderer) renderTableContentJSONStream(table *TableContent, w io.Wr
 		orderedRecord := make(map[string]any)
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
-				orderedRecord[key] = val
+				// Find field for this key to apply formatter
+				field := table.Schema().FindField(key)
+				// Process field value and handle CollapsibleValue
+				processedVal := j.formatValueForJSON(val, field)
+				orderedRecord[key] = processedVal
 			}
 		}
 
@@ -685,9 +720,13 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 		// Add keys in the specified order
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
+				// Find field for this key to apply formatter
+				field := table.Schema().FindField(key)
+				// Process field value and handle CollapsibleValue
+				processedVal := y.formatValueForYAML(val, field)
 				recordNode.Content = append(recordNode.Content,
 					&yaml.Node{Kind: yaml.ScalarNode, Value: key},
-					y.createYAMLValueNode(val),
+					y.createYAMLValueNode(processedVal),
 				)
 			}
 		}
@@ -779,9 +818,59 @@ func (y *yamlRenderer) createYAMLValueNode(val any) *yaml.Node {
 		return &yaml.Node{Kind: yaml.ScalarNode, Value: "false"}
 	case nil:
 		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"}
+	case map[string]any:
+		// Handle map structures (like CollapsibleValue results)
+		mapNode := &yaml.Node{Kind: yaml.MappingNode}
+		for key, value := range v {
+			mapNode.Content = append(mapNode.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: key},
+				y.createYAMLValueNode(value),
+			)
+		}
+		return mapNode
+	case []any:
+		// Handle array structures
+		arrayNode := &yaml.Node{Kind: yaml.SequenceNode}
+		for _, item := range v {
+			arrayNode.Content = append(arrayNode.Content, y.createYAMLValueNode(item))
+		}
+		return arrayNode
+	case []string:
+		// Handle string array structures
+		arrayNode := &yaml.Node{Kind: yaml.SequenceNode}
+		for _, item := range v {
+			arrayNode.Content = append(arrayNode.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: item})
+		}
+		return arrayNode
 	default:
 		return &yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%v", v)}
 	}
+}
+
+// formatValueForYAML processes field values and handles CollapsibleValue interface
+func (y *yamlRenderer) formatValueForYAML(val any, field *Field) any {
+	// Apply field formatter if present
+	processed := y.processFieldValue(val, field)
+
+	// Check if result is CollapsibleValue (Requirement 5.1)
+	if cv, ok := processed.(CollapsibleValue); ok {
+		result := map[string]any{
+			"summary":  cv.Summary(), // Requirement 5.1: YAML mapping
+			"details":  cv.Details(), // Requirement 5.1: with these fields
+			"expanded": cv.IsExpanded(),
+		}
+
+		// YAML-specific formatting hints (Requirement 5.2)
+		if hints := cv.FormatHint(FormatYAML); hints != nil {
+			for k, v := range hints {
+				result[k] = v
+			}
+		}
+
+		return result
+	}
+
+	return processed
 }
 
 // Streaming implementations for large datasets
@@ -825,7 +914,11 @@ func (y *yamlRenderer) renderTableContentYAMLStream(table *TableContent, w io.Wr
 		// Add keys in the specified order
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
-				orderedRecord[key] = val
+				// Find field for this key to apply formatter
+				field := table.Schema().FindField(key)
+				// Process field value and handle CollapsibleValue
+				processedVal := y.formatValueForYAML(val, field)
+				orderedRecord[key] = processedVal
 			}
 		}
 
