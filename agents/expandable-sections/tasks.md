@@ -169,25 +169,25 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 9. CollapsibleSection Interface and Implementation
 
-- [ ] 9.1 Create CollapsibleSection interface in `v2/collapsible_section.go`
+- [x] 9.1 Create CollapsibleSection interface in `v2/collapsible_section.go`
   - Implement Title() method returning section title/summary (Requirement 15.1)
   - Implement Content() method returning []Content for nested items (Requirement 15.3)
   - Implement IsExpanded() method for section-level expansion control (Requirement 15.10)
   - Implement Level() method supporting 0-3 nesting levels (Requirement 15.9)
   - Implement FormatHint() method for section-specific rendering hints
 
-- [ ] 9.2 Implement DefaultCollapsibleSection struct
+- [x] 9.2 Implement DefaultCollapsibleSection struct
   - Add title, content, defaultExpanded, level, formatHints fields
   - Implement NewCollapsibleSection constructor with functional options
   - Add WithSectionExpanded, WithSectionLevel, WithSectionFormatHint options
   - Ensure content array copying to prevent external modification
 
-- [ ] 9.3 Create helper functions for common section patterns
+- [x] 9.3 Create helper functions for common section patterns
   - Implement NewCollapsibleTable for single table sections (Requirement 15.2)
   - Implement NewCollapsibleMultiTable for multiple table sections
   - Implement NewCollapsibleReport for mixed content types (Requirement 15.3)
 
-- [ ] 9.4 Write unit tests for CollapsibleSection functionality
+- [x] 9.4 Write unit tests for CollapsibleSection functionality
   - Test Title(), Content(), IsExpanded(), Level() methods
   - Test nesting level limits and hierarchical structure support
   - Test helper function creation of various section types
