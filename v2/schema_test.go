@@ -122,7 +122,7 @@ func TestNewSchemaFromKeys(t *testing.T) {
 }
 
 func TestSchemaFieldLookup(t *testing.T) {
-	formatter := func(v any) string {
+	formatter := func(v any) any {
 		return fmt.Sprintf("formatted-%v", v)
 	}
 
@@ -260,8 +260,8 @@ func TestSchemaKeyOrderConsistency(t *testing.T) {
 }
 
 func TestFormatterFunction(t *testing.T) {
-	// Test custom formatter
-	upperFormatter := func(v any) string {
+	// Test custom formatter that returns string (backward compatibility)
+	upperFormatter := func(v any) any {
 		if str, ok := v.(string); ok {
 			return "UPPER:" + str
 		}
@@ -277,12 +277,12 @@ func TestFormatterFunction(t *testing.T) {
 	// Test formatter with string
 	result := field.Formatter("hello")
 	if result != "UPPER:hello" {
-		t.Errorf("Formatter result = %s, want UPPER:hello", result)
+		t.Errorf("Formatter result = %v, want UPPER:hello", result)
 	}
 
 	// Test formatter with non-string
 	result = field.Formatter(123)
 	if result != "123" {
-		t.Errorf("Formatter result = %s, want 123", result)
+		t.Errorf("Formatter result = %v, want 123", result)
 	}
 }

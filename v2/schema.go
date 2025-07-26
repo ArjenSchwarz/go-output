@@ -10,7 +10,7 @@ type Schema struct {
 type Field struct {
 	Name      string
 	Type      string
-	Formatter func(any) string
+	Formatter func(any) any // Enhanced to support CollapsibleValue returns
 	Hidden    bool
 }
 

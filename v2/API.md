@@ -332,7 +332,7 @@ Defines individual table columns:
 type Field struct {
     Name      string                    // Field name
     Type      string                    // Data type hint
-    Formatter func(any) string         // Custom formatter
+    Formatter func(any) any           // Custom formatter (can return CollapsibleValue)
     Hidden    bool                      // Hide from output
 }
 ```

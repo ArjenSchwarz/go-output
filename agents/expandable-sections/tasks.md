@@ -30,23 +30,23 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 2. Field Formatter Integration and Helper Functions
 
-- [ ] 2.1 Update Field struct signature to support CollapsibleValue returns
+- [x] 2.1 Update Field struct signature to support CollapsibleValue returns
   - Change Field.Formatter from `func(any) string` to `func(any) any` in `v2/schema.go` (Requirement 2.1)
   - Update documentation to reflect CollapsibleValue return capability (Requirement 2.2)
   - Ensure backward compatibility with existing formatters (Requirement 12.1-12.5)
 
-- [ ] 2.2 Implement CollapsibleFormatter helper function in `v2/collapsible_formatters.go`
+- [x] 2.2 Implement CollapsibleFormatter helper function in `v2/collapsible_formatters.go`
   - Create function that takes summaryTemplate and detailFunc parameters (Requirement 2.4)
   - Return field formatter that produces CollapsibleValue instances
   - Handle nil detailFunc by returning original value unchanged (Requirement 2.5)
 
-- [ ] 2.3 Create pre-built formatter functions for common patterns
+- [x] 2.3 Create pre-built formatter functions for common patterns
   - Implement ErrorListFormatter for array of strings/errors (Requirement 9.1, 9.2)
   - Implement FilePathFormatter for long file paths with 50-character threshold (Requirement 9.3, 9.4)
   - Implement JSONFormatter for complex data structures with configurable size limit (Requirement 9.5)
   - Add graceful fallback for incompatible data types (Requirement 9.6)
 
-- [ ] 2.4 Write unit tests for formatter helper functions
+- [x] 2.4 Write unit tests for formatter helper functions
   - Test CollapsibleFormatter with various template and detail function combinations
   - Test ErrorListFormatter with empty arrays, string arrays, and error arrays
   - Test FilePathFormatter with short paths (no collapsible) and long paths
