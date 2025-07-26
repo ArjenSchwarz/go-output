@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Markdown renderer support for CollapsibleValue with HTML `<details>` elements
+- CollapsibleValue detection and rendering in markdown table cells using `formatCellValue` method
+- Markdown-specific detail formatting for different data types (strings, arrays, maps)
+- Global expansion override support in markdown renderer via `collapsibleConfig.ForceExpansion`
+- Proper HTML escaping for collapsible content in markdown table cells
+- Comprehensive test coverage for markdown collapsible rendering including edge cases and global expansion
 - Core CollapsibleValue interface for cross-format expandable content
 - DefaultCollapsibleValue implementation with functional options pattern
 - Support for configurable character limits and truncation indicators
