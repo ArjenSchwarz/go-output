@@ -221,35 +221,35 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 11. Content Type Integration and Builder API Enhancement
 
-- [ ] 11.1 Add CollapsibleSection as content type in `v2/content.go`
+- [x] 11.1 Add CollapsibleSection as content type in `v2/content.go`
   - Implement Content interface methods for CollapsibleSection
   - Add CollapsibleSection to content type enumeration
   - Ensure proper integration with existing content processing pipeline
 
-- [ ] 11.2 Enhance Builder API for collapsible sections in `v2/builder.go`
+- [x] 11.2 Enhance Builder API for collapsible sections in `v2/builder.go`
   - Add AddCollapsibleSection method to Builder interface
   - Add AddCollapsibleTable method for quick table section creation
   - Maintain fluent API pattern and existing Builder functionality
 
-- [ ] 11.3 Write integration tests for Builder API enhancements
+- [x] 11.3 Write integration tests for Builder API enhancements
   - Test collapsible section creation through Builder API
   - Test mixed content documents with both regular and collapsible content
   - Test Builder method chaining with collapsible sections
 
 ### 12. Error Handling and Edge Case Implementation
 
-- [ ] 12.1 Implement comprehensive error handling across all renderers
+- [x] 12.1 Implement comprehensive error handling across all renderers
   - Add nil details handling with fallback to summary (Requirement 11.1)
   - Add empty summary handling with "[no summary]" placeholder (Requirement 11.2)
   - Add format error fallback to string representation (Requirement 11.3)
   - Add character limit enforcement with truncation indicators (Requirement 11.6)
 
-- [ ] 12.2 Implement nested CollapsibleValue handling prevention
+- [x] 12.2 Implement nested CollapsibleValue handling prevention
   - Treat inner CollapsibleValues as regular content (Requirement 11.5)
   - Prevent recursive processing and potential infinite loops
   - Test nested collapsible scenarios and ensure stable behavior
 
-- [ ] 12.3 Write comprehensive error handling tests
+- [x] 12.3 Write comprehensive error handling tests
   - Test all edge cases: nil details, empty summaries, format errors
   - Test character limit enforcement and truncation behavior
   - Test nested CollapsibleValue scenarios and recovery mechanisms

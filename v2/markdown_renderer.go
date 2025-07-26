@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -406,8 +407,21 @@ func (m *markdownRenderer) formatCellValue(val any, field *Field) string {
 	return fmt.Sprint(processed)
 }
 
-// renderCollapsibleValue renders a CollapsibleValue as HTML details element
+// renderCollapsibleValue renders a CollapsibleValue as HTML details element with error recovery
 func (m *markdownRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
+	// Add panic recovery for error handling (Requirement 11.3)
+	defer func() {
+		if r := recover(); r != nil {
+			// Log error and fall back to summary only
+			fmt.Fprintf(os.Stderr, "Error rendering collapsible value in markdown: %v\n", r)
+		}
+	}()
+
+	// Validate CollapsibleValue to prevent nil pointer issues
+	if cv == nil {
+		return "[invalid collapsible value]"
+	}
+
 	// Check global expansion override (Requirement 13.1)
 	expanded := cv.IsExpanded() || m.collapsibleConfig.ForceExpansion
 
@@ -416,30 +430,115 @@ func (m *markdownRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
 		openAttr = " open" // Requirement 3.2: add open attribute
 	}
 
+	// Get summary with error handling (Requirement 11.2)
+	summary := m.getSafeSummary(cv)
+
+	// Get and format details with error handling (Requirement 11.3)
+	details := m.getSafeDetails(cv)
+
 	// Use GitHub's native <details> support (Requirement 3.1)
 	return fmt.Sprintf("<details%s><summary>%s</summary><br/>%s</details>",
 		openAttr,
-		m.escapeMarkdownTableCell(cv.Summary()),
-		m.escapeMarkdownTableCell(m.formatDetailsForMarkdown(cv.Details())))
+		m.escapeMarkdownTableCell(summary),
+		m.escapeMarkdownTableCell(details))
 }
 
-// formatDetailsForMarkdown formats details content based on type (Requirements 3.4, 3.5)
-func (m *markdownRenderer) formatDetailsForMarkdown(details any) string {
+// getSafeSummary gets the summary with error handling and fallbacks
+func (m *markdownRenderer) getSafeSummary(cv CollapsibleValue) string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error getting summary from collapsible value: %v\n", r)
+		}
+	}()
+
+	summary := cv.Summary()
+	if summary == "" {
+		return "[no summary]" // Requirement 11.2: default placeholder
+	}
+	return summary
+}
+
+// getSafeDetails gets and formats details with comprehensive error handling
+func (m *markdownRenderer) getSafeDetails(cv CollapsibleValue) string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error getting details from collapsible value: %v\n", r)
+		}
+	}()
+
+	details := cv.Details()
+	if details == nil {
+		// Requirement 11.1: treat nil details as non-collapsible, fall back to summary
+		return m.getSafeSummary(cv)
+	}
+
+	// Format details with error recovery
+	return m.formatDetailsForMarkdownSafe(details)
+}
+
+// formatDetailsForMarkdownSafe formats details content with comprehensive error handling
+func (m *markdownRenderer) formatDetailsForMarkdownSafe(details any) string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error formatting details for markdown: %v\n", r)
+		}
+	}()
+
+	// Check for nested CollapsibleValue and prevent recursion (Requirement 11.5)
+	if cv, ok := details.(CollapsibleValue); ok {
+		// Treat nested CollapsibleValues as regular content to prevent infinite loops
+		return fmt.Sprintf("[nested collapsible: %s]", cv.Summary())
+	}
+
 	switch d := details.(type) {
 	case string:
+		// Apply character limits if configured (Requirement 11.6)
+		if m.collapsibleConfig.MaxDetailLength > 0 && len(d) > m.collapsibleConfig.MaxDetailLength {
+			return d[:m.collapsibleConfig.MaxDetailLength] + m.collapsibleConfig.TruncateIndicator
+		}
 		return d
 	case []string:
+		if len(d) == 0 {
+			return "[empty list]"
+		}
 		return strings.Join(d, "<br/>") // Requirement 3.4
 	case map[string]any:
+		if len(d) == 0 {
+			return "[empty map]"
+		}
 		// Requirement 3.5: format as key-value pairs
 		var parts []string
 		for k, v := range d {
-			parts = append(parts, fmt.Sprintf("<strong>%s:</strong> %v", k, v))
+			// Handle potential nil values in map
+			if v == nil {
+				parts = append(parts, fmt.Sprintf("<strong>%s:</strong> [nil]", k))
+			} else {
+				parts = append(parts, fmt.Sprintf("<strong>%s:</strong> %v", k, v))
+			}
 		}
-		return strings.Join(parts, "<br/>")
+		result := strings.Join(parts, "<br/>")
+		// Apply character limits if configured (Requirement 11.6)
+		if m.collapsibleConfig.MaxDetailLength > 0 && len(result) > m.collapsibleConfig.MaxDetailLength {
+			return result[:m.collapsibleConfig.MaxDetailLength] + m.collapsibleConfig.TruncateIndicator
+		}
+		return result
+	case nil:
+		return "[nil details]"
 	default:
-		return fmt.Sprint(details)
+		// Fallback to string representation for unknown types (Requirement 11.3)
+		result := fmt.Sprint(details)
+		// Apply character limits if configured (Requirement 11.6)
+		if m.collapsibleConfig.MaxDetailLength > 0 && len(result) > m.collapsibleConfig.MaxDetailLength {
+			return result[:m.collapsibleConfig.MaxDetailLength] + m.collapsibleConfig.TruncateIndicator
+		}
+		return result
 	}
+}
+
+// formatDetailsForMarkdown formats details content based on type (Requirements 3.4, 3.5)
+// This method is kept for backward compatibility but now uses the safe version
+func (m *markdownRenderer) formatDetailsForMarkdown(details any) string {
+	return m.formatDetailsForMarkdownSafe(details)
 }
 
 // renderCollapsibleSection renders a CollapsibleSection as nested HTML details structure (Requirement 15.4)

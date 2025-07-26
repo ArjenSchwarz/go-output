@@ -10,6 +10,11 @@ import (
 // Returns field formatter that produces CollapsibleValue instances
 func CollapsibleFormatter(summaryTemplate string, detailFunc func(any) any, opts ...CollapsibleOption) func(any) any {
 	return func(val any) any {
+		// Prevent nested CollapsibleValues to avoid infinite loops (Requirement 11.5)
+		if _, ok := val.(CollapsibleValue); ok {
+			return val // Return CollapsibleValue as-is to prevent nesting
+		}
+
 		if detailFunc == nil {
 			return val // Return original value unchanged (Requirement 2.5)
 		}
@@ -17,6 +22,11 @@ func CollapsibleFormatter(summaryTemplate string, detailFunc func(any) any, opts
 		detail := detailFunc(val)
 		if detail == nil || detail == val {
 			return val // No collapsible needed
+		}
+
+		// Prevent creating CollapsibleValue with CollapsibleValue details (Requirement 11.5)
+		if _, ok := detail.(CollapsibleValue); ok {
+			return val // Return original value to prevent nesting
 		}
 
 		summary := fmt.Sprintf(summaryTemplate, val)
@@ -27,6 +37,11 @@ func CollapsibleFormatter(summaryTemplate string, detailFunc func(any) any, opts
 // ErrorListFormatter creates a formatter for error arrays (Requirement 9.1, 9.2)
 func ErrorListFormatter(opts ...CollapsibleOption) func(any) any {
 	return func(val any) any {
+		// Prevent nested CollapsibleValues to avoid infinite loops (Requirement 11.5)
+		if _, ok := val.(CollapsibleValue); ok {
+			return val // Return CollapsibleValue as-is to prevent nesting
+		}
+
 		var errors []string
 		var count int
 
@@ -58,6 +73,11 @@ func ErrorListFormatter(opts ...CollapsibleOption) func(any) any {
 // FilePathFormatter creates a formatter for long file paths (Requirement 9.3, 9.4)
 func FilePathFormatter(maxLength int, opts ...CollapsibleOption) func(any) any {
 	return func(val any) any {
+		// Prevent nested CollapsibleValues to avoid infinite loops (Requirement 11.5)
+		if _, ok := val.(CollapsibleValue); ok {
+			return val // Return CollapsibleValue as-is to prevent nesting
+		}
+
 		path, ok := val.(string)
 		if !ok || len(path) <= maxLength {
 			return val // No collapsible needed for short paths or non-strings
@@ -78,6 +98,11 @@ func FilePathFormatter(maxLength int, opts ...CollapsibleOption) func(any) any {
 // JSONFormatter creates a formatter for complex data structures (Requirement 9.5)
 func JSONFormatter(maxLength int, opts ...CollapsibleOption) func(any) any {
 	return func(val any) any {
+		// Prevent nested CollapsibleValues to avoid infinite loops (Requirement 11.5)
+		if _, ok := val.(CollapsibleValue); ok {
+			return val // Return CollapsibleValue as-is to prevent nesting
+		}
+
 		jsonBytes, err := json.MarshalIndent(val, "", "  ")
 		if err != nil || len(jsonBytes) <= maxLength {
 			return val // No collapsible needed for small data or marshal errors

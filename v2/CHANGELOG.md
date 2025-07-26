@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Comprehensive error handling across all collapsible renderers with panic recovery and graceful fallbacks
+- Nested CollapsibleValue prevention to avoid infinite loops in formatters and renderers  
+- Character limit enforcement with configurable truncation indicators in renderer configurations
+- Error recovery mechanisms for nil CollapsibleValues, empty summaries, and nil details
+- Builder API enhancements with AddCollapsibleSection, AddCollapsibleTable, and CollapsibleSection methods
+- Comprehensive error handling test suite with 90+ test cases covering edge cases and recovery scenarios
+- Panic recovery with stderr error logging in markdown and table renderers
+- Safe CollapsibleValue processing methods with comprehensive validation and fallbacks
 - CollapsibleSection renderer integration across all output formats with renderCollapsibleSection methods
 - Markdown renderer CollapsibleSection support with nested HTML `<details>` structures for section-level expandability
 - JSON/YAML renderer CollapsibleSection support with structured metadata (type, title, level, expanded) and nested content arrays
