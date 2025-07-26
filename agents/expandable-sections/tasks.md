@@ -54,18 +54,18 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 3. Base Renderer Enhancement for Collapsible Value Processing
 
-- [ ] 3.1 Add collapsible value detection to base renderer in `v2/base_renderer.go`
+- [x] 3.1 Add collapsible value detection to base renderer in `v2/base_renderer.go`
   - Implement processFieldValue method that applies Field.Formatter (Requirement 2.1)
   - Add type assertion to detect CollapsibleValue interface (Requirement 2.1)
   - Maintain backward compatibility for non-CollapsibleValue returns (Requirement 2.2)
 
-- [ ] 3.2 Create RendererConfig struct for collapsible-specific configuration
+- [x] 3.2 Create RendererConfig struct for collapsible-specific configuration
   - Add ForceExpansion field for global expansion control (Requirement 13.1)
   - Add MaxDetailLength and TruncateIndicator for character limits (Requirement 14.2, 14.3)
   - Add TableHiddenIndicator and HTMLCSSClasses for format-specific settings (Requirement 14.1)
   - Implement DefaultRendererConfig with sensible defaults
 
-- [ ] 3.3 Add renderer configuration constructors
+- [x] 3.3 Add renderer configuration constructors
   - Create NewMarkdownRendererWithCollapsible, NewTableRendererWithCollapsible functions
   - Enable per-renderer configuration of collapsible behavior (Requirement 14.5)
   - Ensure independent configuration across multiple renderer instances (Requirement 14.5)
