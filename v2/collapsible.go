@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+// Constants for repeated strings
+const (
+	defaultSummaryPlaceholder = "[no summary]"
+)
+
 // CollapsibleValue represents a value that can be expanded/collapsed across formats
 // This interface enables table cells and content to display summary information
 // with expandable details, working consistently across all output formats.
@@ -97,7 +102,7 @@ func WithFormatHint(format string, hints map[string]any) CollapsibleOption {
 // Summary returns the collapsed view with fallback handling
 func (d *DefaultCollapsibleValue) Summary() string {
 	if d.summary == "" {
-		return "[no summary]" // Requirement: default placeholder
+		return defaultSummaryPlaceholder // Requirement: default placeholder
 	}
 	return d.summary
 }

@@ -291,7 +291,8 @@ func NewMemoryOptimizedProcessor(config RendererConfig) *MemoryOptimizedProcesso
 	// Initialize string slice pool for efficient array handling
 	processor.stringPool = sync.Pool{
 		New: func() any {
-			return make([]string, 0, 10) // Start with capacity of 10
+			slice := make([]string, 0, 10) // Start with capacity of 10
+			return &slice
 		},
 	}
 
@@ -315,15 +316,18 @@ func (mop *MemoryOptimizedProcessor) ReturnBuffer(buf *strings.Builder) {
 
 // GetStringSlice retrieves a string slice from the pool
 func (mop *MemoryOptimizedProcessor) GetStringSlice() []string {
-	slice := mop.stringPool.Get().([]string)
-	return slice[:0] // Reset length but keep capacity
+	slice := mop.stringPool.Get().(*[]string)
+	*slice = (*slice)[:0] // Reset length but keep capacity
+	return *slice
 }
 
 // ReturnStringSlice returns a string slice to the pool for reuse
 func (mop *MemoryOptimizedProcessor) ReturnStringSlice(slice []string) {
 	// Only return reasonably sized slices to prevent memory bloat
 	if cap(slice) < 100 {
-		mop.stringPool.Put(slice)
+		// Clear the slice before returning to pool
+		slice = slice[:0]
+		mop.stringPool.Put(&slice)
 	}
 }
 

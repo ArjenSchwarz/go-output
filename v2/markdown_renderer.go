@@ -427,7 +427,7 @@ func (m *markdownRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
 
 	openAttr := ""
 	if expanded {
-		openAttr = " open" // Requirement 3.2: add open attribute
+		openAttr = openAttribute // Requirement 3.2: add open attribute
 	}
 
 	// Get summary with error handling (Requirement 11.2)
@@ -453,7 +453,7 @@ func (m *markdownRenderer) getSafeSummary(cv CollapsibleValue) string {
 
 	summary := cv.Summary()
 	if summary == "" {
-		return "[no summary]" // Requirement 11.2: default placeholder
+		return defaultSummaryPlaceholder // Requirement 11.2: default placeholder
 	}
 	return summary
 }
@@ -548,7 +548,7 @@ func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleS
 	// Create nested details structure
 	openAttr := ""
 	if section.IsExpanded() || m.collapsibleConfig.ForceExpansion {
-		openAttr = " open"
+		openAttr = openAttribute
 	}
 
 	// Use nested details with section title (Requirement 15.4)

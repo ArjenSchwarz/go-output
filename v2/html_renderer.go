@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+// Constants for repeated strings
+const (
+	openAttribute = " open"
+)
+
 // htmlRenderer implements HTML output format
 type htmlRenderer struct {
 	baseRenderer
@@ -235,7 +240,7 @@ func (h *htmlRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
 
 	openAttr := ""
 	if expanded {
-		openAttr = " open" // Requirement 7.3: add open attribute
+		openAttr = openAttribute // Requirement 7.3: add open attribute
 	}
 
 	// Get CSS classes from configuration (Requirement 7.2)
@@ -286,7 +291,7 @@ func (h *htmlRenderer) renderCollapsibleSection(section *DefaultCollapsibleSecti
 
 	openAttr := ""
 	if section.IsExpanded() || h.collapsibleConfig.ForceExpansion {
-		openAttr = " open"
+		openAttr = openAttribute
 	}
 
 	// Create semantic section with collapsible behavior (Requirement 15.6)
