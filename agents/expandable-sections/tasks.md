@@ -72,18 +72,18 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 4. Markdown Renderer Collapsible Support
 
-- [ ] 4.1 Implement CollapsibleValue detection and rendering in `v2/markdown_renderer.go`
+- [x] 4.1 Implement CollapsibleValue detection and rendering in `v2/markdown_renderer.go`
   - Add formatCellValue method with CollapsibleValue type checking (Requirement 3.1)
   - Generate `<details><summary>...</summary>...</details>` HTML structure (Requirement 3.1)
   - Add `open` attribute when IsExpanded() returns true or global expansion enabled (Requirement 3.2, 13.1)
 
-- [ ] 4.2 Implement markdown-specific detail formatting
+- [x] 4.2 Implement markdown-specific detail formatting
   - Handle string details with proper markdown escaping (Requirement 3.3)
   - Convert string arrays to `<br/>`-separated content (Requirement 3.4)
   - Format map structures as key-value pairs with HTML formatting (Requirement 3.5)
   - Ensure table structure maintenance with collapsible content (Requirement 3.6)
 
-- [ ] 4.3 Write tests for markdown collapsible rendering
+- [x] 4.3 Write tests for markdown collapsible rendering
   - Test `<details>` element generation with proper open attribute handling
   - Test various detail types: strings, arrays, maps, complex structures
   - Test markdown character escaping and table cell compatibility

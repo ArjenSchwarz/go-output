@@ -201,12 +201,7 @@ func (m *markdownRenderer) renderTableContentMarkdown(table *TableContent) ([]by
 			if val, exists := record[key]; exists {
 				// Apply field formatter if available
 				field := table.Schema().FindField(key)
-				if field != nil && field.Formatter != nil {
-					formatted := field.Formatter(val)
-					cellValue = fmt.Sprint(formatted)
-				} else {
-					cellValue = fmt.Sprint(val)
-				}
+				cellValue = m.formatCellValue(val, field)
 			}
 			// Escape markdown and handle newlines in table cells
 			cellValue = m.escapeMarkdownTableCell(cellValue)
@@ -392,5 +387,55 @@ func NewMarkdownRendererWithOptions(includeToC bool, frontMatter map[string]stri
 		includeToC:   includeToC,
 		frontMatter:  frontMatter,
 		headingLevel: 1,
+	}
+}
+
+// formatCellValue processes field values and handles CollapsibleValue interface
+func (m *markdownRenderer) formatCellValue(val any, field *Field) string {
+	// Apply field formatter first using base renderer method
+	processed := m.processFieldValue(val, field)
+
+	// Check if result is CollapsibleValue (Requirement 3.1)
+	if cv, ok := processed.(CollapsibleValue); ok {
+		return m.renderCollapsibleValue(cv)
+	}
+
+	// Handle regular values (maintain backward compatibility)
+	return fmt.Sprint(processed)
+}
+
+// renderCollapsibleValue renders a CollapsibleValue as HTML details element
+func (m *markdownRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
+	// Check global expansion override (Requirement 13.1)
+	expanded := cv.IsExpanded() || m.collapsibleConfig.ForceExpansion
+
+	openAttr := ""
+	if expanded {
+		openAttr = " open" // Requirement 3.2: add open attribute
+	}
+
+	// Use GitHub's native <details> support (Requirement 3.1)
+	return fmt.Sprintf("<details%s><summary>%s</summary><br/>%s</details>",
+		openAttr,
+		m.escapeMarkdownTableCell(cv.Summary()),
+		m.escapeMarkdownTableCell(m.formatDetailsForMarkdown(cv.Details())))
+}
+
+// formatDetailsForMarkdown formats details content based on type (Requirements 3.4, 3.5)
+func (m *markdownRenderer) formatDetailsForMarkdown(details any) string {
+	switch d := details.(type) {
+	case string:
+		return d
+	case []string:
+		return strings.Join(d, "<br/>") // Requirement 3.4
+	case map[string]any:
+		// Requirement 3.5: format as key-value pairs
+		var parts []string
+		for k, v := range d {
+			parts = append(parts, fmt.Sprintf("<strong>%s:</strong> %v", k, v))
+		}
+		return strings.Join(parts, "<br/>")
+	default:
+		return fmt.Sprint(details)
 	}
 }

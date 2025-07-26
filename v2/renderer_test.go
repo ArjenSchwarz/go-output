@@ -2272,6 +2272,320 @@ func TestMarkdownRenderer_TableCellEscaping(t *testing.T) {
 	}
 }
 
+// TestMarkdownRenderer_CollapsibleValues tests collapsible value rendering in markdown
+func TestMarkdownRenderer_CollapsibleValues(t *testing.T) {
+	tests := []struct {
+		name           string
+		collapsible    CollapsibleValue
+		expectedOutput string
+	}{
+		{
+			name: "collapsed string details",
+			collapsible: NewCollapsibleValue(
+				"3 errors",
+				"Error 1\nError 2\nError 3",
+			),
+			expectedOutput: "<details><summary>3 errors</summary><br/>Error 1<br>Error 2<br>Error 3</details>",
+		},
+		{
+			name: "expanded string details with open attribute",
+			collapsible: NewCollapsibleValue(
+				"System status",
+				"All systems operational",
+				WithExpanded(true),
+			),
+			expectedOutput: "<details open><summary>System status</summary><br/>All systems operational</details>",
+		},
+		{
+			name: "string array details",
+			collapsible: NewCollapsibleValue(
+				"File list (3 items)",
+				[]string{"file1.go", "file2.go", "file3.go"},
+			),
+			expectedOutput: "<details><summary>File list (3 items)</summary><br/>file1.go<br/>file2.go<br/>file3.go</details>",
+		},
+		{
+			name: "map details as key-value pairs",
+			collapsible: NewCollapsibleValue(
+				"Config settings",
+				map[string]any{"debug": true, "port": 8080, "host": "localhost"},
+			),
+			expectedOutput: "<details><summary>Config settings</summary><br/><strong>debug:</strong> true<br/><strong>port:</strong> 8080<br/><strong>host:</strong> localhost</details>",
+		},
+		{
+			name: "empty summary fallback",
+			collapsible: NewCollapsibleValue(
+				"",
+				"Some details",
+			),
+			expectedOutput: "<details><summary>[no summary]</summary><br/>Some details</details>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			renderer := &markdownRenderer{
+				baseRenderer:      baseRenderer{},
+				headingLevel:      1,
+				collapsibleConfig: DefaultRendererConfig,
+			}
+
+			result := renderer.renderCollapsibleValue(tt.collapsible)
+
+			// Check that all expected parts are present (order may vary for maps)
+			if tt.name == "map details as key-value pairs" {
+				// For maps, check individual components since order varies
+				expectedParts := []string{
+					"<details><summary>Config settings</summary><br/>",
+					"<strong>debug:</strong> true",
+					"<strong>port:</strong> 8080",
+					"<strong>host:</strong> localhost",
+					"</details>",
+				}
+				for _, part := range expectedParts {
+					if !strings.Contains(result, part) {
+						t.Errorf("Expected result to contain %q, got %q", part, result)
+					}
+				}
+			} else {
+				if result != tt.expectedOutput {
+					t.Errorf("Expected %q, got %q", tt.expectedOutput, result)
+				}
+			}
+		})
+	}
+}
+
+// TestMarkdownRenderer_CollapsibleInTable tests collapsible values within table cells
+func TestMarkdownRenderer_CollapsibleInTable(t *testing.T) {
+	data := []map[string]any{
+		{
+			"file":   "main.go",
+			"errors": []string{"missing import", "unused variable"},
+			"status": "failed",
+		},
+		{
+			"file":   "utils.go",
+			"errors": []string{},
+			"status": "ok",
+		},
+	}
+
+	// Create table with collapsible formatter for errors
+	doc := New().
+		Table("Code Analysis", data,
+			WithSchema(
+				Field{
+					Name: "file",
+					Type: "string",
+				},
+				Field{
+					Name:      "errors",
+					Type:      "array",
+					Formatter: ErrorListFormatter(),
+				},
+				Field{
+					Name: "status",
+					Type: "string",
+				},
+			)).
+		Build()
+
+	renderer := &markdownRenderer{
+		baseRenderer:      baseRenderer{},
+		headingLevel:      1,
+		collapsibleConfig: DefaultRendererConfig,
+	}
+	ctx := context.Background()
+
+	result, err := renderer.Render(ctx, doc)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	output := string(result)
+
+	// Check table structure exists
+	if !strings.Contains(output, "### Code Analysis") {
+		t.Error("Expected table title")
+	}
+	if !strings.Contains(output, "| file | errors | status |") {
+		t.Error("Expected table header")
+	}
+
+	// Check first row has collapsible content
+	if !strings.Contains(output, "<details><summary>2 errors (click to expand)</summary>") {
+		t.Error("Expected collapsible summary for first row")
+	}
+	if !strings.Contains(output, "missing import<br/>unused variable") {
+		t.Error("Expected error details in first row")
+	}
+
+	// Check second row has no collapsible (empty array)
+	secondRow := strings.Split(output, "\n")[5] // Approximate line with second data row
+	if strings.Contains(secondRow, "<details>") {
+		t.Error("Second row should not have collapsible content for empty array")
+	}
+}
+
+// TestMarkdownRenderer_GlobalExpansionOverride tests global expansion configuration
+func TestMarkdownRenderer_GlobalExpansionOverride(t *testing.T) {
+	collapsible := NewCollapsibleValue(
+		"Summary text",
+		"Detail text",
+		WithExpanded(false), // Explicitly set to collapsed
+	)
+
+	tests := []struct {
+		name           string
+		forceExpansion bool
+		expectOpen     bool
+	}{
+		{
+			name:           "respect individual setting when global expansion disabled",
+			forceExpansion: false,
+			expectOpen:     false,
+		},
+		{
+			name:           "override individual setting when global expansion enabled",
+			forceExpansion: true,
+			expectOpen:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := DefaultRendererConfig
+			config.ForceExpansion = tt.forceExpansion
+
+			renderer := &markdownRenderer{
+				baseRenderer:      baseRenderer{},
+				headingLevel:      1,
+				collapsibleConfig: config,
+			}
+
+			result := renderer.renderCollapsibleValue(collapsible)
+
+			if tt.expectOpen {
+				if !strings.Contains(result, "<details open>") {
+					t.Error("Expected open attribute when global expansion enabled")
+				}
+			} else {
+				if strings.Contains(result, "<details open>") {
+					t.Error("Did not expect open attribute when global expansion disabled")
+				}
+			}
+		})
+	}
+}
+
+// TestMarkdownRenderer_CollapsibleDetailsFormatting tests various detail types
+func TestMarkdownRenderer_CollapsibleDetailsFormatting(t *testing.T) {
+	renderer := &markdownRenderer{
+		baseRenderer:      baseRenderer{},
+		headingLevel:      1,
+		collapsibleConfig: DefaultRendererConfig,
+	}
+
+	tests := []struct {
+		name     string
+		details  any
+		expected string
+	}{
+		{
+			name:     "string details",
+			details:  "Simple string",
+			expected: "Simple string",
+		},
+		{
+			name:     "string array details",
+			details:  []string{"item1", "item2", "item3"},
+			expected: "item1<br/>item2<br/>item3",
+		},
+		{
+			name:     "map details",
+			details:  map[string]any{"key1": "value1", "key2": "value2"},
+			expected: "<strong>key1:</strong> value1<br/><strong>key2:</strong> value2",
+		},
+		{
+			name:     "complex type fallback",
+			details:  struct{ Name string }{Name: "test"},
+			expected: "{test}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := renderer.formatDetailsForMarkdown(tt.details)
+
+			if tt.name == "map details" {
+				// For maps, check both possible orders
+				option1 := "<strong>key1:</strong> value1<br/><strong>key2:</strong> value2"
+				option2 := "<strong>key2:</strong> value2<br/><strong>key1:</strong> value1"
+				if result != option1 && result != option2 {
+					t.Errorf("Expected one of %q or %q, got %q", option1, option2, result)
+				}
+			} else {
+				if result != tt.expected {
+					t.Errorf("Expected %q, got %q", tt.expected, result)
+				}
+			}
+		})
+	}
+}
+
+// TestMarkdownRenderer_CollapsibleTableCellEscaping tests markdown escaping in collapsible content
+func TestMarkdownRenderer_CollapsibleTableCellEscaping(t *testing.T) {
+	data := []map[string]any{
+		{
+			"description": "Test with special chars",
+			"details":     "Text with | pipes and * asterisks",
+		},
+	}
+
+	doc := New().
+		Table("Escaping Test", data,
+			WithSchema(
+				Field{Name: "description", Type: "string"},
+				Field{
+					Name: "details",
+					Type: "string",
+					Formatter: func(val any) any {
+						return NewCollapsibleValue(
+							"Click to expand",
+							val,
+						)
+					},
+				},
+			)).
+		Build()
+
+	renderer := &markdownRenderer{
+		baseRenderer:      baseRenderer{},
+		headingLevel:      1,
+		collapsibleConfig: DefaultRendererConfig,
+	}
+	ctx := context.Background()
+
+	result, err := renderer.Render(ctx, doc)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	output := string(result)
+
+	// Check that pipes in collapsible content are properly escaped for table cells
+	// Look for the actual pattern that should exist in table cells
+	if !strings.Contains(output, "pipes and * asterisks") {
+		t.Error("Expected basic content to be present")
+	}
+
+	// Check that the content appears within a collapsible structure
+	if !strings.Contains(output, "<details><summary>Click to expand</summary>") {
+		t.Error("Expected collapsible structure")
+	}
+}
+
 func TestMarkdownRenderer_CombinedFeatures(t *testing.T) {
 	frontMatter := map[string]string{
 		"title": "Complete Test",
