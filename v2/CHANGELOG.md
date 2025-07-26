@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- JSON renderer support for CollapsibleValue with structured output including type indicators, summary, details, and expanded fields
+- YAML renderer support for CollapsibleValue with proper YAML mapping structure and format hints
+- Enhanced JSON/YAML table rendering to process field formatters and detect CollapsibleValue interface
+- Support for nested data structures in YAML renderer: maps, string arrays, and mixed arrays
+- Format-specific hints integration for both JSON and YAML renderers
+- Cross-format key order preservation with CollapsibleValue support
+- Streaming capabilities for large datasets containing CollapsibleValue objects
+- Comprehensive test suite for JSON/YAML collapsible rendering with edge case coverage
 - Markdown renderer support for CollapsibleValue with HTML `<details>` elements
 - CollapsibleValue detection and rendering in markdown table cells using `formatCellValue` method
 - Markdown-specific detail formatting for different data types (strings, arrays, maps)
