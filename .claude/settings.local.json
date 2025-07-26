@@ -24,7 +24,8 @@
       "Bash(git --no-pager log --oneline -5)",
       "Bash(sed:*)",
       "Bash(ls:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(timeout 10 go run main.go)"
     ],
     "deny": []
   }
