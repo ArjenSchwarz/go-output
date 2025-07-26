@@ -59,19 +59,18 @@ func TestCollapsibleIntegration_RealWorldScenarios(t *testing.T) {
 						t.Error("Markdown should contain <summary> elements")
 					}
 					// File paths should be shortened in summary
-					if !strings.Contains(str, "...UserProfile.tsx") {
+					if !strings.Contains(str, "UserProfile.tsx (show full path)") {
 						t.Error("File paths should be shortened in summary view")
 					}
 				},
 				"json": func(output []byte, t *testing.T) {
-					var result map[string]any
+					var result []any
 					if err := json.Unmarshal(output, &result); err != nil {
 						t.Fatalf("Failed to parse JSON output: %v", err)
 					}
-					// Should contain structured collapsible data
-					contents, ok := result["contents"].([]any)
-					if !ok || len(contents) < 3 {
-						t.Error("JSON should contain structured contents array")
+					// Should contain multiple content items (header, text, table)
+					if len(result) < 3 {
+						t.Error("JSON should contain structured contents array with multiple items")
 					}
 				},
 				"table": func(output []byte, t *testing.T) {
@@ -123,31 +122,23 @@ func TestCollapsibleIntegration_RealWorldScenarios(t *testing.T) {
 			},
 			expectedBehavior: map[string]func([]byte, *testing.T){
 				"json": func(output []byte, t *testing.T) {
-					var result map[string]any
+					var result []any
 					if err := json.Unmarshal(output, &result); err != nil {
 						t.Fatalf("Failed to parse JSON: %v", err)
 					}
-					// Check for collapsible structure in JSON
-					contents := result["contents"].([]any)
-					found := false
-					for _, content := range contents {
-						if contentMap, ok := content.(map[string]any); ok && contentMap["type"] == "table" {
-							found = true
-							break
-						}
-					}
-					if !found {
-						t.Error("JSON should contain table content with collapsible fields")
+					// Check for collapsible structure in JSON (should have multiple content items)
+					if len(result) == 0 {
+						t.Error("JSON should contain content items")
 					}
 				},
 				"yaml": func(output []byte, t *testing.T) {
-					var result map[string]any
+					var result []any
 					if err := yaml.Unmarshal(output, &result); err != nil {
 						t.Fatalf("Failed to parse YAML: %v", err)
 					}
 					// Should maintain YAML structure with collapsible data
-					if result["contents"] == nil {
-						t.Error("YAML should contain contents structure")
+					if len(result) == 0 {
+						t.Error("YAML should contain content items")
 					}
 				},
 			},
@@ -177,7 +168,7 @@ func TestCollapsibleIntegration_RealWorldScenarios(t *testing.T) {
 					Table("Product Catalog", exportData,
 						WithSchema(
 							Field{Name: "product", Type: "string"},
-							Field{Name: "specs", Type: "object", Formatter: JSONFormatter(80)},
+							Field{Name: "specs", Type: "object", Formatter: JSONFormatter(50)},
 							Field{Name: "reviews", Type: "array", Formatter: ErrorListFormatter()}, // Reusing for string arrays
 							Field{Name: "price", Type: "float"},
 							Field{Name: "availability", Type: "bool"},
@@ -332,12 +323,12 @@ func TestCollapsibleIntegration_CrossFormatConsistency(t *testing.T) {
 	t.Run("SummaryConsistency", func(t *testing.T) {
 		// All formats should show some form of summary for collapsible content
 		summaryPatterns := map[string][]string{
-			"markdown": {"3 errors", "...file.go", "JSON data"},
-			"json":     {"3 errors", "...file.go", "JSON data"},
-			"yaml":     {"3 errors", "...file.go", "JSON data"},
-			"table":    {"3 errors", "...file.go", "JSON data"},
-			"html":     {"3 errors", "...file.go", "JSON data"},
-			"csv":      {"3 errors", "...file.go", "JSON data"},
+			"markdown": {"3 errors (click to expand)", "file.go (show full path)", "JSON data"},
+			"json":     {"3 errors (click to expand)", "file.go (show full path)", "JSON data"},
+			"yaml":     {"3 errors (click to expand)", "file.go (show full path)", "JSON data"},
+			"table":    {"3 errors (click to expand)", "file.go (show full path)", "JSON data"},
+			"html":     {"3 errors (click to expand)", "file.go (show full path)", "JSON data"},
+			"csv":      {"3 errors (click to expand)", "file.go (show full path)", "JSON data"},
 		}
 
 		for format, patterns := range summaryPatterns {

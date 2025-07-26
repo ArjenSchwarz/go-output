@@ -254,7 +254,7 @@ func (t *tableRenderer) getSafeSummary(cv CollapsibleValue) string {
 
 	summary := cv.Summary()
 	if summary == "" {
-		return "[no summary]" // Requirement 11.2: default placeholder
+		return defaultSummaryPlaceholder // Requirement 11.2: default placeholder
 	}
 	return summary
 }
