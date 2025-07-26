@@ -1,6 +1,13 @@
 ## 2.0.0 / 2025-07-26
 
 ### Added
+- **Table Renderer Collapsible Value Support**
+  - CollapsibleValue detection and handling in table renderer with `formatCellValue` method
+  - Table-specific detail formatting with proper 2-space indentation via `formatDetailsForTable` and `indentText` methods
+  - Global expansion override functionality that respects `RendererConfig.ForceExpansion` setting
+  - Configurable expansion indicators with fallback to default values "[details hidden - use --expand for full view]"
+  - Support for different detail data types (strings, string arrays, complex objects) with proper formatting
+  - Comprehensive test suite covering all collapsible functionality, backward compatibility, and edge cases
 - **Expandable Sections Feature Implementation Plan**
   - Complete requirements specification for cross-format collapsible content system
   - Comprehensive design document with full renderer implementations for all formats (Markdown, JSON, YAML, HTML, Table, CSV)
@@ -12,6 +19,12 @@
   - Backward compatibility strategy for Field.Formatter signature changes
   - Global expansion control and configurable renderer settings
   - Error handling and edge case specifications with graceful degradation
+
+### Changed
+- **Table Renderer Enhancement**
+  - Enhanced table row rendering to use new `formatCellValue` method instead of direct formatter application
+  - Updated table renderer to integrate with existing collapsible infrastructure from base renderer
+  - Maintained backward compatibility with existing field formatters
 
 ## 2.0.0 / 2025-07-24
 
