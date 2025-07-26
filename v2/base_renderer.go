@@ -171,3 +171,11 @@ func NewTableRendererWithCollapsible(styleName string, config RendererConfig) Re
 		collapsibleConfig: config,
 	}
 }
+
+// NewHTMLRendererWithCollapsible creates an HTML renderer with collapsible configuration
+func NewHTMLRendererWithCollapsible(config RendererConfig) Renderer {
+	return &htmlRenderer{
+		baseRenderer:      baseRenderer{},
+		collapsibleConfig: config,
+	}
+}
