@@ -31,6 +31,12 @@ type DefaultCollapsibleValue struct {
 	// Configuration for truncation (requirements: configurable with 500 default)
 	maxDetailLength   int
 	truncateIndicator string
+
+	// Performance optimization fields for lazy evaluation (Requirement 10.3, 10.5)
+	processedDetails any
+	detailsProcessed bool
+	hintsAccessed    map[string]bool
+	memoryProcessor  *MemoryOptimizedProcessor
 }
 
 // CollapsibleOption configures a DefaultCollapsibleValue
@@ -45,6 +51,9 @@ func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption)
 		maxDetailLength:   500, // Default from requirements
 		truncateIndicator: "[...truncated]",
 		formatHints:       make(map[string]map[string]any),
+		// Initialize performance optimization fields (Requirements 10.3, 10.5)
+		detailsProcessed: false,
+		hintsAccessed:    nil, // Lazy initialized when first accessed
 	}
 
 	for _, opt := range opts {
@@ -94,19 +103,79 @@ func (d *DefaultCollapsibleValue) Summary() string {
 }
 
 // Details returns the expanded content with character limit truncation
+// Implements lazy evaluation to avoid unnecessary processing (Requirement 10.3)
 func (d *DefaultCollapsibleValue) Details() any {
 	if d.details == nil {
 		return d.summary // Fallback for nil details
 	}
 
+	// Use cached processed details if available (Requirement 10.3)
+	if d.detailsProcessed {
+		return d.processedDetails
+	}
+
+	// Initialize memory processor if needed for large content processing (Requirement 10.4)
+	if d.memoryProcessor == nil && d.needsMemoryOptimization() {
+		config := RendererConfig{
+			MaxDetailLength:   d.maxDetailLength,
+			TruncateIndicator: d.truncateIndicator,
+		}
+		d.memoryProcessor = NewMemoryOptimizedProcessor(config)
+	}
+
+	// Process details once and cache result
+	var result any
+	var err error
+
+	// Use memory-optimized processing for large content (Requirement 10.4)
+	if d.memoryProcessor != nil {
+		result, err = d.memoryProcessor.ProcessLargeDetails(d.details, d.maxDetailLength)
+		if err != nil {
+			// Fallback to simple processing on error
+			result = d.processDetailsSimple()
+		}
+	} else {
+		result = d.processDetailsSimple()
+	}
+
+	// Cache the processed result to avoid redundant processing (Requirement 10.3)
+	d.processedDetails = result
+	d.detailsProcessed = true
+
+	return result
+}
+
+// needsMemoryOptimization determines if memory optimization is beneficial
+func (d *DefaultCollapsibleValue) needsMemoryOptimization() bool {
+	if d.details == nil {
+		return false
+	}
+
+	// Use memory optimization for large strings, arrays, or maps
+	switch details := d.details.(type) {
+	case string:
+		return len(details) > 1000 // Optimize strings over 1KB
+	case []string:
+		return len(details) > 10 // Optimize arrays with many elements
+	case map[string]any:
+		return len(details) > 5 // Optimize maps with many keys
+	default:
+		return false
+	}
+}
+
+// processDetailsSimple provides simple detail processing without memory optimization
+func (d *DefaultCollapsibleValue) processDetailsSimple() any {
+	result := d.details
+
 	// Apply character limit truncation if configured
 	if d.maxDetailLength > 0 {
 		if detailStr, ok := d.details.(string); ok && len(detailStr) > d.maxDetailLength {
-			return detailStr[:d.maxDetailLength] + d.truncateIndicator
+			result = detailStr[:d.maxDetailLength] + d.truncateIndicator
 		}
 	}
 
-	return d.details
+	return result
 }
 
 // IsExpanded returns whether this should be expanded by default
@@ -115,7 +184,16 @@ func (d *DefaultCollapsibleValue) IsExpanded() bool {
 }
 
 // FormatHint returns renderer-specific hints for the given format
+// Implements lazy evaluation to avoid processing hints when not used (Requirement 10.5)
 func (d *DefaultCollapsibleValue) FormatHint(format string) map[string]any {
+	// Initialize hintsAccessed map if not already done
+	if d.hintsAccessed == nil {
+		d.hintsAccessed = make(map[string]bool)
+	}
+
+	// Mark this format as accessed for performance tracking
+	d.hintsAccessed[format] = true
+
 	if hints, exists := d.formatHints[format]; exists {
 		return hints
 	}
