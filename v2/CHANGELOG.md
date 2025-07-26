@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- CollapsibleSection interface for section-level expandable content with Title(), Content(), IsExpanded(), Level(), and FormatHint() methods
+- DefaultCollapsibleSection implementation with functional options pattern supporting up to 3 nesting levels
+- NewCollapsibleSection constructor with configurable expansion state, nesting levels, and format-specific hints
+- Helper functions for common section patterns: NewCollapsibleTable, NewCollapsibleMultiTable, NewCollapsibleReport
+- Support for mixed content types within collapsible sections (text, tables, raw content)
+- Content array copying to prevent external modification of section contents
+- Comprehensive test suite for CollapsibleSection functionality with 70+ test cases covering interface methods, nesting levels, content management, and helper functions
+- WithSectionExpanded, WithSectionLevel, and WithSectionFormatHint functional options for section configuration
 - CSV renderer support for CollapsibleValue with automatic detail column generation
 - handleCollapsibleFields method that analyzes table schema and creates "_details" columns for collapsible fields
 - detectCollapsibleFields method to identify fields that produce CollapsibleValue content
