@@ -11,6 +11,7 @@ import (
 // htmlRenderer implements HTML output format
 type htmlRenderer struct {
 	baseRenderer
+	collapsibleConfig RendererConfig
 }
 
 func (h *htmlRenderer) Format() string {
@@ -98,14 +99,9 @@ func (h *htmlRenderer) renderTableContentHTML(table *TableContent) ([]byte, erro
 			if val, exists := record[key]; exists {
 				// Apply field formatter if available
 				field := table.Schema().FindField(key)
-				if field != nil && field.Formatter != nil {
-					formatted := field.Formatter(val)
-					cellValue = fmt.Sprint(formatted)
-				} else {
-					cellValue = fmt.Sprint(val)
-				}
+				cellValue = h.formatCellValue(val, field)
 			}
-			result.WriteString(fmt.Sprintf("        <td>%s</td>\n", html.EscapeString(cellValue)))
+			result.WriteString(fmt.Sprintf("        <td>%s</td>\n", cellValue))
 		}
 		result.WriteString("      </tr>\n")
 	}
@@ -214,4 +210,70 @@ func (h *htmlRenderer) renderSectionContentHTML(section *SectionContent) ([]byte
 	result.WriteString("</section>\n")
 
 	return []byte(result.String()), nil
+}
+
+// formatCellValue processes field values and handles CollapsibleValue interface
+func (h *htmlRenderer) formatCellValue(val any, field *Field) string {
+	// Apply field formatter first using base renderer method
+	processed := h.processFieldValue(val, field)
+
+	// Check if result is CollapsibleValue (Requirement 7.1)
+	if cv, ok := processed.(CollapsibleValue); ok {
+		return h.renderCollapsibleValue(cv)
+	}
+
+	// Handle regular values with HTML escaping (maintain backward compatibility)
+	return html.EscapeString(fmt.Sprint(processed))
+}
+
+// renderCollapsibleValue renders a CollapsibleValue as HTML5 details element
+func (h *htmlRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
+	// Check global expansion override
+	expanded := cv.IsExpanded() || h.collapsibleConfig.ForceExpansion
+
+	openAttr := ""
+	if expanded {
+		openAttr = " open" // Requirement 7.3: add open attribute
+	}
+
+	// Get CSS classes from configuration (Requirement 7.2)
+	classes := h.collapsibleConfig.HTMLCSSClasses
+
+	// Use HTML5 details element with semantic classes (Requirements 7.1, 7.2)
+	return fmt.Sprintf(`<details%s class="%s"><summary class="%s">%s</summary><div class="%s">%s</div></details>`,
+		openAttr,
+		classes["details"],
+		classes["summary"],
+		html.EscapeString(cv.Summary()), // Requirement 7.4: escape HTML
+		classes["content"],
+		h.formatDetailsAsHTML(cv.Details()))
+}
+
+// formatDetailsAsHTML formats details content as appropriate HTML (Requirement 7.5)
+func (h *htmlRenderer) formatDetailsAsHTML(details any) string {
+	switch d := details.(type) {
+	case []string:
+		// Generate semantic list (Requirement 7.5)
+		if len(d) == 0 {
+			return ""
+		}
+		items := make([]string, len(d))
+		for i, item := range d {
+			items[i] = fmt.Sprintf("<li>%s</li>", html.EscapeString(item))
+		}
+		return fmt.Sprintf("<ul>%s</ul>", strings.Join(items, ""))
+	case map[string]any:
+		// Generate definition list (Requirement 7.5)
+		if len(d) == 0 {
+			return ""
+		}
+		var items []string
+		for k, v := range d {
+			items = append(items, fmt.Sprintf("<dt>%s</dt><dd>%s</dd>",
+				html.EscapeString(k), html.EscapeString(fmt.Sprint(v))))
+		}
+		return fmt.Sprintf("<dl>%s</dl>", strings.Join(items, ""))
+	default:
+		return html.EscapeString(fmt.Sprint(details))
+	}
 }

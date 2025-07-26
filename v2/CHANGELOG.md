@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global expansion override support in markdown renderer via `collapsibleConfig.ForceExpansion`
 - Proper HTML escaping for collapsible content in markdown table cells
 - Comprehensive test coverage for markdown collapsible rendering including edge cases and global expansion
+- HTML renderer support for CollapsibleValue with semantic HTML5 `<details>` elements and configurable CSS classes
+- HTML-specific detail formatting with proper escaping: string arrays as `<ul>` lists, maps as `<dl>` definition lists
+- Support for global expansion control and custom CSS classes in HTML renderer via RendererConfig
+- NewHTMLRendererWithCollapsible constructor for configurable HTML renderer with collapsible support
+- Comprehensive HTML collapsible test suite with 30+ test cases covering rendering, escaping, and configuration
 - Core CollapsibleValue interface for cross-format expandable content
 - DefaultCollapsibleValue implementation with functional options pattern
 - Support for configurable character limits and truncation indicators
@@ -37,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Field.Formatter signature changed from `func(any) string` to `func(any) any` with full backward compatibility
 - Updated all existing renderers (HTML, Markdown, Content) to handle new formatter signature gracefully
 - Enhanced markdownRenderer and tableRenderer structs with collapsibleConfig field for expandable content support
+- Enhanced htmlRenderer struct with collapsibleConfig field and updated table cell rendering for CollapsibleValue detection
 
 ### Added
 - Base renderer infrastructure for collapsible content processing

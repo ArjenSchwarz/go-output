@@ -130,17 +130,17 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 7. HTML Renderer Collapsible Support
 
-- [ ] 7.1 Implement CollapsibleValue handling in HTML renderer in `v2/html_renderer.go`
+- [x] 7.1 Implement CollapsibleValue handling in HTML renderer in `v2/html_renderer.go`
   - Add formatCellValue method generating `<details>` elements (Requirement 7.1)
   - Include semantic CSS classes: "collapsible-cell", "collapsible-summary", "collapsible-details" (Requirement 7.2)
   - Add `open` attribute when IsExpanded() returns true (Requirement 7.3)
 
-- [ ] 7.2 Implement HTML-specific detail formatting
+- [x] 7.2 Implement HTML-specific detail formatting
   - Add formatDetailsAsHTML method with proper HTML escaping (Requirement 7.4)
   - Generate semantic HTML elements for structured data (Requirement 7.5)
   - Convert arrays to `<ul>` lists and maps to `<dl>` definition lists (Requirement 7.5)
 
-- [ ] 7.3 Write tests for HTML collapsible rendering
+- [x] 7.3 Write tests for HTML collapsible rendering
   - Test `<details>` element generation with proper CSS classes
   - Test HTML escaping and semantic element generation
   - Test open attribute handling and accessibility compliance
