@@ -164,13 +164,9 @@ func (t *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 		row := make(table.Row, len(keyOrder))
 		for i, key := range keyOrder {
 			if val, exists := record[key]; exists {
-				// Apply field formatter if available
+				// Apply field formatter if available and format cell value
 				field := tableContent.Schema().FindField(key)
-				if field != nil && field.Formatter != nil {
-					row[i] = field.Formatter(val)
-				} else {
-					row[i] = val
-				}
+				row[i] = t.formatCellValue(val, field)
 			} else {
 				row[i] = ""
 			}
@@ -179,6 +175,68 @@ func (t *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 	}
 
 	return tw
+}
+
+// formatCellValue applies field formatter and handles CollapsibleValue rendering for table output
+// This implements Requirements 6.1-6.7 for table renderer collapsible support
+func (t *tableRenderer) formatCellValue(val any, field *Field) string {
+	// Apply field formatter using base renderer functionality
+	processed := t.processFieldValue(val, field)
+
+	// Check if result is CollapsibleValue (Requirement 6.1)
+	if cv, ok := processed.(CollapsibleValue); ok {
+		// Check for global expansion override (Requirement 6.7, 13.1)
+		expanded := cv.IsExpanded() || t.collapsibleConfig.ForceExpansion
+
+		if expanded {
+			// Show both summary and details (Requirement 6.2)
+			details := t.formatDetailsForTable(cv.Details())
+			return fmt.Sprintf("%s\n%s", cv.Summary(), details)
+		}
+
+		// Show summary with configurable indicator (Requirements 6.1, 6.6)
+		indicator := t.collapsibleConfig.TableHiddenIndicator
+		if indicator == "" {
+			indicator = DefaultRendererConfig.TableHiddenIndicator
+		}
+		return fmt.Sprintf("%s %s", cv.Summary(), indicator)
+	}
+
+	// Handle regular values (maintain backward compatibility)
+	return fmt.Sprint(processed)
+}
+
+// formatDetailsForTable formats details content with proper indentation for table display
+// This implements Requirement 6.3 for appropriate spacing and readability
+func (t *tableRenderer) formatDetailsForTable(details any) string {
+	switch d := details.(type) {
+	case string:
+		return t.indentText(d)
+	case []string:
+		return t.indentText(strings.Join(d, "\n"))
+	default:
+		return t.indentText(fmt.Sprint(d))
+	}
+}
+
+// indentText adds proper indentation to text lines for table formatting
+// This implements Requirement 6.3 for appropriate spacing
+func (t *tableRenderer) indentText(text string) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		lines[i] = "  " + line // Requirement 6.3: appropriate spacing
+	}
+	return strings.Join(lines, "\n")
+}
+
+// processFieldValue applies Field.Formatter and detects CollapsibleValue interface
+// This is embedded from baseRenderer to maintain consistency
+func (t *tableRenderer) processFieldValue(val any, field *Field) any {
+	if field != nil && field.Formatter != nil {
+		// Apply enhanced formatter (returns any, could be CollapsibleValue)
+		return field.Formatter(val)
+	}
+	return val
 }
 
 // tableStyles is a lookup map for getting the table styles based on a string

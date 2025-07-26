@@ -111,18 +111,18 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 6. Table Renderer Collapsible Support with Configuration
 
-- [ ] 6.1 Implement CollapsibleValue handling in table renderer in `v2/table_renderer.go`
+- [x] 6.1 Implement CollapsibleValue handling in table renderer in `v2/table_renderer.go`
   - Add formatCellValue method with CollapsibleValue type assertion (Requirement 6.1)
   - Display summary with configurable hidden details indicator when collapsed (Requirement 6.1, 6.6)
   - Show both summary and indented details when expanded (Requirement 6.2)
   - Apply global expansion override when configured (Requirement 6.7, 13.1)
 
-- [ ] 6.2 Implement table-specific detail formatting
+- [x] 6.2 Implement table-specific detail formatting
   - Add formatDetailsForTable method with proper indentation (Requirement 6.3)
   - Handle multi-line details while maintaining table structure (Requirement 6.4)
   - Ensure consistent formatting across multiple collapsible cells (Requirement 6.5)
 
-- [ ] 6.3 Write tests for table collapsible rendering
+- [x] 6.3 Write tests for table collapsible rendering
   - Test summary display with configurable expansion indicators
   - Test detail indentation and multi-line content handling
   - Test global expansion override functionality
