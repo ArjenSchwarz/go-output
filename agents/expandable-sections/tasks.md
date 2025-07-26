@@ -6,23 +6,23 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 1. Core Collapsible Interface and Value Implementation
 
-- [ ] 1.1 Create core CollapsibleValue interface in `v2/collapsible.go`
+- [x] 1.1 Create core CollapsibleValue interface in `v2/collapsible.go`
   - Implement Summary() method returning string for collapsed view (Requirement 1.1)
   - Implement Details() method returning any for structured data support (Requirement 1.2)
   - Implement IsExpanded() method returning bool for default expansion state (Requirement 1.3)
   - Implement FormatHint() method returning format-specific rendering hints (Requirement 1.4)
 
-- [ ] 1.2 Implement DefaultCollapsibleValue struct with configuration options
+- [x] 1.2 Implement DefaultCollapsibleValue struct with configuration options
   - Add summary, details, defaultExpanded, formatHints fields (Requirement 1.6)
   - Add maxDetailLength and truncateIndicator for character limits (Requirement 10.6, 10.7)
   - Implement all CollapsibleValue interface methods with proper edge case handling (Requirement 11.1-11.6)
 
-- [ ] 1.3 Create CollapsibleValue constructor with functional options pattern
+- [x] 1.3 Create CollapsibleValue constructor with functional options pattern
   - Implement NewCollapsibleValue with variadic CollapsibleOption parameters
   - Add WithExpanded, WithMaxLength, WithFormatHint option functions
   - Apply default values: maxDetailLength=500, truncateIndicator="[...truncated]" (Requirement 10.6, 10.7)
 
-- [ ] 1.4 Write comprehensive unit tests for CollapsibleValue interface
+- [x] 1.4 Write comprehensive unit tests for CollapsibleValue interface
   - Test Summary() with empty string fallback to "[no summary]" (Requirement 11.2)
   - Test Details() with nil handling and character truncation (Requirement 11.1, 11.6)
   - Test IsExpanded() behavior and FormatHint() functionality (Requirement 1.3, 1.4)
