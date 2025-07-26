@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- CSV renderer support for CollapsibleValue with automatic detail column generation
+- handleCollapsibleFields method that analyzes table schema and creates "_details" columns for collapsible fields
+- detectCollapsibleFields method to identify fields that produce CollapsibleValue content
+- flattenDetails method to convert complex data structures to CSV-compatible string representations
+- NewCSVRendererWithCollapsible constructor for CSV renderer with collapsible configuration
+- Support for placing summary content in original columns and details in adjacent detail columns
+- Automatic column ordering preservation with detail columns appended next to their source columns
+- Empty detail column handling for non-collapsible values
+- Comprehensive test suite for CSV collapsible rendering including edge cases and data structure flattening
 - JSON renderer support for CollapsibleValue with structured output including type indicators, summary, details, and expanded fields
 - YAML renderer support for CollapsibleValue with proper YAML mapping structure and format hints
 - Enhanced JSON/YAML table rendering to process field formatters and detect CollapsibleValue interface
@@ -43,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated all existing renderers (HTML, Markdown, Content) to handle new formatter signature gracefully
 - Enhanced markdownRenderer and tableRenderer structs with collapsibleConfig field for expandable content support
 - Enhanced htmlRenderer struct with collapsibleConfig field and updated table cell rendering for CollapsibleValue detection
+- Enhanced csvRenderer struct with collapsibleConfig field for collapsible content support
 
 ### Added
 - Base renderer infrastructure for collapsible content processing

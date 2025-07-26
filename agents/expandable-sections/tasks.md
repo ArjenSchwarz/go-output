@@ -147,22 +147,22 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 8. CSV Renderer with Detail Column Generation
 
-- [ ] 8.1 Implement automatic detail column detection in CSV renderer in `v2/csv_renderer.go`
+- [x] 8.1 Implement automatic detail column detection in CSV renderer in `v2/csv_renderer.go`
   - Add handleCollapsibleFields method to analyze table schema (Requirement 8.1)
   - Create additional "_details" columns for collapsible fields (Requirement 8.1)
   - Maintain original column order and append detail columns adjacently (Requirement 8.4)
 
-- [ ] 8.2 Implement CollapsibleValue processing for CSV output
+- [x] 8.2 Implement CollapsibleValue processing for CSV output
   - Place summary content in original column (Requirement 8.2)
   - Place details content in corresponding detail column (Requirement 8.2)
   - Leave detail columns empty for non-collapsible values (Requirement 8.3)
 
-- [ ] 8.3 Implement detail content flattening for CSV compatibility
+- [x] 8.3 Implement detail content flattening for CSV compatibility
   - Add flattenDetails method for complex structure conversion (Requirement 8.5)
   - Handle strings, arrays, and maps with appropriate separators
   - Ensure CSV compatibility and spreadsheet application support
 
-- [ ] 8.4 Write tests for CSV collapsible rendering
+- [x] 8.4 Write tests for CSV collapsible rendering
   - Test automatic detail column generation and schema modification
   - Test summary/detail column placement and empty cell handling
   - Test complex structure flattening and CSV format compliance

@@ -179,3 +179,10 @@ func NewHTMLRendererWithCollapsible(config RendererConfig) Renderer {
 		collapsibleConfig: config,
 	}
 }
+
+// NewCSVRendererWithCollapsible creates a CSV renderer with collapsible configuration
+func NewCSVRendererWithCollapsible(config RendererConfig) Renderer {
+	return &csvRenderer{
+		collapsibleConfig: config,
+	}
+}
