@@ -290,17 +290,17 @@ This document provides an actionable implementation plan for the cross-format co
 
 ### 15. Documentation and Migration Support
 
-- [ ] 15.1 Update existing documentation for Field.Formatter signature change
+- [x] 15.1 Update existing documentation for Field.Formatter signature change
   - Document migration from `func(any) string` to `func(any) any`
   - Provide examples of both old and new formatter patterns
   - Document backward compatibility guarantees and migration timeline
 
-- [ ] 15.2 Create comprehensive usage documentation
+- [x] 15.2 Create comprehensive usage documentation
   - Document CollapsibleValue interface and implementation patterns
   - Document CollapsibleSection usage with practical examples
   - Document renderer configuration options and their effects
 
-- [ ] 15.3 Create migration guide for existing v2 users
+- [x] 15.3 Create migration guide for existing v2 users
   - Provide step-by-step migration instructions for Field.Formatter updates
   - Document new collapsible features and integration approaches
   - Include performance considerations and best practices

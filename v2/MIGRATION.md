@@ -621,10 +621,283 @@ func processData(ctx context.Context) {
 }
 ```
 
+## Enhanced Field.Formatter and Collapsible Content
+
+### Field.Formatter Signature Change
+
+**v2 introduces a significant enhancement to the `Field.Formatter` function signature to support rich collapsible content across all output formats.**
+
+#### Signature Change
+```go
+// v1 and early v2
+type Field struct {
+    Name      string
+    Type      string
+    Formatter func(any) string  // OLD: Returns only strings
+    Hidden    bool
+}
+
+// v2 Enhanced (Current)
+type Field struct {
+    Name      string
+    Type      string
+    Formatter func(any) any     // NEW: Can return CollapsibleValue or strings
+    Hidden    bool
+}
+```
+
+#### Backward Compatibility
+
+**All existing Field.Formatter functions continue to work without modification.** The change is fully backward compatible:
+
+```go
+// Existing v2 formatters continue to work unchanged
+func upperFormatter(val any) any {
+    return strings.ToUpper(fmt.Sprint(val))  // Still works!
+}
+
+// You can also return strings directly (backward compatible)
+func oldStyleFormatter(val any) any {
+    return fmt.Sprintf("Value: %v", val)     // Still works!
+}
+```
+
+#### New Collapsible Content Support
+
+**The enhanced signature enables CollapsibleValue returns for expandable content:**
+
+```go
+import "github.com/ArjenSchwarz/go-output/v2"
+
+// New: Return CollapsibleValue for expandable content
+func errorListFormatter(val any) any {
+    if errors, ok := val.([]string); ok && len(errors) > 0 {
+        return output.NewCollapsibleValue(
+            fmt.Sprintf("%d errors", len(errors)),  // Summary view
+            errors,                                  // Detailed content
+            output.WithExpanded(false),             // Collapsed by default
+        )
+    }
+    return val  // Return unchanged for non-arrays
+}
+
+// Use the formatter in a schema
+schema := output.WithSchema(
+    output.Field{
+        Name: "errors",
+        Type: "array", 
+        Formatter: errorListFormatter,  // Enhanced formatter
+    },
+)
+```
+
+### Built-in Collapsible Formatters
+
+**v2 provides pre-built formatters for common collapsible patterns:**
+
+#### Error List Formatter
+```go
+// Automatically creates collapsible content for error arrays
+doc := output.New().
+    Table("Issues", data, output.WithSchema(
+        output.Field{Name: "file", Type: "string"},
+        output.Field{
+            Name: "errors", 
+            Type: "array",
+            Formatter: output.ErrorListFormatter(),  // Built-in formatter
+        },
+    )).
+    Build()
+```
+
+#### File Path Formatter
+```go
+// Shows abbreviated paths with full path in details
+doc := output.New().
+    Table("Files", data, output.WithSchema(
+        output.Field{
+            Name: "path",
+            Type: "string", 
+            Formatter: output.FilePathFormatter(30),  // Truncate at 30 chars
+        },
+    )).
+    Build()
+```
+
+#### JSON Formatter
+```go
+// Shows compact summary for large JSON objects
+doc := output.New().
+    Table("Config", data, output.WithSchema(
+        output.Field{
+            Name: "settings",
+            Type: "object",
+            Formatter: output.JSONFormatter(100),  // Collapse if > 100 chars
+        },
+    )).
+    Build()
+```
+
+### Cross-Format Rendering
+
+**Collapsible content adapts to each output format:**
+
+```go
+data := []map[string]any{
+    {
+        "file": "/very/long/path/to/project/components/UserProfile.tsx",
+        "errors": []string{
+            "Missing import for React",
+            "Unused variable 'userData'",
+            "Type annotation missing",
+        },
+    },
+}
+
+table := output.NewTableContent("Issues", data, output.WithSchema(
+    output.Field{Name: "file", Type: "string", Formatter: output.FilePathFormatter(25)},
+    output.Field{Name: "errors", Type: "array", Formatter: output.ErrorListFormatter()},
+))
+
+doc := output.New().Add(table).Build()
+
+// Markdown: Creates GitHub-compatible <details> elements
+output.NewOutput(output.WithFormat(output.Markdown)).Render(ctx, doc)
+// Output: <details><summary>3 errors</summary>Missing import...<br/>Unused variable...</details>
+
+// JSON: Structured data with type indicators
+output.NewOutput(output.WithFormat(output.JSON)).Render(ctx, doc)
+// Output: {"type": "collapsible", "summary": "3 errors", "details": [...], "expanded": false}
+
+// Table: Summary with expansion indicators
+output.NewOutput(output.WithFormat(output.Table)).Render(ctx, doc)
+// Output: 3 errors [details hidden - use --expand for full view]
+
+// CSV: Automatic detail columns
+output.NewOutput(output.WithFormat(output.CSV)).Render(ctx, doc)
+// Creates: errors, errors_details columns
+```
+
+### Migration Steps for Field.Formatter
+
+#### Step 1: Review Existing Formatters
+**No immediate action required** - existing formatters continue to work:
+
+```go
+// This continues to work unchanged
+func myFormatter(val any) any {
+    return fmt.Sprintf("Custom: %v", val)
+}
+```
+
+#### Step 2: Optional Enhancement
+**Add collapsible support where beneficial:**
+
+```go
+// Before: Simple string formatter
+func oldErrorFormatter(val any) any {
+    if errors, ok := val.([]string); ok {
+        return strings.Join(errors, ", ")  // Simple concatenation
+    }
+    return val
+}
+
+// After: Enhanced with collapsible support
+func newErrorFormatter(val any) any {
+    if errors, ok := val.([]string); ok && len(errors) > 0 {
+        return output.NewCollapsibleValue(
+            fmt.Sprintf("%d errors", len(errors)),
+            errors,
+            output.WithExpanded(false),
+        )
+    }
+    return val
+}
+```
+
+#### Step 3: Use Built-in Formatters
+**Replace custom implementations with built-ins where applicable:**
+
+```go
+// Before: Custom implementation
+func myPathFormatter(val any) any {
+    path := fmt.Sprint(val)
+    if len(path) > 50 {
+        return "..." + path[len(path)-47:]
+    }
+    return path
+}
+
+// After: Use built-in with collapsible support
+output.Field{
+    Name: "path",
+    Type: "string",
+    Formatter: output.FilePathFormatter(50),  // Built-in with collapsible details
+}
+```
+
+### Collapsible Sections
+
+**v2 also supports section-level collapsible content:**
+
+```go
+// Create collapsible sections containing entire tables or content blocks
+analysisSection := output.NewCollapsibleTable(
+    "Detailed Analysis Results",
+    tableContent,
+    output.WithSectionExpanded(false),
+)
+
+reportSection := output.NewCollapsibleReport(
+    "Performance Report", 
+    []output.Content{
+        output.NewTextContent("System analysis complete"),
+        tableContent,
+        output.NewTextContent("All systems operational"),
+    },
+    output.WithSectionExpanded(true),
+)
+
+doc := output.New().
+    Add(analysisSection).
+    Add(reportSection).
+    Build()
+```
+
+### Configuration Options
+
+**Control collapsible behavior globally:**
+
+```go
+// Table renderer with custom expansion settings
+tableRenderer := output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        GlobalExpansion:      false,
+        TableHiddenIndicator: "[click to expand]",
+        MaxDetailLength:      200,
+        TruncateIndicator:    "...",
+    }),
+)
+
+// HTML renderer with custom CSS classes
+htmlRenderer := output.NewOutput(
+    output.WithFormat(output.HTML),
+    output.WithCollapsibleConfig(output.CollapsibleConfig{
+        HTMLCSSClasses: map[string]string{
+            "details": "my-collapsible",
+            "summary": "my-summary",
+            "content": "my-details",
+        },
+    }),
+)
+```
+
 ## Need Help?
 
 - Check the [API documentation](https://pkg.go.dev/github.com/ArjenSchwarz/go-output/v2)
 - Review the [examples](https://github.com/ArjenSchwarz/go-output/tree/main/v2/examples)
+- See [collapsible examples](https://github.com/ArjenSchwarz/go-output/tree/main/v2/examples/collapsible_*)
 - Report issues at [GitHub Issues](https://github.com/ArjenSchwarz/go-output/issues)
 
 The migration tool can handle most common patterns automatically. For complex migrations, refer to this guide and the API documentation.

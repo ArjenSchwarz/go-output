@@ -114,7 +114,9 @@ doc := output.New().
 
 🚀 **[Migration Guide](v2/MIGRATION.md)** - Complete migration guide from v1 to v2
 
-💡 **[Migration Examples](v2/MIGRATION_EXAMPLES.md)** - Before/after code examples  
+💡 **[V1→V2 Migration Examples](v2/V1_V2_MIGRATION_EXAMPLES.md)** - Before/after code examples for v1 to v2 migration
+
+🔄 **[V2 Collapsible Features Migration](v2/V2_UPDATES_MIGRATION_EXAMPLES.md)** - Step-by-step guide for adding collapsible content to existing v2 code  
 
 📋 **[Quick Reference](v2/MIGRATION_QUICK_REFERENCE.md)** - Common patterns lookup table
 
@@ -127,7 +129,8 @@ doc := output.New().
 ### Migration Resources
 
 - **[Migration Guide](v2/MIGRATION.md)** - Complete step-by-step migration instructions
-- **[Migration Examples](v2/MIGRATION_EXAMPLES.md)** - Real before/after code examples
+- **[V1→V2 Migration Examples](v2/V1_V2_MIGRATION_EXAMPLES.md)** - Real before/after code examples
+- **[V2 Collapsible Features Migration](v2/V2_UPDATES_MIGRATION_EXAMPLES.md)** - Step-by-step guide for existing v2 users
 - **[Breaking Changes](v2/BREAKING_CHANGES.md)** - Detailed list of all breaking changes
 
 

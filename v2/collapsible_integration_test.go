@@ -158,17 +158,17 @@ func TestCollapsibleIntegration_RealWorldScenarios(t *testing.T) {
 				// Simulate data export scenario
 				exportData := []map[string]any{
 					{
-						"product":     "Laptop Pro",
-						"specs":       map[string]any{"cpu": "M2 Pro", "ram": "16GB", "storage": "512GB SSD"},
-						"reviews":     []string{"Excellent performance", "Great battery life", "Expensive but worth it"},
-						"price":       2499.99,
+						"product":      "Laptop Pro",
+						"specs":        map[string]any{"cpu": "M2 Pro", "ram": "16GB", "storage": "512GB SSD"},
+						"reviews":      []string{"Excellent performance", "Great battery life", "Expensive but worth it"},
+						"price":        2499.99,
 						"availability": true,
 					},
 					{
-						"product":     "Desktop Workstation",
-						"specs":       map[string]any{"cpu": "Intel i9", "ram": "32GB", "storage": "1TB NVMe"},
-						"reviews":     []string{"Powerful for development", "Quiet operation"},
-						"price":       3999.99,
+						"product":      "Desktop Workstation",
+						"specs":        map[string]any{"cpu": "Intel i9", "ram": "32GB", "storage": "1TB NVMe"},
+						"reviews":      []string{"Powerful for development", "Quiet operation"},
+						"price":        3999.99,
 						"availability": false,
 					},
 				}
@@ -190,7 +190,7 @@ func TestCollapsibleIntegration_RealWorldScenarios(t *testing.T) {
 					if len(lines) < 2 {
 						t.Fatal("CSV should have header and data rows")
 					}
-					
+
 					// Check for detail columns
 					header := lines[0]
 					if !strings.Contains(header, "specs_details") {
@@ -199,7 +199,7 @@ func TestCollapsibleIntegration_RealWorldScenarios(t *testing.T) {
 					if !strings.Contains(header, "reviews_details") {
 						t.Error("CSV should contain reviews_details column for collapsible reviews field")
 					}
-					
+
 					// Check data rows have summary and detail content
 					if len(lines) > 1 && lines[1] != "" {
 						// Should have summary in main column and details in detail column
@@ -264,10 +264,10 @@ func TestCollapsibleIntegration_CrossFormatConsistency(t *testing.T) {
 	// Create document with known collapsible content
 	testData := []map[string]any{
 		{
-			"name":    "Test Item",
-			"errors":  []string{"error1", "error2", "error3"},
-			"config":  map[string]any{"debug": true, "verbose": false},
-			"path":    "/very/long/path/that/should/be/truncated/in/summary/view/file.go",
+			"name":   "Test Item",
+			"errors": []string{"error1", "error2", "error3"},
+			"config": map[string]any{"debug": true, "verbose": false},
+			"path":   "/very/long/path/that/should/be/truncated/in/summary/view/file.go",
 		},
 	}
 
@@ -373,7 +373,7 @@ func TestCollapsibleIntegration_GlobalExpansionControl(t *testing.T) {
 		var buf bytes.Buffer
 		tableRenderer := NewTableRendererWithCollapsible("Default", DefaultRendererConfig)
 		format := Format{Name: "table", Renderer: tableRenderer}
-		
+
 		output := NewOutput(
 			WithFormat(format),
 			WithWriter(&testWriter{buf: &buf}),
@@ -401,7 +401,7 @@ func TestCollapsibleIntegration_GlobalExpansionControl(t *testing.T) {
 		}
 		tableRenderer := NewTableRendererWithCollapsible("Default", config)
 		format := Format{Name: "table", Renderer: tableRenderer}
-		
+
 		output := NewOutput(
 			WithFormat(format),
 			WithWriter(&testWriter{buf: &buf}),
@@ -428,8 +428,8 @@ func TestCollapsibleIntegration_ErrorRecovery(t *testing.T) {
 	// Create problematic data
 	testData := []map[string]any{
 		{
-			"normal":      "regular value",
-			"nil_details": "value with nil details formatter",
+			"normal":        "regular value",
+			"nil_details":   "value with nil details formatter",
 			"empty_summary": "",
 		},
 	}
@@ -470,7 +470,7 @@ func TestCollapsibleIntegration_ErrorRecovery(t *testing.T) {
 			}
 
 			result := string(buf.Bytes())
-			
+
 			// Should contain fallback placeholders
 			switch format.Name {
 			case "json", "markdown", "table", "html":
@@ -498,10 +498,10 @@ func TestCollapsibleIntegration_PerformanceWithLargeData(t *testing.T) {
 	data := make([]map[string]any, size)
 	for i := 0; i < size; i++ {
 		data[i] = map[string]any{
-			"id":      i,
-			"errors":  []string{"error1", "error2", "error3", "error4", "error5"},
-			"config":  map[string]any{"debug": true, "verbose": i%2 == 0, "level": i % 5},
-			"path":    "/very/long/path/to/file/number/" + string(rune('A'+i%26)) + "/test.go",
+			"id":     i,
+			"errors": []string{"error1", "error2", "error3", "error4", "error5"},
+			"config": map[string]any{"debug": true, "verbose": i%2 == 0, "level": i % 5},
+			"path":   "/very/long/path/to/file/number/" + string(rune('A'+i%26)) + "/test.go",
 		}
 	}
 
@@ -534,7 +534,7 @@ func TestCollapsibleIntegration_PerformanceWithLargeData(t *testing.T) {
 				t.Error("No output generated for large dataset")
 			}
 
-			t.Logf("%s format generated %d bytes for %d rows with collapsible content", 
+			t.Logf("%s format generated %d bytes for %d rows with collapsible content",
 				format.Name, buf.Len(), size)
 		})
 	}

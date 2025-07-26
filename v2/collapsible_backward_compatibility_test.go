@@ -44,7 +44,7 @@ func TestCollapsibleBackwardCompatibility_ExistingFormatters(t *testing.T) {
 			expectOld: true,
 		},
 		{
-			name: "Nil formatter",
+			name:      "Nil formatter",
 			formatter: nil,
 			input:     "test",
 			expectOld: true,
@@ -257,7 +257,7 @@ func TestCollapsibleBackwardCompatibility_PerformanceRegression(t *testing.T) {
 
 	// Measure rendering performance for different formats
 	formats := []Format{JSON, Table, CSV}
-	
+
 	for _, format := range formats {
 		t.Run(format.Name+"_NoCollapsible", func(t *testing.T) {
 			var buf bytes.Buffer
@@ -387,8 +387,8 @@ func TestCollapsibleBackwardCompatibility_ZeroOverhead(t *testing.T) {
 
 	// Render with different renderers
 	renderers := []struct {
-		name     string
-		format   Format
+		name   string
+		format Format
 	}{
 		{"JSON", JSON},
 		{"Table", Table},
