@@ -12,7 +12,8 @@ import (
 
 // tableRenderer implements console table output format
 type tableRenderer struct {
-	styleName string
+	styleName         string
+	collapsibleConfig RendererConfig
 }
 
 func (t *tableRenderer) Format() string {

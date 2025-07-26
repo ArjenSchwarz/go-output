@@ -12,6 +12,33 @@ import (
 	"sync"
 )
 
+// RendererConfig provides collapsible-specific configuration for renderers
+type RendererConfig struct {
+	// Global expansion override (Requirement 13: Global Expansion Control)
+	ForceExpansion bool
+
+	// Character limits for detail truncation (Requirement 10: configurable with 500 default)
+	MaxDetailLength   int
+	TruncateIndicator string
+
+	// Format-specific settings (Requirement 14: Configurable Renderer Settings)
+	TableHiddenIndicator string
+	HTMLCSSClasses       map[string]string
+}
+
+// DefaultRendererConfig provides sensible default configuration values
+var DefaultRendererConfig = RendererConfig{
+	ForceExpansion:       false,
+	MaxDetailLength:      500,
+	TruncateIndicator:    "[...truncated]",
+	TableHiddenIndicator: "[details hidden - use --expand for full view]",
+	HTMLCSSClasses: map[string]string{
+		"details": "collapsible-cell",
+		"summary": "collapsible-summary",
+		"content": "collapsible-details",
+	},
+}
+
 // baseRenderer provides common functionality shared by all renderer implementations
 type baseRenderer struct {
 	mu sync.RWMutex
@@ -114,4 +141,33 @@ func (b *baseRenderer) renderContentTo(content Content, w io.Writer) error {
 
 	_, err = w.Write(contentBytes)
 	return err
+}
+
+// processFieldValue applies Field.Formatter and detects CollapsibleValue interface
+// This method provides collapsible value detection for all renderers while maintaining
+// backward compatibility with existing formatters.
+func (b *baseRenderer) processFieldValue(val any, field *Field) any {
+	if field != nil && field.Formatter != nil {
+		// Apply enhanced formatter (returns any, could be CollapsibleValue)
+		return field.Formatter(val)
+	}
+	return val
+}
+
+// NewMarkdownRendererWithCollapsible creates a markdown renderer with collapsible configuration
+func NewMarkdownRendererWithCollapsible(config RendererConfig) Renderer {
+	return &markdownRenderer{
+		baseRenderer:      baseRenderer{},
+		includeToC:        false,
+		headingLevel:      1,
+		collapsibleConfig: config,
+	}
+}
+
+// NewTableRendererWithCollapsible creates a table renderer with collapsible configuration
+func NewTableRendererWithCollapsible(styleName string, config RendererConfig) Renderer {
+	return &tableRenderer{
+		styleName:         styleName,
+		collapsibleConfig: config,
+	}
 }

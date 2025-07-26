@@ -11,9 +11,10 @@ import (
 // markdownRenderer implements Markdown output format
 type markdownRenderer struct {
 	baseRenderer
-	includeToC   bool
-	frontMatter  map[string]string
-	headingLevel int
+	includeToC        bool
+	frontMatter       map[string]string
+	headingLevel      int
+	collapsibleConfig RendererConfig
 }
 
 func (m *markdownRenderer) Format() string {

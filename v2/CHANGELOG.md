@@ -22,3 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Field.Formatter signature changed from `func(any) string` to `func(any) any` with full backward compatibility
 - Updated all existing renderers (HTML, Markdown, Content) to handle new formatter signature gracefully
+- Enhanced markdownRenderer and tableRenderer structs with collapsibleConfig field for expandable content support
+
+### Added
+- Base renderer infrastructure for collapsible content processing
+- RendererConfig struct with global expansion control, character limits, and format-specific settings
+- DefaultRendererConfig with sensible defaults (500 char limit, configurable indicators)
+- processFieldValue method in baseRenderer for CollapsibleValue detection with backward compatibility
+- NewMarkdownRendererWithCollapsible constructor for markdown renderer with collapsible configuration
+- NewTableRendererWithCollapsible constructor for table renderer with collapsible configuration
