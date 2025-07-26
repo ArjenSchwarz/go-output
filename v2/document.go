@@ -194,3 +194,29 @@ func (b *Builder) DrawIO(title string, records []Record, header DrawIOHeader) *B
 	drawioContent := NewDrawIOContent(title, records, header)
 	return b.AddContent(drawioContent)
 }
+
+// AddCollapsibleSection adds a collapsible section containing the provided content
+func (b *Builder) AddCollapsibleSection(title string, content []Content, opts ...CollapsibleSectionOption) *Builder {
+	section := NewCollapsibleSection(title, content, opts...)
+	return b.AddContent(section)
+}
+
+// AddCollapsibleTable adds a collapsible section containing a single table
+func (b *Builder) AddCollapsibleTable(title string, table *TableContent, opts ...CollapsibleSectionOption) *Builder {
+	section := NewCollapsibleTable(title, table, opts...)
+	return b.AddContent(section)
+}
+
+// CollapsibleSection groups content under an expandable/collapsible section with hierarchical structure
+func (b *Builder) CollapsibleSection(title string, fn func(*Builder), opts ...CollapsibleSectionOption) *Builder {
+	// Create sub-builder for section contents
+	subBuilder := &Builder{doc: &Document{metadata: make(map[string]any)}}
+	fn(subBuilder)
+
+	// Add all contents from sub-builder to collapsible section
+	subDoc := subBuilder.Build()
+	contents := subDoc.GetContents()
+
+	section := NewCollapsibleSection(title, contents, opts...)
+	return b.AddContent(section)
+}

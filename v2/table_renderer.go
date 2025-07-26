@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -188,46 +189,166 @@ func (t *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 	return tw
 }
 
-// formatCellValue applies field formatter and handles CollapsibleValue rendering for table output
+// formatCellValue applies field formatter and handles CollapsibleValue rendering for table output with error recovery
 // This implements Requirements 6.1-6.7 for table renderer collapsible support
 func (t *tableRenderer) formatCellValue(val any, field *Field) string {
+	// Add panic recovery for error handling (Requirement 11.3)
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error formatting cell value in table renderer: %v\n", r)
+		}
+	}()
+
 	// Apply field formatter using base renderer functionality
 	processed := t.processFieldValue(val, field)
 
 	// Check if result is CollapsibleValue (Requirement 6.1)
 	if cv, ok := processed.(CollapsibleValue); ok {
-		// Check for global expansion override (Requirement 6.7, 13.1)
-		expanded := cv.IsExpanded() || t.collapsibleConfig.ForceExpansion
-
-		if expanded {
-			// Show both summary and details (Requirement 6.2)
-			details := t.formatDetailsForTable(cv.Details())
-			return fmt.Sprintf("%s\n%s", cv.Summary(), details)
-		}
-
-		// Show summary with configurable indicator (Requirements 6.1, 6.6)
-		indicator := t.collapsibleConfig.TableHiddenIndicator
-		if indicator == "" {
-			indicator = DefaultRendererConfig.TableHiddenIndicator
-		}
-		return fmt.Sprintf("%s %s", cv.Summary(), indicator)
+		return t.renderCollapsibleValueSafe(cv)
 	}
 
 	// Handle regular values (maintain backward compatibility)
 	return fmt.Sprint(processed)
 }
 
-// formatDetailsForTable formats details content with proper indentation for table display
-// This implements Requirement 6.3 for appropriate spacing and readability
-func (t *tableRenderer) formatDetailsForTable(details any) string {
+// renderCollapsibleValueSafe safely renders a CollapsibleValue with comprehensive error handling
+func (t *tableRenderer) renderCollapsibleValueSafe(cv CollapsibleValue) string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error rendering collapsible value in table: %v\n", r)
+		}
+	}()
+
+	// Validate CollapsibleValue to prevent nil pointer issues
+	if cv == nil {
+		return "[invalid collapsible value]"
+	}
+
+	// Get summary with error handling (Requirement 11.2)
+	summary := t.getSafeSummary(cv)
+
+	// Check for global expansion override (Requirement 6.7, 13.1)
+	expanded := cv.IsExpanded() || t.collapsibleConfig.ForceExpansion
+
+	if expanded {
+		// Show both summary and details (Requirement 6.2)
+		details := t.getSafeDetails(cv)
+		return fmt.Sprintf("%s\n%s", summary, details)
+	}
+
+	// Show summary with configurable indicator (Requirements 6.1, 6.6)
+	indicator := t.collapsibleConfig.TableHiddenIndicator
+	if indicator == "" {
+		indicator = DefaultRendererConfig.TableHiddenIndicator
+	}
+	return fmt.Sprintf("%s %s", summary, indicator)
+}
+
+// getSafeSummary gets the summary with error handling and fallbacks for table renderer
+func (t *tableRenderer) getSafeSummary(cv CollapsibleValue) string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error getting summary from collapsible value in table: %v\n", r)
+		}
+	}()
+
+	summary := cv.Summary()
+	if summary == "" {
+		return "[no summary]" // Requirement 11.2: default placeholder
+	}
+	return summary
+}
+
+// getSafeDetails gets and formats details with comprehensive error handling for table renderer
+func (t *tableRenderer) getSafeDetails(cv CollapsibleValue) string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error getting details from collapsible value in table: %v\n", r)
+		}
+	}()
+
+	details := cv.Details()
+	if details == nil {
+		// Requirement 11.1: treat nil details as non-collapsible, fall back to summary
+		return t.indentText(t.getSafeSummary(cv))
+	}
+
+	// Format details with error recovery
+	return t.formatDetailsForTableSafe(details)
+}
+
+// formatDetailsForTableSafe formats details content with comprehensive error handling for table display
+func (t *tableRenderer) formatDetailsForTableSafe(details any) string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error formatting details for table: %v\n", r)
+		}
+	}()
+
+	// Check for nested CollapsibleValue and prevent recursion (Requirement 11.5)
+	if cv, ok := details.(CollapsibleValue); ok {
+		// Treat nested CollapsibleValues as regular content to prevent infinite loops
+		return t.indentText(fmt.Sprintf("[nested collapsible: %s]", cv.Summary()))
+	}
+
 	switch d := details.(type) {
 	case string:
+		// Apply character limits if configured (Requirement 11.6)
+		if t.collapsibleConfig.MaxDetailLength > 0 && len(d) > t.collapsibleConfig.MaxDetailLength {
+			truncated := d[:t.collapsibleConfig.MaxDetailLength] + t.collapsibleConfig.TruncateIndicator
+			return t.indentText(truncated)
+		}
 		return t.indentText(d)
 	case []string:
-		return t.indentText(strings.Join(d, "\n"))
+		if len(d) == 0 {
+			return t.indentText("[empty list]")
+		}
+		joined := strings.Join(d, "\n")
+		// Apply character limits if configured (Requirement 11.6)
+		if t.collapsibleConfig.MaxDetailLength > 0 && len(joined) > t.collapsibleConfig.MaxDetailLength {
+			truncated := joined[:t.collapsibleConfig.MaxDetailLength] + t.collapsibleConfig.TruncateIndicator
+			return t.indentText(truncated)
+		}
+		return t.indentText(joined)
+	case map[string]any:
+		if len(d) == 0 {
+			return t.indentText("[empty map]")
+		}
+		var parts []string
+		for k, v := range d {
+			// Handle potential nil values in map
+			if v == nil {
+				parts = append(parts, fmt.Sprintf("%s: [nil]", k))
+			} else {
+				parts = append(parts, fmt.Sprintf("%s: %v", k, v))
+			}
+		}
+		result := strings.Join(parts, "\n")
+		// Apply character limits if configured (Requirement 11.6)
+		if t.collapsibleConfig.MaxDetailLength > 0 && len(result) > t.collapsibleConfig.MaxDetailLength {
+			truncated := result[:t.collapsibleConfig.MaxDetailLength] + t.collapsibleConfig.TruncateIndicator
+			return t.indentText(truncated)
+		}
+		return t.indentText(result)
+	case nil:
+		return t.indentText("[nil details]")
 	default:
-		return t.indentText(fmt.Sprint(d))
+		// Fallback to string representation for unknown types (Requirement 11.3)
+		result := fmt.Sprint(details)
+		// Apply character limits if configured (Requirement 11.6)
+		if t.collapsibleConfig.MaxDetailLength > 0 && len(result) > t.collapsibleConfig.MaxDetailLength {
+			truncated := result[:t.collapsibleConfig.MaxDetailLength] + t.collapsibleConfig.TruncateIndicator
+			return t.indentText(truncated)
+		}
+		return t.indentText(result)
 	}
+}
+
+// formatDetailsForTable formats details content with proper indentation for table display
+// This implements Requirement 6.3 for appropriate spacing and readability
+// This method is kept for backward compatibility but now uses the safe version
+func (t *tableRenderer) formatDetailsForTable(details any) string {
+	return t.formatDetailsForTableSafe(details)
 }
 
 // indentText adds proper indentation to text lines for table formatting

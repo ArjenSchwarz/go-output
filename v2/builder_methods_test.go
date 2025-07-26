@@ -485,11 +485,325 @@ func TestBuilder_DrawIO(t *testing.T) {
 	}
 }
 
+// TestBuilder_AddCollapsibleSection tests the AddCollapsibleSection method
+func TestBuilder_AddCollapsibleSection(t *testing.T) {
+	tests := []struct {
+		name             string
+		title            string
+		content          []Content
+		opts             []CollapsibleSectionOption
+		expectedLevel    int
+		expectedContent  int
+		expectedExpanded bool
+	}{
+		{
+			name:  "simple collapsible section",
+			title: "Expandable Details",
+			content: []Content{
+				NewTextContent("Detail text 1"),
+				NewTextContent("Detail text 2"),
+			},
+			opts:             []CollapsibleSectionOption{},
+			expectedLevel:    0,
+			expectedContent:  2,
+			expectedExpanded: false,
+		},
+		{
+			name:  "expanded section with level",
+			title: "Important Information",
+			content: []Content{
+				NewTextContent("Critical details"),
+			},
+			opts: []CollapsibleSectionOption{
+				WithSectionExpanded(true),
+				WithSectionLevel(2),
+			},
+			expectedLevel:    2,
+			expectedContent:  1,
+			expectedExpanded: true,
+		},
+		{
+			name:             "empty collapsible section",
+			title:            "No Details",
+			content:          []Content{},
+			opts:             []CollapsibleSectionOption{},
+			expectedLevel:    0,
+			expectedContent:  0,
+			expectedExpanded: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := New()
+			result := builder.AddCollapsibleSection(tt.title, tt.content, tt.opts...)
+
+			// Verify builder returns itself for chaining
+			if result != builder {
+				t.Error("AddCollapsibleSection() should return the builder for chaining")
+			}
+
+			// Build and check content
+			doc := builder.Build()
+			if len(doc.contents) != 1 {
+				t.Fatalf("Expected 1 content, got %d", len(doc.contents))
+			}
+
+			// Verify it's a DefaultCollapsibleSection
+			section, ok := doc.contents[0].(*DefaultCollapsibleSection)
+			if !ok {
+				t.Fatalf("Expected DefaultCollapsibleSection, got %T", doc.contents[0])
+			}
+
+			if section.Title() != tt.title {
+				t.Errorf("title = %q, want %q", section.Title(), tt.title)
+			}
+
+			if section.Level() != tt.expectedLevel {
+				t.Errorf("level = %d, want %d", section.Level(), tt.expectedLevel)
+			}
+
+			if section.IsExpanded() != tt.expectedExpanded {
+				t.Errorf("expanded = %t, want %t", section.IsExpanded(), tt.expectedExpanded)
+			}
+
+			if len(section.Content()) != tt.expectedContent {
+				t.Errorf("content count = %d, want %d", len(section.Content()), tt.expectedContent)
+			}
+		})
+	}
+}
+
+// TestBuilder_AddCollapsibleTable tests the AddCollapsibleTable method
+func TestBuilder_AddCollapsibleTable(t *testing.T) {
+	tests := []struct {
+		name      string
+		title     string
+		tableData []map[string]any
+		opts      []CollapsibleSectionOption
+	}{
+		{
+			name:  "simple collapsible table",
+			title: "User Data",
+			tableData: []map[string]any{
+				{"name": "Alice", "age": 30},
+				{"name": "Bob", "age": 25},
+			},
+			opts: []CollapsibleSectionOption{},
+		},
+		{
+			name:  "expanded collapsible table with level",
+			title: "Critical Issues",
+			tableData: []map[string]any{
+				{"severity": "high", "count": 5},
+				{"severity": "medium", "count": 10},
+			},
+			opts: []CollapsibleSectionOption{
+				WithSectionExpanded(true),
+				WithSectionLevel(1),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create table content first
+			table, err := NewTableContent("Test Table", tt.tableData)
+			if err != nil {
+				t.Fatalf("Failed to create table: %v", err)
+			}
+
+			builder := New()
+			result := builder.AddCollapsibleTable(tt.title, table, tt.opts...)
+
+			// Verify builder returns itself for chaining
+			if result != builder {
+				t.Error("AddCollapsibleTable() should return the builder for chaining")
+			}
+
+			// Build and check content
+			doc := builder.Build()
+			if len(doc.contents) != 1 {
+				t.Fatalf("Expected 1 content, got %d", len(doc.contents))
+			}
+
+			// Verify it's a DefaultCollapsibleSection containing the table
+			section, ok := doc.contents[0].(*DefaultCollapsibleSection)
+			if !ok {
+				t.Fatalf("Expected DefaultCollapsibleSection, got %T", doc.contents[0])
+			}
+
+			if section.Title() != tt.title {
+				t.Errorf("title = %q, want %q", section.Title(), tt.title)
+			}
+
+			// Verify it contains exactly one content item (the table)
+			sectionContent := section.Content()
+			if len(sectionContent) != 1 {
+				t.Fatalf("Expected 1 content in section, got %d", len(sectionContent))
+			}
+
+			// Verify the content is a table
+			_, ok = sectionContent[0].(*TableContent)
+			if !ok {
+				t.Fatalf("Expected TableContent in section, got %T", sectionContent[0])
+			}
+		})
+	}
+}
+
+// TestBuilder_CollapsibleSection tests the CollapsibleSection method with sub-builder
+func TestBuilder_CollapsibleSection(t *testing.T) {
+	tests := []struct {
+		name            string
+		title           string
+		opts            []CollapsibleSectionOption
+		contentCount    int
+		expectedLevel   int
+		expectedContent []string
+	}{
+		{
+			name:          "simple collapsible section with sub-builder",
+			title:         "Analysis Results",
+			opts:          []CollapsibleSectionOption{},
+			contentCount:  2,
+			expectedLevel: 0,
+		},
+		{
+			name:          "expanded section with level and sub-builder",
+			title:         "Important Findings",
+			opts:          []CollapsibleSectionOption{WithSectionLevel(1), WithSectionExpanded(true)},
+			contentCount:  3,
+			expectedLevel: 1,
+		},
+		{
+			name:          "empty collapsible section",
+			title:         "No Results",
+			opts:          []CollapsibleSectionOption{},
+			contentCount:  0,
+			expectedLevel: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := New()
+
+			var sectionBuilder *Builder
+			result := builder.CollapsibleSection(tt.title, func(b *Builder) {
+				sectionBuilder = b
+				// Add test content based on contentCount
+				for i := 0; i < tt.contentCount; i++ {
+					b.Text("Content " + string(rune('A'+i)))
+				}
+			}, tt.opts...)
+
+			// Verify builder returns itself for chaining
+			if result != builder {
+				t.Error("CollapsibleSection() should return the builder for chaining")
+			}
+
+			// Verify section builder is different from main builder
+			if sectionBuilder == builder {
+				t.Error("CollapsibleSection should create a new sub-builder")
+			}
+
+			// Build and check content
+			doc := builder.Build()
+			if len(doc.contents) != 1 {
+				t.Fatalf("Expected 1 content, got %d", len(doc.contents))
+			}
+
+			// Verify it's a DefaultCollapsibleSection
+			section, ok := doc.contents[0].(*DefaultCollapsibleSection)
+			if !ok {
+				t.Fatalf("Expected DefaultCollapsibleSection, got %T", doc.contents[0])
+			}
+
+			if section.Title() != tt.title {
+				t.Errorf("title = %q, want %q", section.Title(), tt.title)
+			}
+
+			if section.Level() != tt.expectedLevel {
+				t.Errorf("level = %d, want %d", section.Level(), tt.expectedLevel)
+			}
+
+			if len(section.Content()) != tt.contentCount {
+				t.Errorf("content count = %d, want %d", len(section.Content()), tt.contentCount)
+			}
+		})
+	}
+}
+
+// TestBuilder_CollapsibleSection_Mixed_Content tests collapsible sections with mixed content types
+func TestBuilder_CollapsibleSection_Mixed_Content(t *testing.T) {
+	builder := New()
+
+	// Create a collapsible section with mixed content
+	result := builder.CollapsibleSection("Analysis Report", func(b *Builder) {
+		b.Text("Summary: Found multiple issues")
+		b.Table("Issues", []map[string]any{
+			{"type": "error", "count": 5},
+			{"type": "warning", "count": 10},
+		}, WithKeys("type", "count"))
+		b.Text("See detailed breakdown above")
+	}, WithSectionExpanded(false), WithSectionLevel(2))
+
+	// Verify method chaining
+	if result != builder {
+		t.Error("CollapsibleSection() should return the builder for chaining")
+	}
+
+	// Build and verify
+	doc := builder.Build()
+	if len(doc.contents) != 1 {
+		t.Fatalf("Expected 1 content, got %d", len(doc.contents))
+	}
+
+	section, ok := doc.contents[0].(*DefaultCollapsibleSection)
+	if !ok {
+		t.Fatalf("Expected DefaultCollapsibleSection, got %T", doc.contents[0])
+	}
+
+	if section.Title() != "Analysis Report" {
+		t.Errorf("title = %q, want %q", section.Title(), "Analysis Report")
+	}
+
+	if section.Level() != 2 {
+		t.Errorf("level = %d, want %d", section.Level(), 2)
+	}
+
+	if section.IsExpanded() != false {
+		t.Errorf("expanded = %t, want %t", section.IsExpanded(), false)
+	}
+
+	// Verify content types
+	content := section.Content()
+	if len(content) != 3 {
+		t.Fatalf("Expected 3 content items, got %d", len(content))
+	}
+
+	// Check content types
+	_, ok1 := content[0].(*TextContent)
+	_, ok2 := content[1].(*TableContent)
+	_, ok3 := content[2].(*TextContent)
+
+	if !ok1 || !ok2 || !ok3 {
+		t.Error("Content types don't match expected: text, table, text")
+	}
+}
+
 // TestBuilder_MethodChaining tests that all methods can be chained
 func TestBuilder_MethodChaining(t *testing.T) {
 	builder := New()
 
-	// Chain all methods
+	// Create test table for collapsible section
+	testTable, err := NewTableContent("Test Table", []map[string]any{{"name": "Alice"}}, WithKeys("name"))
+	if err != nil {
+		t.Fatalf("Failed to create test table: %v", err)
+	}
+
+	// Chain all methods including new collapsible section methods
 	result := builder.
 		SetMetadata("author", "test").
 		Table("Users", []map[string]any{{"name": "Alice"}}, WithKeys("name")).
@@ -498,6 +812,11 @@ func TestBuilder_MethodChaining(t *testing.T) {
 		Raw("html", []byte("<p>HTML</p>")).
 		Section("Details", func(b *Builder) {
 			b.Text("Section content")
+		}).
+		AddCollapsibleSection("Expandable", []Content{NewTextContent("Detail")}).
+		AddCollapsibleTable("Table Section", testTable).
+		CollapsibleSection("Mixed Content", func(b *Builder) {
+			b.Text("Nested content")
 		}).
 		Graph("Dependencies", []Edge{{From: "A", To: "B"}}).
 		Chart("Custom", "flow", map[string]any{"data": "value"}).
@@ -512,7 +831,7 @@ func TestBuilder_MethodChaining(t *testing.T) {
 
 	// Verify all content was added
 	doc := builder.Build()
-	expectedCount := 10 // One for each method call above (SetMetadata doesn't add content)
+	expectedCount := 13 // One for each method call above (SetMetadata doesn't add content)
 	if len(doc.contents) != expectedCount {
 		t.Errorf("Expected %d contents after chaining, got %d", expectedCount, len(doc.contents))
 	}
