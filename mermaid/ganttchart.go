@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Ganttchart represents a Mermaid Gantt chart diagram
 type Ganttchart struct {
 	Settings   *Settings
 	Title      string
@@ -13,11 +14,13 @@ type Ganttchart struct {
 	Sections   map[string]*GanttchartSection
 }
 
+// GanttchartSection represents a section in a Gantt chart
 type GanttchartSection struct {
 	Title string
 	Tasks []GanttchartTask
 }
 
+// GanttchartTask represents a task in a Gantt chart section
 type GanttchartTask struct {
 	Title     string
 	StartDate string
@@ -25,6 +28,7 @@ type GanttchartTask struct {
 	Status    string
 }
 
+// NewGanttchart creates a new Gantt chart with the given settings
 func NewGanttchart(settings *Settings) *Ganttchart {
 	defaultSection := make(map[string]*GanttchartSection)
 	defaultSection["defaultmermaidsection"] = &GanttchartSection{}
@@ -37,10 +41,12 @@ func NewGanttchart(settings *Settings) *Ganttchart {
 	}
 }
 
+// GetDefaultSection returns the default section of the Gantt chart
 func (chart *Ganttchart) GetDefaultSection() *GanttchartSection {
 	return chart.Sections["defaultmermaidsection"]
 }
 
+// AddTask adds a task to the Gantt chart section
 func (section *GanttchartSection) AddTask(title string, startdate string, duration string, status string) {
 	newtask := GanttchartTask{
 		Title:     title,
@@ -51,6 +57,7 @@ func (section *GanttchartSection) AddTask(title string, startdate string, durati
 	section.Tasks = append(section.Tasks, newtask)
 }
 
+// RenderString renders the Gantt chart as a Mermaid string
 func (chart *Ganttchart) RenderString() string {
 	titleText := ""
 	if chart.Title != "" {

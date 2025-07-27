@@ -11,10 +11,15 @@ import (
 type UserAction int
 
 const (
+	// UserActionAbort represents the user's choice to abort the operation
 	UserActionAbort UserAction = iota
+	// UserActionSkip represents the user's choice to skip the current step
 	UserActionSkip
+	// UserActionRetry represents the user's choice to retry the operation
 	UserActionRetry
+	// UserActionApplyFix represents the user's choice to apply a fix
 	UserActionApplyFix
+	// UserActionIgnore represents the user's choice to ignore the error
 	UserActionIgnore
 )
 
@@ -156,31 +161,31 @@ func (r *InteractiveErrorResolver) ResolveError(err OutputError) error {
 
 // displayError shows the error information to the user
 func (r *InteractiveErrorResolver) displayError(err OutputError) {
-	fmt.Fprintf(r.output, "\n🚨 Error Encountered:\n")
-	fmt.Fprintf(r.output, "Code: %s\n", err.Code())
-	fmt.Fprintf(r.output, "Severity: %s\n", err.Severity().String())
-	fmt.Fprintf(r.output, "Message: %s\n", err.Error())
+	_, _ = fmt.Fprintf(r.output, "\n🚨 Error Encountered:\n")
+	_, _ = fmt.Fprintf(r.output, "Code: %s\n", err.Code())
+	_, _ = fmt.Fprintf(r.output, "Severity: %s\n", err.Severity().String())
+	_, _ = fmt.Fprintf(r.output, "Message: %s\n", err.Error())
 
 	context := err.Context()
 	if context.Operation != "" {
-		fmt.Fprintf(r.output, "Operation: %s\n", context.Operation)
+		_, _ = fmt.Fprintf(r.output, "Operation: %s\n", context.Operation)
 	}
 	if context.Field != "" {
-		fmt.Fprintf(r.output, "Field: %s\n", context.Field)
+		_, _ = fmt.Fprintf(r.output, "Field: %s\n", context.Field)
 	}
 	if context.Value != nil {
-		fmt.Fprintf(r.output, "Value: %v\n", context.Value)
+		_, _ = fmt.Fprintf(r.output, "Value: %v\n", context.Value)
 	}
 
 	suggestions := err.Suggestions()
 	if len(suggestions) > 0 {
-		fmt.Fprintf(r.output, "\nSuggestions:\n")
+		_, _ = fmt.Fprintf(r.output, "\nSuggestions:\n")
 		for _, suggestion := range suggestions {
-			fmt.Fprintf(r.output, "  • %s\n", suggestion)
+			_, _ = fmt.Fprintf(r.output, "  • %s\n", suggestion)
 		}
 	}
 
-	fmt.Fprintf(r.output, "\n")
+	_, _ = fmt.Fprintf(r.output, "\n")
 }
 
 // createPrompt creates a user prompt based on the error type
@@ -242,7 +247,7 @@ func (r *InteractiveErrorResolver) createPrompt(err OutputError) UserPrompt {
 // promptUser displays the prompt and gets user input
 func (r *InteractiveErrorResolver) promptUser(prompt UserPrompt) (UserAction, *AutoFix) {
 	// Display the prompt
-	fmt.Fprintf(r.output, "%s\n\n", prompt.Message)
+	_, _ = fmt.Fprintf(r.output, "%s\n\n", prompt.Message)
 
 	// Display options
 	for _, option := range prompt.Options {
@@ -250,10 +255,10 @@ func (r *InteractiveErrorResolver) promptUser(prompt UserPrompt) (UserAction, *A
 		if prompt.Options[prompt.DefaultIdx].Key == option.Key {
 			defaultMarker = " (default)"
 		}
-		fmt.Fprintf(r.output, "  [%s] %s%s\n", option.Key, option.Description, defaultMarker)
+		_, _ = fmt.Fprintf(r.output, "  [%s] %s%s\n", option.Key, option.Description, defaultMarker)
 	}
 
-	fmt.Fprintf(r.output, "\nEnter your choice: ")
+	_, _ = fmt.Fprintf(r.output, "\nEnter your choice: ")
 
 	// Get user input
 	if !r.input.Scan() {
@@ -276,13 +281,13 @@ func (r *InteractiveErrorResolver) promptUser(prompt UserPrompt) (UserAction, *A
 	}
 
 	// Invalid input
-	fmt.Fprintf(r.output, "Invalid choice '%s'. Please try again.\n\n", userInput)
+	_, _ = fmt.Fprintf(r.output, "Invalid choice '%s'. Please try again.\n\n", userInput)
 	return r.promptUser(prompt) // Recursive call to try again
 }
 
 // displayMessage shows a message to the user
 func (r *InteractiveErrorResolver) displayMessage(message string) {
-	fmt.Fprintf(r.output, "%s\n", message)
+	_, _ = fmt.Fprintf(r.output, "%s\n", message)
 }
 
 // getAvailableFixes returns available automatic fixes for an error
@@ -404,26 +409,26 @@ func (g *GuidedErrorResolution) AddStep(step ResolutionStep) {
 
 // Execute runs the guided resolution workflow
 func (g *GuidedErrorResolution) Execute() error {
-	fmt.Fprintf(g.resolver.output, "\n🔧 Starting guided error resolution...\n")
-	fmt.Fprintf(g.resolver.output, "This will walk you through %d steps to resolve the error.\n\n", len(g.steps))
+	_, _ = fmt.Fprintf(g.resolver.output, "\n🔧 Starting guided error resolution...\n")
+	_, _ = fmt.Fprintf(g.resolver.output, "This will walk you through %d steps to resolve the error.\n\n", len(g.steps))
 
 	for i, step := range g.steps {
-		fmt.Fprintf(g.resolver.output, "Step %d/%d: %s\n", i+1, len(g.steps), step.Title)
-		fmt.Fprintf(g.resolver.output, "%s\n\n", step.Description)
+		_, _ = fmt.Fprintf(g.resolver.output, "Step %d/%d: %s\n", i+1, len(g.steps), step.Title)
+		_, _ = fmt.Fprintf(g.resolver.output, "%s\n\n", step.Description)
 
 		// Ask user if they want to proceed with this step
 		if !g.confirmStep(step, i+1) {
 			if !step.Optional {
 				return fmt.Errorf("required step %d was skipped", i+1)
 			}
-			fmt.Fprintf(g.resolver.output, "Skipping optional step %d\n\n", i+1)
+			_, _ = fmt.Fprintf(g.resolver.output, "Skipping optional step %d\n\n", i+1)
 			continue
 		}
 
 		// Execute the step
 		if step.Action != nil {
 			if err := step.Action(); err != nil {
-				fmt.Fprintf(g.resolver.output, "❌ Step %d failed: %v\n", i+1, err)
+				_, _ = fmt.Fprintf(g.resolver.output, "❌ Step %d failed: %v\n", i+1, err)
 				if !step.Optional {
 					return fmt.Errorf("required step %d failed: %w", i+1, err)
 				}
@@ -434,25 +439,25 @@ func (g *GuidedErrorResolution) Execute() error {
 		// Validate the step if validation is provided
 		if step.Validation != nil {
 			if success, message := step.Validation(); !success {
-				fmt.Fprintf(g.resolver.output, "❌ Step %d validation failed: %s\n", i+1, message)
+				_, _ = fmt.Fprintf(g.resolver.output, "❌ Step %d validation failed: %s\n", i+1, message)
 				if !step.Optional {
 					return fmt.Errorf("step %d validation failed: %s", i+1, message)
 				}
 			} else {
-				fmt.Fprintf(g.resolver.output, "✅ Step %d completed successfully", i+1)
+				_, _ = fmt.Fprintf(g.resolver.output, "✅ Step %d completed successfully", i+1)
 				if message != "" {
-					fmt.Fprintf(g.resolver.output, ": %s", message)
+					_, _ = fmt.Fprintf(g.resolver.output, ": %s", message)
 				}
-				fmt.Fprintf(g.resolver.output, "\n")
+				_, _ = fmt.Fprintf(g.resolver.output, "\n")
 			}
 		} else {
-			fmt.Fprintf(g.resolver.output, "✅ Step %d completed\n", i+1)
+			_, _ = fmt.Fprintf(g.resolver.output, "✅ Step %d completed\n", i+1)
 		}
 
-		fmt.Fprintf(g.resolver.output, "\n")
+		_, _ = fmt.Fprintf(g.resolver.output, "\n")
 	}
 
-	fmt.Fprintf(g.resolver.output, "🎉 Guided resolution completed successfully!\n\n")
+	_, _ = fmt.Fprintf(g.resolver.output, "🎉 Guided resolution completed successfully!\n\n")
 	return nil
 }
 
@@ -463,7 +468,7 @@ func (g *GuidedErrorResolution) confirmStep(step ResolutionStep, stepNum int) bo
 		optionalText = " (optional)"
 	}
 
-	fmt.Fprintf(g.resolver.output, "Proceed with step %d%s? [Y/n]: ", stepNum, optionalText)
+	_, _ = fmt.Fprintf(g.resolver.output, "Proceed with step %d%s? [Y/n]: ", stepNum, optionalText)
 
 	if !g.resolver.input.Scan() {
 		return true // Default to yes if input fails
@@ -513,16 +518,16 @@ func (r *RetryMechanism) ExecuteWithRetry(operation func() error, operationName 
 	var lastErr error
 
 	for attempt := 1; attempt <= r.maxAttempts; attempt++ {
-		fmt.Fprintf(r.resolver.output, "Attempt %d/%d: %s\n", attempt, r.maxAttempts, operationName)
+		_, _ = fmt.Fprintf(r.resolver.output, "Attempt %d/%d: %s\n", attempt, r.maxAttempts, operationName)
 
 		err := operation()
 		if err == nil {
-			fmt.Fprintf(r.resolver.output, "✅ Operation succeeded on attempt %d\n", attempt)
+			_, _ = fmt.Fprintf(r.resolver.output, "✅ Operation succeeded on attempt %d\n", attempt)
 			return nil
 		}
 
 		lastErr = err
-		fmt.Fprintf(r.resolver.output, "❌ Attempt %d failed: %v\n", attempt, err)
+		_, _ = fmt.Fprintf(r.resolver.output, "❌ Attempt %d failed: %v\n", attempt, err)
 
 		// If this is the last attempt, don't prompt for retry
 		if attempt == r.maxAttempts {
@@ -547,7 +552,7 @@ func (r *RetryMechanism) ExecuteWithRetry(operation func() error, operationName 
 
 // promptForRetry asks the user if they want to retry the operation
 func (r *RetryMechanism) promptForRetry(currentAttempt, maxAttempts int, err error) bool {
-	fmt.Fprintf(r.resolver.output, "\nRetry the operation? (%d/%d attempts remaining) [Y/n]: ",
+	_, _ = fmt.Fprintf(r.resolver.output, "\nRetry the operation? (%d/%d attempts remaining) [Y/n]: ",
 		maxAttempts-currentAttempt, maxAttempts)
 
 	if !r.resolver.input.Scan() {
@@ -562,7 +567,7 @@ func (r *RetryMechanism) promptForRetry(currentAttempt, maxAttempts int, err err
 func (r *RetryMechanism) applyBackoff(attempt int) {
 	// Simple backoff: wait for attempt seconds
 	// In a real implementation, this might use time.Sleep()
-	fmt.Fprintf(r.resolver.output, "Waiting %d seconds before retry...\n", attempt)
+	_, _ = fmt.Fprintf(r.resolver.output, "Waiting %d seconds before retry...\n", attempt)
 }
 
 // ErrorResolutionWorkflow combines multiple resolution strategies
@@ -607,14 +612,14 @@ func (w *ErrorResolutionWorkflow) tryAutoFix(err OutputError) error {
 
 	// Try the first available fix
 	fix := fixes[0]
-	fmt.Fprintf(w.resolver.output, "Attempting automatic fix: %s\n", fix.Name)
+	_, _ = fmt.Fprintf(w.resolver.output, "Attempting automatic fix: %s\n", fix.Name)
 
 	if err := w.resolver.applyAutoFix(&fix); err != nil {
-		fmt.Fprintf(w.resolver.output, "Automatic fix failed: %v\n", err)
+		_, _ = fmt.Fprintf(w.resolver.output, "Automatic fix failed: %v\n", err)
 		return err
 	}
 
-	fmt.Fprintf(w.resolver.output, "✅ Automatic fix applied successfully\n")
+	_, _ = fmt.Fprintf(w.resolver.output, "✅ Automatic fix applied successfully\n")
 	return nil
 }
 
@@ -640,7 +645,7 @@ func (w *ErrorResolutionWorkflow) addFormatResolutionSteps(err OutputError) {
 		Title:       "Verify Output Format",
 		Description: "Check if the specified output format is supported",
 		Action: func() error {
-			fmt.Fprintf(w.resolver.output, "Supported formats: json, yaml, csv, html, table, markdown, dot, mermaid\n")
+			_, _ = fmt.Fprintf(w.resolver.output, "Supported formats: json, yaml, csv, html, table, markdown, dot, mermaid\n")
 			return nil
 		},
 		Validation: func() (bool, string) {
@@ -652,7 +657,7 @@ func (w *ErrorResolutionWorkflow) addFormatResolutionSteps(err OutputError) {
 		Title:       "Choose Alternative Format",
 		Description: "Select a compatible output format",
 		Action: func() error {
-			fmt.Fprintf(w.resolver.output, "Recommended: Use 'json' for maximum compatibility\n")
+			_, _ = fmt.Fprintf(w.resolver.output, "Recommended: Use 'json' for maximum compatibility\n")
 			return nil
 		},
 		Optional: true,
@@ -666,7 +671,7 @@ func (w *ErrorResolutionWorkflow) addColumnResolutionSteps(err OutputError) {
 		Description: "Determine which column is missing from the data",
 		Action: func() error {
 			if err.Context().Field != "" {
-				fmt.Fprintf(w.resolver.output, "Missing column: %s\n", err.Context().Field)
+				_, _ = fmt.Fprintf(w.resolver.output, "Missing column: %s\n", err.Context().Field)
 			}
 			return nil
 		},
@@ -676,7 +681,7 @@ func (w *ErrorResolutionWorkflow) addColumnResolutionSteps(err OutputError) {
 		Title:       "Add Default Values",
 		Description: "Add the missing column with appropriate default values",
 		Action: func() error {
-			fmt.Fprintf(w.resolver.output, "Consider adding default values for missing data\n")
+			_, _ = fmt.Fprintf(w.resolver.output, "Consider adding default values for missing data\n")
 			return nil
 		},
 		Optional: true,
@@ -690,7 +695,7 @@ func (w *ErrorResolutionWorkflow) addFilePathResolutionSteps(err OutputError) {
 		Description: "Verify the file path exists and is writable",
 		Action: func() error {
 			if err.Context().Value != nil {
-				fmt.Fprintf(w.resolver.output, "Problematic path: %v\n", err.Context().Value)
+				_, _ = fmt.Fprintf(w.resolver.output, "Problematic path: %v\n", err.Context().Value)
 			}
 			return nil
 		},
@@ -700,7 +705,7 @@ func (w *ErrorResolutionWorkflow) addFilePathResolutionSteps(err OutputError) {
 		Title:       "Create Directory",
 		Description: "Create the directory structure if it doesn't exist",
 		Action: func() error {
-			fmt.Fprintf(w.resolver.output, "Use 'mkdir -p' to create directory structure\n")
+			_, _ = fmt.Fprintf(w.resolver.output, "Use 'mkdir -p' to create directory structure\n")
 			return nil
 		},
 		Optional: true,
@@ -713,8 +718,8 @@ func (w *ErrorResolutionWorkflow) addGenericResolutionSteps(err OutputError) {
 		Title:       "Review Error Details",
 		Description: "Examine the error message and context for clues",
 		Action: func() error {
-			fmt.Fprintf(w.resolver.output, "Error: %s\n", err.Error())
-			fmt.Fprintf(w.resolver.output, "Code: %s\n", err.Code())
+			_, _ = fmt.Fprintf(w.resolver.output, "Error: %s\n", err.Error())
+			_, _ = fmt.Fprintf(w.resolver.output, "Code: %s\n", err.Code())
 			return nil
 		},
 	})
@@ -725,9 +730,9 @@ func (w *ErrorResolutionWorkflow) addGenericResolutionSteps(err OutputError) {
 		Action: func() error {
 			suggestions := err.Suggestions()
 			if len(suggestions) > 0 {
-				fmt.Fprintf(w.resolver.output, "Available suggestions:\n")
+				_, _ = fmt.Fprintf(w.resolver.output, "Available suggestions:\n")
 				for i, suggestion := range suggestions {
-					fmt.Fprintf(w.resolver.output, "%d. %s\n", i+1, suggestion)
+					_, _ = fmt.Fprintf(w.resolver.output, "%d. %s\n", i+1, suggestion)
 				}
 			}
 			return nil

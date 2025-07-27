@@ -24,6 +24,19 @@ import (
 	"github.com/ArjenSchwarz/go-output/templates"
 )
 
+// Output format constants
+const (
+	FormatJSON     = "json"
+	FormatYAML     = "yaml"
+	FormatCSV      = "csv"
+	FormatHTML     = "html"
+	FormatTable    = "table"
+	FormatMarkdown = "markdown"
+	FormatDOT      = "dot"
+	FormatMermaid  = "mermaid"
+	FormatDrawio   = "drawio"
+)
+
 var buffer bytes.Buffer
 var toc []string
 
@@ -140,7 +153,7 @@ func (output *OutputArray) validateForFormat() error {
 	}
 
 	switch output.Settings.OutputFormat {
-	case "mermaid":
+	case FormatMermaid:
 		// For mermaid format, we need either FromToColumns for flowcharts or specific chart configuration
 		hasFromToColumns := output.Settings.FromToColumns != nil
 		hasChartConfig := output.Settings.MermaidSettings != nil &&
@@ -157,7 +170,7 @@ func (output *OutputArray) validateForFormat() error {
 				).
 				Build()
 		}
-	case "dot":
+	case FormatDOT:
 		if output.Settings.FromToColumns == nil {
 			return NewErrorBuilder(ErrMissingRequired, "dot format requires FromToColumns configuration").
 				WithField("FromToColumns").
@@ -167,7 +180,7 @@ func (output *OutputArray) validateForFormat() error {
 				).
 				Build()
 		}
-	case "drawio":
+	case FormatDrawio:
 		if !output.Settings.DrawIOHeader.IsSet() {
 			return NewErrorBuilder(ErrMissingRequired, "drawio format requires DrawIOHeader configuration").
 				WithField("DrawIOHeader").
@@ -275,30 +288,30 @@ func (output *OutputArray) Write() error {
 // generateOutput generates output for stdout/S3 based on OutputFormat
 func (output *OutputArray) generateOutput() ([]byte, error) {
 	switch output.Settings.OutputFormat {
-	case "csv":
+	case FormatCSV:
 		if buffer.Len() == 0 {
 			return output.toCSV(), nil
 		}
 		return buffer.Bytes(), nil
-	case "html":
+	case FormatHTML:
 		if buffer.Len() == 0 {
 			return output.toHTML(), nil
 		}
 		return output.bufferToHTML(), nil
-	case "table":
+	case FormatTable:
 		if buffer.Len() == 0 {
 			return output.toTable(), nil
 		}
 		return buffer.Bytes(), nil
-	case "markdown":
+	case FormatMarkdown:
 		if buffer.Len() == 0 {
 			return output.toMarkdown(), nil
 		}
 		return output.bufferToMarkdown(), nil
-	case "mermaid":
+	case FormatMermaid:
 		// Validation already handled in Validate(), so this should not occur
 		return output.toMermaid(), nil
-	case "drawio":
+	case FormatDrawio:
 		// Special case: drawio writes directly to file
 		if !output.Settings.DrawIOHeader.IsSet() {
 			return nil, NewProcessingError(ErrMissingRequired, "drawio format requires DrawIOHeader configuration", false)
@@ -307,10 +320,10 @@ func (output *OutputArray) generateOutput() ([]byte, error) {
 			return nil, NewProcessingError(ErrFileWrite, fmt.Sprintf("failed to create drawio CSV: %v", err), false)
 		}
 		return nil, nil
-	case "dot":
+	case FormatDOT:
 		// Validation already handled in Validate(), so this should not occur
 		return output.toDot(), nil
-	case "yaml":
+	case FormatYAML:
 		if buffer.Len() == 0 {
 			return output.toYAML(), nil
 		}
@@ -331,29 +344,29 @@ func (output *OutputArray) generateFileOutput() ([]byte, error) {
 	}
 
 	switch format {
-	case "csv":
+	case FormatCSV:
 		if buffer.Len() == 0 {
 			return output.toCSV(), nil
 		}
 		return buffer.Bytes(), nil
-	case "html":
+	case FormatHTML:
 		if buffer.Len() == 0 {
 			return output.toHTML(), nil
 		}
 		return output.bufferToHTML(), nil
-	case "table":
+	case FormatTable:
 		if buffer.Len() == 0 {
 			return output.toTable(), nil
 		}
 		return buffer.Bytes(), nil
-	case "markdown":
+	case FormatMarkdown:
 		if buffer.Len() == 0 {
 			return output.toMarkdown(), nil
 		}
 		return output.bufferToMarkdown(), nil
-	case "mermaid":
+	case FormatMermaid:
 		return output.toMermaid(), nil
-	case "drawio":
+	case FormatDrawio:
 		// Special case: drawio writes directly to file
 		if !output.Settings.DrawIOHeader.IsSet() {
 			return nil, NewProcessingError(ErrMissingRequired, "drawio format requires DrawIOHeader configuration", false)
@@ -362,7 +375,7 @@ func (output *OutputArray) generateFileOutput() ([]byte, error) {
 			return nil, NewProcessingError(ErrFileWrite, fmt.Sprintf("failed to create drawio CSV: %v", err), false)
 		}
 		return nil, nil
-	case "dot":
+	case FormatDOT:
 		return output.toDot(), nil
 	case "yaml":
 		if buffer.Len() == 0 {
@@ -441,8 +454,7 @@ func (output OutputArray) toMermaid() []byte {
 		for _, holder := range output.Contents {
 			label := output.toString(holder.Contents[output.Settings.FromToColumns.From])
 			var value float64
-			switch converted := holder.Contents[output.Settings.FromToColumns.To].(type) {
-			case float64:
+			if converted, ok := holder.Contents[output.Settings.FromToColumns.To].(float64); ok {
 				value = converted
 			}
 			mermaid.AddValue(label, value)
@@ -489,36 +501,38 @@ func (output OutputArray) splitFromToValues() []fromToValues {
 	return resultList
 }
 
+// AddHeader adds a header to the output buffer and table of contents
 func (output OutputArray) AddHeader(header string) {
 	switch output.Settings.OutputFormat {
-	case "html":
+	case FormatHTML:
 		id := slug.Make(header)
 		buffer.Write([]byte(fmt.Sprintf("<h2 id='%s'>%s</h2>\n", id, header)))
 		toc = append(toc, fmt.Sprintf("<a href='#%s'>%s</a>", id, header))
-	case "table":
+	case FormatTable:
 		buffer.Write([]byte(fmt.Sprintf("\n%s\n", header)))
-	case "markdown":
+	case FormatMarkdown:
 		buffer.Write([]byte(fmt.Sprintf("## %s\n", header)))
 		id := slug.Make(header)
 		toc = append(toc, fmt.Sprintf("[%s](#%s)", header, id))
 	}
 }
 
+// AddToBuffer adds the current output to the internal buffer
 func (output OutputArray) AddToBuffer() {
 	switch output.Settings.OutputFormat {
-	case "csv":
+	case FormatCSV:
 		buffer.Write(output.toCSV())
-	case "html":
+	case FormatHTML:
 		buffer.Write(output.HtmlTableOnly())
-	case "table":
+	case FormatTable:
 		buffer.Write(output.toTable())
-	case "markdown":
+	case FormatMarkdown:
 		buffer.Write(output.toMarkdown())
-	case "mermaid":
+	case FormatMermaid:
 		buffer.Write(output.toMermaid())
-	case "drawio":
+	case FormatDrawio:
 		// drawio format writes directly to file, no buffer needed
-	case "dot":
+	case FormatDOT:
 		// Note: This should be validated before calling AddToBuffer
 		// The validation should happen in the calling code
 		buffer.Write(output.toDot())
@@ -650,7 +664,7 @@ func (output OutputArray) buildTable() table.Writer {
 	t := table.NewWriter()
 	if output.Settings.Title != "" {
 		// Ugly hack because go-pretty uses a h1 (#) for the table title in Markdown
-		if (output.Settings.OutputFormat == "markdown") && buffer.Len() != 0 {
+		if (output.Settings.OutputFormat == FormatMarkdown) && buffer.Len() != 0 {
 			buffer.WriteString(fmt.Sprintf("#### %s\n\n", output.Settings.Title))
 		} else {
 			t.SetTitle(output.Settings.Title)
@@ -662,7 +676,7 @@ func (output OutputArray) buildTable() table.Writer {
 	if output.Settings.OutputFile == "" || output.Settings.S3Bucket.Bucket != "" {
 		target = os.Stdout
 	} else {
-		//Always create if append flag isn't provided
+		// Always create if append flag isn't provided
 		if !output.Settings.ShouldAppend {
 			target, _ = os.Create(output.Settings.OutputFile)
 		} else {
@@ -687,6 +701,7 @@ func (output OutputArray) buildTable() table.Writer {
 	return t
 }
 
+// KeysAsInterface returns the keys as an interface slice for table rendering
 func (output *OutputArray) KeysAsInterface() []interface{} {
 	b := make([]interface{}, len(output.Keys))
 	for i := range output.Keys {
@@ -696,6 +711,7 @@ func (output *OutputArray) KeysAsInterface() []interface{} {
 	return b
 }
 
+// ContentsAsInterfaces returns the contents as a 2D interface slice for table rendering
 func (output *OutputArray) ContentsAsInterfaces() [][]interface{} {
 	total := make([][]interface{}, 0)
 

@@ -43,11 +43,21 @@ const (
 // ErrorSeverity represents the severity level of an error
 type ErrorSeverity int
 
+// Error severity levels
 const (
+	// SeverityInfo represents informational messages
 	SeverityInfo ErrorSeverity = iota
+	// SeverityWarning represents warning messages
 	SeverityWarning
+	// SeverityError represents error messages
 	SeverityError
+	// SeverityFatal represents fatal error messages
 	SeverityFatal
+)
+
+// Common string constants
+const (
+	unknownString = "unknown"
 )
 
 // String returns the string representation of ErrorSeverity
@@ -62,7 +72,7 @@ func (s ErrorSeverity) String() string {
 	case SeverityInfo:
 		return "info"
 	default:
-		return "unknown"
+		return unknownString
 	}
 }
 
@@ -83,25 +93,6 @@ var contextPool = &sync.Pool{
 	New: func() interface{} {
 		return make(map[string]interface{}, 4) // Pre-allocate space for common case
 	},
-}
-
-// newContextFromPool creates a new ErrorContext with pooled metadata map
-func newContextFromPool() ErrorContext {
-	return ErrorContext{
-		Metadata: contextPool.Get().(map[string]interface{}),
-	}
-}
-
-// returnContextToPool returns the metadata map to the pool
-func (c *ErrorContext) returnToPool() {
-	if c.Metadata != nil {
-		// Clear the map but keep the underlying storage
-		for k := range c.Metadata {
-			delete(c.Metadata, k)
-		}
-		contextPool.Put(c.Metadata)
-		c.Metadata = nil
-	}
 }
 
 // buildContext builds the context using lazy evaluation if available
@@ -194,15 +185,6 @@ func newBaseErrorFromPool() *baseError {
 	err.cachedMessage = ""
 	err.messageBuilt = false
 	return err
-}
-
-// returnToPool returns a baseError to the pool for reuse
-func (e *baseError) returnToPool() {
-	// Clear any references to prevent memory leaks
-	e.cause = nil
-	e.lazyMessage = nil
-	e.context.Metadata = nil
-	errorPool.Put(e)
 }
 
 // Error implements the error interface with lazy message generation
@@ -530,7 +512,7 @@ func (m ErrorMode) String() string {
 	case ErrorModeInteractive:
 		return "interactive"
 	default:
-		return "unknown"
+		return unknownString
 	}
 }
 

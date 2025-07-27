@@ -35,6 +35,7 @@ var TableStyles = map[string]table.Style{
 	"ColoredYellowWhiteOnBlack":  table.StyleColoredYellowWhiteOnBlack,
 }
 
+// OutputSettings contains configuration options for output formatting
 type OutputSettings struct {
 	// Defines whether a table of contents should be added
 	HasTOC bool
@@ -78,6 +79,7 @@ type OutputSettings struct {
 	ProgressOptions ProgressOptions
 }
 
+// S3Output contains configuration for S3 output
 type S3Output struct {
 	S3Client *s3.Client
 	Bucket   string
@@ -116,7 +118,7 @@ func (settings *OutputSettings) AddFromToColumns(from string, to string) {
 	settings.FromToColumns = &result
 }
 
-// AddFromToColumns sets from to columns for graphical formats
+// AddFromToColumnsWithLabel sets from to columns for graphical formats with a label
 func (settings *OutputSettings) AddFromToColumnsWithLabel(from string, to string, label string) {
 	result := FromToColumns{
 		From:  from,
@@ -131,17 +133,19 @@ func (settings *OutputSettings) SetOutputFormat(format string) {
 	settings.OutputFormat = strings.ToLower(format)
 }
 
+// GetDefaultExtension returns the default file extension for the current output format
 func (settings *OutputSettings) GetDefaultExtension() string {
 	switch settings.OutputFormat {
-	case "markdown":
+	case FormatMarkdown:
 		return ".md"
-	case "table":
+	case FormatTable:
 		return ".txt"
 	default:
 		return "." + settings.OutputFormat
 	}
 }
 
+// SetS3Bucket configures S3 output settings
 func (settings *OutputSettings) SetS3Bucket(client *s3.Client, bucket string, path string) {
 	settings.S3Bucket = S3Output{
 		S3Client: client,
@@ -152,21 +156,22 @@ func (settings *OutputSettings) SetS3Bucket(client *s3.Client, bucket string, pa
 
 // NeedsFromToColumns verifies if a format requires from and to columns to be set
 func (settings *OutputSettings) NeedsFromToColumns() bool {
-	if settings.OutputFormat == "dot" || settings.OutputFormat == "mermaid" {
+	if settings.OutputFormat == FormatDOT || settings.OutputFormat == FormatMermaid {
 		return true
 	}
 	return false
 }
 
+// GetSeparator returns the appropriate separator for the current output format
 func (settings *OutputSettings) GetSeparator() string {
 	switch settings.OutputFormat {
-	case "table":
+	case FormatTable:
 		return "\n"
-	case "markdown":
+	case FormatMarkdown:
 		return "\n"
-	case "csv":
+	case FormatCSV:
 		return "\n"
-	case "dot":
+	case FormatDOT:
 		return ","
 	default:
 		return ", "
@@ -552,7 +557,7 @@ func (settings *OutputSettings) validateSettingCombinations() error {
 	}
 
 	// Validate table-specific settings with non-table formats
-	if settings.OutputFormat != "table" && settings.OutputFormat != "html" && settings.OutputFormat != "markdown" {
+	if settings.OutputFormat != FormatTable && settings.OutputFormat != FormatHTML && settings.OutputFormat != FormatMarkdown {
 		// Only warn if TableMaxColumnWidth has been explicitly set to a non-default value
 		if settings.TableMaxColumnWidth != 0 && settings.TableMaxColumnWidth != DefaultTableMaxColumnWidth {
 			return NewErrorBuilder(ErrIncompatibleConfig, fmt.Sprintf("TableMaxColumnWidth setting is not applicable for %s format", settings.OutputFormat)).

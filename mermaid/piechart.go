@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// PieChart represents a Mermaid pie chart diagram
 type PieChart struct {
 	Settings *Settings
 	Title    string
@@ -12,15 +13,18 @@ type PieChart struct {
 	ShowData bool
 }
 
+// PieChartValue represents a value in a pie chart
 type PieChartValue struct {
 	Label string
 	Value float64
 }
 
+// NewPiechart creates a new pie chart with the given settings
 func NewPiechart(settings *Settings) *PieChart {
 	return &PieChart{Settings: settings}
 }
 
+// AddValue adds a value to the pie chart
 func (piechart *PieChart) AddValue(label string, value float64) {
 	if piechart.Values == nil {
 		piechart.Values = make([]PieChartValue, 0)
@@ -32,6 +36,7 @@ func (piechart *PieChart) AddValue(label string, value float64) {
 	piechart.Values = append(piechart.Values, node)
 }
 
+// RenderString renders the pie chart as a Mermaid string
 func (piechart *PieChart) RenderString() string {
 	showdataText := ""
 	if piechart.ShowData {
