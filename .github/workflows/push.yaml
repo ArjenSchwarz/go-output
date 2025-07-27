@@ -9,19 +9,25 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: '1.24' # The Go version to download (if necessary) and use.
-      - name: Check formatting
+      - name: Format and check v2 Go files
         run: |
-          unformatted=$(gofmt -l $(git ls-files '*.go'))
+          cd v2
+          go fmt ./...
+          cd ..
+          unformatted=$(gofmt -l $(git ls-files 'v2/*.go'))
           if [ -n "$unformatted" ]; then
             echo "The following files are not formatted:" >&2
             echo "$unformatted" >&2
             exit 1
           fi
-      - name: golangci-lint
+      - name: golangci-lint (v2)
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
           skip-cache: true
-      - run: |
-          go build
+          working-directory: v2
+      - name: Build and test v2
+        run: |
+          cd v2
+          go build ./...
           go test ./...
