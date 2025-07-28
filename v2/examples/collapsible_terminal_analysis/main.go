@@ -77,9 +77,9 @@ func generateSystemAnalysisReport() {
 	// Create alerts section
 	alertsData := []map[string]any{
 		{
-			"severity": "Warning",
+			"severity":  "Warning",
 			"component": "CPU",
-			"message": "High CPU usage detected on node process",
+			"message":   "High CPU usage detected on node process",
 			"details": []string{
 				"Current usage: 45.2%",
 				"Threshold: 40.0%",
@@ -88,9 +88,9 @@ func generateSystemAnalysisReport() {
 			},
 		},
 		{
-			"severity": "Info",
+			"severity":  "Info",
 			"component": "Disk",
-			"message": "Disk usage approaching threshold on root partition",
+			"message":   "Disk usage approaching threshold on root partition",
 			"details": []string{
 				"Current usage: 45%",
 				"Threshold: 50%",
@@ -135,19 +135,19 @@ func generateCodeQualityReport() {
 	qualityData := []map[string]any{
 		{
 			"metric": "Test Coverage",
-			"value": "78%",
+			"value":  "78%",
 			"target": "80%",
 			"status": "Below Target",
 			"files": []string{
 				"src/auth/login.ts: 65%",
-				"src/utils/validation.ts: 45%", 
+				"src/utils/validation.ts: 45%",
 				"src/components/Modal.tsx: 90%",
 				"src/hooks/useApi.ts: 72%",
 			},
 		},
 		{
 			"metric": "Code Complexity",
-			"value": "7.2",
+			"value":  "7.2",
 			"target": "< 10.0",
 			"status": "Good",
 			"files": []string{
@@ -158,7 +158,7 @@ func generateCodeQualityReport() {
 		},
 		{
 			"metric": "Duplication",
-			"value": "5.2%",
+			"value":  "5.2%",
 			"target": "< 5.0%",
 			"status": "Above Target",
 			"files": []string{
@@ -173,7 +173,7 @@ func generateCodeQualityReport() {
 	depsData := []map[string]any{
 		{
 			"category": "Outdated",
-			"count": 12,
+			"count":    12,
 			"details": []string{
 				"react: 17.0.2 → 18.2.0 (major)",
 				"typescript: 4.5.0 → 5.0.0 (major)",
@@ -183,7 +183,7 @@ func generateCodeQualityReport() {
 		},
 		{
 			"category": "Vulnerabilities",
-			"count": 3,
+			"count":    3,
 			"details": []string{
 				"lodash: CVE-2021-23337 (high)",
 				"minimist: CVE-2020-7598 (moderate)",
@@ -216,7 +216,7 @@ func generateCodeQualityReport() {
 		output.WithSectionExpanded(true),
 	)
 
-	dependencySection := output.NewCollapsibleSection("Dependency Analysis", 
+	dependencySection := output.NewCollapsibleSection("Dependency Analysis",
 		[]output.Content{depsTable},
 		output.WithSectionLevel(2),
 		output.WithSectionExpanded(false),
@@ -244,16 +244,16 @@ func generateInfrastructureReport() {
 	// Service health data
 	servicesData := []map[string]any{
 		{
-			"service": "API Gateway",
-			"status": "Healthy",
-			"uptime": "99.9%",
+			"service":       "API Gateway",
+			"status":        "Healthy",
+			"uptime":        "99.9%",
 			"response_time": "45ms",
-			"errors": []string{},
+			"errors":        []string{},
 		},
 		{
-			"service": "Auth Service",
-			"status": "Warning",
-			"uptime": "98.2%",
+			"service":       "Auth Service",
+			"status":        "Warning",
+			"uptime":        "98.2%",
 			"response_time": "120ms",
 			"errors": []string{
 				"2024-01-15 14:25:00: Rate limit exceeded",
@@ -261,9 +261,9 @@ func generateInfrastructureReport() {
 			},
 		},
 		{
-			"service": "Payment Service",
-			"status": "Critical",
-			"uptime": "95.1%",
+			"service":       "Payment Service",
+			"status":        "Critical",
+			"uptime":        "95.1%",
 			"response_time": "250ms",
 			"errors": []string{
 				"2024-01-15 14:20:00: Payment processor unavailable",
@@ -276,16 +276,16 @@ func generateInfrastructureReport() {
 	// Database health
 	dbData := []map[string]any{
 		{
-			"database": "Primary (PostgreSQL)",
-			"status": "Healthy",
-			"connections": "45/100",
+			"database":        "Primary (PostgreSQL)",
+			"status":          "Healthy",
+			"connections":     "45/100",
 			"replication_lag": "0ms",
-			"issues": []string{},
+			"issues":          []string{},
 		},
 		{
-			"database": "Cache (Redis)",
-			"status": "Warning", 
-			"connections": "80/100",
+			"database":        "Cache (Redis)",
+			"status":          "Warning",
+			"connections":     "80/100",
 			"replication_lag": "N/A",
 			"issues": []string{
 				"Memory usage: 85% (threshold: 80%)",
@@ -340,7 +340,7 @@ func renderReport(doc *output.Document, format output.Format, reportName string)
 		ForceExpansion:       false, // Allow collapsed sections by default
 		TableHiddenIndicator: "[click to expand]",
 	})
-	
+
 	customFormat := output.Format{
 		Name:     "table",
 		Renderer: tableRenderer,

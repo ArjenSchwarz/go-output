@@ -20,7 +20,7 @@ func main() {
 	generateCodeAnalysisComment()
 
 	// Example 2: Test Results with Collapsible Failures
-	fmt.Println("\n🧪 Example 2: Test Results with Collapsible Failures") 
+	fmt.Println("\n🧪 Example 2: Test Results with Collapsible Failures")
 	generateTestResultsComment()
 
 	// Example 3: Security Scan Results
@@ -40,7 +40,7 @@ func generateCodeAnalysisComment() {
 			"complexity":  8.5,
 		},
 		{
-			"file":        "/src/utils/api-helpers.ts", 
+			"file":        "/src/utils/api-helpers.ts",
 			"lines":       87,
 			"errors":      []string{"Unhandled promise rejection"},
 			"warnings":    []string{"Consider adding retry logic", "Missing error boundary"},
@@ -86,10 +86,10 @@ func generateTestResultsComment() {
 	// Simulate test results with detailed failure information
 	testData := []map[string]any{
 		{
-			"suite":    "Authentication Tests",
-			"passed":   12,
-			"failed":   2,
-			"skipped":  1,
+			"suite":   "Authentication Tests",
+			"passed":  12,
+			"failed":  2,
+			"skipped": 1,
 			"failures": []string{
 				"test_login_with_invalid_credentials: Expected 401, got 500",
 				"test_token_refresh: Token refresh failed after 3 attempts",
@@ -97,7 +97,7 @@ func generateTestResultsComment() {
 			"duration": "2.3s",
 		},
 		{
-			"suite":    "API Integration Tests", 
+			"suite":    "API Integration Tests",
 			"passed":   8,
 			"failed":   0,
 			"skipped":  0,
@@ -105,10 +105,10 @@ func generateTestResultsComment() {
 			"duration": "1.8s",
 		},
 		{
-			"suite":    "UI Component Tests",
-			"passed":   45,
-			"failed":   1,
-			"skipped":  3,
+			"suite":   "UI Component Tests",
+			"passed":  45,
+			"failed":  1,
+			"skipped": 3,
 			"failures": []string{
 				"test_modal_keyboard_navigation: Modal did not close on Escape key",
 			},
@@ -146,7 +146,7 @@ func generateSecurityScanComment() {
 		},
 		{
 			"category":    "Code Quality",
-			"severity":    "Medium", 
+			"severity":    "Medium",
 			"count":       5,
 			"issues":      []string{"Hardcoded API key in config.js", "SQL query without parameterization", "Missing CSRF protection", "Weak password validation", "Unencrypted sensitive data storage"},
 			"remediation": "Review code security practices and implement secure coding guidelines",
