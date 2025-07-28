@@ -1,5 +1,7 @@
 package output
 
+import "sort"
+
 // tableConfig holds configuration for table creation
 type tableConfig struct {
 	schema      *Schema
@@ -82,6 +84,7 @@ func DetectSchemaFromMap(m map[string]any) *Schema {
 	for k := range m {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys) // Sort keys alphabetically for deterministic output
 
 	// For each key, create a field
 	for _, k := range keys {

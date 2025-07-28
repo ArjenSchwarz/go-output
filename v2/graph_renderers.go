@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 )
 
@@ -699,17 +700,20 @@ func (d *drawioRenderer) writeCSVRow(buf *bytes.Buffer, row []string) {
 // extractColumnNames extracts unique column names from records
 func (d *drawioRenderer) extractColumnNames(records []Record) []string {
 	columnSet := make(map[string]bool)
-	var columns []string
 
-	// Collect all unique column names in order of first appearance
+	// Collect all unique column names
 	for _, record := range records {
 		for key := range record {
-			if !columnSet[key] {
-				columnSet[key] = true
-				columns = append(columns, key)
-			}
+			columnSet[key] = true
 		}
 	}
+
+	// Convert to sorted slice for deterministic output
+	columns := make([]string, 0, len(columnSet))
+	for key := range columnSet {
+		columns = append(columns, key)
+	}
+	sort.Strings(columns)
 
 	return columns
 }
