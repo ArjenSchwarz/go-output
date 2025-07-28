@@ -673,7 +673,7 @@ func TestStructuredError(t *testing.T) {
 				"component=renderer",
 				"operation=encode",
 				"message=JSON encoding failed",
-				"context=[format=json, content_type=table]",
+				"context=[content_type=table, format=json]", // Alphabetically sorted keys
 				"cause: invalid character",
 			},
 		},

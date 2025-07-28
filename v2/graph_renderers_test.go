@@ -444,8 +444,8 @@ func TestDrawioRenderer_Render(t *testing.T) {
 			wantContains: []string{
 				"# label: %Name%",
 				"# connect:",
-				"from,to,label",               // Actual column order from schema
-				"package-a,package-b,depends", // Actual data order
+				"from,label,to",               // Alphabetically sorted column order
+				"package-a,depends,package-b", // Data in alphabetically sorted column order
 			},
 		},
 	}

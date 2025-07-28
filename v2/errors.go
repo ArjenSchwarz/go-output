@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -536,8 +537,16 @@ func (e *StructuredError) Error() string {
 	// Add context information
 	if len(e.Context) > 0 {
 		var contextParts []string
-		for key, value := range e.Context {
-			contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, value))
+		
+		// Sort keys to ensure deterministic output
+		keys := make([]string, 0, len(e.Context))
+		for key := range e.Context {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		
+		for _, key := range keys {
+			contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, e.Context[key]))
 		}
 		parts = append(parts, fmt.Sprintf("context=[%s]", strings.Join(contextParts, ", ")))
 	}
