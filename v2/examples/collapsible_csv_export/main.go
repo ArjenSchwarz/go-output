@@ -36,11 +36,11 @@ func generateProductCatalogCSV() {
 	// Product data with complex nested information
 	products := []map[string]any{
 		{
-			"id":           "PROD-001",
-			"name":         "Laptop Pro 15\"",
-			"category":     "Electronics",
-			"price":        1299.99,
-			"in_stock":     true,
+			"id":       "PROD-001",
+			"name":     "Laptop Pro 15\"",
+			"category": "Electronics",
+			"price":    1299.99,
+			"in_stock": true,
 			"specifications": map[string]any{
 				"cpu":     "Intel i7-13700H",
 				"ram":     "16GB DDR4",
@@ -67,11 +67,11 @@ func generateProductCatalogCSV() {
 			},
 		},
 		{
-			"id":           "PROD-002", 
-			"name":         "Wireless Headphones",
-			"category":     "Audio",
-			"price":        199.99,
-			"in_stock":     true,
+			"id":       "PROD-002",
+			"name":     "Wireless Headphones",
+			"category": "Audio",
+			"price":    199.99,
+			"in_stock": true,
 			"specifications": map[string]any{
 				"type":         "Over-ear",
 				"connectivity": "Bluetooth 5.0",
@@ -86,7 +86,7 @@ func generateProductCatalogCSV() {
 			},
 			"variants": []string{
 				"Black - $199.99",
-				"White - $199.99", 
+				"White - $199.99",
 				"Blue - $219.99 (Limited Edition)",
 			},
 			"supplier_info": map[string]any{
@@ -97,11 +97,11 @@ func generateProductCatalogCSV() {
 			},
 		},
 		{
-			"id":           "PROD-003",
-			"name":         "Smart Watch Series 8",
-			"category":     "Wearables",
-			"price":        399.99,
-			"in_stock":     false,
+			"id":       "PROD-003",
+			"name":     "Smart Watch Series 8",
+			"category": "Wearables",
+			"price":    399.99,
+			"in_stock": false,
 			"specifications": map[string]any{
 				"display":     "1.9\" AMOLED",
 				"battery":     "7 days",
@@ -123,7 +123,7 @@ func generateProductCatalogCSV() {
 			},
 			"supplier_info": map[string]any{
 				"name":         "WearTech Solutions",
-				"contact":      "supply@weartech.com", 
+				"contact":      "supply@weartech.com",
 				"lead_time":    "10-14 days",
 				"min_quantity": 5,
 			},
@@ -155,7 +155,7 @@ func generateCustomerAnalysisCSV() {
 	// Customer data with purchase history and behavior analysis
 	customers := []map[string]any{
 		{
-			"customer_id":     "CUST-12345",
+			"customer_id":    "CUST-12345",
 			"name":           "Alice Johnson",
 			"email":          "alice@example.com",
 			"registration":   "2023-03-15",
@@ -164,15 +164,15 @@ func generateCustomerAnalysisCSV() {
 			"segment":        "Premium",
 			"purchase_history": []string{
 				"2024-01-10: Laptop Pro 15\" - $1299.99",
-				"2023-12-20: Wireless Mouse - $49.99", 
+				"2023-12-20: Wireless Mouse - $49.99",
 				"2023-11-15: External Monitor - $299.99",
 				"2023-10-05: Keyboard Mechanical - $149.99",
 				"2023-09-22: Webcam HD - $89.99",
 			},
 			"preferences": map[string]any{
-				"categories": []string{"Electronics", "Accessories"},
-				"price_range": "$100-$1500",
-				"communication": "Email",
+				"categories":       []string{"Electronics", "Accessories"},
+				"price_range":      "$100-$1500",
+				"communication":    "Email",
 				"promotion_opt_in": true,
 			},
 			"support_tickets": []string{
@@ -182,7 +182,7 @@ func generateCustomerAnalysisCSV() {
 			},
 		},
 		{
-			"customer_id":     "CUST-67890",
+			"customer_id":    "CUST-67890",
 			"name":           "Bob Smith",
 			"email":          "bob@example.com",
 			"registration":   "2023-08-22",
@@ -196,9 +196,9 @@ func generateCustomerAnalysisCSV() {
 				"2023-10-20: Screen Protector - $12.99",
 			},
 			"preferences": map[string]any{
-				"categories": []string{"Audio", "Mobile Accessories"},
-				"price_range": "$10-$200",
-				"communication": "SMS",
+				"categories":       []string{"Audio", "Mobile Accessories"},
+				"price_range":      "$10-$200",
+				"communication":    "SMS",
 				"promotion_opt_in": false,
 			},
 			"support_tickets": []string{
@@ -207,7 +207,7 @@ func generateCustomerAnalysisCSV() {
 			},
 		},
 		{
-			"customer_id":     "CUST-54321",
+			"customer_id":    "CUST-54321",
 			"name":           "Carol Davis",
 			"email":          "carol@example.com",
 			"registration":   "2023-01-10",
@@ -223,9 +223,9 @@ func generateCustomerAnalysisCSV() {
 				"... and 23 more orders",
 			},
 			"preferences": map[string]any{
-				"categories": []string{"Electronics", "Wearables", "Computing"},
-				"price_range": "$50-$2000",
-				"communication": "Phone",
+				"categories":       []string{"Electronics", "Wearables", "Computing"},
+				"price_range":      "$50-$2000",
+				"communication":    "Phone",
 				"promotion_opt_in": true,
 			},
 			"support_tickets": []string{
@@ -276,14 +276,14 @@ func generateServerMetricsCSV() {
 			},
 			"performance_metrics": map[string]any{
 				"requests_per_second": 450,
-				"response_time_avg": "85ms",
-				"error_rate": "0.02%",
-				"uptime": "99.95%",
+				"response_time_avg":   "85ms",
+				"error_rate":          "0.02%",
+				"uptime":              "99.95%",
 			},
 			"configurations": map[string]any{
-				"nginx_version": "1.21.6",
-				"php_version": "8.1.0",
-				"ssl_cert_expiry": "2024-06-15",
+				"nginx_version":    "1.21.6",
+				"php_version":      "8.1.0",
+				"ssl_cert_expiry":  "2024-06-15",
 				"backup_frequency": "daily",
 			},
 		},
@@ -296,7 +296,7 @@ func generateServerMetricsCSV() {
 			"cpu_usage":    78.9,
 			"memory_usage": 85.4,
 			"disk_usage":   72.3,
-			"network_io":   "89 MB/s", 
+			"network_io":   "89 MB/s",
 			"alerts": []string{
 				"2024-01-15 14:25:00: High CPU usage sustained for 10 minutes",
 				"2024-01-15 14:15:00: Memory usage above 85%",
@@ -304,20 +304,20 @@ func generateServerMetricsCSV() {
 			},
 			"performance_metrics": map[string]any{
 				"queries_per_second": 125,
-				"avg_query_time": "45ms",
-				"connection_count": "95/100",
-				"replication_lag": "50ms",
+				"avg_query_time":     "45ms",
+				"connection_count":   "95/100",
+				"replication_lag":    "50ms",
 			},
 			"configurations": map[string]any{
 				"postgresql_version": "14.6",
-				"max_connections": 100,
-				"shared_buffers": "2GB",
-				"backup_frequency": "hourly",
+				"max_connections":    100,
+				"shared_buffers":     "2GB",
+				"backup_frequency":   "hourly",
 			},
 		},
 		{
 			"server_id":    "SRV-CACHE-01",
-			"hostname":     "cache-prod-01.company.com", 
+			"hostname":     "cache-prod-01.company.com",
 			"environment":  "Production",
 			"role":         "Cache",
 			"status":       "Healthy",
@@ -325,17 +325,17 @@ func generateServerMetricsCSV() {
 			"memory_usage": 45.7,
 			"disk_usage":   12.8,
 			"network_io":   "67 MB/s",
-			"alerts": []string{},
+			"alerts":       []string{},
 			"performance_metrics": map[string]any{
-				"hit_rate": "94.8%",
+				"hit_rate":              "94.8%",
 				"operations_per_second": 2500,
-				"avg_response_time": "0.5ms",
-				"evicted_keys": 125,
+				"avg_response_time":     "0.5ms",
+				"evicted_keys":          125,
 			},
 			"configurations": map[string]any{
-				"redis_version": "7.0.5",
-				"max_memory": "4GB",
-				"persistence": "RDB + AOF",
+				"redis_version":    "7.0.5",
+				"max_memory":       "4GB",
+				"persistence":      "RDB + AOF",
 				"backup_frequency": "daily",
 			},
 		},
@@ -397,22 +397,22 @@ func exportToCSV(doc *output.Document, filename, description string) {
 	}
 
 	fmt.Printf("✅ %s exported to %s/%s\n", description, outputDir, filename)
-	
+
 	// Also show a preview in the console
 	fmt.Printf("📄 Preview of %s (showing structure with detail columns):\n", filename)
-	
+
 	// Create a console output to show the structure
 	consoleOut := output.NewOutput(
 		output.WithFormat(csvFormat),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
-	
+
 	// Show just the header and first row for preview
 	previewDoc := output.New().
 		Text(fmt.Sprintf("Preview of %s:", description)).
 		Text("(Full data exported to file with separate detail columns)").
 		Build()
-		
+
 	consoleOut.Render(ctx, previewDoc)
 	fmt.Println("💡 Open the CSV file in Excel to see the collapsible data in separate columns")
 	fmt.Println(strings.Repeat("-", 80))
