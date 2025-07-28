@@ -1,59 +1,24 @@
-## Unreleased
+## 2.1.0 / 2025-07-28
 
 ### Added
-- **Comprehensive integration tests for collapsible content system**
-  - Real-world scenario testing in `v2/collapsible_integration_test.go` including GitHub PR comments, API responses, and terminal output
-  - Cross-format consistency validation ensuring collapsible behavior works identically across all renderers (JSON, YAML, CSV, HTML, Table, Markdown, DOT, Mermaid, Draw.io)
-  - End-to-end pipeline testing from data input to formatted output with collapsible content preservation
-- **Backward compatibility validation for collapsible features**
-  - Comprehensive backward compatibility tests in `v2/collapsible_backward_compatibility_test.go`
-  - Validation that existing Field.Formatter functions continue working without modification (Requirement 12.1)
-  - Performance regression testing ensuring zero overhead when collapsible features are unused (Requirement 12.4)
-  - API signature compatibility testing ensuring seamless migration path from existing code
-- **Production-ready example applications demonstrating collapsible feature usage**
-  - GitHub PR comment generation example with collapsible error details (`v2/examples/collapsible_github_pr/`)
-  - Terminal analysis tool with expandable section reports (`v2/examples/collapsible_terminal_analysis/`)
-  - CSV export example with detail columns for spreadsheet analysis (`v2/examples/collapsible_csv_export/`)
-  - Each example includes complete Go modules with dependencies and practical usage patterns
-
-### Changed
-- Updated Claude settings configuration to allow timeout commands for testing example applications
-- Marked integration testing and example creation tasks as completed in expandable-sections feature roadmap
-
-### Added
-- **Table Renderer Collapsible Value Support**
-  - CollapsibleValue detection and handling in table renderer with `formatCellValue` method
-  - Table-specific detail formatting with proper 2-space indentation via `formatDetailsForTable` and `indentText` methods
-  - Global expansion override functionality that respects `RendererConfig.ForceExpansion` setting
-  - Configurable expansion indicators with fallback to default values "[details hidden - use --expand for full view]"
-  - Support for different detail data types (strings, string arrays, complex objects) with proper formatting
-  - Comprehensive test suite covering all collapsible functionality, backward compatibility, and edge cases
-- **Expandable Sections Feature Implementation Plan**
-  - Complete requirements specification for cross-format collapsible content system
-  - Comprehensive design document with full renderer implementations for all formats (Markdown, JSON, YAML, HTML, Table, CSV)
+- **Expandable Sections Feature**
+  - Complete collapsible content system with support across all output formats (JSON, YAML, CSV, HTML, Table, Markdown, DOT, Mermaid, Draw.io)
   - CollapsibleValue interface with Summary(), Details(), IsExpanded(), and FormatHint() methods
-  - CollapsibleSection interface for section-level expandability with hierarchical nesting support (up to 3 levels)
+  - CollapsibleSection interface for hierarchical nesting support (up to 3 levels)
   - Pre-built formatter functions for common patterns (ErrorListFormatter, FilePathFormatter, JSONFormatter)
-  - Detailed implementation tasks with 15 main tasks and 46 sub-tasks covering core infrastructure, renderer integration, section support, and optimization
-  - Format-specific collapsible rendering specifications for all supported output formats
-  - Backward compatibility strategy for Field.Formatter signature changes
-  - Global expansion control and configurable renderer settings
-  - Error handling and edge case specifications with graceful degradation
+  - Global expansion control with configurable renderer settings and `--expand` flag support
+  - Comprehensive integration tests covering real-world scenarios including GitHub PR comments, API responses, and terminal output
+  - Production-ready example applications for GitHub PR comments, terminal analysis, and CSV export
+- **Table Renderer Enhancements**
+  - CollapsibleValue detection and handling with proper detail formatting and 2-space indentation
+  - Configurable expansion indicators with graceful fallback handling
+  - Support for multiple detail data types (strings, arrays, complex objects)
+  - Table style lookup map replacing large switch statement for improved maintainability
 
 ### Changed
-- **Table Renderer Enhancement**
-  - Enhanced table row rendering to use new `formatCellValue` method instead of direct formatter application
-  - Updated table renderer to integrate with existing collapsible infrastructure from base renderer
-  - Maintained backward compatibility with existing field formatters
-
-### Added
-- **CLAUDE.md configuration file** for v2 project guidance and development workflow
-
-### Changed
-- **Table renderer refactoring**: Replaced large switch statement with lookup map for table styles
-  - Simplified getTableStyle() method using tableStyles map
-  - Removed unused text import
-  - Improved code maintainability and reduced cyclomatic complexity
+- Enhanced table renderer to integrate with collapsible infrastructure while maintaining backward compatibility
+- Improved code quality with reduced cyclomatic complexity in table styling
+- Updated development workflow with CLAUDE.md configuration for v2 project guidance
 
 ## 2.0.0 / 2025-07-22
 
