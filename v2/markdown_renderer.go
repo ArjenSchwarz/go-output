@@ -334,8 +334,10 @@ func (m *markdownRenderer) escapeMarkdown(text string) string {
 
 // escapeMarkdownTableCell escapes content for use in markdown table cells
 func (m *markdownRenderer) escapeMarkdownTableCell(text string) string {
-	// For table cells, we need to escape pipes and newlines specially
-	text = strings.ReplaceAll(text, "|", "\\|")
+	// First escape all markdown special characters using the general escaper
+	text = m.escapeMarkdown(text)
+	
+	// Then handle table-specific requirements
 	text = strings.ReplaceAll(text, "\n", "<br>")
 	text = strings.ReplaceAll(text, "\r", "")
 	return text
