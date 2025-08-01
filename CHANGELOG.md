@@ -1,3 +1,11 @@
+## 2.1.1 / Unreleased
+
+### Fixed
+- Improved Markdown escaping logic to be more selective and produce more legible output
+- Fixed overly aggressive escaping in markdown table cells - now only escapes pipes and handles newlines
+- Added dedicated HTML content escaping for content inside `<details>` and `<summary>` tags where GitHub processes markdown
+- Fixed escaping of default placeholders like `[no summary]` which are literal strings, not markdown syntax
+
 ## 2.1.0 / 2025-07-28
 
 ### Added

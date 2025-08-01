@@ -537,14 +537,14 @@ func (e *StructuredError) Error() string {
 	// Add context information
 	if len(e.Context) > 0 {
 		var contextParts []string
-		
+
 		// Sort keys to ensure deterministic output
 		keys := make([]string, 0, len(e.Context))
 		for key := range e.Context {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
-		
+
 		for _, key := range keys {
 			contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, e.Context[key]))
 		}

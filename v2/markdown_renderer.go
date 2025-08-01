@@ -308,39 +308,45 @@ func (m *markdownRenderer) renderSectionContentMarkdownWithDepth(section *Sectio
 	return []byte(result.String()), nil
 }
 
-// escapeMarkdown escapes special markdown characters
+// escapeMarkdown escapes special markdown characters for general markdown content
 func (m *markdownRenderer) escapeMarkdown(text string) string {
-	// Escape markdown special characters
+	// Only escape characters that would actually be interpreted as markdown
+	// in the specific context where this is used
 	replacer := strings.NewReplacer(
-		"\\", "\\\\",
-		"`", "\\`",
-		"*", "\\*",
-		"_", "\\_",
-		"{", "\\{",
-		"}", "\\}",
-		"[", "\\[",
-		"]", "\\]",
-		"(", "\\(",
-		")", "\\)",
-		"#", "\\#",
-		"+", "\\+",
-		"-", "\\-",
-		".", "\\.",
-		"!", "\\!",
-		"|", "\\|",
+		"\\", "\\\\", // Backslash must be escaped
+		"`", "\\`", // Backticks for code
+		"*", "\\*", // Asterisks for emphasis
+		"_", "\\_", // Underscores for emphasis
+		"[", "\\[", // Square brackets for links
+		"]", "\\]", // Square brackets for links
+		"#", "\\#", // Hash for headers (only at start of line in practice)
+		"|", "\\|", // Pipe for tables
 	)
 	return replacer.Replace(text)
 }
 
 // escapeMarkdownTableCell escapes content for use in markdown table cells
 func (m *markdownRenderer) escapeMarkdownTableCell(text string) string {
-	// First escape all markdown special characters using the general escaper
-	text = m.escapeMarkdown(text)
-	
-	// Then handle table-specific requirements
+	// In table cells, only pipes and newlines need special handling
+	// Other markdown formatting is typically not interpreted in table cells
+	text = strings.ReplaceAll(text, "|", "\\|")
 	text = strings.ReplaceAll(text, "\n", "<br>")
 	text = strings.ReplaceAll(text, "\r", "")
 	return text
+}
+
+// escapeHTMLContent escapes markdown characters that would be interpreted inside HTML tags
+// This is needed for content inside <details>, <summary>, etc where GitHub still processes markdown
+func (m *markdownRenderer) escapeHTMLContent(text string) string {
+	// Only escape the most critical markdown characters that cause issues in HTML content
+	replacer := strings.NewReplacer(
+		"*", "\\*", // Asterisks for emphasis
+		"_", "\\_", // Underscores for emphasis
+		"`", "\\`", // Backticks for code
+		"[", "\\[", // Square brackets for links
+		"]", "\\]", // Square brackets for links
+	)
+	return replacer.Replace(text)
 }
 
 // createMarkdownAnchor creates a markdown-compatible anchor from text
@@ -439,10 +445,15 @@ func (m *markdownRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
 	details := m.getSafeDetails(cv)
 
 	// Use GitHub's native <details> support (Requirement 3.1)
+	// Only escape if not one of our default placeholders
+	if summary != defaultSummaryPlaceholder {
+		summary = m.escapeHTMLContent(summary)
+	}
+	// Details have already been processed by formatDetailsForMarkdownSafe
 	return fmt.Sprintf("<details%s><summary>%s</summary><br/>%s</details>",
 		openAttr,
-		m.escapeMarkdownTableCell(summary),
-		m.escapeMarkdownTableCell(details))
+		summary,
+		details)
 }
 
 // getSafeSummary gets the summary with error handling and fallbacks
@@ -489,21 +500,30 @@ func (m *markdownRenderer) formatDetailsForMarkdownSafe(details any) string {
 	// Check for nested CollapsibleValue and prevent recursion (Requirement 11.5)
 	if cv, ok := details.(CollapsibleValue); ok {
 		// Treat nested CollapsibleValues as regular content to prevent infinite loops
-		return fmt.Sprintf("[nested collapsible: %s]", cv.Summary())
+		// Don't escape the square brackets here - they're part of our error message
+		return fmt.Sprintf("[nested collapsible: %s]", m.escapeHTMLContent(cv.Summary()))
 	}
 
 	switch d := details.(type) {
 	case string:
 		// Apply character limits if configured (Requirement 11.6)
 		if m.collapsibleConfig.MaxDetailLength > 0 && len(d) > m.collapsibleConfig.MaxDetailLength {
-			return d[:m.collapsibleConfig.MaxDetailLength] + m.collapsibleConfig.TruncateIndicator
+			d = d[:m.collapsibleConfig.MaxDetailLength] + m.collapsibleConfig.TruncateIndicator
 		}
+		// Replace newlines with <br> for proper HTML rendering
+		d = strings.ReplaceAll(d, "\n", "<br>")
+		d = strings.ReplaceAll(d, "\r", "")
 		return d
 	case []string:
 		if len(d) == 0 {
 			return "[empty list]"
 		}
-		return strings.Join(d, "<br/>") // Requirement 3.4
+		// Escape each string item before joining
+		escaped := make([]string, len(d))
+		for i, item := range d {
+			escaped[i] = m.escapeHTMLContent(item)
+		}
+		return strings.Join(escaped, "<br/>") // Requirement 3.4
 	case map[string]any:
 		if len(d) == 0 {
 			return "[empty map]"
@@ -511,11 +531,14 @@ func (m *markdownRenderer) formatDetailsForMarkdownSafe(details any) string {
 		// Requirement 3.5: format as key-value pairs
 		var parts []string
 		for k, v := range d {
+			// Escape the key
+			escapedKey := m.escapeHTMLContent(k)
 			// Handle potential nil values in map
 			if v == nil {
-				parts = append(parts, fmt.Sprintf("<strong>%s:</strong> [nil]", k))
+				parts = append(parts, fmt.Sprintf("<strong>%s:</strong> [nil]", escapedKey))
 			} else {
-				parts = append(parts, fmt.Sprintf("<strong>%s:</strong> %v", k, v))
+				escapedValue := m.escapeHTMLContent(fmt.Sprint(v))
+				parts = append(parts, fmt.Sprintf("<strong>%s:</strong> %s", escapedKey, escapedValue))
 			}
 		}
 		result := strings.Join(parts, "<br/>")
@@ -525,6 +548,7 @@ func (m *markdownRenderer) formatDetailsForMarkdownSafe(details any) string {
 		}
 		return result
 	case nil:
+		// Don't escape square brackets - they're part of our error message
 		return "[nil details]"
 	default:
 		// Fallback to string representation for unknown types (Requirement 11.3)
