@@ -20,7 +20,7 @@ func TestHTMLRenderer_CollapsibleValue(t *testing.T) {
 			name:           "collapsed by default",
 			collapsible:    NewCollapsibleValue("2 errors", []string{"syntax error", "missing import"}),
 			config:         DefaultRendererConfig,
-			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">2 errors</summary><div class="collapsible-details"><ul><li>syntax error</li><li>missing import</li></ul></div></details>`,
+			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">2 errors</summary><br/><div class="collapsible-details">syntax error<br/>missing import</div></details>`,
 			checkOpen:      false,
 			checkClasses:   true,
 		},
@@ -28,7 +28,7 @@ func TestHTMLRenderer_CollapsibleValue(t *testing.T) {
 			name:           "expanded by default",
 			collapsible:    NewCollapsibleValue("File path", "/very/long/path/to/file.txt", WithExpanded(true)),
 			config:         DefaultRendererConfig,
-			expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">File path</summary><div class="collapsible-details">/very/long/path/to/file.txt</div></details>`,
+			expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">File path</summary><br/><div class="collapsible-details">/very/long/path/to/file.txt</div></details>`,
 			checkOpen:      true,
 			checkClasses:   true,
 		},
@@ -39,7 +39,7 @@ func TestHTMLRenderer_CollapsibleValue(t *testing.T) {
 				ForceExpansion: true,
 				HTMLCSSClasses: DefaultRendererConfig.HTMLCSSClasses,
 			},
-			expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">Settings</summary><div class="collapsible-details">configuration data</div></details>`,
+			expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">Settings</summary><br/><div class="collapsible-details">configuration data</div></details>`,
 			checkOpen:      true,
 			checkClasses:   true,
 		},
@@ -53,7 +53,7 @@ func TestHTMLRenderer_CollapsibleValue(t *testing.T) {
 					"content": "custom-content",
 				},
 			},
-			expectedOutput: `<details class="custom-details"><summary class="custom-summary">Data</summary><div class="custom-content">Some content</div></details>`,
+			expectedOutput: `<details class="custom-details"><summary class="custom-summary">Data</summary><br/><div class="custom-content">Some content</div></details>`,
 			checkOpen:      false,
 			checkClasses:   true,
 		},
@@ -61,7 +61,7 @@ func TestHTMLRenderer_CollapsibleValue(t *testing.T) {
 			name:           "empty array details",
 			collapsible:    NewCollapsibleValue("Empty list", []string{}),
 			config:         DefaultRendererConfig,
-			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">Empty list</summary><div class="collapsible-details"></div></details>`,
+			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">Empty list</summary><br/><div class="collapsible-details"></div></details>`,
 			checkOpen:      false,
 			checkClasses:   true,
 		},
@@ -69,7 +69,7 @@ func TestHTMLRenderer_CollapsibleValue(t *testing.T) {
 			name:           "nil details fallback",
 			collapsible:    NewCollapsibleValue("Test", nil),
 			config:         DefaultRendererConfig,
-			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">Test</summary><div class="collapsible-details">Test</div></details>`,
+			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">Test</summary><br/><div class="collapsible-details">Test</div></details>`,
 			checkOpen:      false,
 			checkClasses:   true,
 		},
@@ -129,9 +129,9 @@ func TestHTMLRenderer_FormatDetailsAsHTML(t *testing.T) {
 			expected: "Simple text content",
 		},
 		{
-			name:     "string array as unordered list",
+			name:     "string array as br-separated text",
 			details:  []string{"item 1", "item 2", "item 3"},
-			expected: "<ul><li>item 1</li><li>item 2</li><li>item 3</li></ul>",
+			expected: "item 1<br/>item 2<br/>item 3",
 		},
 		{
 			name:     "empty string array",
@@ -139,9 +139,9 @@ func TestHTMLRenderer_FormatDetailsAsHTML(t *testing.T) {
 			expected: "",
 		},
 		{
-			name:     "map as definition list",
+			name:     "map as key-value pairs",
 			details:  map[string]any{"key1": "value1", "key2": "value2"},
-			expected: "<dl><dt>key1</dt><dd>value1</dd><dt>key2</dt><dd>value2</dd></dl>",
+			expected: "<strong>key1:</strong> value1<br/><strong>key2:</strong> value2",
 		},
 		{
 			name:     "empty map",
@@ -156,12 +156,12 @@ func TestHTMLRenderer_FormatDetailsAsHTML(t *testing.T) {
 		{
 			name:     "HTML escaping in arrays",
 			details:  []string{"<b>bold</b>", "normal text"},
-			expected: "<ul><li>&lt;b&gt;bold&lt;/b&gt;</li><li>normal text</li></ul>",
+			expected: "&lt;b&gt;bold&lt;/b&gt;<br/>normal text",
 		},
 		{
 			name:     "HTML escaping in maps",
 			details:  map[string]any{"<key>": "<value>"},
-			expected: "<dl><dt>&lt;key&gt;</dt><dd>&lt;value&gt;</dd></dl>",
+			expected: "<strong>&lt;key&gt;:</strong> &lt;value&gt;",
 		},
 	}
 
@@ -169,19 +169,22 @@ func TestHTMLRenderer_FormatDetailsAsHTML(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := htmlRenderer.formatDetailsAsHTML(tt.details)
 
-			if tt.name == "map as definition list" || tt.name == "HTML escaping in maps" {
+			if tt.name == "map as key-value pairs" || tt.name == "HTML escaping in maps" {
 				// For maps, order is not guaranteed, so check that all expected parts are present
-				if !strings.Contains(result, "<dl>") || !strings.Contains(result, "</dl>") {
-					t.Errorf("Expected definition list structure, got: %s", result)
-				}
-				// Check for each key-value pair
+				// Check for each key-value pair in the new format
 				if strings.Contains(tt.expected, "key1") {
-					if !strings.Contains(result, "<dt>key1</dt><dd>value1</dd>") {
+					if !strings.Contains(result, "<strong>key1:</strong> value1") {
 						t.Errorf("Expected key1-value1 pair in result: %s", result)
+					}
+					if !strings.Contains(result, "<strong>key2:</strong> value2") {
+						t.Errorf("Expected key2-value2 pair in result: %s", result)
+					}
+					if !strings.Contains(result, "<br/>") {
+						t.Errorf("Expected <br/> separator in result: %s", result)
 					}
 				}
 				if strings.Contains(tt.expected, "<key>") {
-					if !strings.Contains(result, "<dt>&lt;key&gt;</dt><dd>&lt;value&gt;</dd>") {
+					if !strings.Contains(result, "<strong>&lt;key&gt;:</strong> &lt;value&gt;") {
 						t.Errorf("Expected escaped key-value pair in result: %s", result)
 					}
 				}

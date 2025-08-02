@@ -246,43 +246,100 @@ func (h *htmlRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
 	// Get CSS classes from configuration (Requirement 7.2)
 	classes := h.collapsibleConfig.HTMLCSSClasses
 
+	// Check if the value implements code fence configuration
+	var useCodeFences bool
+	var codeLanguage string
+	if dcv, ok := cv.(*DefaultCollapsibleValue); ok {
+		useCodeFences = dcv.UseCodeFences()
+		codeLanguage = dcv.CodeLanguage()
+	}
+
+	// Format details with potential code fence wrapping
+	var detailsHTML string
+	if useCodeFences {
+		detailsHTML = h.formatDetailsAsHTMLWithCodeFences(cv.Details(), codeLanguage)
+	} else {
+		detailsHTML = h.formatDetailsAsHTML(cv.Details())
+	}
+
 	// Use HTML5 details element with semantic classes (Requirements 7.1, 7.2)
-	return fmt.Sprintf(`<details%s class="%s"><summary class="%s">%s</summary><div class="%s">%s</div></details>`,
+	// Add <br/> after summary like markdown renderer does
+	return fmt.Sprintf(`<details%s class="%s"><summary class="%s">%s</summary><br/><div class="%s">%s</div></details>`,
 		openAttr,
 		classes["details"],
 		classes["summary"],
 		html.EscapeString(cv.Summary()), // Requirement 7.4: escape HTML
 		classes["content"],
-		h.formatDetailsAsHTML(cv.Details()))
+		detailsHTML)
 }
 
 // formatDetailsAsHTML formats details content as appropriate HTML (Requirement 7.5)
 func (h *htmlRenderer) formatDetailsAsHTML(details any) string {
 	switch d := details.(type) {
 	case []string:
-		// Generate semantic list (Requirement 7.5)
+		// Format as plain text joined with <br/> tags (consistent with markdown renderer)
 		if len(d) == 0 {
 			return ""
 		}
-		items := make([]string, len(d))
+		escaped := make([]string, len(d))
 		for i, item := range d {
-			items[i] = fmt.Sprintf("<li>%s</li>", html.EscapeString(item))
+			escaped[i] = html.EscapeString(item)
 		}
-		return fmt.Sprintf("<ul>%s</ul>", strings.Join(items, ""))
+		return strings.Join(escaped, "<br/>")
 	case map[string]any:
-		// Generate definition list (Requirement 7.5)
+		// Format as key-value pairs joined with <br/> tags (consistent with markdown renderer)
 		if len(d) == 0 {
 			return ""
 		}
-		var items []string
+		var parts []string
 		for k, v := range d {
-			items = append(items, fmt.Sprintf("<dt>%s</dt><dd>%s</dd>",
+			parts = append(parts, fmt.Sprintf("<strong>%s:</strong> %s",
 				html.EscapeString(k), html.EscapeString(fmt.Sprint(v))))
 		}
-		return fmt.Sprintf("<dl>%s</dl>", strings.Join(items, ""))
+		return strings.Join(parts, "<br/>")
+	case string:
+		// Replace newlines with <br> tags for proper HTML rendering
+		escaped := html.EscapeString(d)
+		return strings.ReplaceAll(escaped, "\n", "<br>")
 	default:
 		return html.EscapeString(fmt.Sprint(details))
 	}
+}
+
+// formatDetailsAsHTMLWithCodeFences formats details content wrapped in HTML code blocks
+func (h *htmlRenderer) formatDetailsAsHTMLWithCodeFences(details any, language string) string {
+	// Get the raw content as a string
+	var content string
+	switch d := details.(type) {
+	case []string:
+		if len(d) == 0 {
+			return ""
+		}
+		content = strings.Join(d, "\n")
+	case map[string]any:
+		if len(d) == 0 {
+			return ""
+		}
+		// Format map as key: value pairs, one per line
+		var lines []string
+		for k, v := range d {
+			lines = append(lines, fmt.Sprintf("%s: %s", k, v))
+		}
+		content = strings.Join(lines, "\n")
+	case string:
+		content = d
+	default:
+		content = fmt.Sprint(details)
+	}
+
+	// Create HTML code block with optional language class
+	langClass := ""
+	if language != "" {
+		langClass = fmt.Sprintf(` class="language-%s"`, html.EscapeString(language))
+	}
+
+	// Wrap in pre and code tags for proper HTML code formatting
+	return fmt.Sprintf("<pre><code%s>%s</code></pre>", langClass, html.EscapeString(content))
 }
 
 // renderCollapsibleSection renders a CollapsibleSection as semantic HTML5 elements (Requirement 15.6)
@@ -306,15 +363,25 @@ func (h *htmlRenderer) renderCollapsibleSection(section *DefaultCollapsibleSecti
 	result.WriteString(fmt.Sprintf(`<summary class="%s">%s</summary>`,
 		cssClasses["summary"], html.EscapeString(section.Title())))
 
-	result.WriteString(`<div class="section-content">`)
+	result.WriteString(`<div class="section-content" style="margin-left: 20px; padding-left: 10px;">`)
 
-	// Render all nested content (Requirement 15.6)
+	// Render all nested content with indentation (Requirement 15.6)
 	for _, content := range section.Content() {
 		contentHTML, err := h.renderContent(content)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}
-		result.Write(contentHTML)
+
+		// Indent the content for better visual hierarchy
+		lines := strings.SplitSeq(string(contentHTML), "\n")
+		for line := range lines {
+			if strings.TrimSpace(line) != "" {
+				// Use Unicode En spaces for indentation (U+2002) - preserves spacing without HTML escaping issues
+				result.WriteString("\u2002\u2002") // Add 2 spaces for indentation
+				result.WriteString(line)
+				result.WriteString("\n")
+			}
+		}
 	}
 
 	result.WriteString(`</div>`)

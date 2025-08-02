@@ -37,6 +37,10 @@ type DefaultCollapsibleValue struct {
 	maxDetailLength   int
 	truncateIndicator string
 
+	// Code fence configuration for wrapping details in code blocks
+	codeLanguage  string // Language for syntax highlighting (e.g., "json", "yaml", "go")
+	useCodeFences bool   // Whether to wrap details in code fences
+
 	// Performance optimization fields for lazy evaluation (Requirement 10.3, 10.5)
 	processedDetails any
 	detailsProcessed bool
@@ -96,6 +100,22 @@ func WithFormatHint(format string, hints map[string]any) CollapsibleOption {
 			cv.formatHints = make(map[string]map[string]any)
 		}
 		cv.formatHints[format] = hints
+	}
+}
+
+// WithCodeFences enables wrapping details content in code fences
+func WithCodeFences(language string) CollapsibleOption {
+	return func(cv *DefaultCollapsibleValue) {
+		cv.useCodeFences = true
+		cv.codeLanguage = language
+	}
+}
+
+// WithoutCodeFences explicitly disables code fence wrapping
+func WithoutCodeFences() CollapsibleOption {
+	return func(cv *DefaultCollapsibleValue) {
+		cv.useCodeFences = false
+		cv.codeLanguage = ""
 	}
 }
 
@@ -203,6 +223,16 @@ func (d *DefaultCollapsibleValue) FormatHint(format string) map[string]any {
 		return hints
 	}
 	return nil
+}
+
+// UseCodeFences returns whether details should be wrapped in code fences
+func (d *DefaultCollapsibleValue) UseCodeFences() bool {
+	return d.useCodeFences
+}
+
+// CodeLanguage returns the language to use for syntax highlighting in code fences
+func (d *DefaultCollapsibleValue) CodeLanguage() string {
+	return d.codeLanguage
 }
 
 // String implements the Stringer interface for debugging

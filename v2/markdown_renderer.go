@@ -330,9 +330,42 @@ func (m *markdownRenderer) escapeMarkdownTableCell(text string) string {
 	// In table cells, only pipes and newlines need special handling
 	// Other markdown formatting is typically not interpreted in table cells
 	text = strings.ReplaceAll(text, "|", "\\|")
+
+	// Replace newlines with <br> for table cell compatibility
 	text = strings.ReplaceAll(text, "\n", "<br>")
+
 	text = strings.ReplaceAll(text, "\r", "")
 	return text
+}
+
+// preserveCodeFenceNewlines replaces newlines with <br> in table cells
+// Since this is called from escapeMarkdownTableCell, we know we're in a table context
+// and need to use <br> tags to avoid breaking the table structure
+func (m *markdownRenderer) preserveCodeFenceNewlines(text string) string {
+	// In table cells, we must use <br> tags to preserve table structure
+	// The code fence will still provide syntax highlighting, just with <br> instead of newlines
+	var result strings.Builder
+	inCodeFence := false
+	lines := strings.Split(text, "\n")
+
+	for i, line := range lines {
+		// Check if this line starts or ends a code fence
+		trimmedLine := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmedLine, "```") {
+			inCodeFence = !inCodeFence
+		}
+
+		result.WriteString(line)
+
+		// Don't add line separator after the last line
+		if i < len(lines)-1 {
+			// Always use <br> in table context to maintain table structure
+			// The code fence syntax highlighting will still work with <br> tags
+			result.WriteString("<br>")
+		}
+	}
+
+	return result.String()
 }
 
 // escapeHTMLContent escapes markdown characters that would be interpreted inside HTML tags
@@ -441,8 +474,22 @@ func (m *markdownRenderer) renderCollapsibleValue(cv CollapsibleValue) string {
 	// Get summary with error handling (Requirement 11.2)
 	summary := m.getSafeSummary(cv)
 
-	// Get and format details with error handling (Requirement 11.3)
-	details := m.getSafeDetails(cv)
+	// Check if the value implements code fence configuration
+	var useCodeFences bool
+	var codeLanguage string
+	if dcv, ok := cv.(*DefaultCollapsibleValue); ok {
+		useCodeFences = dcv.UseCodeFences()
+		codeLanguage = dcv.CodeLanguage()
+	}
+
+	// Get details with potential code fence wrapping
+	var details string
+	if useCodeFences {
+		details = m.getSafeDetailsWithCodeFences(cv, codeLanguage)
+	} else {
+		// Get and format details with error handling (Requirement 11.3)
+		details = m.getSafeDetails(cv)
+	}
 
 	// Use GitHub's native <details> support (Requirement 3.1)
 	// Only escape if not one of our default placeholders
@@ -567,6 +614,56 @@ func (m *markdownRenderer) formatDetailsForMarkdown(details any) string {
 	return m.formatDetailsForMarkdownSafe(details)
 }
 
+// getSafeDetailsWithCodeFences gets and formats details wrapped in code fences with error handling
+func (m *markdownRenderer) getSafeDetailsWithCodeFences(cv CollapsibleValue, language string) string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "Error getting details with code fences from collapsible value: %v\n", r)
+		}
+	}()
+
+	details := cv.Details()
+	if details == nil {
+		// Requirement 11.1: treat nil details as non-collapsible, fall back to summary
+		return m.getSafeSummary(cv)
+	}
+
+	// Get the raw content as a string
+	var content string
+	switch d := details.(type) {
+	case []string:
+		if len(d) == 0 {
+			return ""
+		}
+		content = strings.Join(d, "\n")
+	case map[string]any:
+		if len(d) == 0 {
+			return ""
+		}
+		// Format map as key: value pairs, one per line
+		var lines []string
+		for k, v := range d {
+			lines = append(lines, fmt.Sprintf("%s: %s", k, v))
+		}
+		content = strings.Join(lines, "\n")
+	case string:
+		content = d
+	default:
+		content = fmt.Sprint(details)
+	}
+
+	// Apply character limits if configured
+	if m.collapsibleConfig.MaxDetailLength > 0 && len(content) > m.collapsibleConfig.MaxDetailLength {
+		content = content[:m.collapsibleConfig.MaxDetailLength] + m.collapsibleConfig.TruncateIndicator
+	}
+
+	// Wrap in markdown code fences
+	if language != "" {
+		return fmt.Sprintf("\n\n```%s\n%s\n```\n\n", language, content)
+	}
+	return fmt.Sprintf("\n\n```\n%s\n```\n\n", content)
+}
+
 // renderCollapsibleSection renders a CollapsibleSection as nested HTML details structure (Requirement 15.4)
 func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleSection) ([]byte, error) {
 	var result strings.Builder
@@ -581,7 +678,7 @@ func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleS
 	result.WriteString(fmt.Sprintf("<details%s>\n", openAttr))
 	result.WriteString(fmt.Sprintf("<summary>%s</summary>\n\n", m.escapeMarkdown(section.Title())))
 
-	// Render all nested content within the collapsible section (Requirement 15.4)
+	// Render all nested content within the collapsible section with indentation (Requirement 15.4)
 	for i, content := range section.Content() {
 		if i > 0 {
 			result.WriteString("\n")
@@ -592,7 +689,17 @@ func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleS
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}
 
-		result.Write(contentMD)
+		// Indent the content for better visual hierarchy in markdown
+		lines := strings.SplitSeq(string(contentMD), "\n")
+		for line := range lines {
+			if strings.TrimSpace(line) != "" {
+				result.WriteString("  ") // Add 2 spaces for indentation
+				result.WriteString(line)
+				result.WriteString("\n")
+			} else if line == "" {
+				result.WriteString("\n") // Preserve empty lines
+			}
+		}
 	}
 
 	result.WriteString("\n</details>\n\n")

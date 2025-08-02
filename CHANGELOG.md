@@ -1,5 +1,15 @@
 ## 2.1.1 / Unreleased
 
+### Added
+- **Code Fence Support for Collapsible Fields**
+  - New `WithCodeFences(language string)` option for wrapping collapsible details in syntax-highlighted code blocks
+  - `WithoutCodeFences()` option to explicitly disable code fence wrapping
+  - Support for language-specific syntax highlighting (e.g., "json", "yaml", "go", "bash")
+  - Proper newline preservation in code fences without HTML escaping
+  - Works in both HTML renderer (using `<pre><code class="language-{lang}">`) and Markdown renderer (using ``` code fences)
+  - Comprehensive test suite covering string, array, and map content types with code fence wrapping
+  - Example application demonstrating code review results, configuration files, API responses, and error logs with code highlighting
+
 ### Fixed
 - Improved Markdown escaping logic to be more selective and produce more legible output
 - Fixed overly aggressive escaping in markdown table cells - now only escapes pipes and handles newlines
