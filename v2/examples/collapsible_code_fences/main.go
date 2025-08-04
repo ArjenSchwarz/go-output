@@ -45,7 +45,7 @@ func generateCodeReviewReport() {
 	// Create custom formatter for suggestions
 	suggestionFormatter := func(val any) any {
 		if suggestions, ok := val.([]string); ok {
-			return output.NewCollapsibleValue(fmt.Sprintf("%d suggestions", len(suggestions)), 
+			return output.NewCollapsibleValue(fmt.Sprintf("%d suggestions", len(suggestions)),
 				suggestions, output.WithExpanded(false))
 		}
 		return val
@@ -53,9 +53,9 @@ func generateCodeReviewReport() {
 
 	data := []map[string]any{
 		{
-			"file": "auth/login.go",
-			"line": 42,
-			"issue": "Potential SQL injection vulnerability",
+			"file":     "auth/login.go",
+			"line":     42,
+			"issue":    "Potential SQL injection vulnerability",
 			"severity": "High",
 			"code": `func authenticateUser(username, password string) bool {
     query := fmt.Sprintf("SELECT * FROM users WHERE username='%s'", username)
@@ -70,9 +70,9 @@ func generateCodeReviewReport() {
 			},
 		},
 		{
-			"file": "handlers/api.go",
-			"line": 128,
-			"issue": "Missing error handling",
+			"file":     "handlers/api.go",
+			"line":     128,
+			"issue":    "Missing error handling",
 			"severity": "Medium",
 			"code": `resp, _ := http.Get(apiURL)
 defer resp.Body.Close()
@@ -106,7 +106,7 @@ func generateConfigurationReport() {
 	configFormatter := func(format string) func(any) any {
 		return func(val any) any {
 			if config, ok := val.(string); ok {
-				return output.NewCollapsibleValue("View Configuration", config, 
+				return output.NewCollapsibleValue("View Configuration", config,
 					output.WithCodeFences(format), output.WithExpanded(true))
 			}
 			return val
@@ -116,7 +116,7 @@ func generateConfigurationReport() {
 	data := []map[string]any{
 		{
 			"service": "nginx",
-			"format": "nginx",
+			"format":  "nginx",
 			"config": `server {
     listen 80;
     server_name example.com;
@@ -135,7 +135,7 @@ func generateConfigurationReport() {
 		},
 		{
 			"service": "database",
-			"format": "yaml",
+			"format":  "yaml",
 			"config": `database:
   host: localhost
   port: 5432
@@ -149,7 +149,7 @@ func generateConfigurationReport() {
 		},
 		{
 			"service": "application",
-			"format": "json",
+			"format":  "json",
 			"config": `{
   "app": {
     "name": "MyAPI",
@@ -178,8 +178,8 @@ func generateConfigurationReport() {
 	for _, row := range data {
 		format := row["format"].(string)
 		fields = append(fields[:2], output.Field{
-			Name: "config",
-			Type: "string",
+			Name:      "config",
+			Type:      "string",
 			Formatter: configFormatter(format),
 		})
 		break // Just need to set it once
@@ -197,7 +197,7 @@ func generateAPIExamplesReport() {
 	// Custom formatter for API responses
 	responseFormatter := func(val any) any {
 		if resp, ok := val.(string); ok {
-			return output.NewCollapsibleValue("Response Example", resp, 
+			return output.NewCollapsibleValue("Response Example", resp,
 				output.WithCodeFences("json"), output.WithExpanded(false))
 		}
 		return val
@@ -206,7 +206,7 @@ func generateAPIExamplesReport() {
 	// Custom formatter for curl commands
 	curlFormatter := func(val any) any {
 		if cmd, ok := val.(string); ok {
-			return output.NewCollapsibleValue("cURL Command", cmd, 
+			return output.NewCollapsibleValue("cURL Command", cmd,
 				output.WithCodeFences("bash"))
 		}
 		return val
@@ -214,7 +214,7 @@ func generateAPIExamplesReport() {
 
 	data := []map[string]any{
 		{
-			"endpoint": "GET /api/users/{id}",
+			"endpoint":    "GET /api/users/{id}",
 			"description": "Retrieve user by ID",
 			"curl": `curl -X GET "https://api.example.com/users/123" \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -233,7 +233,7 @@ func generateAPIExamplesReport() {
 }`,
 		},
 		{
-			"endpoint": "POST /api/users",
+			"endpoint":    "POST /api/users",
 			"description": "Create new user",
 			"curl": `curl -X POST "https://api.example.com/users" \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -281,7 +281,7 @@ func generateErrorLogsReport() {
 			for _, line := range trace {
 				traceStr += line + "\n"
 			}
-			return output.NewCollapsibleValue(fmt.Sprintf("Stack Trace (%d frames)", len(trace)), 
+			return output.NewCollapsibleValue(fmt.Sprintf("Stack Trace (%d frames)", len(trace)),
 				traceStr, output.WithCodeFences(""), output.WithMaxLength(500))
 		}
 		return val
@@ -290,7 +290,7 @@ func generateErrorLogsReport() {
 	// Custom formatter for error context
 	contextFormatter := func(val any) any {
 		if ctx, ok := val.(map[string]any); ok {
-			return output.NewCollapsibleValue("Error Context", ctx, 
+			return output.NewCollapsibleValue("Error Context", ctx,
 				output.WithCodeFences("json"))
 		}
 		return val
@@ -299,8 +299,8 @@ func generateErrorLogsReport() {
 	data := []map[string]any{
 		{
 			"timestamp": "2024-03-21 10:45:23",
-			"level": "ERROR",
-			"message": "Database connection failed",
+			"level":     "ERROR",
+			"message":   "Database connection failed",
 			"stackTrace": []string{
 				"goroutine 42 [running]:",
 				"main.connectDB(0xc0000a6000, 0xc0000a8000)",
@@ -311,17 +311,17 @@ func generateErrorLogsReport() {
 				"    /app/main.go:32 +0x89",
 			},
 			"context": map[string]any{
-				"host": "db.example.com",
-				"port": 5432,
-				"database": "production",
+				"host":        "db.example.com",
+				"port":        5432,
+				"database":    "production",
 				"retry_count": 3,
-				"last_error": "connection refused",
+				"last_error":  "connection refused",
 			},
 		},
 		{
 			"timestamp": "2024-03-21 11:02:45",
-			"level": "PANIC",
-			"message": "Nil pointer dereference",
+			"level":     "PANIC",
+			"message":   "Nil pointer dereference",
 			"stackTrace": []string{
 				"panic: runtime error: invalid memory address or nil pointer dereference",
 				"[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x123456]",
@@ -334,9 +334,9 @@ func generateErrorLogsReport() {
 			},
 			"context": map[string]any{
 				"request_id": "550e8400-e29b-41d4-a716-446655440000",
-				"user_id": nil,
-				"endpoint": "/api/process",
-				"method": "POST",
+				"user_id":    nil,
+				"endpoint":   "/api/process",
+				"method":     "POST",
 			},
 		},
 	}

@@ -327,9 +327,18 @@ func (m *markdownRenderer) escapeMarkdown(text string) string {
 
 // escapeMarkdownTableCell escapes content for use in markdown table cells
 func (m *markdownRenderer) escapeMarkdownTableCell(text string) string {
-	// In table cells, only pipes and newlines need special handling
-	// Other markdown formatting is typically not interpreted in table cells
+	// In table cells, markdown formatting is still interpreted, so we need to escape:
+	// - Pipes (|) which break table structure
+	// - Asterisks (*) which create emphasis/bold formatting
+	// - Underscores (_) which create emphasis/italic formatting
+	// - Backticks (`) which create code formatting
+	// - Square brackets ([]) which create links
 	text = strings.ReplaceAll(text, "|", "\\|")
+	text = strings.ReplaceAll(text, "*", "\\*")
+	text = strings.ReplaceAll(text, "_", "\\_")
+	text = strings.ReplaceAll(text, "`", "\\`")
+	text = strings.ReplaceAll(text, "[", "\\[")
+	text = strings.ReplaceAll(text, "]", "\\]")
 
 	// Replace newlines with <br> for table cell compatibility
 	text = strings.ReplaceAll(text, "\n", "<br>")
