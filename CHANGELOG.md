@@ -1,4 +1,12 @@
-## 2.1.1 / Unreleased
+## 2.1.3 / 2025-08-04
+
+### Fixed
+- Enhanced markdown table cell escaping to prevent formatting issues
+  - Now escapes pipes (|), asterisks (*), underscores (_), backticks (`), and square brackets ([])
+  - Maintains table structure integrity while preventing unintended markdown formatting
+  - Replaces newlines with `<br>` tags for proper table cell display
+
+## 2.1.1 / 2025-08-01
 
 ### Added
 - **Code Fence Support for Collapsible Fields**
@@ -11,10 +19,6 @@
   - Example application demonstrating code review results, configuration files, API responses, and error logs with code highlighting
 
 ### Fixed
-- Enhanced markdown table cell escaping to prevent formatting issues
-  - Now escapes pipes (|), asterisks (*), underscores (_), backticks (`), and square brackets ([])
-  - Maintains table structure integrity while preventing unintended markdown formatting
-  - Replaces newlines with `<br>` tags for proper table cell display
 - Improved Markdown escaping logic to be more selective and produce more legible output
 - Fixed overly aggressive escaping in markdown table cells - now only escapes pipes and handles newlines
 - Added dedicated HTML content escaping for content inside `<details>` and `<summary>` tags where GitHub processes markdown
