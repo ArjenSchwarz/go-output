@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Added
+- **Feature Planning Documentation**
+  - Added comprehensive requirements for Pipeline Visualization feature with 10 detailed user stories covering visualization modes, data capture, performance metrics, and interactive debugging
+  - Added comprehensive requirements for Transformation Pipeline Enhancement with 11 detailed user stories covering data-level transformations, format-aware operations, and pipeline API for complex operations
+  - Created decision logs and idea documentation for both features to support future implementation
+
 ### Changed
 - **Documentation Restructuring**
   - Moved v1 documentation files to have `v1-` prefix (v1-DOCUMENTATION.md, v1-GETTING_STARTED.md, v1-README.md)
