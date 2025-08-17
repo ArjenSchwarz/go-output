@@ -40,7 +40,7 @@ package main
 import (
     "context"
     "log"
-    
+
     output "github.com/ArjenSchwarz/go-output/v2"
 )
 
@@ -110,15 +110,15 @@ doc := output.New().
 
 ## Documentation
 
-📖 **[Complete API Documentation](v2/API.md)** - Comprehensive interface reference and examples
+🚀 **[Getting Started Guide](v2/docs/GETTING-STARTED.md)** - Quick introduction to v2 features and concepts
 
-🚀 **[Migration Guide](v2/MIGRATION.md)** - Complete migration guide from v1 to v2
+📖 **[Complete Documentation](v2/docs/DOCUMENTATION.md)** - Comprehensive library documentation and API reference
 
-💡 **[V1→V2 Migration Examples](v2/V1_V2_MIGRATION_EXAMPLES.md)** - Before/after code examples for v1 to v2 migration
+🚀 **[Migration Guide](v2/docs/MIGRATION.md)** - Complete migration guide from v1 to v2
 
-🔄 **[V2 Collapsible Features Migration](v2/V2_UPDATES_MIGRATION_EXAMPLES.md)** - Step-by-step guide for adding collapsible content to existing v2 code  
+💡 **[V1→V2 Migration Examples](v2/docs/V1_V2_MIGRATION_EXAMPLES.md)** - Before/after code examples for v1 to v2 migration
 
-📋 **[Quick Reference](v2/MIGRATION_QUICK_REFERENCE.md)** - Common patterns lookup table
+📋 **[Quick Reference](v2/docs/MIGRATION_QUICK_REFERENCE.md)** - Common patterns lookup table
 
 🔧 **[Working Examples](v2/examples/)** - Runnable examples for all major features
 
@@ -128,10 +128,9 @@ doc := output.New().
 
 ### Migration Resources
 
-- **[Migration Guide](v2/MIGRATION.md)** - Complete step-by-step migration instructions
-- **[V1→V2 Migration Examples](v2/V1_V2_MIGRATION_EXAMPLES.md)** - Real before/after code examples
-- **[V2 Collapsible Features Migration](v2/V2_UPDATES_MIGRATION_EXAMPLES.md)** - Step-by-step guide for existing v2 users
-- **[Breaking Changes](v2/BREAKING_CHANGES.md)** - Detailed list of all breaking changes
+- **[Migration Guide](v2/docs/MIGRATION.md)** - Complete step-by-step migration instructions
+- **[V1→V2 Migration Examples](v2/docs/V1_V2_MIGRATION_EXAMPLES.md)** - Real before/after code examples
+- **[Breaking Changes](v2/docs/BREAKING_CHANGES.md)** - Detailed list of all breaking changes
 
 
 ### v1 Documentation
@@ -142,7 +141,7 @@ For v1 users who aren't ready to migrate, see **[README-v1.md](README-v1.md)** f
 
 This library uses several excellent external packages:
 - [go-pretty](https://github.com/jedib0t/go-pretty) - Table formatting and styling
-- [dot](https://github.com/emicklei/dot) - DOT graph generation  
+- [dot](https://github.com/emicklei/dot) - DOT graph generation
 - [aws-sdk-go-v2](https://github.com/aws/aws-sdk-go-v2) - S3 integration
 - [yaml.v3](https://gopkg.in/yaml.v3) - YAML processing
 - [slug](https://github.com/gosimple/slug) - URL-safe string generation
@@ -210,6 +209,6 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and changes.
 
 ---
 
-**Need help?** Check the [API documentation](v2/API.md), browse the [examples](v2/examples/), or create an issue for support.
+**Need help?** Check the [Getting Started Guide](v2/docs/GETTING-STARTED.md), read the [Complete Documentation](v2/docs/DOCUMENTATION.md), browse the [examples](v2/examples/), or create an issue for support.
 
 **Still using v1?** See [README-v1.md](README-v1.md) for v1 documentation and migration guidance.

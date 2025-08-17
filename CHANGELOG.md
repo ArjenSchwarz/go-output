@@ -1,3 +1,18 @@
+## [Unreleased]
+
+### Changed
+- **Documentation Restructuring**
+  - Moved v1 documentation files to have `v1-` prefix (v1-DOCUMENTATION.md, v1-GETTING_STARTED.md, v1-README.md)
+  - Reorganized v2 documentation into dedicated `v2/docs/` directory for better organization
+  - Updated all README links to point to new documentation locations
+  - Consolidated v2 documentation files (API, MIGRATION, BREAKING_CHANGES, etc.) under single docs directory
+
+### Removed
+- Removed unused `.golangci.yaml-off` configuration file
+
+### Fixed
+- Updated local Claude settings to include additional MCP tools
+
 ## 2.1.3 / 2025-08-04
 
 ### Fixed

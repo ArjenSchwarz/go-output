@@ -4,9 +4,13 @@
 
 Go-Output v2 is a complete redesign of the library providing thread-safe document generation with preserved key ordering and multiple output formats. This API documentation covers all public interfaces and methods.
 
-**Version**: v2.0.0
+**Version**: v2.1.3
 **Go Version**: 1.24+
 **Import Path**: `github.com/ArjenSchwarz/go-output/v2`
+
+## Agent Implementation Guide
+
+This documentation is optimized for AI agents implementing the library. Key patterns are highlighted with clear examples and common pitfalls are documented.
 
 ## Quick Start
 
@@ -41,6 +45,124 @@ func main() {
         fmt.Printf("Error: %v\n", err)
     }
 }
+```
+
+## Agent Implementation Patterns
+
+### Critical Implementation Rules
+
+1. **ALWAYS preserve key order**: Use `WithKeys()` or `WithSchema()` - never rely on map iteration order
+2. **NEVER modify global state**: All operations must use the Builder pattern
+3. **ALWAYS check for errors**: Use `HasErrors()` and `Errors()` on Builder before rendering
+4. **Thread safety is guaranteed**: All public methods are thread-safe
+
+### Common Implementation Tasks
+
+#### Task: Display tabular data with specific column order
+
+```go
+// CORRECT: Explicit key ordering
+doc := output.New().
+    Table("Results", data, output.WithKeys("ID", "Name", "Score", "Status")).
+    Build()
+
+// INCORRECT: Relies on map iteration (undefined order)
+doc := output.New().
+    Table("Results", data). // No WithKeys - order will be random!
+    Build()
+```
+
+#### Task: Create expandable error details in tables
+
+```go
+// Use built-in error formatter for arrays of errors
+schema := output.WithSchema(
+    output.Field{
+        Name: "file",
+        Type: "string",
+    },
+    output.Field{
+        Name: "errors",
+        Type: "array",
+        Formatter: output.ErrorListFormatter(
+            output.WithExpanded(false), // Collapsed by default
+            output.WithCodeFences("text"), // v2.1.1+: Add code highlighting
+        ),
+    },
+)
+
+doc := output.New().
+    Table("Validation Results", errorData, schema).
+    Build()
+```
+
+#### Task: Generate multiple output formats
+
+```go
+// Single document, multiple formats
+doc := output.New().
+    Table("Data", data, output.WithKeys("Name", "Value")).
+    Build()
+
+// Render to multiple formats and destinations
+fileWriter, _ := output.NewFileWriter("./reports", "output.{format}")
+out := output.NewOutput(
+    output.WithFormats(output.JSON, output.CSV, output.Markdown),
+    output.WithWriter(output.NewStdoutWriter()),
+    output.WithWriter(fileWriter),
+)
+
+err := out.Render(context.Background(), doc)
+```
+
+#### Task: Create hierarchical document structure
+
+```go
+doc := output.New().
+    Header("Analysis Report").
+    Section("Overview", func(b *output.Builder) {
+        b.Text("System health: OK")
+        b.Table("Metrics", metrics, output.WithKeys("Metric", "Value"))
+    }).
+    Section("Details", func(b *output.Builder) {
+        b.Table("Performance", perfData, output.WithKeys("Component", "Time"))
+        b.Table("Errors", errorData, output.WithKeys("Error", "Count"))
+    }).
+    Build()
+```
+
+### Error Handling Patterns
+
+```go
+// Always check builder errors before rendering
+builder := output.New().
+    Table("Data", invalidData, output.WithKeys("Key"))
+    
+if builder.HasErrors() {
+    for _, err := range builder.Errors() {
+        // Log or handle each error
+        fmt.Printf("Build error: %v\n", err)
+    }
+    return // Don't attempt to render
+}
+
+doc := builder.Build()
+```
+
+### Memory-Efficient Patterns
+
+```go
+// For large datasets, use streaming-capable formats
+largeData := generateLargeDataset() // Millions of rows
+
+// Good: Streaming formats
+out := output.NewOutput(
+    output.WithFormats(output.CSV, output.JSON), // Both support streaming
+    output.WithWriter(output.NewFileWriter(".", "large.{format}")),
+)
+
+// Avoid: Non-streaming formats for large data
+// DON'T use Mermaid, DrawIO, or DOT for large datasets
 ```
 
 ## Core Concepts
@@ -337,9 +459,65 @@ type Field struct {
 }
 ```
 
-### Collapsible Content System
+### Collapsible Content System (v2.1.0+)
 
 The v2 library provides comprehensive support for collapsible content that adapts to each output format, enabling summary/detail views for complex data.
+
+#### Code Fence Support (v2.1.1+)
+
+**New Feature**: Wrap collapsible details in syntax-highlighted code blocks for better readability.
+
+```go
+// WithCodeFences adds language-specific syntax highlighting
+func WithCodeFences(language string) CollapsibleOption
+
+// WithoutCodeFences explicitly disables code fence wrapping  
+func WithoutCodeFences() CollapsibleOption
+```
+
+**Usage Example**:
+```go
+// JSON configuration with syntax highlighting
+configValue := output.NewCollapsibleValue(
+    "Configuration",
+    jsonConfig,
+    output.WithExpanded(false),
+    output.WithCodeFences("json"), // Syntax highlight as JSON
+)
+
+// Error logs with code highlighting
+errorValue := output.NewCollapsibleValue(
+    "Error Stack Trace",
+    stackTrace,
+    output.WithCodeFences("bash"), // Highlight as bash/terminal output
+)
+
+// API response with YAML highlighting
+apiValue := output.NewCollapsibleValue(
+    "API Response",
+    yamlResponse,
+    output.WithCodeFences("yaml"),
+)
+```
+
+**Format Behavior**:
+- **HTML**: Uses `<pre><code class="language-{lang}">` for GitHub/GitLab compatibility
+- **Markdown**: Uses triple-backtick code fences with language identifier
+- **Other formats**: Preserves content without HTML escaping in code blocks
+
+#### Enhanced Markdown Escaping (v2.1.3)
+
+**Improvements**: Better markdown table cell escaping to prevent formatting issues.
+
+**Escaped Characters in Table Cells**:
+- Pipes (`|`) → `\|` - Prevents breaking table structure
+- Asterisks (`*`) → `\*` - Prevents unintended bold/italic
+- Underscores (`_`) → `\_` - Prevents unintended emphasis
+- Backticks (`` ` ``) → `\`` - Prevents code formatting
+- Square brackets (`[`) → `\[` - Prevents link interpretation
+- Newlines → `<br>` - Maintains table cell integrity
+
+**Agent Implementation Note**: When generating markdown tables with user content, the library automatically handles escaping. Do not pre-escape content as it may result in double-escaping.
 
 #### CollapsibleValue Interface
 
@@ -1383,5 +1561,90 @@ The v2 API is designed for extensibility:
 - **Custom Transformers**: Implement `Transformer` interface for data processing
 - **Custom Writers**: Implement `Writer` interface for new destinations
 - **Custom Content**: Implement `Content` interface for specialized content types
+
+## API Method Quick Reference
+
+### Builder Methods
+| Method | Purpose | Example |
+|--------|---------|---------|
+| `New()` | Create new builder | `output.New()` |
+| `Build()` | Finalize document | `builder.Build()` |
+| `Table(title, data, opts)` | Add table with key order | `Table("Users", data, WithKeys("Name", "Age"))` |
+| `Text(text, opts)` | Add text content | `Text("Summary", WithBold(true))` |
+| `Header(text)` | Add header text | `Header("Report Title")` |
+| `Section(title, fn, opts)` | Group content | `Section("Details", func(b) {...})` |
+| `Raw(format, data, opts)` | Add raw content | `Raw("html", htmlBytes)` |
+| `Graph(title, edges)` | Add graph diagram | `Graph("Flow", edges)` |
+| `GanttChart(title, tasks)` | Add Gantt chart | `GanttChart("Timeline", tasks)` |
+| `PieChart(title, slices, show)` | Add pie chart | `PieChart("Stats", slices, true)` |
+| `DrawIO(title, records, header)` | Add Draw.io diagram | `DrawIO("Architecture", records, header)` |
+| `SetMetadata(key, value)` | Set metadata | `SetMetadata("author", "AI Agent")` |
+| `HasErrors()` | Check for errors | `if builder.HasErrors() {...}` |
+| `Errors()` | Get all errors | `for _, err := range builder.Errors()` |
+
+### Table Options
+| Option | Purpose | Example |
+|--------|---------|---------|
+| `WithKeys(keys...)` | Set column order | `WithKeys("ID", "Name", "Status")` |
+| `WithSchema(fields...)` | Define full schema | `WithSchema(Field{Name: "id", Type: "int"})` |
+| `WithAutoSchema()` | Auto-detect schema | `WithAutoSchema()` |
+
+### Collapsible Options (v2.1.0+)
+| Option | Purpose | Example |
+|--------|---------|---------|
+| `WithExpanded(bool)` | Set default state | `WithExpanded(false)` |
+| `WithMaxLength(int)` | Limit detail length | `WithMaxLength(200)` |
+| `WithCodeFences(lang)` | Add syntax highlighting (v2.1.1+) | `WithCodeFences("json")` |
+| `WithoutCodeFences()` | Disable code fences | `WithoutCodeFences()` |
+| `WithFormatHint(fmt, hints)` | Format-specific hints | `WithFormatHint("html", map[string]any{"class": "custom"})` |
+
+### Built-in Formatters
+| Formatter | Purpose | Example |
+|-----------|---------|---------|
+| `ErrorListFormatter(opts)` | Format error arrays | `ErrorListFormatter(WithExpanded(false))` |
+| `FilePathFormatter(max, opts)` | Shorten long paths | `FilePathFormatter(30)` |
+| `JSONFormatter(max, opts)` | Format JSON objects | `JSONFormatter(100, WithCodeFences("json"))` |
+| `CollapsibleFormatter(tmpl, fn, opts)` | Custom collapsible | `CollapsibleFormatter("Summary", detailFunc)` |
+
+### Output Configuration
+| Method | Purpose | Example |
+|--------|---------|---------|
+| `NewOutput(opts...)` | Create output instance | `NewOutput(WithFormat(Table))` |
+| `WithFormat(format)` | Set single format | `WithFormat(output.JSON)` |
+| `WithFormats(formats...)` | Set multiple formats | `WithFormats(JSON, CSV, Table)` |
+| `WithWriter(writer)` | Set output destination | `WithWriter(NewStdoutWriter())` |
+| `WithWriters(writers...)` | Multiple destinations | `WithWriters(stdout, file)` |
+| `WithTransformer(t)` | Add transformer | `WithTransformer(&EmojiTransformer{})` |
+| `WithProgress(p)` | Add progress tracking | `WithProgress(progress)` |
+| `WithCollapsibleConfig(cfg)` | Configure collapsibles | `WithCollapsibleConfig(config)` |
+
+### Writer Constructors
+| Constructor | Purpose | Example |
+|-------------|---------|---------|
+| `NewStdoutWriter()` | Write to console | `NewStdoutWriter()` |
+| `NewFileWriter(dir, pattern)` | Write to files | `NewFileWriter("./out", "report.{format}")` |
+| `NewS3Writer(region, bucket, key)` | Write to S3 | `NewS3Writer("us-east-1", "bucket", "key.{format}")` |
+| `NewMultiWriter(writers...)` | Multiple outputs | `NewMultiWriter(stdout, file)` |
+
+### Built-in Formats
+| Format | Constant | Streaming | Notes |
+|--------|----------|-----------|-------|
+| JSON | `output.JSON` | ✓ | Structured data |
+| YAML | `output.YAML` | ✓ | Human-readable structured |
+| CSV | `output.CSV` | ✓ | Spreadsheet compatible |
+| HTML | `output.HTML` | ✓ | Web display |
+| Table | `output.Table` | ✓ | Terminal display |
+| Markdown | `output.Markdown` | ✓ | Documentation format |
+| DOT | `output.DOT` | ✗ | Graphviz diagrams |
+| Mermaid | `output.Mermaid` | ✗ | Mermaid diagrams |
+| DrawIO | `output.DrawIO` | ✗ | Draw.io CSV format |
+
+### Version History
+| Version | Key Features |
+|---------|--------------|
+| v2.1.3 | Enhanced markdown table escaping for pipes, asterisks, underscores, backticks, brackets |
+| v2.1.1 | Code fence support for collapsible fields with syntax highlighting |
+| v2.1.0 | Complete collapsible content system with format-aware rendering |
+| v2.0.0 | Complete redesign with Builder pattern, key order preservation, thread safety |
 
 For more examples and advanced usage, see the `/examples` directory in the repository.

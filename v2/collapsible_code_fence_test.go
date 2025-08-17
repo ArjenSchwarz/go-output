@@ -238,7 +238,7 @@ func TestCollapsibleValue_CodeFencesInTable(t *testing.T) {
 
 		// Should contain code fences
 		if !strings.Contains(output, "```go") {
-			t.Error("Expected ```go code fences in table")
+			t.Errorf("Expected ```go code fences in table, got output:\n%s", output)
 		}
 
 		// Should contain the actual code

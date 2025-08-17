@@ -207,7 +207,13 @@ func (m *markdownRenderer) renderTableContentMarkdown(table *TableContent) ([]by
 				cellValue = m.formatCellValue(val, field)
 			}
 			// Escape markdown and handle newlines in table cells
-			cellValue = m.escapeMarkdownTableCell(cellValue)
+			// Skip escaping if this is a collapsible value (starts with <details)
+			if !strings.HasPrefix(cellValue, "<details") {
+				cellValue = m.escapeMarkdownTableCell(cellValue)
+			} else {
+				// For collapsible values, only replace newlines with <br>
+				cellValue = strings.ReplaceAll(cellValue, "\n", "<br>")
+			}
 			result.WriteString(fmt.Sprintf(" %s |", cellValue))
 		}
 		result.WriteString("\n")
@@ -667,10 +673,12 @@ func (m *markdownRenderer) getSafeDetailsWithCodeFences(cv CollapsibleValue, lan
 	}
 
 	// Wrap in markdown code fences
+	// Note: We don't add leading/trailing newlines here because
+	// they would be converted to <br/> tags in table cells
 	if language != "" {
-		return fmt.Sprintf("\n\n```%s\n%s\n```\n\n", language, content)
+		return fmt.Sprintf("```%s\n%s\n```", language, content)
 	}
-	return fmt.Sprintf("\n\n```\n%s\n```\n\n", content)
+	return fmt.Sprintf("```\n%s\n```", content)
 }
 
 // renderCollapsibleSection renders a CollapsibleSection as nested HTML details structure (Requirement 15.4)

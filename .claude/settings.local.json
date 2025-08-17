@@ -25,7 +25,9 @@
       "Bash(sed:*)",
       "Bash(ls:*)",
       "Bash(cp:*)",
-      "Bash(timeout 10 go run main.go)"
+      "Bash(timeout 10 go run main.go)",
+      "mcp__devtools__think",
+      "mcp__devtools__gemini-agent"
     ],
     "deny": []
   }

@@ -62,7 +62,7 @@ doc := output.New().
 // Document is immutable after Build()
 ```
 
-**Impact**: 
+**Impact**:
 - No more direct struct manipulation
 - Fluent API for building documents
 - Clear separation between building and rendering
@@ -169,14 +169,14 @@ output.AddToBuffer()
 doc := output.New().
     // Adding table data
     Table("", tableData).
-    
+
     // Adding headers
     Header("Section Title").
-    
+
     // Multiple tables (no buffering needed)
     Table("First", data1).
     Table("Second", data2).
-    
+
     Build()
 ```
 
