@@ -139,6 +139,51 @@ The following are explicitly deferred to future versions:
 - Parallel execution optimizations
 - Security sandboxing and resource limits
 
+## Design Review Decisions (2025-08-17)
+
+After critical review by design-critic and peer-review-validator agents:
+
+### 1. Dual Transformer System Justified
+**Decision:** Maintain dual transformer approach despite complexity concerns
+**Rationale:** 
+- Data and byte transformers serve fundamentally different purposes
+- Clear separation between data manipulation and presentation styling
+- Enables backward compatibility without compromise
+- Both transformer types have clear, non-overlapping use cases
+
+### 2. Enhanced Error Handling and Validation
+**Decision:** Add Pipeline.Validate() and enhanced error context
+**Context:** Address concerns about debugging and type safety
+**Implementation:**
+- Pre-execution validation catches issues early
+- Mixed content type handling defined explicitly
+- Clear error messages with operation context
+
+### 3. Resource Limits from Day One
+**Decision:** Include basic resource management in initial implementation
+**Context:** Prevent runaway operations without full sandboxing
+**Implementation:**
+- Operation count limits
+- Execution timeouts via context
+- Memory usage monitoring (future)
+
+### 4. Schema Evolution Complexity Acknowledged
+**Decision:** Implement with extensive testing and validation
+**Context:** Schema evolution is complex but necessary
+**Implementation:**
+- Explicit handling of field conflicts
+- Bounds checking for insertions
+- Key order preservation guarantees
+
+### 5. Documentation-First Approach
+**Decision:** Emphasize clear documentation and examples
+**Context:** Complexity requires excellent user guidance
+**Focus Areas:**
+- When to use each transformer type
+- Immutability behavior
+- Performance expectations
+- Migration patterns
+
 ## Implementation Phases
 
 ### Phase 1: Core Implementation

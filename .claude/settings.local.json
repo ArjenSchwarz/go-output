@@ -27,7 +27,10 @@
       "Bash(cp:*)",
       "Bash(timeout 10 go run main.go)",
       "mcp__devtools__think",
-      "mcp__devtools__gemini-agent"
+      "mcp__devtools__gemini-agent",
+      "mcp__context7__resolve-library-id",
+      "Bash(git --no-pager diff --cached agents/transformation-pipeline/)",
+      "Bash(git --no-pager add CHANGELOG.md)"
     ],
     "deny": []
   }

@@ -1,0 +1,285 @@
+# Transformation Pipeline Implementation Tasks
+
+## Core Implementation Tasks
+
+- [ ] 1. Create DataTransformer Interface and Core Types
+  - [ ] 1.1. Write tests for DataTransformer interface and core types
+    - Create tests for DataTransformer interface methods in v2/transform_data_test.go
+    - Test TransformContext struct initialization and field access
+    - Test TransformerAdapter detection logic for data vs byte transformers
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 1.1, 1.4, Design DataTransformer Interface section
+  - [ ] 1.2. Implement DataTransformer interface and core types
+    - Define DataTransformer interface in v2/transform_data.go with Name(), TransformData(), CanTransform(), Priority(), and Describe() methods
+    - Create TransformContext struct with Format, Document, Metadata, and Stats fields
+    - Implement TransformerAdapter for unified handling of data and byte transformers
+    - Ensure all tests from 1.1 pass after implementation
+    - References: Requirement 1.1, 1.4, Design DataTransformer Interface section
+
+- [ ] 2. Implement Pipeline API Foundation
+  - [ ] 2.1. Write unit tests for Pipeline struct and operation chain behavior
+    - Test Pipeline struct initialization and field validation
+    - Test operation collection and chaining mechanism
+    - Test immutability preservation during pipeline operations
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 3.4, 9.1, Design Immutable Transformation section
+  - [ ] 2.2. Create Pipeline struct and Document.Pipeline() method
+    - Add Pipeline() method to Document that returns new Pipeline instance
+    - Implement Pipeline struct with document, operations slice, and options
+    - Create PipelineOptions struct with MaxOperations and MaxExecutionTime fields
+    - Ensure all tests from 2.1 pass after implementation
+    - References: Requirement 3.1, 3.2, Design Pipeline Architecture section
+
+- [ ] 3. Build Operation Interface and Base Operations
+  - [ ] 3.1. Write tests for Operation interface and core operation types
+    - Test FilterOp with various predicate functions
+    - Test SortOp with single and multiple sort keys
+    - Test operation validation logic
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 4.1, 5.1, Design Core operations section
+  - [ ] 3.2. Implement Operation interface and basic operation types
+    - Define Operation interface with Name(), Apply(), CanOptimize() methods
+    - Create FilterOp struct with predicate function field
+    - Create SortOp struct with keys and comparator fields
+    - Create LimitOp struct with count field
+    - Ensure all tests from 3.1 pass after implementation
+    - References: Requirement 3.3, 4.1, 5.1, Design Pipeline API Components
+
+- [ ] 4. Implement Filter Operation
+  - [ ] 4.1. Write comprehensive tests for filter functionality
+    - Test filtering with different data types in predicates
+    - Test filter with empty results and no matches
+    - Test type assertions within predicate functions
+    - Test multiple chained filter operations
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 4.2, 4.3, 4.5, 4.6
+  - [ ] 4.2. Create Filter() method on Pipeline
+    - Implement Filter() method accepting func(Record) bool predicate
+    - Add FilterOp to operations slice when called
+    - Implement Apply() method for FilterOp that filters table records
+    - Ensure schema and key ordering preservation
+    - Ensure all tests from 4.1 pass after implementation
+    - References: Requirement 4.1, 4.4, Design Predicate-Based Filtering
+
+- [ ] 5. Implement Sort Operation
+  - [ ] 5.1. Write tests for sorting functionality
+    - Test sorting with numeric, string, date, and boolean types
+    - Test multi-column sorting with different directions
+    - Test stable ordering for equal values
+    - Test custom comparison functions
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 5.2, 5.3, 5.4, 5.5
+  - [ ] 5.2. Create Sort() method on Pipeline
+    - Implement Sort() method accepting column names and sort direction
+    - Create SortKey struct with column name and direction fields
+    - Implement type-aware comparison logic for different data types
+    - Support custom comparator functions
+    - Ensure all tests from 5.1 pass after implementation
+    - References: Requirement 5.1, 5.6, Design SortOp struct
+
+- [ ] 6. Implement Limit Operation
+  - [ ] 6.1. Write tests for limit operation
+    - Test limiting with various counts
+    - Test limit with count larger than data size
+    - Test limit with zero and negative values
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 3.3, Design Pipeline API
+  - [ ] 6.2. Create Limit() method on Pipeline
+    - Implement Limit() method accepting count parameter
+    - Add LimitOp to operations slice
+    - Implement Apply() method that returns first N records
+    - Ensure all tests from 6.1 pass after implementation
+    - References: Requirement 3.3, Design Core operations
+
+- [ ] 7. Implement GroupBy and Aggregation Operations
+  - [ ] 7.1. Write tests for aggregation functionality
+    - Test GroupBy with single and multiple columns
+    - Test Sum, Count, Average, Min, Max aggregate functions
+    - Test aggregations with different numeric types
+    - Test custom aggregation functions
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 6.1, 6.2, 6.3, 6.4, 6.5
+  - [ ] 7.2. Create GroupBy() and aggregate methods
+    - Implement GroupBy() method accepting column names
+    - Create AggregateOp struct with groupBy fields and aggregate functions map
+    - Implement standard aggregate functions (Sum, Count, Average, Min, Max)
+    - Support custom aggregation functions through interface
+    - Generate new table structures with appropriate schemas
+    - Ensure all tests from 7.1 pass after implementation
+    - References: Requirement 6.6, Design AggregateOp struct
+
+- [ ] 8. Implement AddColumn for Calculated Fields
+  - [ ] 8.1. Write tests for calculated field functionality
+    - Test adding columns with different data types
+    - Test calculated fields accessing all record data
+    - Test schema updates with new fields
+    - Test field position specification
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 7.2, 7.3, 7.4, 7.6
+  - [ ] 8.2. Create AddColumn() method on Pipeline
+    - Implement AddColumn() method accepting name and calculation function
+    - Create SchemaBuilder for evolving schemas during transformation
+    - Support type inference from calculated values
+    - Maintain key order with configurable field position
+    - Ensure all tests from 8.1 pass after implementation
+    - References: Requirement 7.1, 7.5, Design Schema Evolution Support
+
+- [ ] 9. Build Pipeline Execution Engine
+  - [ ] 9.1. Write tests for pipeline execution and optimization
+    - Test operation reordering for performance
+    - Test lazy evaluation behavior
+    - Test error propagation through pipeline
+    - Test context cancellation and timeouts
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 8.1, 8.2, 10.5, Design Lazy Evaluation
+  - [ ] 9.2. Implement Execute() method and optimization logic
+    - Create Execute() method that applies all operations
+    - Implement Validate() method to check pipeline operations
+    - Add operation optimization logic (e.g., filter before sort)
+    - Handle mixed content types appropriately
+    - Implement fail-fast error handling with PipelineError
+    - Ensure all tests from 9.1 pass after implementation
+    - References: Requirement 3.5, 8.4, 10.6, Design Pipeline.Validate()
+
+- [ ] 10. Integrate DataTransformer with Renderer
+  - [ ] 10.1. Write tests for transformer detection and application
+    - Test renderer detecting DataTransformer vs Transformer
+    - Test data transformers applied before rendering
+    - Test byte transformers applied after rendering
+    - Test format context passing to transformers
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 1.5, 2.4, 5.2, Design Enhanced Transformer Detection
+  - [ ] 10.2. Modify renderer to support dual transformer system
+    - Update renderer interface to detect transformer types
+    - Apply DataTransformers to structured data before rendering
+    - Continue applying byte Transformers after rendering
+    - Pass format context to all transformers
+    - Ensure CanTransform() method is respected
+    - Ensure all tests from 10.1 pass after implementation
+    - References: Requirement 1.1, 1.3, 2.5, 9.4, Design Transformer Hierarchy
+
+- [ ] 11. Implement Error Handling and Validation
+  - [ ] 11.1. Write tests for error handling scenarios
+    - Test PipelineError with operation context
+    - Test validation of transformation parameters
+    - Test type mismatch error messages
+    - Test fail-fast behavior on first error
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 10.1, 10.3, 10.4, 10.5, Decision Log: Fail-fast strategy
+  - [ ] 11.2. Create comprehensive error handling system
+    - Implement PipelineError struct with detailed context
+    - Add validation logic for operation parameters
+    - Create clear error messages for type mismatches
+    - Implement fail-fast error propagation
+    - Include operation stage and data sample in errors
+    - Ensure all tests from 11.1 pass after implementation
+    - References: Requirement 10.2, 10.6, Design Error Handling section
+
+- [ ] 12. Add Performance Monitoring and Stats
+  - [ ] 12.1. Write tests for transformation statistics
+    - Test TransformStats collection during pipeline execution
+    - Test operation timing measurements
+    - Test record count tracking
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 3.1, Design TransformStats struct
+  - [ ] 12.2. Implement transformation statistics collection
+    - Create TransformStats struct with metrics fields
+    - Track InputRecords, OutputRecords, FilteredCount
+    - Measure Duration for each operation
+    - Collect OperationStat for individual operations
+    - Ensure all tests from 12.1 pass after implementation
+    - References: Requirement 8.6, Design TransformContext
+
+- [ ] 13. Ensure Backward Compatibility
+  - [ ] 13.1. Write regression tests for existing functionality
+    - Test all existing Transformer implementations still work
+    - Test TransformPipeline functionality unchanged
+    - Test transformer priority and ordering preserved
+    - Verify no performance degradation
+    - Tests must pass to ensure backward compatibility
+    - References: Requirement 9.1, 9.2, 9.3, 9.6
+  - [ ] 13.2. Verify seamless integration with existing code
+    - Ensure existing byte transformers work without modification
+    - Maintain current transformation configuration methods
+    - Preserve immutability guarantees of v2 architecture
+    - Verify thread-safety during concurrent operations
+    - Ensure all tests from 13.1 continue to pass
+    - References: Requirement 5.4, 5.5, 9.4, 9.5
+
+- [ ] 14. Implement Format-Aware Transformation Support
+  - [ ] 14.1. Write tests for format-specific behavior
+    - Test transformers receiving correct format parameter
+    - Test CanTransform() method with different formats
+    - Test format-specific transformer behavior
+    - Tests will initially fail until implementation is complete
+    - References: Requirement 2.1, 2.2, 2.5
+  - [ ] 14.2. Add format context throughout transformation pipeline
+    - Pass format information to DataTransformer.TransformData()
+    - Update existing Transformer interface calls with format
+    - Implement CanTransform() checking in renderer
+    - Support all formats: JSON, YAML, CSV, HTML, Table, Markdown
+    - Ensure all tests from 14.1 pass after implementation
+    - References: Requirement 2.3, 2.4, Design Format Context Everywhere
+
+- [ ] 15. Create Basic Resource Management
+  - [ ] 15.1. Write tests for resource limits and timeouts
+    - Test MaxOperations limit enforcement
+    - Test MaxExecutionTime timeout behavior
+    - Test context cancellation propagation
+    - Tests will initially fail until implementation is complete
+    - References: Decision Log: Resource Limits from Day One
+  - [ ] 15.2. Implement operation limits and timeouts
+    - Add MaxOperations check in pipeline execution
+    - Implement timeout through context.WithTimeout
+    - Support context cancellation in all operations
+    - Add basic memory usage tracking hooks for future use
+    - Ensure all tests from 15.1 pass after implementation
+    - References: Design Preventing Runaway Operations
+
+- [ ] 16. Performance Benchmarking and Optimization
+  - [ ] 16.1. Create comprehensive benchmark suite
+    - Benchmark filter operations with various data sizes
+    - Benchmark sort operations with different key counts
+    - Benchmark aggregation operations
+    - Compare with manual data manipulation baseline
+    - Benchmarks should demonstrate acceptable performance
+    - References: Requirement 8.6, Design Performance Targets
+  - [ ] 16.2. Implement basic optimizations
+    - Optimize operation ordering in pipeline
+    - Minimize data copying where possible
+    - Implement efficient schema cloning
+    - Ensure acceptable performance overhead (< 2x manual)
+    - Ensure all benchmarks from 16.1 meet performance targets
+    - References: Requirement 8.1, 8.2, 8.4, Design Optimization Strategies
+
+- [ ] 17. Create Documentation and Examples
+  - [ ] 17.1. Write comprehensive API documentation
+    - Document all public interfaces and methods
+    - Add godoc comments with usage examples
+    - Create clear descriptions for each operation
+    - Document error types and handling
+    - References: Requirement 11.1, 11.4
+  - [ ] 17.2. Create migration guide and cookbook
+    - Write migration guide from byte to data transformers
+    - Create examples for common use cases
+    - Document when to use each transformer type
+    - Include performance guidance for operations
+    - Add examples showing before/after migration code
+    - References: Requirement 11.2, 11.3, 11.5, 11.6, Design Migration Path
+
+- [ ] 18. Integration Testing and Validation
+  - [ ] 18.1. Write end-to-end integration tests
+    - Test complete pipeline with multiple operations
+    - Test integration with all output formats
+    - Test concurrent pipeline operations
+    - Test large dataset handling
+    - All integration tests must pass
+    - References: Requirement 5.4, Design Integration Testing
+  - [ ] 18.2. Validate all requirements are met
+    - Verify DataTransformer interface works as specified
+    - Confirm Pipeline API provides fluent interface
+    - Test all core operations function correctly
+    - Ensure complete backward compatibility
+    - Validate performance meets targets
+    - All validation tests must pass
+    - References: All requirements, Design Success Criteria
