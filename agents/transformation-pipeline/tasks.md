@@ -16,14 +16,14 @@
     - Ensure all tests from 1.1 pass after implementation
     - References: Requirement 1.1, 1.4, Design DataTransformer Interface section
 
-- [ ] 2. Implement Pipeline API Foundation
-  - [ ] 2.1. Write unit tests for Pipeline struct and operation chain behavior
+- [x] 2. Implement Pipeline API Foundation
+  - [x] 2.1. Write unit tests for Pipeline struct and operation chain behavior
     - Test Pipeline struct initialization and field validation
     - Test operation collection and chaining mechanism
     - Test immutability preservation during pipeline operations
     - Tests will initially fail until implementation is complete
     - References: Requirement 3.4, 9.1, Design Immutable Transformation section
-  - [ ] 2.2. Create Pipeline struct and Document.Pipeline() method
+  - [x] 2.2. Create Pipeline struct and Document.Pipeline() method
     - Add Pipeline() method to Document that returns new Pipeline instance
     - Implement Pipeline struct with document, operations slice, and options
     - Create PipelineOptions struct with MaxOperations and MaxExecutionTime fields

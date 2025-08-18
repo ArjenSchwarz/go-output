@@ -1,6 +1,20 @@
 ## [Unreleased]
 
 ### Added
+- **Pipeline API Foundation Implementation**
+  - Created Pipeline struct with document reference, operations slice, and configurable options
+  - Implemented Document.Pipeline() method to create transformation pipelines from documents
+  - Added Operation interface with Name(), Apply(), CanOptimize(), and Validate() methods
+  - Created PipelineOptions struct with MaxOperations and MaxExecutionTime configuration
+  - Implemented Pipeline validation to ensure table content presence and operation compatibility
+  - Added Execute() and ExecuteContext() methods with timeout support and context cancellation
+  - Comprehensive error handling with detailed context tracking through ContextError
+  - Transformation statistics tracking with per-operation metrics and duration measurement
+  - Deep cloning of table content to preserve document immutability during transformations
+  - Support for mixed content documents (preserves non-table content unchanged)
+  - Added GetTransformStats() method to retrieve transformation statistics from document metadata
+  - Created placeholder operation types (FilterOp, SortOp, LimitOp) for testing pipeline behavior
+  - Comprehensive test suite covering initialization, chaining, immutability, validation, and timeout handling
 - **Data Transformation System Core Implementation**
   - Implemented DataTransformer interface with Name(), TransformData(), CanTransform(), Priority(), and Describe() methods for structured data operations
   - Created TransformContext struct for carrying metadata through transformation pipeline with Format, Document, Metadata, and Stats fields
