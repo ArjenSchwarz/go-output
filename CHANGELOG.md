@@ -24,12 +24,25 @@
   - Implemented Clone() and Transform() methods on TableContent to support deep copying and functional transformations
   - Created PipelineError type with detailed error context including operation, stage, input, and contextual metadata
   - Comprehensive test suite with 100% coverage for DataTransformer interface, TransformContext, TransformerAdapter, and TransformableContent
+- **Data Transformation Operations Implementation**
+  - Implemented core data transformation operations system with Operation interface
+  - Added FilterOp operation for filtering table records based on predicate functions with type-safe validation
+  - Added SortOp operation for sorting table records by columns or custom comparators with multi-key support
+  - Added LimitOp operation for limiting the number of table records with boundary validation
+  - Added comprehensive test suite for all operation types with 800+ lines of test coverage
+  - Added operation validation logic and error handling with detailed error messages
+  - Added support for multiple sort keys and sort directions (ascending/descending)
+  - Added context cancellation support for long-running operations to prevent blocking
+  - Added immutability preservation for transformed content ensuring original data remains unchanged
 - **Feature Planning Documentation**
   - Added comprehensive requirements for Pipeline Visualization feature with 10 detailed user stories covering visualization modes, data capture, performance metrics, and interactive debugging
   - Added comprehensive requirements for Transformation Pipeline Enhancement with 11 detailed user stories covering data-level transformations, format-aware operations, and pipeline API for complex operations
   - Created decision logs and idea documentation for both features to support future implementation
 
 ### Changed
+- **Transformation Pipeline Task Completion**
+  - Updated transformation pipeline tasks to mark operation interface and base operations as completed
+  - Marked tasks 3.1 and 3.2 as completed in transformation-pipeline/tasks.md
 - **Documentation Restructuring**
   - Moved v1 documentation files to have `v1-` prefix (v1-DOCUMENTATION.md, v1-GETTING_STARTED.md, v1-README.md)
   - Reorganized v2 documentation into dedicated `v2/docs/` directory for better organization

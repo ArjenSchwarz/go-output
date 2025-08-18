@@ -30,14 +30,14 @@
     - Ensure all tests from 2.1 pass after implementation
     - References: Requirement 3.1, 3.2, Design Pipeline Architecture section
 
-- [ ] 3. Build Operation Interface and Base Operations
-  - [ ] 3.1. Write tests for Operation interface and core operation types
+- [x] 3. Build Operation Interface and Base Operations
+  - [x] 3.1. Write tests for Operation interface and core operation types
     - Test FilterOp with various predicate functions
     - Test SortOp with single and multiple sort keys
     - Test operation validation logic
     - Tests will initially fail until implementation is complete
     - References: Requirement 4.1, 5.1, Design Core operations section
-  - [ ] 3.2. Implement Operation interface and basic operation types
+  - [x] 3.2. Implement Operation interface and basic operation types
     - Define Operation interface with Name(), Apply(), CanOptimize() methods
     - Create FilterOp struct with predicate function field
     - Create SortOp struct with keys and comparator fields
