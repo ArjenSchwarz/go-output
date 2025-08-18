@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 )
 
@@ -103,9 +104,7 @@ func (tc *TableContent) Clone() Content {
 	newRecords := make([]Record, len(tc.records))
 	for i, record := range tc.records {
 		newRecord := make(Record)
-		for k, v := range record {
-			newRecord[k] = v
-		}
+		maps.Copy(newRecord, record)
 		newRecords[i] = newRecord
 	}
 
@@ -144,41 +143,4 @@ func (tc *TableContent) Transform(fn TransformFunc) error {
 
 	tc.records = records
 	return nil
-}
-
-// PipelineError provides detailed error context for pipeline failures
-type PipelineError struct {
-	Operation string
-	Stage     int
-	Input     any
-	Cause     error
-	Context   map[string]any
-}
-
-// Error implements the error interface
-func (e *PipelineError) Error() string {
-	return fmt.Sprintf("pipeline failed at stage %d (%s): %v",
-		e.Stage, e.Operation, e.Cause)
-}
-
-// Unwrap returns the underlying error
-func (e *PipelineError) Unwrap() error {
-	return e.Cause
-}
-
-// NewPipelineError creates a new pipeline error with context
-func NewPipelineError(operation string, stage int, input any, cause error) *PipelineError {
-	return &PipelineError{
-		Operation: operation,
-		Stage:     stage,
-		Input:     input,
-		Cause:     cause,
-		Context:   make(map[string]any),
-	}
-}
-
-// WithContext adds context to the pipeline error
-func (e *PipelineError) WithContext(key string, value any) *PipelineError {
-	e.Context[key] = value
-	return e
 }
