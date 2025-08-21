@@ -77,14 +77,14 @@
     - Ensure all tests from 5.1 pass after implementation
     - References: Requirement 5.1, 5.6, Design SortOp struct
 
-- [ ] 6. Implement Limit Operation
-  - [ ] 6.1. Write tests for limit operation
+- [x] 6. Implement Limit Operation
+  - [x] 6.1. Write tests for limit operation
     - Test limiting with various counts
     - Test limit with count larger than data size
     - Test limit with zero and negative values
     - Tests will initially fail until implementation is complete
     - References: Requirement 3.3, Design Pipeline API
-  - [ ] 6.2. Create Limit() method on Pipeline
+  - [x] 6.2. Create Limit() method on Pipeline
     - Implement Limit() method accepting count parameter
     - Add LimitOp to operations slice
     - Implement Apply() method that returns first N records
