@@ -41,6 +41,16 @@
   - Added schema and key order preservation during filtering operations
   - Added support for filtering with missing fields and type assertions within predicate functions
   - Added validation for nil predicates with detailed error messages
+- **Sort Operation Implementation**
+  - Added Pipeline.Sort() method with support for multiple sort keys and flexible sorting configurations
+  - Added Pipeline.SortBy() convenience method for single-column sorting with direction specification
+  - Added Pipeline.SortWith() method for custom comparator-based sorting with flexible comparison logic
+  - Implemented comprehensive test suite with 320+ lines of test coverage for sort functionality
+  - Added support for sorting different data types (string, integer, boolean, time) with type-aware comparison
+  - Added multi-column sorting with mixed sort directions (ascending/descending per column)
+  - Added immutability preservation ensuring original documents remain unchanged during sort operations
+  - Added validation for sort operations including empty keys detection and error handling
+  - Added fluent API integration allowing chaining of sort operations with other pipeline operations
 - **Feature Planning Documentation**
   - Added comprehensive requirements for Pipeline Visualization feature with 10 detailed user stories covering visualization modes, data capture, performance metrics, and interactive debugging
   - Added comprehensive requirements for Transformation Pipeline Enhancement with 11 detailed user stories covering data-level transformations, format-aware operations, and pipeline API for complex operations

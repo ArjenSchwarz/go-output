@@ -59,6 +59,28 @@ func (p *Pipeline) Filter(predicate func(Record) bool) *Pipeline {
 	return p
 }
 
+// Sort adds a sort operation to the pipeline
+// Accepts one or more sort keys with column names and directions
+func (p *Pipeline) Sort(keys ...SortKey) *Pipeline {
+	sortOp := NewSortOp(keys...)
+	p.operations = append(p.operations, sortOp)
+	return p
+}
+
+// SortBy adds a sort operation to the pipeline with a single column
+// This is a convenience method for sorting by one column
+func (p *Pipeline) SortBy(column string, direction SortDirection) *Pipeline {
+	return p.Sort(SortKey{Column: column, Direction: direction})
+}
+
+// SortWith adds a sort operation using a custom comparator function
+// The comparator should return -1 if a < b, 0 if a == b, 1 if a > b
+func (p *Pipeline) SortWith(comparator func(a, b Record) int) *Pipeline {
+	sortOp := NewSortOpWithComparator(comparator)
+	p.operations = append(p.operations, sortOp)
+	return p
+}
+
 // Validate checks if pipeline operations can be applied
 func (p *Pipeline) Validate() error {
 	// Check if document has transformable content

@@ -61,15 +61,15 @@
     - Ensure all tests from 4.1 pass after implementation
     - References: Requirement 4.1, 4.4, Design Predicate-Based Filtering
 
-- [ ] 5. Implement Sort Operation
-  - [ ] 5.1. Write tests for sorting functionality
+- [x] 5. Implement Sort Operation
+  - [x] 5.1. Write tests for sorting functionality
     - Test sorting with numeric, string, date, and boolean types
     - Test multi-column sorting with different directions
     - Test stable ordering for equal values
     - Test custom comparison functions
     - Tests will initially fail until implementation is complete
     - References: Requirement 5.2, 5.3, 5.4, 5.5
-  - [ ] 5.2. Create Sort() method on Pipeline
+  - [x] 5.2. Create Sort() method on Pipeline
     - Implement Sort() method accepting column names and sort direction
     - Create SortKey struct with column name and direction fields
     - Implement type-aware comparison logic for different data types
