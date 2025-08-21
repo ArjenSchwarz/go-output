@@ -51,6 +51,14 @@ func (p *Pipeline) WithOptions(opts PipelineOptions) *Pipeline {
 	return p
 }
 
+// Filter adds a filter operation to the pipeline
+// The predicate function should return true for records to keep
+func (p *Pipeline) Filter(predicate func(Record) bool) *Pipeline {
+	filterOp := NewFilterOp(predicate)
+	p.operations = append(p.operations, filterOp)
+	return p
+}
+
 // Validate checks if pipeline operations can be applied
 func (p *Pipeline) Validate() error {
 	// Check if document has transformable content
