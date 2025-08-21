@@ -51,6 +51,13 @@
   - Added immutability preservation ensuring original documents remain unchanged during sort operations
   - Added validation for sort operations including empty keys detection and error handling
   - Added fluent API integration allowing chaining of sort operations with other pipeline operations
+- **Limit Operation Implementation**
+  - Added Pipeline.Limit() method for limiting the number of records returned from transformation pipeline
+  - Implemented comprehensive test suite with 295+ lines of test coverage for limit functionality
+  - Added support for chaining limit operations with filter and sort operations
+  - Added validation for negative limit values with proper error handling
+  - Added immutability preservation ensuring original documents remain unchanged during limit operations
+  - Added boundary condition handling for limits larger than data size and zero limits
 - **Feature Planning Documentation**
   - Added comprehensive requirements for Pipeline Visualization feature with 10 detailed user stories covering visualization modes, data capture, performance metrics, and interactive debugging
   - Added comprehensive requirements for Transformation Pipeline Enhancement with 11 detailed user stories covering data-level transformations, format-aware operations, and pipeline API for complex operations

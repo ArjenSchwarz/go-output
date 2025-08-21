@@ -81,6 +81,14 @@ func (p *Pipeline) SortWith(comparator func(a, b Record) int) *Pipeline {
 	return p
 }
 
+// Limit adds a limit operation to the pipeline
+// Returns the first N records from the data
+func (p *Pipeline) Limit(count int) *Pipeline {
+	limitOp := NewLimitOp(count)
+	p.operations = append(p.operations, limitOp)
+	return p
+}
+
 // Validate checks if pipeline operations can be applied
 func (p *Pipeline) Validate() error {
 	// Check if document has transformable content
