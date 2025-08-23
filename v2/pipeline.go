@@ -97,6 +97,23 @@ func (p *Pipeline) GroupBy(columns []string, aggregates map[string]AggregateFunc
 	return p
 }
 
+// AddColumn adds a calculated field to the table
+// The calculation function receives the full record and should return the calculated value
+func (p *Pipeline) AddColumn(name string, fn func(Record) any) *Pipeline {
+	addColumnOp := NewAddColumnOp(name, fn, nil) // nil position = append to end
+	p.operations = append(p.operations, addColumnOp)
+	return p
+}
+
+// AddColumnAt adds a calculated field at a specific position in the table
+// The calculation function receives the full record and should return the calculated value
+// Position 0 inserts at the beginning, position >= field count appends to end
+func (p *Pipeline) AddColumnAt(name string, fn func(Record) any, position int) *Pipeline {
+	addColumnOp := NewAddColumnOp(name, fn, &position)
+	p.operations = append(p.operations, addColumnOp)
+	return p
+}
+
 // Validate checks if pipeline operations can be applied
 func (p *Pipeline) Validate() error {
 	// Check if document has transformable content

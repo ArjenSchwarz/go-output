@@ -53,11 +53,18 @@ func WithAutoSchemaOrdered(keys ...string) TableOption {
 // DetectSchemaFromData creates a schema from the provided data, preserving key order
 func DetectSchemaFromData(data any) *Schema {
 	switch v := data.(type) {
+	case []Record:
+		if len(v) == 0 {
+			return &Schema{Fields: []Field{}, keyOrder: []string{}}
+		}
+		return DetectSchemaFromMap(v[0])
 	case []map[string]any:
 		if len(v) == 0 {
 			return &Schema{Fields: []Field{}, keyOrder: []string{}}
 		}
 		return DetectSchemaFromMap(v[0])
+	case Record:
+		return DetectSchemaFromMap(v)
 	case map[string]any:
 		return DetectSchemaFromMap(v)
 	case []any:

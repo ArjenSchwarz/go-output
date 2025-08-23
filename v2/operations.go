@@ -681,3 +681,139 @@ func NewGroupByOp(groupBy []string, aggregates map[string]AggregateFunc) *GroupB
 		aggregates: aggregates,
 	}
 }
+
+// AddColumnOp implements operation to add calculated fields
+type AddColumnOp struct {
+	name     string           // Name of the new column
+	fn       func(Record) any // Function to calculate the field value
+	position *int             // Optional position to insert the column (nil = append)
+}
+
+// Name returns the operation name
+func (o *AddColumnOp) Name() string {
+	return "AddColumn"
+}
+
+// Apply adds a calculated column to the table
+func (o *AddColumnOp) Apply(ctx context.Context, content Content) (Content, error) {
+	// Type check
+	tableContent, ok := content.(*TableContent)
+	if !ok {
+		return nil, errors.New("addColumn requires table content")
+	}
+
+	// Clone the content to preserve immutability
+	cloned := tableContent.Clone().(*TableContent)
+
+	// Add the new column to each record
+	for i, record := range cloned.records {
+		// Check context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		// Calculate the new field value
+		value := o.fn(record)
+
+		// Add the new field to the record
+		cloned.records[i][o.name] = value
+	}
+
+	// Update the schema with the new field
+	newSchema := o.evolveSchema(cloned.schema)
+	cloned.schema = newSchema
+
+	return cloned, nil
+}
+
+// evolveSchema creates a new schema with the added field
+func (o *AddColumnOp) evolveSchema(originalSchema *Schema) *Schema {
+	if originalSchema == nil {
+		// Create a simple schema if none exists
+		return &Schema{
+			Fields:   []Field{{Name: o.name}},
+			keyOrder: []string{o.name},
+		}
+	}
+
+	// Get the original key order - this is critical for preserving field order
+	originalKeyOrder := originalSchema.GetKeyOrder()
+
+	// Determine position for insertion based on the key order, not the fields array
+	targetPosition := len(originalKeyOrder) // Default: append to end
+	if o.position != nil {
+		if *o.position >= 0 && *o.position <= len(originalKeyOrder) {
+			targetPosition = *o.position
+		}
+		// If position is beyond bounds, it defaults to append
+	}
+
+	// Create new key order with the field inserted at the appropriate position
+	newKeyOrder := make([]string, len(originalKeyOrder)+1)
+
+	if targetPosition >= len(originalKeyOrder) {
+		// Append to end
+		copy(newKeyOrder, originalKeyOrder)
+		newKeyOrder[len(originalKeyOrder)] = o.name
+	} else {
+		// Insert at position
+		copy(newKeyOrder[:targetPosition], originalKeyOrder[:targetPosition])
+		newKeyOrder[targetPosition] = o.name
+		copy(newKeyOrder[targetPosition+1:], originalKeyOrder[targetPosition:])
+	}
+
+	// Create fields array that matches the new key order
+	newFields := make([]Field, len(newKeyOrder))
+
+	// Copy existing fields, preserving their definitions
+	for i, key := range newKeyOrder {
+		if key == o.name {
+			// This is our new field
+			newFields[i] = Field{Name: o.name}
+		} else {
+			// Find the existing field definition
+			if existingField := originalSchema.FindField(key); existingField != nil {
+				newFields[i] = *existingField
+			} else {
+				// Fallback: create a basic field
+				newFields[i] = Field{Name: key}
+			}
+		}
+	}
+
+	return &Schema{
+		Fields:   newFields,
+		keyOrder: newKeyOrder,
+	}
+}
+
+// CanOptimize returns true if this addColumn can be optimized with another operation
+func (o *AddColumnOp) CanOptimize(with Operation) bool {
+	// AddColumn generally cannot be combined with other operations
+	return false
+}
+
+// Validate checks if the addColumn operation is valid
+func (o *AddColumnOp) Validate() error {
+	if o.name == "" {
+		return errors.New("addColumn requires a non-empty column name")
+	}
+	if o.fn == nil {
+		return errors.New("addColumn requires a calculation function")
+	}
+	if o.position != nil && *o.position < 0 {
+		return errors.New("addColumn position must be non-negative")
+	}
+	return nil
+}
+
+// NewAddColumnOp creates a new addColumn operation
+func NewAddColumnOp(name string, fn func(Record) any, position *int) *AddColumnOp {
+	return &AddColumnOp{
+		name:     name,
+		fn:       fn,
+		position: position,
+	}
+}

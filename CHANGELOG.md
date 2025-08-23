@@ -1,6 +1,15 @@
 ## [Unreleased]
 
 ### Added
+- **AddColumn Operation for Calculated Fields**
+  - Implemented AddColumnOp struct with support for calculated fields in transformation pipeline
+  - Support for calculated fields accessing all record data through function-based transformations
+  - Schema evolution system with field position specification for flexible column ordering
+  - Type inference and validation for calculated field values with comprehensive error handling
+  - Added Pipeline.AddColumn() method for fluent API integration with transformation pipeline
+  - Comprehensive test suite covering different data types, field positioning, and schema updates
+  - Context cancellation support for long-running AddColumn operations
+  - Immutability preservation through content cloning during field addition operations
 - **GroupBy and Aggregation Operations Implementation**
   - Implemented GroupByOp struct with support for grouping by single or multiple columns
   - Added standard aggregate functions: Count, Sum, Average, Min, Max
@@ -73,6 +82,9 @@
   - Created decision logs and idea documentation for both features to support future implementation
 
 ### Changed
+- **AddColumn Implementation Task Completion**
+  - Updated transformation pipeline tasks to mark AddColumn implementation as completed
+  - Marked tasks 8.1 and 8.2 as completed in transformation-pipeline/tasks.md
 - **Transformation Pipeline Task Completion**
   - Updated transformation pipeline tasks to mark operation interface and base operations as completed
   - Marked tasks 3.1 and 3.2 as completed in transformation-pipeline/tasks.md
@@ -83,6 +95,8 @@
   - Consolidated v2 documentation files (API, MIGRATION, BREAKING_CHANGES, etc.) under single docs directory
 
 ### Removed
+- **Debug Test File Cleanup**
+  - Removed v2/debug_test.go that was not part of the core functionality
 - Removed unused `.golangci.yaml-off` configuration file
 
 ### Fixed
