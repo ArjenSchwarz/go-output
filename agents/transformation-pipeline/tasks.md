@@ -91,15 +91,15 @@
     - Ensure all tests from 6.1 pass after implementation
     - References: Requirement 3.3, Design Core operations
 
-- [ ] 7. Implement GroupBy and Aggregation Operations
-  - [ ] 7.1. Write tests for aggregation functionality
+- [x] 7. Implement GroupBy and Aggregation Operations
+  - [x] 7.1. Write tests for aggregation functionality
     - Test GroupBy with single and multiple columns
     - Test Sum, Count, Average, Min, Max aggregate functions
     - Test aggregations with different numeric types
     - Test custom aggregation functions
     - Tests will initially fail until implementation is complete
     - References: Requirement 6.1, 6.2, 6.3, 6.4, 6.5
-  - [ ] 7.2. Create GroupBy() and aggregate methods
+  - [x] 7.2. Create GroupBy() and aggregate methods
     - Implement GroupBy() method accepting column names
     - Create AggregateOp struct with groupBy fields and aggregate functions map
     - Implement standard aggregate functions (Sum, Count, Average, Min, Max)
