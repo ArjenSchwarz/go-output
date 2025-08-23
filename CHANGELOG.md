@@ -1,6 +1,21 @@
 ## [Unreleased]
 
 ### Added
+- **Pipeline Error Handling System**
+  - Implemented comprehensive PipelineError type with detailed operation context including stage, input samples, and pipeline metadata
+  - Added pipeline-specific error handling with support for operation context, stage tracking, and fail-fast behavior
+  - Integrated PipelineError into ToStructuredError() converter for consistent error reporting across the system
+  - Enhanced operation validation with detailed ValidationError messages for better debugging experience
+  - Added comprehensive test coverage for pipeline error scenarios including type mismatches and validation failures
+  - Marked error handling and validation tasks (11.1, 11.2) as completed in transformation-pipeline feature
+- **Enhanced Operation Validation**
+  - Improved validation error messages across all operations (Filter, Sort, Limit, GroupBy, AddColumn)
+  - Added detailed field-level validation with specific error context for troubleshooting
+  - Enhanced sort operation validation with column name and direction validation
+  - Improved group by operation validation with aggregate function validation
+  - Added position validation for AddColumn operations with non-negative constraints
+
+### Added
 - **Development Environment Enhancement**
   - Added comprehensive Serena memory system for project documentation and development guidance
   - Created project overview, code style conventions, and task completion requirements documentation

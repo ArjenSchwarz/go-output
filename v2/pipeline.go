@@ -138,10 +138,28 @@ func (p *Pipeline) Validate() error {
 	// Validate operation compatibility
 	for i, op := range p.operations {
 		if err := op.Validate(); err != nil {
-			return NewContextError("operation_validation", err).
-				AddContext("operation_name", op.Name()).
-				AddContext("operation_index", i).
-				AddContext("operation_type", fmt.Sprintf("%T", op))
+			validationErr := NewPipelineError("Validate", i, err)
+			validationErr.AddContext("operation_name", op.Name())
+			validationErr.AddContext("operation_type", fmt.Sprintf("%T", op))
+			validationErr.AddPipelineContext("total_operations", len(p.operations))
+
+			// Add specific validation context based on operation type
+			switch op.(type) {
+			case *FilterOp:
+				validationErr.AddContext("validation_issue", "invalid predicate function")
+			case *SortOp:
+				validationErr.AddContext("validation_issue", "invalid sort configuration")
+			case *LimitOp:
+				validationErr.AddContext("validation_issue", "invalid limit value")
+			case *GroupByOp:
+				validationErr.AddContext("validation_issue", "invalid groupBy configuration")
+			case *AddColumnOp:
+				validationErr.AddContext("validation_issue", "invalid column configuration")
+			default:
+				validationErr.AddContext("validation_issue", "unknown operation validation failure")
+			}
+
+			return validationErr
 		}
 
 		// Check if operation can be optimized with previous operation
@@ -168,9 +186,11 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 
 	// Validate first
 	if err := p.Validate(); err != nil {
-		return nil, NewContextError("pipeline_execution", err).
-			AddContext("operation_count", len(p.operations)).
-			AddContext("max_operations", p.options.MaxOperations)
+		pipelineErr := NewPipelineError("Execute", -1, err)
+		pipelineErr.AddPipelineContext("operation_count", len(p.operations))
+		pipelineErr.AddPipelineContext("max_operations", p.options.MaxOperations)
+		pipelineErr.AddPipelineContext("max_execution_time", p.options.MaxExecutionTime)
+		return nil, pipelineErr
 	}
 
 	// Optimize operations before execution
@@ -190,7 +210,10 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			return nil, NewCancelledError("pipeline_execution", ctx.Err())
+			pipelineErr := NewPipelineError("Execute", contentIndex, ctx.Err())
+			pipelineErr.AddPipelineContext("cancelled_at_content", contentIndex)
+			pipelineErr.AddPipelineContext("total_contents", len(p.document.GetContents()))
+			return nil, pipelineErr
 		default:
 		}
 
@@ -203,11 +226,21 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 			// Apply transformations to table content
 			transformed, err := p.applyOperations(ctx, content, &stats)
 			if err != nil {
-				// Wrap error with pipeline context
-				return nil, NewContextError("content_transformation", err).
-					AddContext("content_index", contentIndex).
-					AddContext("content_type", content.Type().String()).
-					AddContext("content_id", content.ID())
+				// Check if it's already a PipelineError, if so enhance it, otherwise wrap it
+				var pipelineErr *PipelineError
+				if AsError(err, &pipelineErr) {
+					// Already a pipeline error, add additional context
+					pipelineErr.AddPipelineContext("content_index", contentIndex)
+					pipelineErr.AddPipelineContext("content_type", content.Type().String())
+					pipelineErr.AddPipelineContext("content_id", content.ID())
+					return nil, pipelineErr
+				} else {
+					// Wrap in new pipeline error
+					newPipelineErr := NewPipelineError("ContentTransformation", contentIndex, err)
+					newPipelineErr.AddPipelineContext("content_type", content.Type().String())
+					newPipelineErr.AddPipelineContext("content_id", content.ID())
+					return nil, newPipelineErr
+				}
 			}
 
 			// Count output records
@@ -249,7 +282,10 @@ func (p *Pipeline) applyOperations(ctx context.Context, content Content, stats *
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			return nil, NewCancelledError("pipeline_execution", ctx.Err())
+			pipelineErr := NewPipelineError("Execute", i, ctx.Err())
+			pipelineErr.AddContext("operation_name", op.Name())
+			pipelineErr.AddContext("operation_index", i)
+			return nil, pipelineErr
 		default:
 		}
 
@@ -258,12 +294,21 @@ func (p *Pipeline) applyOperations(ctx context.Context, content Content, stats *
 		// Apply the operation
 		result, err := op.Apply(ctx, current)
 		if err != nil {
-			// Create detailed error with context
-			return nil, NewContextError("operation_execution", err).
-				AddContext("operation_name", op.Name()).
-				AddContext("operation_index", i).
-				AddContext("operation_type", fmt.Sprintf("%T", op)).
-				AddContext("content_type", current.Type().String())
+			// Create detailed pipeline error with context
+			pipelineErr := NewPipelineError(op.Name(), i, err)
+			pipelineErr.AddContext("operation_type", fmt.Sprintf("%T", op))
+			pipelineErr.AddContext("content_type", current.Type().String())
+
+			// Add input sample for debugging (limit size to avoid huge errors)
+			if tableContent, ok := current.(*TableContent); ok {
+				if len(tableContent.records) > 0 {
+					// Include just the first record as a sample
+					pipelineErr.Input = tableContent.records[0]
+				}
+				pipelineErr.AddContext("input_record_count", len(tableContent.records))
+			}
+
+			return nil, pipelineErr
 		}
 
 		// Track operation stats
