@@ -351,3 +351,333 @@ func NewLimitOp(count int) *LimitOp {
 		count: count,
 	}
 }
+
+// AggregateFunc defines the signature for aggregate functions
+type AggregateFunc func(records []Record, field string) any
+
+// GroupByOp implements grouping and aggregation operations
+type GroupByOp struct {
+	groupBy    []string                 // Columns to group by
+	aggregates map[string]AggregateFunc // Map of result column name to aggregate function
+}
+
+// Name returns the operation name
+func (o *GroupByOp) Name() string {
+	return "GroupBy"
+}
+
+// Apply groups table records and applies aggregate functions
+func (o *GroupByOp) Apply(ctx context.Context, content Content) (Content, error) {
+	// Type check
+	tableContent, ok := content.(*TableContent)
+	if !ok {
+		return nil, errors.New("groupBy requires table content")
+	}
+
+	// Clone the content to preserve immutability
+	cloned := tableContent.Clone().(*TableContent)
+
+	// Group records by groupBy columns
+	groups := make(map[string][]Record)
+	groupKeys := make([]string, 0) // To preserve order
+
+	for _, record := range cloned.records {
+		// Check context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		// Create group key from groupBy columns
+		groupKey := o.createGroupKey(record)
+
+		if _, exists := groups[groupKey]; !exists {
+			groupKeys = append(groupKeys, groupKey)
+			groups[groupKey] = make([]Record, 0)
+		}
+		groups[groupKey] = append(groups[groupKey], record)
+	}
+
+	// Create result records with aggregated data
+	resultRecords := make([]Record, 0, len(groups))
+
+	for _, groupKey := range groupKeys {
+		// Check context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		groupRecords := groups[groupKey]
+		resultRecord := make(Record)
+
+		// Add groupBy column values
+		sampleRecord := groupRecords[0] // Use first record for group column values
+		for _, column := range o.groupBy {
+			resultRecord[column] = sampleRecord[column]
+		}
+
+		// Apply aggregate functions
+		for aggName, aggFunc := range o.aggregates {
+			// For count aggregate, field parameter is ignored
+			field := ""
+			if aggName != "count" {
+				// Try to infer field from aggregate name patterns
+				field = o.inferFieldFromAggregateName(aggName)
+			}
+			resultRecord[aggName] = aggFunc(groupRecords, field)
+		}
+
+		resultRecords = append(resultRecords, resultRecord)
+	}
+
+	// Create new schema with preserved key order
+	newSchema := o.createAggregatedSchema(cloned.schema)
+
+	// Update the cloned content
+	cloned.records = resultRecords
+	cloned.schema = newSchema
+
+	return cloned, nil
+}
+
+// createGroupKey creates a string key from groupBy column values
+func (o *GroupByOp) createGroupKey(record Record) string {
+	key := ""
+	for i, column := range o.groupBy {
+		if i > 0 {
+			key += "||" // Separator to avoid collisions
+		}
+		if val, exists := record[column]; exists {
+			key += fmt.Sprintf("%v", val)
+		} else {
+			key += "<nil>"
+		}
+	}
+	return key
+}
+
+// inferFieldFromAggregateName tries to infer field name from aggregate name
+func (o *GroupByOp) inferFieldFromAggregateName(aggName string) string {
+	// Common patterns: total_salary -> salary, sum_amount -> amount, etc.
+	if len(aggName) > 4 && aggName[:4] == "sum_" {
+		return aggName[4:]
+	}
+	if len(aggName) > 6 && aggName[:6] == "total_" {
+		return aggName[6:]
+	}
+	if len(aggName) > 4 && aggName[:4] == "avg_" {
+		return aggName[4:]
+	}
+	if len(aggName) > 8 && aggName[:8] == "average_" {
+		return aggName[8:]
+	}
+	if len(aggName) > 4 && aggName[:4] == "min_" {
+		return aggName[4:]
+	}
+	if len(aggName) > 4 && aggName[:4] == "max_" {
+		return aggName[4:]
+	}
+
+	// Special case: if aggregate name ends with 's', try singular form
+	// This handles cases like "names" -> "name"
+	if len(aggName) > 1 && aggName[len(aggName)-1] == 's' {
+		return aggName[:len(aggName)-1]
+	}
+
+	// Default: return the aggregate name itself as field name
+	return aggName
+}
+
+// createAggregatedSchema creates a schema for aggregated results
+func (o *GroupByOp) createAggregatedSchema(originalSchema *Schema) *Schema {
+	// Build key order: groupBy columns first, then aggregate columns
+	keyOrder := make([]string, 0, len(o.groupBy)+len(o.aggregates))
+
+	// Add groupBy columns
+	keyOrder = append(keyOrder, o.groupBy...)
+
+	// Add aggregate columns (order may vary due to map iteration)
+	for aggName := range o.aggregates {
+		keyOrder = append(keyOrder, aggName)
+	}
+
+	// Create fields for the new schema
+	fields := make([]Field, 0, len(keyOrder))
+
+	// Add fields for groupBy columns (preserve from original schema if available)
+	for _, column := range o.groupBy {
+		if originalSchema != nil {
+			if originalField := originalSchema.FindField(column); originalField != nil {
+				fields = append(fields, *originalField)
+				continue
+			}
+		}
+		// Default field for groupBy column
+		fields = append(fields, Field{Name: column})
+	}
+
+	// Add fields for aggregate columns
+	for aggName := range o.aggregates {
+		fields = append(fields, Field{Name: aggName})
+	}
+
+	return &Schema{
+		Fields:   fields,
+		keyOrder: keyOrder,
+	}
+}
+
+// CanOptimize returns true if this groupBy can be optimized with another operation
+func (o *GroupByOp) CanOptimize(with Operation) bool {
+	// GroupBy generally cannot be combined with other operations
+	return false
+}
+
+// Validate checks if the groupBy operation is valid
+func (o *GroupByOp) Validate() error {
+	if len(o.groupBy) == 0 {
+		return errors.New("groupBy requires at least one column")
+	}
+	if len(o.aggregates) == 0 {
+		return errors.New("groupBy requires at least one aggregate function")
+	}
+	return nil
+}
+
+// Built-in aggregate functions
+
+// CountAggregate returns an aggregate function that counts records
+func CountAggregate() AggregateFunc {
+	return func(records []Record, field string) any {
+		return len(records)
+	}
+}
+
+// SumAggregate returns an aggregate function that sums numeric values
+func SumAggregate(field string) AggregateFunc {
+	return func(records []Record, _ string) any {
+		sum := float64(0)
+		for _, record := range records {
+			if val, exists := record[field]; exists {
+				switch v := val.(type) {
+				case int:
+					sum += float64(v)
+				case int64:
+					sum += float64(v)
+				case float64:
+					sum += v
+				case float32:
+					sum += float64(v)
+					// Ignore non-numeric values
+				}
+			}
+		}
+		return sum
+	}
+}
+
+// AverageAggregate returns an aggregate function that calculates the average
+func AverageAggregate(field string) AggregateFunc {
+	return func(records []Record, _ string) any {
+		sum := float64(0)
+		count := 0
+		for _, record := range records {
+			if val, exists := record[field]; exists {
+				switch v := val.(type) {
+				case int:
+					sum += float64(v)
+					count++
+				case int64:
+					sum += float64(v)
+					count++
+				case float64:
+					sum += v
+					count++
+				case float32:
+					sum += float64(v)
+					count++
+					// Ignore non-numeric values
+				}
+			}
+		}
+		if count == 0 {
+			return float64(0)
+		}
+		return sum / float64(count)
+	}
+}
+
+// MinAggregate returns an aggregate function that finds the minimum value
+func MinAggregate(field string) AggregateFunc {
+	return func(records []Record, _ string) any {
+		var min *float64
+		for _, record := range records {
+			if val, exists := record[field]; exists {
+				var floatVal float64
+				switch v := val.(type) {
+				case int:
+					floatVal = float64(v)
+				case int64:
+					floatVal = float64(v)
+				case float64:
+					floatVal = v
+				case float32:
+					floatVal = float64(v)
+				default:
+					continue // Ignore non-numeric values
+				}
+
+				if min == nil || floatVal < *min {
+					min = &floatVal
+				}
+			}
+		}
+		if min == nil {
+			return float64(0)
+		}
+		return *min
+	}
+}
+
+// MaxAggregate returns an aggregate function that finds the maximum value
+func MaxAggregate(field string) AggregateFunc {
+	return func(records []Record, _ string) any {
+		var max *float64
+		for _, record := range records {
+			if val, exists := record[field]; exists {
+				var floatVal float64
+				switch v := val.(type) {
+				case int:
+					floatVal = float64(v)
+				case int64:
+					floatVal = float64(v)
+				case float64:
+					floatVal = v
+				case float32:
+					floatVal = float64(v)
+				default:
+					continue // Ignore non-numeric values
+				}
+
+				if max == nil || floatVal > *max {
+					max = &floatVal
+				}
+			}
+		}
+		if max == nil {
+			return float64(0)
+		}
+		return *max
+	}
+}
+
+// NewGroupByOp creates a new groupBy operation
+func NewGroupByOp(groupBy []string, aggregates map[string]AggregateFunc) *GroupByOp {
+	return &GroupByOp{
+		groupBy:    groupBy,
+		aggregates: aggregates,
+	}
+}

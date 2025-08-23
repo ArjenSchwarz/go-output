@@ -1,6 +1,15 @@
 ## [Unreleased]
 
 ### Added
+- **GroupBy and Aggregation Operations Implementation**
+  - Implemented GroupByOp struct with support for grouping by single or multiple columns
+  - Added standard aggregate functions: Count, Sum, Average, Min, Max
+  - Support for custom aggregate functions through AggregateFunc interface
+  - Preserved key order in aggregated results schema maintaining v2 design principles
+  - Added Pipeline.GroupBy() method for fluent API integration
+  - Comprehensive test coverage including validation, different numeric types, and custom aggregates
+  - Context cancellation support for long-running aggregation operations
+  - Immutability preservation through content cloning
 - **Pipeline API Foundation Implementation**
   - Created Pipeline struct with document reference, operations slice, and configurable options
   - Implemented Document.Pipeline() method to create transformation pipelines from documents

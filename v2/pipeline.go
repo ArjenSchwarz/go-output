@@ -89,6 +89,14 @@ func (p *Pipeline) Limit(count int) *Pipeline {
 	return p
 }
 
+// GroupBy adds a groupBy operation to the pipeline
+// Groups records by the specified columns and applies aggregate functions
+func (p *Pipeline) GroupBy(columns []string, aggregates map[string]AggregateFunc) *Pipeline {
+	groupByOp := NewGroupByOp(columns, aggregates)
+	p.operations = append(p.operations, groupByOp)
+	return p
+}
+
 // Validate checks if pipeline operations can be applied
 func (p *Pipeline) Validate() error {
 	// Check if document has transformable content
