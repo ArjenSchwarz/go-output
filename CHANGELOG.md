@@ -1,6 +1,16 @@
 ## [Unreleased]
 
 ### Added
+- **Dual Transformer System Implementation**
+  - Implemented complete dual transformer architecture with data and byte transformation capabilities
+  - Added TransformerAdapter for unified handling of DataTransformer and ByteTransformer interfaces
+  - Integrated transformer system into base renderer with format-aware transformation pipeline
+  - Data transformers now process document content before rendering with priority-based ordering
+  - Byte transformers process rendered output after format conversion with pipeline execution
+  - Added comprehensive integration tests covering end-to-end transformer pipeline with HTML, format filtering, and priority ordering
+  - Enhanced renderer integration tests with mock transformers for thorough transformer system validation
+  - Added renderDocumentWithFormat method to baseRenderer for dual transformer system support
+  - Updated graph renderers (Mermaid, Draw.io) to support format-aware transformer pipeline integration
 - **Pipeline Execution Engine Implementation**
   - Implemented Execute() and ExecuteContext() methods with full operation processing
   - Added operation optimization logic with intelligent reordering (filters before sorts for performance)

@@ -30,7 +30,12 @@
       "mcp__context7__resolve-library-id",
       "Bash(git diff --cached agents/transformation-pipeline/)",
       "Bash(git add CHANGELOG.md)",
-      "Bash(git log --oneline -10)"
+      "Bash(git log --oneline -10)",
+      "mcp__serena__read_memory",
+      "mcp__serena__list_dir",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__find_symbol",
+      "mcp__serena__search_for_pattern"
     ],
     "deny": []
   }

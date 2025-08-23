@@ -175,9 +175,9 @@ func (m *mermaidRenderer) Render(ctx context.Context, doc *Document) ([]byte, er
 
 	// If no graph-related content, fall back to base renderer
 	if !hasGraphContent {
-		return m.renderDocument(ctx, doc, func(content Content) ([]byte, error) {
+		return m.renderDocumentWithFormat(ctx, doc, func(content Content) ([]byte, error) {
 			return m.renderContent(content)
-		})
+		}, FormatMermaid)
 	}
 
 	// Render specialized charts first
@@ -460,9 +460,9 @@ func (d *drawioRenderer) Render(ctx context.Context, doc *Document) ([]byte, err
 
 	// If no Draw.io-compatible content, fall back to base renderer
 	if !hasDrawIOContent {
-		return d.renderDocument(ctx, doc, func(content Content) ([]byte, error) {
+		return d.renderDocumentWithFormat(ctx, doc, func(content Content) ([]byte, error) {
 			return d.renderContent(content)
-		})
+		}, FormatDrawIO)
 	}
 
 	for _, content := range contents {

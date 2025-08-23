@@ -24,7 +24,7 @@ func (h *htmlRenderer) Format() string {
 }
 
 func (h *htmlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
-	return h.renderDocument(ctx, doc, h.renderContent)
+	return h.renderDocumentWithFormat(ctx, doc, h.renderContent, FormatHTML)
 }
 
 func (h *htmlRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {

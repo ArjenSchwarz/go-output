@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -25,6 +26,10 @@ type RendererConfig struct {
 	// Format-specific settings (Requirement 14: Configurable Renderer Settings)
 	TableHiddenIndicator string
 	HTMLCSSClasses       map[string]string
+
+	// Transformer configuration (Task 10.2: Dual transformer system)
+	DataTransformers []*TransformerAdapter
+	ByteTransformers *TransformPipeline
 }
 
 // DefaultRendererConfig provides sensible default configuration values
@@ -38,22 +43,54 @@ var DefaultRendererConfig = RendererConfig{
 		"summary": "collapsible-summary",
 		"content": "collapsible-details",
 	},
+	DataTransformers: make([]*TransformerAdapter, 0),
+	ByteTransformers: NewTransformPipeline(),
 }
 
 // baseRenderer provides common functionality shared by all renderer implementations
 type baseRenderer struct {
-	mu sync.RWMutex
+	mu     sync.RWMutex
+	config RendererConfig
 }
 
 // renderDocument handles the core document rendering logic with context cancellation
 func (b *baseRenderer) renderDocument(ctx context.Context, doc *Document, renderFunc func(Content) ([]byte, error)) ([]byte, error) {
+	return b.renderDocumentWithFormat(ctx, doc, renderFunc, "")
+}
+
+// renderDocumentWithFormat handles the dual transformer system
+func (b *baseRenderer) renderDocumentWithFormat(ctx context.Context, doc *Document, renderFunc func(Content) ([]byte, error), format string) ([]byte, error) {
 	if doc == nil {
 		return nil, fmt.Errorf("document cannot be nil")
 	}
 
 	b.mu.RLock()
-	defer b.mu.RUnlock()
+	config := b.config
+	b.mu.RUnlock()
 
+	// Step 1: Apply data transformers to the document before rendering
+	transformedDoc, err := b.applyDataTransformers(ctx, doc, format, config.DataTransformers)
+	if err != nil {
+		return nil, fmt.Errorf("data transformation failed: %w", err)
+	}
+
+	// Step 2: Render the transformed document
+	renderedBytes, err := b.renderTransformedDocument(ctx, transformedDoc, renderFunc)
+	if err != nil {
+		return nil, fmt.Errorf("rendering failed: %w", err)
+	}
+
+	// Step 3: Apply byte transformers to the rendered output
+	finalBytes, err := b.applyByteTransformers(ctx, renderedBytes, format, config.ByteTransformers)
+	if err != nil {
+		return nil, fmt.Errorf("byte transformation failed: %w", err)
+	}
+
+	return finalBytes, nil
+}
+
+// renderTransformedDocument renders the document after data transformations
+func (b *baseRenderer) renderTransformedDocument(ctx context.Context, doc *Document, renderFunc func(Content) ([]byte, error)) ([]byte, error) {
 	var result bytes.Buffer
 	contents := doc.GetContents()
 
@@ -78,6 +115,91 @@ func (b *baseRenderer) renderDocument(ctx context.Context, doc *Document, render
 	}
 
 	return result.Bytes(), nil
+}
+
+// applyDataTransformers applies data transformations before rendering
+func (b *baseRenderer) applyDataTransformers(ctx context.Context, doc *Document, format string, transformers []*TransformerAdapter) (*Document, error) {
+	if len(transformers) == 0 {
+		return doc, nil
+	}
+
+	// Filter and sort applicable transformers by priority
+	var applicable []DataTransformer
+	for _, adapter := range transformers {
+		if !adapter.IsDataTransformer() {
+			continue
+		}
+
+		dataTransformer := adapter.AsDataTransformer()
+		if dataTransformer == nil {
+			continue
+		}
+
+		// Check if transformer applies to any content in the document
+		hasApplicableContent := false
+		for _, content := range doc.GetContents() {
+			if dataTransformer.CanTransform(content, format) {
+				hasApplicableContent = true
+				break
+			}
+		}
+
+		if hasApplicableContent {
+			applicable = append(applicable, dataTransformer)
+		}
+	}
+
+	if len(applicable) == 0 {
+		return doc, nil
+	}
+
+	// Sort by priority (lower numbers = higher priority)
+	sort.Slice(applicable, func(i, j int) bool {
+		return applicable[i].Priority() < applicable[j].Priority()
+	})
+
+	// Apply transformers in sequence
+	currentDoc := doc
+	for _, transformer := range applicable {
+		// Check for context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		transformedContents := make([]Content, 0, len(currentDoc.GetContents()))
+
+		for _, content := range currentDoc.GetContents() {
+			if transformer.CanTransform(content, format) {
+				transformed, err := transformer.TransformData(ctx, content, format)
+				if err != nil {
+					return nil, fmt.Errorf("transformer %s failed: %w", transformer.Name(), err)
+				}
+				transformedContents = append(transformedContents, transformed)
+			} else {
+				// Pass through unchanged content
+				transformedContents = append(transformedContents, content)
+			}
+		}
+
+		// Create new document with transformed contents
+		currentDoc = &Document{
+			contents: transformedContents,
+			metadata: currentDoc.GetMetadata(),
+		}
+	}
+
+	return currentDoc, nil
+}
+
+// applyByteTransformers applies byte transformations after rendering
+func (b *baseRenderer) applyByteTransformers(ctx context.Context, input []byte, format string, pipeline *TransformPipeline) ([]byte, error) {
+	if pipeline == nil {
+		return input, nil
+	}
+
+	return pipeline.Transform(ctx, input, format)
 }
 
 // renderDocumentTo handles streaming document rendering with context cancellation
