@@ -6,6 +6,11 @@ import (
 	"fmt"
 )
 
+const (
+	// unknownValue is the string representation for unknown/default values
+	unknownValue = "unknown"
+)
+
 // ContentType identifies the type of content
 type ContentType int
 
@@ -32,7 +37,7 @@ func (ct ContentType) String() string {
 	case ContentTypeSection:
 		return "section"
 	default:
-		return "unknown"
+		return unknownValue
 	}
 }
 
