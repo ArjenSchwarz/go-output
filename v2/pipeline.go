@@ -259,12 +259,19 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 	stats.Duration = time.Since(startTime)
 	stats.FilteredCount = stats.InputRecords - stats.OutputRecords
 
-	// Create new document with transformed contents
-	newDoc := createDocumentWithContents(newContents, p.document.GetMetadata())
+	// Create new document with transformed contents and stats
+	originalMetadata := p.document.GetMetadata()
+	newMetadata := make(map[string]any, len(originalMetadata)+1)
 
-	// Add transformation stats to metadata
-	metadata := newDoc.GetMetadata()
-	metadata["transform_stats"] = stats
+	// Copy original metadata
+	for k, v := range originalMetadata {
+		newMetadata[k] = v
+	}
+
+	// Add transformation stats
+	newMetadata["transform_stats"] = stats
+
+	newDoc := createDocumentWithContents(newContents, newMetadata)
 
 	return newDoc, nil
 }
