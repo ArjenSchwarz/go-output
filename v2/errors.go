@@ -660,6 +660,23 @@ func ToStructuredError(err error, defaultCode, defaultComponent, defaultOperatio
 		return structured
 	}
 
+	var pipelineErr *PipelineError
+	if AsError(err, &pipelineErr) {
+		structured := NewStructuredErrorWithCause("PIPELINE_ERROR", "pipeline", pipelineErr.Operation, pipelineErr.Error(), pipelineErr)
+		structured.AddContext("operation", pipelineErr.Operation)
+		structured.AddContext("stage", pipelineErr.Stage)
+		if pipelineErr.Input != nil {
+			structured.AddDetail("input_sample", pipelineErr.Input)
+		}
+		for k, v := range pipelineErr.Context {
+			structured.AddContext(k, v)
+		}
+		for k, v := range pipelineErr.PipelineCtx {
+			structured.AddDetail(k, v)
+		}
+		return structured
+	}
+
 	var writerErr *WriterError
 	if AsError(err, &writerErr) {
 		structured := NewStructuredErrorWithCause("WRITER_ERROR", "writer", writerErr.Operation, writerErr.Error(), writerErr)
@@ -755,6 +772,108 @@ func (e *WriterError) AddContext(key string, value any) *WriterError {
 	}
 	e.Context[key] = value
 	return e
+}
+
+// PipelineError represents an error that occurred during pipeline execution
+type PipelineError struct {
+	Operation   string         // The operation that failed (e.g., "Filter", "Sort", "Execute")
+	Stage       int            // Pipeline stage where error occurred (0-based)
+	Input       any            // Sample of data that caused the failure (may be nil for privacy)
+	Cause       error          // The underlying error
+	Context     map[string]any // Additional context information
+	PipelineCtx map[string]any // Overall pipeline context
+}
+
+// Error returns the error message with pipeline context
+func (e *PipelineError) Error() string {
+	var parts []string
+
+	if e.Operation != "" {
+		parts = append(parts, fmt.Sprintf("pipeline operation %q failed", e.Operation))
+	} else {
+		parts = append(parts, "pipeline failed")
+	}
+
+	// Stage information
+	if e.Stage >= 0 {
+		parts = append(parts, fmt.Sprintf("stage=%d", e.Stage))
+	}
+
+	// Pipeline context
+	if len(e.PipelineCtx) > 0 {
+		var ctxParts []string
+		for key, value := range e.PipelineCtx {
+			ctxParts = append(ctxParts, fmt.Sprintf("%s=%v", key, value))
+		}
+		parts = append(parts, fmt.Sprintf("pipeline_context=[%s]", strings.Join(ctxParts, ", ")))
+	}
+
+	// Operation context
+	if len(e.Context) > 0 {
+		var ctxParts []string
+		for key, value := range e.Context {
+			ctxParts = append(ctxParts, fmt.Sprintf("%s=%v", key, value))
+		}
+		parts = append(parts, fmt.Sprintf("operation_context=[%s]", strings.Join(ctxParts, ", ")))
+	}
+
+	// Input sample information (if provided)
+	if e.Input != nil {
+		parts = append(parts, fmt.Sprintf("input_sample=%v", e.Input))
+	}
+
+	// Cause
+	if e.Cause != nil {
+		parts = append(parts, fmt.Sprintf("cause: %v", e.Cause))
+	}
+
+	return strings.Join(parts, "; ")
+}
+
+// Unwrap returns the underlying error
+func (e *PipelineError) Unwrap() error {
+	return e.Cause
+}
+
+// AddContext adds context information to the pipeline error
+func (e *PipelineError) AddContext(key string, value any) *PipelineError {
+	if e.Context == nil {
+		e.Context = make(map[string]any)
+	}
+	e.Context[key] = value
+	return e
+}
+
+// AddPipelineContext adds pipeline-level context information
+func (e *PipelineError) AddPipelineContext(key string, value any) *PipelineError {
+	if e.PipelineCtx == nil {
+		e.PipelineCtx = make(map[string]any)
+	}
+	e.PipelineCtx[key] = value
+	return e
+}
+
+// NewPipelineError creates a new pipeline error
+func NewPipelineError(operation string, stage int, cause error) *PipelineError {
+	return &PipelineError{
+		Operation:   operation,
+		Stage:       stage,
+		Context:     make(map[string]any),
+		PipelineCtx: make(map[string]any),
+		Cause:       cause,
+	}
+}
+
+// NewPipelineErrorWithInput creates a new pipeline error with input sample
+func NewPipelineErrorWithInput(operation string, stage int, input any, cause error) *PipelineError {
+	return &PipelineError{
+		Operation:   operation,
+		Stage:       stage,
+		Input:       input,
+		Context:     make(map[string]any),
+		PipelineCtx: make(map[string]any),
+		Cause:       cause,
+	}
 }
 
 // timeNow returns the current time - this can be mocked in tests

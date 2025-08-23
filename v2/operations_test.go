@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -114,9 +115,8 @@ func TestFilterOpValidation(t *testing.T) {
 			t.Fatal("expected validation error for nil predicate")
 		}
 
-		expectedMsg := "filter predicate is required"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "filter predicate function is required") {
+			t.Errorf("expected error about filter predicate, got '%s'", err.Error())
 		}
 	})
 
@@ -247,9 +247,8 @@ func TestFilterOpApply(t *testing.T) {
 			t.Fatal("expected error when applying filter to non-table content")
 		}
 
-		expectedMsg := "filter requires table content"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "filter operation requires table content") {
+			t.Errorf("expected error about filter operation requiring table content, got '%s'", err.Error())
 		}
 	})
 
@@ -320,9 +319,8 @@ func TestSortOpValidation(t *testing.T) {
 			t.Fatal("expected validation error for empty sort operation")
 		}
 
-		expectedMsg := "sort requires keys or comparator"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "sort operation requires either sort keys or a custom comparator function") {
+			t.Errorf("expected error about sort operation requiring keys or comparator, got '%s'", err.Error())
 		}
 	})
 
@@ -556,9 +554,8 @@ func TestSortOpApply(t *testing.T) {
 			t.Fatal("expected error when applying sort to non-table content")
 		}
 
-		expectedMsg := "sort requires table content"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "sort operation requires table content") {
+			t.Errorf("expected error about sort operation requiring table content, got '%s'", err.Error())
 		}
 	})
 }
@@ -597,9 +594,8 @@ func TestLimitOpValidation(t *testing.T) {
 			t.Fatal("expected validation error for negative count")
 		}
 
-		expectedMsg := "limit count must be non-negative"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "limit count must be non-negative") {
+			t.Errorf("expected error about limit count being non-negative, got '%s'", err.Error())
 		}
 	})
 }
@@ -703,9 +699,8 @@ func TestLimitOpApply(t *testing.T) {
 			t.Fatal("expected error when applying limit to non-table content")
 		}
 
-		expectedMsg := "limit requires table content"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "limit operation requires table content") {
+			t.Errorf("expected error about limit operation requiring table content, got '%s'", err.Error())
 		}
 	})
 }
@@ -851,9 +846,8 @@ func TestAggregateOpValidation(t *testing.T) {
 			t.Fatal("expected validation error for empty groupBy columns")
 		}
 
-		expectedMsg := "groupBy requires at least one column"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "groupBy operation requires at least one grouping column") {
+			t.Errorf("expected error about groupBy requiring at least one column, got '%s'", err.Error())
 		}
 	})
 
@@ -868,9 +862,8 @@ func TestAggregateOpValidation(t *testing.T) {
 			t.Fatal("expected validation error for empty aggregates")
 		}
 
-		expectedMsg := "groupBy requires at least one aggregate function"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "groupBy operation requires at least one aggregate function") {
+			t.Errorf("expected error about groupBy requiring at least one aggregate function, got '%s'", err.Error())
 		}
 	})
 }
@@ -1241,9 +1234,8 @@ func TestAggregateOpApply(t *testing.T) {
 			t.Fatal("expected error when applying groupBy to non-table content")
 		}
 
-		expectedMsg := "groupBy requires table content"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "groupBy operation requires table content") {
+			t.Errorf("expected error about groupBy operation requiring table content, got '%s'", err.Error())
 		}
 	})
 }
@@ -1273,9 +1265,8 @@ func TestAddColumnOpValidation(t *testing.T) {
 			t.Fatal("expected validation error for empty column name")
 		}
 
-		expectedMsg := "addColumn requires a non-empty column name"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "addColumn operation requires a non-empty column name") {
+			t.Errorf("expected error about addColumn requiring non-empty column name, got '%s'", err.Error())
 		}
 	})
 
@@ -1290,9 +1281,8 @@ func TestAddColumnOpValidation(t *testing.T) {
 			t.Fatal("expected validation error for nil function")
 		}
 
-		expectedMsg := "addColumn requires a calculation function"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "addColumn operation requires a calculation function") {
+			t.Errorf("expected error about addColumn requiring calculation function, got '%s'", err.Error())
 		}
 	})
 
@@ -1321,9 +1311,8 @@ func TestAddColumnOpValidation(t *testing.T) {
 			t.Fatal("expected validation error for negative position")
 		}
 
-		expectedMsg := "addColumn position must be non-negative"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "addColumn position must be non-negative") {
+			t.Errorf("expected error about addColumn position being non-negative, got '%s'", err.Error())
 		}
 	})
 }
@@ -1706,9 +1695,8 @@ func TestAddColumnOpApply(t *testing.T) {
 			t.Fatal("expected error when applying addColumn to non-table content")
 		}
 
-		expectedMsg := "addColumn requires table content"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
+		if !strings.Contains(err.Error(), "addColumn operation requires table content") {
+			t.Errorf("expected error about addColumn operation requiring table content, got '%s'", err.Error())
 		}
 	})
 

@@ -353,9 +353,9 @@ func TestPipelineValidation(t *testing.T) {
 			t.Fatal("expected validation error for invalid operation")
 		}
 
-		var contextErr *ContextError
-		if !AsError(err, &contextErr) {
-			t.Errorf("expected ContextError, got %T", err)
+		var pipelineErr *PipelineError
+		if !AsError(err, &pipelineErr) {
+			t.Errorf("expected PipelineError, got %T", err)
 		}
 		if !strings.Contains(err.Error(), "operation is invalid") {
 			t.Errorf("expected error to contain 'operation is invalid', got '%s'", err.Error())
@@ -778,7 +778,7 @@ func TestFilterOperation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for nil predicate")
 		}
-		if err.Error() != "filter predicate is required" {
+		if !strings.Contains(err.Error(), "filter predicate function is required") {
 			t.Errorf("unexpected error message: %v", err)
 		}
 
@@ -1144,7 +1144,7 @@ func TestPipelineSortMethod(t *testing.T) {
 		}
 
 		// Should be a validation error about keys or comparator required
-		if !strings.Contains(err.Error(), "sort requires keys or comparator") {
+		if !strings.Contains(err.Error(), "sort operation requires either sort keys or a custom comparator function") {
 			t.Errorf("expected sort validation error, got: %v", err)
 		}
 	})
@@ -1272,7 +1272,7 @@ func TestPipelineFilterMethod(t *testing.T) {
 		}
 
 		// Should be a validation error about the predicate
-		if !strings.Contains(err.Error(), "filter predicate is required") {
+		if !strings.Contains(err.Error(), "filter predicate function is required") {
 			t.Errorf("expected predicate validation error, got: %v", err)
 		}
 	})

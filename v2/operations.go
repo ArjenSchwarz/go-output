@@ -2,7 +2,6 @@ package output
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -52,7 +51,8 @@ func (o *FilterOp) Apply(ctx context.Context, content Content) (Content, error) 
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
-		return nil, errors.New("filter requires table content")
+		return nil, NewValidationError("content_type", content.Type().String(),
+			"filter operation requires table content")
 	}
 
 	// Clone the content to preserve immutability
@@ -87,7 +87,7 @@ func (o *FilterOp) CanOptimize(with Operation) bool {
 // Validate checks if the filter operation is valid
 func (o *FilterOp) Validate() error {
 	if o.predicate == nil {
-		return errors.New("filter predicate is required")
+		return NewValidationError("predicate", nil, "filter predicate function is required and cannot be nil")
 	}
 	return nil
 }
@@ -108,7 +108,8 @@ func (o *SortOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
-		return nil, errors.New("sort requires table content")
+		return nil, NewValidationError("content_type", content.Type().String(),
+			"sort operation requires table content")
 	}
 
 	// Clone the content to preserve immutability
@@ -276,7 +277,16 @@ func (o *SortOp) CanOptimize(with Operation) bool {
 // Validate checks if the sort operation is valid
 func (o *SortOp) Validate() error {
 	if len(o.keys) == 0 && o.comparator == nil {
-		return errors.New("sort requires keys or comparator")
+		return NewValidationError("sort_configuration", nil, "sort operation requires either sort keys or a custom comparator function")
+	}
+	// Validate individual sort keys
+	for i, key := range o.keys {
+		if key.Column == "" {
+			return NewValidationError("sort_key_column", key, fmt.Sprintf("sort key at index %d has empty column name", i))
+		}
+		if key.Direction != Ascending && key.Direction != Descending {
+			return NewValidationError("sort_key_direction", key.Direction, fmt.Sprintf("sort key at index %d has invalid direction", i))
+		}
 	}
 	return nil
 }
@@ -296,7 +306,8 @@ func (o *LimitOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
-		return nil, errors.New("limit requires table content")
+		return nil, NewValidationError("content_type", content.Type().String(),
+			"limit operation requires table content")
 	}
 
 	// Clone the content to preserve immutability
@@ -319,7 +330,7 @@ func (o *LimitOp) CanOptimize(with Operation) bool {
 // Validate checks if the limit operation is valid
 func (o *LimitOp) Validate() error {
 	if o.count < 0 {
-		return errors.New("limit count must be non-negative")
+		return NewValidationError("count", o.count, "limit count must be non-negative (>= 0)")
 	}
 	return nil
 }
@@ -371,7 +382,8 @@ func (o *GroupByOp) Apply(ctx context.Context, content Content) (Content, error)
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
-		return nil, errors.New("groupBy requires table content")
+		return nil, NewValidationError("content_type", content.Type().String(),
+			"groupBy operation requires table content")
 	}
 
 	// Clone the content to preserve immutability
@@ -539,11 +551,26 @@ func (o *GroupByOp) CanOptimize(with Operation) bool {
 // Validate checks if the groupBy operation is valid
 func (o *GroupByOp) Validate() error {
 	if len(o.groupBy) == 0 {
-		return errors.New("groupBy requires at least one column")
+		return NewValidationError("group_columns", o.groupBy, "groupBy operation requires at least one grouping column")
 	}
+	// Validate grouping columns
+	for i, column := range o.groupBy {
+		if column == "" {
+			return NewValidationError("group_column", column, fmt.Sprintf("groupBy column at index %d cannot be empty", i))
+		}
+	}
+
 	if len(o.aggregates) == 0 {
-		return errors.New("groupBy requires at least one aggregate function")
+		return NewValidationError("aggregates", o.aggregates, "groupBy operation requires at least one aggregate function")
 	}
+
+	// Validate aggregate function names
+	for aggName := range o.aggregates {
+		if aggName == "" {
+			return NewValidationError("aggregate_name", aggName, "aggregate function name cannot be empty")
+		}
+	}
+
 	return nil
 }
 
@@ -699,7 +726,8 @@ func (o *AddColumnOp) Apply(ctx context.Context, content Content) (Content, erro
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
-		return nil, errors.New("addColumn requires table content")
+		return nil, NewValidationError("content_type", content.Type().String(),
+			"addColumn operation requires table content")
 	}
 
 	// Clone the content to preserve immutability
@@ -798,13 +826,13 @@ func (o *AddColumnOp) CanOptimize(with Operation) bool {
 // Validate checks if the addColumn operation is valid
 func (o *AddColumnOp) Validate() error {
 	if o.name == "" {
-		return errors.New("addColumn requires a non-empty column name")
+		return NewValidationError("column_name", o.name, "addColumn operation requires a non-empty column name")
 	}
 	if o.fn == nil {
-		return errors.New("addColumn requires a calculation function")
+		return NewValidationError("calculation_function", nil, "addColumn operation requires a calculation function and cannot be nil")
 	}
 	if o.position != nil && *o.position < 0 {
-		return errors.New("addColumn position must be non-negative")
+		return NewValidationError("column_position", *o.position, "addColumn position must be non-negative (>= 0)")
 	}
 	return nil
 }
