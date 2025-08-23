@@ -27,7 +27,7 @@ func (d SortDirection) String() string {
 	case Descending:
 		return "desc"
 	default:
-		return "unknown"
+		return unknownValue
 	}
 }
 
