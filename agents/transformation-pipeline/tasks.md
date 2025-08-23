@@ -108,15 +108,15 @@
     - Ensure all tests from 7.1 pass after implementation
     - References: Requirement 6.6, Design AggregateOp struct
 
-- [ ] 8. Implement AddColumn for Calculated Fields
-  - [ ] 8.1. Write tests for calculated field functionality
+- [x] 8. Implement AddColumn for Calculated Fields
+  - [x] 8.1. Write tests for calculated field functionality
     - Test adding columns with different data types
     - Test calculated fields accessing all record data
     - Test schema updates with new fields
     - Test field position specification
     - Tests will initially fail until implementation is complete
     - References: Requirement 7.2, 7.3, 7.4, 7.6
-  - [ ] 8.2. Create AddColumn() method on Pipeline
+  - [x] 8.2. Create AddColumn() method on Pipeline
     - Implement AddColumn() method accepting name and calculation function
     - Create SchemaBuilder for evolving schemas during transformation
     - Support type inference from calculated values
