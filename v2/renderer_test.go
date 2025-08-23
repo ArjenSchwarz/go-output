@@ -326,7 +326,7 @@ func TestBaseRenderer_RenderDocument_ContextCancellation(t *testing.T) {
 	}
 
 	_, err := base.renderDocument(ctx, doc, renderFunc)
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Errorf("Expected context.Canceled, got %v", err)
 	}
 }
@@ -426,7 +426,7 @@ func TestBaseRenderer_RenderDocumentTo_ContextCancellation(t *testing.T) {
 	}
 
 	err := base.renderDocumentTo(ctx, doc, &buf, renderFunc)
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Errorf("Expected context.Canceled, got %v", err)
 	}
 }
