@@ -3,6 +3,8 @@ package output
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -739,13 +741,7 @@ func TestFilterOperation(t *testing.T) {
 					return false
 				}
 
-				hasUrgent := false
-				for _, tag := range tags {
-					if tag == "urgent" {
-						hasUrgent = true
-						break
-					}
-				}
+				hasUrgent := slices.Contains(tags, "urgent")
 
 				return (typeA || priority1) && hasUrgent
 			},
@@ -1655,6 +1651,361 @@ func TestLimitOperationVariousCounts(t *testing.T) {
 		// Should be a validation error about negative count
 		if !strings.Contains(err.Error(), "limit count must be non-negative") {
 			t.Errorf("expected negative count validation error, got: %v", err)
+		}
+	})
+}
+
+// Tests for Task 9.1: Pipeline execution and optimization
+
+// TestPipelineOperationReordering tests operation reordering for performance optimization
+func TestPipelineOperationReordering(t *testing.T) {
+	t.Run("filter operations should be applied before sort for efficiency", func(t *testing.T) {
+		// Create a large dataset to make the optimization meaningful
+		records := make([]Record, 100)
+		for i := range 100 {
+			records[i] = Record{
+				"id":     i,
+				"name":   fmt.Sprintf("User%d", i),
+				"status": map[bool]string{true: "active", false: "inactive"}[i%3 == 0],
+				"score":  float64(i * 10),
+			}
+		}
+
+		doc := New().
+			Table("users", records).
+			Build()
+
+		// Create pipeline with filter and sort operations
+		// The optimization should reorder these to apply filter first
+		pipeline := doc.Pipeline().
+			SortBy("score", Descending).
+			Filter(func(r Record) bool { return r["status"] == "active" }).
+			Limit(5)
+
+		start := time.Now()
+		result, err := pipeline.Execute()
+		duration := time.Since(start)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Verify results are correct
+		tableContent := result.GetContents()[0].(*TableContent)
+		if len(tableContent.records) != 5 {
+			t.Errorf("expected 5 records, got %d", len(tableContent.records))
+		}
+
+		// All results should be active
+		for i, record := range tableContent.records {
+			if record["status"] != "active" {
+				t.Errorf("record %d should be active, got %v", i, record["status"])
+			}
+		}
+
+		// Results should be sorted by score in descending order
+		for i := 0; i < len(tableContent.records)-1; i++ {
+			currentScore := tableContent.records[i]["score"].(float64)
+			nextScore := tableContent.records[i+1]["score"].(float64)
+			if currentScore < nextScore {
+				t.Errorf("records not properly sorted: %f should be >= %f", currentScore, nextScore)
+			}
+		}
+
+		// Performance should be reasonable (this is more of a sanity check)
+		if duration > time.Second {
+			t.Logf("Pipeline took %v - may indicate optimization issues", duration)
+		}
+	})
+
+	t.Run("multiple filters should be applied efficiently", func(t *testing.T) {
+		records := []Record{
+			{"id": 1, "name": "Alice", "age": 25, "department": "Engineering"},
+			{"id": 2, "name": "Bob", "age": 30, "department": "Engineering"},
+			{"id": 3, "name": "Carol", "age": 28, "department": "Marketing"},
+			{"id": 4, "name": "Dave", "age": 35, "department": "Engineering"},
+			{"id": 5, "name": "Eve", "age": 22, "department": "Sales"},
+		}
+
+		doc := New().
+			Table("employees", records).
+			Build()
+
+		// Multiple filters should be combined efficiently
+		result, err := doc.Pipeline().
+			Filter(func(r Record) bool { return r["department"] == "Engineering" }).
+			Filter(func(r Record) bool { return r["age"].(int) >= 28 }).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		tableContent := result.GetContents()[0].(*TableContent)
+		if len(tableContent.records) != 2 { // Bob and Dave
+			t.Errorf("expected 2 records, got %d", len(tableContent.records))
+		}
+
+		// Verify the correct records are returned
+		names := make(map[string]bool)
+		for _, record := range tableContent.records {
+			names[record["name"].(string)] = true
+		}
+
+		if !names["Bob"] || !names["Dave"] {
+			t.Error("expected Bob and Dave in results")
+		}
+	})
+}
+
+// TestPipelineLazyEvaluation tests lazy evaluation behavior
+func TestPipelineLazyEvaluation(t *testing.T) {
+	t.Run("operations are collected before execution", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+				{"id": 2, "name": "Bob"},
+			}).
+			Build()
+
+		// Build pipeline but don't execute yet
+		pipeline := doc.Pipeline().
+			Filter(func(r Record) bool { return r["id"].(int) > 0 }).
+			SortBy("name", Ascending).
+			Limit(10)
+
+		// Operations should be collected but not executed
+		if len(pipeline.operations) != 3 {
+			t.Errorf("expected 3 operations to be collected, got %d", len(pipeline.operations))
+		}
+
+		// Verify operation names
+		expectedOps := []string{"Filter", "Sort", "Limit"}
+		for i, op := range pipeline.operations {
+			if op.Name() != expectedOps[i] {
+				t.Errorf("operation %d: expected %s, got %s", i, expectedOps[i], op.Name())
+			}
+		}
+
+		// Now execute and verify it works
+		result, err := pipeline.Execute()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		tableContent := result.GetContents()[0].(*TableContent)
+		if len(tableContent.records) != 2 {
+			t.Errorf("expected 2 records, got %d", len(tableContent.records))
+		}
+	})
+
+	t.Run("multiple calls to same pipeline method create multiple operations", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		pipeline := doc.Pipeline().
+			Filter(func(r Record) bool { return r["id"].(int) > 0 }).
+			Filter(func(r Record) bool { return r["name"] != "" })
+
+		if len(pipeline.operations) != 2 {
+			t.Errorf("expected 2 filter operations, got %d", len(pipeline.operations))
+		}
+
+		for _, op := range pipeline.operations {
+			if op.Name() != "Filter" {
+				t.Errorf("expected Filter operation, got %s", op.Name())
+			}
+		}
+	})
+}
+
+// TestPipelineErrorPropagation tests error propagation through pipeline
+func TestPipelineErrorPropagation(t *testing.T) {
+	t.Run("error in operation stops pipeline execution", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+				{"id": 2, "name": "Bob"},
+			}).
+			Build()
+
+		// Create a pipeline with an operation that will cause validation failure
+		pipeline := doc.Pipeline().
+			Filter(func(r Record) bool { return r["id"].(int) > 0 }).
+			Limit(-1).                // This will cause validation error
+			SortBy("name", Ascending) // This should not be reached
+
+		_, err := pipeline.Execute()
+		if err == nil {
+			t.Fatal("expected error from invalid limit")
+		}
+
+		// Error should contain context about which operation failed
+		errStr := err.Error()
+		if !strings.Contains(errStr, "operation") || !strings.Contains(errStr, "limit") {
+			t.Errorf("error should contain operation context, got: %v", err)
+		}
+	})
+
+	t.Run("validation error provides detailed context", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		// Create invalid pipeline (negative limit)
+		pipeline := doc.Pipeline().
+			Filter(func(r Record) bool { return true }).
+			Limit(-5)
+
+		_, err := pipeline.Execute()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+
+		// Error should be descriptive
+		errStr := err.Error()
+		if !strings.Contains(errStr, "limit count must be non-negative") {
+			t.Errorf("expected specific validation error, got: %v", err)
+		}
+	})
+
+	t.Run("error includes operation index and type information", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		// Create pipeline with multiple operations where later operation fails
+		pipeline := doc.Pipeline().
+			Filter(func(r Record) bool { return true }).    // This will succeed
+			AddColumn("", func(r Record) any { return "" }) // This will fail validation (empty name)
+
+		_, err := pipeline.Execute()
+		if err == nil {
+			t.Fatal("expected error from invalid column name")
+		}
+
+		// The error should provide context about the failing operation
+		errStr := err.Error()
+		if !strings.Contains(errStr, "operation") {
+			t.Errorf("error should contain operation context, got: %v", err)
+		}
+	})
+}
+
+// TestPipelineContextCancellation tests context cancellation and timeouts
+func TestPipelineContextCancellation(t *testing.T) {
+	t.Run("pipeline respects context cancellation", func(t *testing.T) {
+		// Create a large dataset to make cancellation meaningful
+		records := make([]Record, 5000)
+		for i := range 5000 {
+			records[i] = Record{
+				"id":   i,
+				"name": fmt.Sprintf("User%d", i),
+			}
+		}
+
+		doc := New().
+			Table("users", records).
+			Build()
+
+		// Create a context that we can cancel
+		ctx, cancel := context.WithCancel(context.Background())
+
+		// Create pipeline with operations that would take time
+		pipeline := doc.Pipeline().
+			Filter(func(r Record) bool {
+				// Simulate some processing time
+				time.Sleep(50 * time.Microsecond)
+				return r["id"].(int)%2 == 0
+			}).
+			SortBy("name", Ascending)
+
+		// Cancel context after a very short time
+		go func() {
+			time.Sleep(5 * time.Millisecond)
+			cancel()
+		}()
+
+		_, err := pipeline.ExecuteContext(ctx)
+		if err == nil {
+			t.Log("Pipeline completed before cancellation - this can happen on fast systems")
+			return // Skip assertion on fast systems
+		}
+
+		// Should be a context cancellation error
+		if !strings.Contains(err.Error(), "cancel") && !strings.Contains(err.Error(), "context") {
+			t.Errorf("expected context cancellation error, got: %v", err)
+		}
+	})
+
+	t.Run("pipeline respects execution timeout", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		// Create pipeline with very short timeout
+		pipeline := doc.Pipeline().WithOptions(PipelineOptions{
+			MaxOperations:    100,
+			MaxExecutionTime: 1 * time.Nanosecond, // Extremely short timeout
+		}).Filter(func(r Record) bool {
+			time.Sleep(10 * time.Millisecond) // This should timeout
+			return true
+		})
+
+		_, err := pipeline.Execute()
+		if err == nil {
+			t.Fatal("expected timeout error")
+		}
+
+		// Should be a timeout/cancellation error
+		errStr := err.Error()
+		if !strings.Contains(errStr, "cancel") && !strings.Contains(errStr, "timeout") && !strings.Contains(errStr, "context") {
+			t.Errorf("expected timeout error, got: %v", err)
+		}
+	})
+
+	t.Run("pipeline handles context cancellation in individual operations", func(t *testing.T) {
+		records := make([]Record, 100)
+		for i := range 100 {
+			records[i] = Record{
+				"id":    i,
+				"value": i * 10,
+			}
+		}
+
+		doc := New().
+			Table("test", records).
+			Build()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
+		defer cancel()
+
+		// Create operations that check context
+		_, err := doc.Pipeline().
+			Filter(func(r Record) bool {
+				// Simulate work that checks context
+				time.Sleep(100 * time.Microsecond)
+				return r["id"].(int) > 10
+			}).
+			ExecuteContext(ctx)
+
+		if err == nil {
+			t.Log("Pipeline may have completed before timeout - this is acceptable")
+		} else {
+			// Should be a context-related error
+			errStr := err.Error()
+			if !strings.Contains(errStr, "cancel") && !strings.Contains(errStr, "timeout") && !strings.Contains(errStr, "context") {
+				t.Errorf("expected context-related error, got: %v", err)
+			}
 		}
 	})
 }

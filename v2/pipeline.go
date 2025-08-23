@@ -173,6 +173,9 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 			AddContext("max_operations", p.options.MaxOperations)
 	}
 
+	// Optimize operations before execution
+	p.optimize()
+
 	// Start tracking stats
 	stats := TransformStats{
 		InputRecords: 0,
@@ -295,28 +298,63 @@ func createDocumentWithContents(contents []Content, metadata map[string]any) *Do
 }
 
 // optimize attempts to optimize the pipeline operations before execution
-// This is currently unused but reserved for future optimization implementation
-// nolint:unused // Reserved for future use
+// Implements operation reordering for performance improvements
 func (p *Pipeline) optimize() {
-	// This is a placeholder for future optimization logic
-	// For now, we'll implement basic filter-before-sort optimization
+	if len(p.operations) <= 1 {
+		return // Nothing to optimize
+	}
 
-	optimized := make([]Operation, 0, len(p.operations))
-	filters := make([]Operation, 0)
-	others := make([]Operation, 0)
+	// Separate operations by type for optimal ordering
+	var filters []Operation
+	var sorts []Operation
+	var limits []Operation
+	var addColumns []Operation
+	var groupBys []Operation
+	var others []Operation
 
-	// Separate filters from other operations
 	for _, op := range p.operations {
-		// Check if this is a filter operation by name (type-agnostic approach)
-		if op.Name() == "Filter" {
+		switch op.Name() {
+		case "Filter":
 			filters = append(filters, op)
-		} else {
+		case "Sort":
+			sorts = append(sorts, op)
+		case "Limit":
+			limits = append(limits, op)
+		case "AddColumn":
+			addColumns = append(addColumns, op)
+		case "GroupBy":
+			groupBys = append(groupBys, op)
+		default:
 			others = append(others, op)
 		}
 	}
 
-	// Apply filters first (they reduce data size)
+	// Optimal ordering strategy:
+	// 1. Apply filters first (reduces data size for subsequent operations)
+	// 2. Add calculated columns (may be needed for sorting/grouping)
+	// 3. Group operations (further reduces data size)
+	// 4. Sort operations (expensive, better with smaller datasets)
+	// 5. Limit operations (should be last to get top N results)
+	// 6. Other operations
+
+	optimized := make([]Operation, 0, len(p.operations))
+
+	// Apply filters first to reduce data size
 	optimized = append(optimized, filters...)
+
+	// Add calculated columns next (may be needed for sorting/grouping)
+	optimized = append(optimized, addColumns...)
+
+	// Apply grouping operations (reduces data further)
+	optimized = append(optimized, groupBys...)
+
+	// Sort operations (expensive, better after data reduction)
+	optimized = append(optimized, sorts...)
+
+	// Apply limits last to get top N of final results
+	optimized = append(optimized, limits...)
+
+	// Any other operations
 	optimized = append(optimized, others...)
 
 	p.operations = optimized
