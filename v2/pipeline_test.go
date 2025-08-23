@@ -2009,3 +2009,393 @@ func TestPipelineContextCancellation(t *testing.T) {
 		}
 	})
 }
+
+// TestTransformationStatistics tests statistics collection during pipeline execution
+func TestTransformationStatistics(t *testing.T) {
+	t.Run("collects basic statistics during execution", func(t *testing.T) {
+		// Create a document with multiple records
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice", "status": "active"},
+				{"id": 2, "name": "Bob", "status": "inactive"},
+				{"id": 3, "name": "Charlie", "status": "active"},
+				{"id": 4, "name": "Diana", "status": "active"},
+			}, WithKeys("id", "name", "status")).
+			Build()
+
+		// Apply operations that will affect record counts
+		transformedDoc, err := doc.Pipeline().
+			Filter(func(r Record) bool {
+				return r["status"] == "active"
+			}).
+			SortBy("name", Ascending).
+			Limit(2).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("Pipeline execution failed: %v", err)
+		}
+
+		// Get transformation stats from the document
+		stats, found := transformedDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected transformation stats to be present")
+		}
+
+		// Verify input and output record counts
+		if stats.InputRecords != 4 {
+			t.Errorf("Expected InputRecords = 4, got %d", stats.InputRecords)
+		}
+
+		if stats.OutputRecords != 2 {
+			t.Errorf("Expected OutputRecords = 2, got %d", stats.OutputRecords)
+		}
+
+		// Verify filtered count calculation
+		if stats.FilteredCount != 2 {
+			t.Errorf("Expected FilteredCount = 2, got %d", stats.FilteredCount)
+		}
+
+		// Verify duration is tracked (should be > 0)
+		if stats.Duration <= 0 {
+			t.Errorf("Expected Duration > 0, got %v", stats.Duration)
+		}
+
+		// Verify operation stats are collected
+		if len(stats.Operations) != 3 {
+			t.Errorf("Expected 3 operations in stats, got %d", len(stats.Operations))
+		}
+	})
+
+	t.Run("tracks individual operation timing", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"value": 100}, {"value": 50}, {"value": 200}, {"value": 75},
+			}, WithKeys("value")).
+			Build()
+
+		transformedDoc, err := doc.Pipeline().
+			Filter(func(r Record) bool {
+				// Add a small delay to ensure measurable timing
+				time.Sleep(1 * time.Millisecond)
+				return r["value"].(int) > 60
+			}).
+			SortBy("value", Descending).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("Pipeline execution failed: %v", err)
+		}
+
+		stats, found := transformedDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected transformation stats to be present")
+		}
+
+		// Verify all operations have timing
+		for i, opStat := range stats.Operations {
+			if opStat.Duration <= 0 {
+				t.Errorf("Operation %d (%s) should have Duration > 0, got %v",
+					i, opStat.Name, opStat.Duration)
+			}
+
+			if opStat.Name == "" {
+				t.Errorf("Operation %d should have a non-empty Name", i)
+			}
+		}
+
+		// Verify operation names match what we executed
+		expectedOps := []string{"Filter", "Sort"}
+		if len(stats.Operations) != len(expectedOps) {
+			t.Errorf("Expected %d operations, got %d", len(expectedOps), len(stats.Operations))
+		}
+
+		for i, expectedName := range expectedOps {
+			if i < len(stats.Operations) && stats.Operations[i].Name != expectedName {
+				t.Errorf("Operation %d should be '%s', got '%s'",
+					i, expectedName, stats.Operations[i].Name)
+			}
+		}
+	})
+
+	t.Run("tracks records processed by each operation", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"amount": 10}, {"amount": 30}, {"amount": 20}, {"amount": 40},
+			}, WithKeys("amount")).
+			Build()
+
+		transformedDoc, err := doc.Pipeline().
+			Filter(func(r Record) bool {
+				return r["amount"].(int) >= 20
+			}).
+			SortBy("amount", Ascending).
+			Limit(2).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("Pipeline execution failed: %v", err)
+		}
+
+		stats, found := transformedDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected transformation stats to be present")
+		}
+
+		// Check that RecordsProcessed is tracked correctly for each operation
+		expectedProcessed := []int{3, 3, 2} // filter: 3, sort: 3, limit: 2
+
+		if len(stats.Operations) != len(expectedProcessed) {
+			t.Errorf("Expected %d operations, got %d", len(expectedProcessed), len(stats.Operations))
+			return
+		}
+
+		for i, expected := range expectedProcessed {
+			if stats.Operations[i].RecordsProcessed != expected {
+				t.Errorf("Operation %d (%s) should process %d records, got %d",
+					i, stats.Operations[i].Name, expected, stats.Operations[i].RecordsProcessed)
+			}
+		}
+	})
+
+	t.Run("handles multiple table contents correctly", func(t *testing.T) {
+		doc := New().
+			Table("users", []Record{
+				{"id": 1, "name": "Alice"},
+				{"id": 2, "name": "Bob"},
+			}, WithKeys("id", "name")).
+			Table("products", []Record{
+				{"id": 101, "product": "Widget"},
+				{"id": 102, "product": "Gadget"},
+				{"id": 103, "product": "Tool"},
+			}, WithKeys("id", "product")).
+			Build()
+
+		transformedDoc, err := doc.Pipeline().
+			Filter(func(r Record) bool {
+				// Filter based on ID value
+				if id, ok := r["id"].(int); ok {
+					return id > 1 && id < 103
+				}
+				return true
+			}).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("Pipeline execution failed: %v", err)
+		}
+
+		stats, found := transformedDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected transformation stats to be present")
+		}
+
+		// Should count records from all table contents
+		if stats.InputRecords != 5 { // 2 users + 3 products
+			t.Errorf("Expected InputRecords = 5, got %d", stats.InputRecords)
+		}
+
+		// After filtering: Alice (id=1) excluded, Bob (id=2) included,
+		// Widget (id=101) included, Gadget (id=102) included, Tool (id=103) excluded
+		// Filter condition: id > 1 && id < 103 matches Bob, Widget, and Gadget
+		if stats.OutputRecords != 3 {
+			t.Errorf("Expected OutputRecords = 3, got %d", stats.OutputRecords)
+		}
+	})
+
+	t.Run("stats persist across document operations", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"score": 85}, {"score": 92}, {"score": 78}, {"score": 96}, {"score": 88},
+			}, WithKeys("score")).
+			Build()
+
+		// First transformation
+		firstDoc, err := doc.Pipeline().
+			Filter(func(r Record) bool {
+				return r["score"].(int) >= 85
+			}).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("First pipeline execution failed: %v", err)
+		}
+
+		// Second transformation on the result
+		secondDoc, err := firstDoc.Pipeline().
+			SortBy("score", Descending).
+			Limit(2).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("Second pipeline execution failed: %v", err)
+		}
+
+		// Check stats from first transformation
+		firstStats, found := firstDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected first transformation stats to be present")
+		}
+
+		// Check stats from second transformation
+		secondStats, found := secondDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected second transformation stats to be present")
+		}
+
+		// First stats should reflect original -> filtered
+		if firstStats.InputRecords != 5 || firstStats.OutputRecords != 4 {
+			t.Errorf("First stats: expected 5->4 records, got %d->%d",
+				firstStats.InputRecords, firstStats.OutputRecords)
+		}
+
+		// Second stats should reflect filtered -> sorted+limited
+		if secondStats.InputRecords != 4 || secondStats.OutputRecords != 2 {
+			t.Errorf("Second stats: expected 4->2 records, got %d->%d",
+				secondStats.InputRecords, secondStats.OutputRecords)
+		}
+	})
+
+	t.Run("handles empty results correctly", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"value": 1}, {"value": 2}, {"value": 3},
+			}, WithKeys("value")).
+			Build()
+
+		// Filter that excludes all records
+		transformedDoc, err := doc.Pipeline().
+			Filter(func(r Record) bool {
+				return r["value"].(int) > 10
+			}).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("Pipeline execution failed: %v", err)
+		}
+
+		stats, found := transformedDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected transformation stats to be present")
+		}
+
+		if stats.InputRecords != 3 {
+			t.Errorf("Expected InputRecords = 3, got %d", stats.InputRecords)
+		}
+
+		if stats.OutputRecords != 0 {
+			t.Errorf("Expected OutputRecords = 0, got %d", stats.OutputRecords)
+		}
+
+		if stats.FilteredCount != 3 {
+			t.Errorf("Expected FilteredCount = 3, got %d", stats.FilteredCount)
+		}
+	})
+
+	t.Run("measures total execution duration", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"delay": 1}, {"delay": 2}, {"delay": 3},
+			}, WithKeys("delay")).
+			Build()
+
+		startTime := time.Now()
+
+		transformedDoc, err := doc.Pipeline().
+			Filter(func(r Record) bool {
+				// Add a small delay to ensure measurable duration
+				time.Sleep(2 * time.Millisecond)
+				return true
+			}).
+			SortBy("delay", Ascending).
+			Execute()
+
+		executionTime := time.Since(startTime)
+
+		if err != nil {
+			t.Fatalf("Pipeline execution failed: %v", err)
+		}
+
+		stats, found := transformedDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected transformation stats to be present")
+		}
+
+		// Stats duration should be reasonable compared to actual execution time
+		if stats.Duration <= 0 {
+			t.Errorf("Expected Duration > 0, got %v", stats.Duration)
+		}
+
+		if stats.Duration > executionTime*2 {
+			t.Errorf("Stats duration %v seems too long compared to actual execution time %v",
+				stats.Duration, executionTime)
+		}
+	})
+}
+
+// TestGetTransformStats tests the GetTransformStats method on Document
+func TestGetTransformStats(t *testing.T) {
+	t.Run("returns false when no stats available", func(t *testing.T) {
+		// Create a document without transformation
+		doc := New().
+			Table("test", []Record{{"id": 1}}).
+			Build()
+
+		stats, found := doc.GetTransformStats()
+		if found {
+			t.Error("Expected no transformation stats to be found")
+		}
+
+		if stats.InputRecords != 0 || stats.OutputRecords != 0 {
+			t.Error("Expected empty stats when none available")
+		}
+	})
+
+	t.Run("returns correct stats when available", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"value": 10}, {"value": 20}, {"value": 30},
+			}, WithKeys("value")).
+			Build()
+
+		transformedDoc, err := doc.Pipeline().
+			Filter(func(r Record) bool { return r["value"].(int) > 15 }).
+			Execute()
+
+		if err != nil {
+			t.Fatalf("Pipeline execution failed: %v", err)
+		}
+
+		stats, found := transformedDoc.GetTransformStats()
+		if !found {
+			t.Fatal("Expected transformation stats to be found")
+		}
+
+		if stats.InputRecords != 3 {
+			t.Errorf("Expected InputRecords = 3, got %d", stats.InputRecords)
+		}
+
+		if stats.OutputRecords != 2 {
+			t.Errorf("Expected OutputRecords = 2, got %d", stats.OutputRecords)
+		}
+	})
+
+	t.Run("handles corrupted metadata gracefully", func(t *testing.T) {
+		// Create document with invalid transform_stats in metadata
+		doc := &Document{
+			contents: []Content{},
+			metadata: map[string]any{
+				"transform_stats": "invalid_data", // Wrong type
+			},
+		}
+
+		stats, found := doc.GetTransformStats()
+		if found {
+			t.Error("Expected no stats when metadata is corrupted")
+		}
+
+		if stats.InputRecords != 0 {
+			t.Error("Expected empty stats for corrupted metadata")
+		}
+	})
+}

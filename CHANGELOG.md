@@ -1,6 +1,16 @@
 ## [Unreleased]
 
 ### Added
+- **Transformation Statistics Collection System**
+  - Implemented comprehensive TransformStats collection during pipeline execution with input/output record counts, filtered count tracking, and duration measurements
+  - Added GetTransformStats() method to Document for retrieving transformation statistics from document metadata
+  - Enhanced metadata handling to properly preserve transformation statistics alongside original document metadata
+  - Added comprehensive test suite for statistics collection covering basic metrics, operation timing, record processing counts, multiple table contents, and edge cases
+  - Statistics persist across document operations and provide detailed operation-level metrics including duration and records processed
+  - Added graceful handling of empty results and corrupted metadata scenarios
+  - Marked performance monitoring and stats tasks (12.1, 12.2) as completed in transformation-pipeline feature
+
+### Added
 - **Pipeline Error Handling System**
   - Implemented comprehensive PipelineError type with detailed operation context including stage, input samples, and pipeline metadata
   - Added pipeline-specific error handling with support for operation context, stage tracking, and fail-fast behavior
