@@ -1027,6 +1027,442 @@ type ColorScheme struct {
 }
 ```
 
+### Data Transformation Pipeline System
+
+The Pipeline API provides a fluent interface for performing data-level transformations on structured table content before rendering. This enables operations like filtering, sorting, and aggregation directly on data rather than parsing rendered output.
+
+#### Key Features
+
+- **Data-Level Operations**: Transform structured data before rendering
+- **Fluent API**: Chain operations with method chaining
+- **Format-Aware**: Operations can adapt behavior based on target output format
+- **Performance Optimized**: Operations are reordered for optimal execution
+- **Immutable**: Returns new transformed documents without modifying originals
+- **Error Handling**: Fail-fast with detailed context information
+
+#### Pipeline Interface
+
+```go
+// Create a pipeline from any document
+pipeline := doc.Pipeline()
+
+// Chain operations fluently
+transformedDoc := doc.Pipeline().
+    Filter(func(r Record) bool { return r["status"] == "active" }).
+    Sort(SortKey{Column: "timestamp", Direction: Descending}).
+    Limit(100).
+    AddColumn("age_days", func(r Record) any {
+        return time.Since(r["created"].(time.Time)).Hours() / 24
+    }).
+    Execute()
+```
+
+#### Core Operations
+
+##### Filter Operation
+
+Filters table records based on predicate functions:
+
+```go
+// Basic filtering
+doc.Pipeline().
+    Filter(func(r Record) bool {
+        return r["status"] == "active"
+    }).
+    Execute()
+
+// Complex filtering with type assertions
+doc.Pipeline().
+    Filter(func(r Record) bool {
+        score, ok := r["score"].(float64)
+        return ok && score > 85.0
+    }).
+    Execute()
+
+// Multiple filters (combined with AND logic)
+doc.Pipeline().
+    Filter(func(r Record) bool { return r["category"] == "premium" }).
+    Filter(func(r Record) bool { return r["verified"].(bool) }).
+    Execute()
+```
+
+**Filter Function Signature**: `func(Record) bool`
+- **Parameter**: `Record` (map[string]any) - Full record data
+- **Returns**: `bool` - true to keep record, false to filter out
+- **Type Assertions**: Use type assertions for type-safe access to record fields
+
+##### Sort Operations
+
+Sort table data by one or more columns:
+
+```go
+// Single column sort
+doc.Pipeline().
+    SortBy("name", Ascending).
+    Execute()
+
+// Multi-column sort with different directions
+doc.Pipeline().
+    Sort(
+        SortKey{Column: "category", Direction: Ascending},
+        SortKey{Column: "score", Direction: Descending},
+        SortKey{Column: "name", Direction: Ascending},
+    ).
+    Execute()
+
+// Custom comparator function
+doc.Pipeline().
+    SortWith(func(a, b Record) int {
+        // Custom comparison logic
+        aVal := a["priority"].(string)
+        bVal := b["priority"].(string)
+        priorities := map[string]int{"high": 3, "medium": 2, "low": 1}
+        return priorities[bVal] - priorities[aVal] // Reverse order
+    }).
+    Execute()
+```
+
+**Sort Types**:
+- `SortDirection`: `Ascending` or `Descending`
+- `SortKey`: `{Column: string, Direction: SortDirection}`
+- **Custom Comparator**: `func(a, b Record) int` - return -1, 0, or 1
+
+##### Limit Operation
+
+Restricts output to first N records:
+
+```go
+// Get top 10 records
+doc.Pipeline().
+    SortBy("score", Descending).
+    Limit(10).
+    Execute()
+
+// Pagination-style limiting
+doc.Pipeline().
+    Filter(func(r Record) bool { return r["category"] == "premium" }).
+    Limit(50).
+    Execute()
+```
+
+##### GroupBy and Aggregation
+
+Group records by columns and apply aggregate functions:
+
+```go
+// Basic grouping with count
+doc.Pipeline().
+    GroupBy(
+        []string{"category", "status"},
+        map[string]AggregateFunc{
+            "count":       CountAggregate,
+            "total_score": SumAggregate("score"),
+            "avg_score":   AverageAggregate("score"),
+            "max_score":   MaxAggregate("score"),
+            "min_score":   MinAggregate("score"),
+        },
+    ).
+    Execute()
+
+// Custom aggregate function
+customAggregate := func(records []Record) any {
+    var uniqueUsers []string
+    seen := make(map[string]bool)
+    for _, r := range records {
+        user := r["user"].(string)
+        if !seen[user] {
+            uniqueUsers = append(uniqueUsers, user)
+            seen[user] = true
+        }
+    }
+    return len(uniqueUsers)
+}
+
+doc.Pipeline().
+    GroupBy(
+        []string{"department"},
+        map[string]AggregateFunc{
+            "unique_users": customAggregate,
+        },
+    ).
+    Execute()
+```
+
+**Built-in Aggregate Functions**:
+- `CountAggregate`: Count records in group
+- `SumAggregate(column)`: Sum numeric values
+- `AverageAggregate(column)`: Average numeric values
+- `MinAggregate(column)`: Minimum value
+- `MaxAggregate(column)`: Maximum value
+- **Custom Function**: `func([]Record) any`
+
+##### AddColumn (Calculated Fields)
+
+Add calculated columns based on existing data:
+
+```go
+// Simple calculated field
+doc.Pipeline().
+    AddColumn("full_name", func(r Record) any {
+        return fmt.Sprintf("%s %s", r["first_name"], r["last_name"])
+    }).
+    Execute()
+
+// Complex calculations with type assertions
+doc.Pipeline().
+    AddColumn("duration_hours", func(r Record) any {
+        start := r["start_time"].(time.Time)
+        end := r["end_time"].(time.Time)
+        return end.Sub(start).Hours()
+    }).
+    AddColumn("status_icon", func(r Record) any {
+        switch r["status"].(string) {
+        case "completed":
+            return "✅"
+        case "failed":
+            return "❌"
+        case "pending":
+            return "⏳"
+        default:
+            return "❓"
+        }
+    }).
+    Execute()
+
+// Add column at specific position
+doc.Pipeline().
+    AddColumnAt("id", func(r Record) any {
+        return fmt.Sprintf("ID_%d", r["index"].(int))
+    }, 0). // Insert at beginning
+    Execute()
+```
+
+**Calculation Function**: `func(Record) any`
+- **Parameter**: `Record` - Full record with all existing fields
+- **Returns**: `any` - Calculated value for new column
+- **Position**: Use `AddColumnAt()` to specify column position
+
+#### Pipeline Options
+
+Configure pipeline behavior and resource limits:
+
+```go
+// Custom pipeline options
+options := PipelineOptions{
+    MaxOperations:    50,              // Max operations allowed
+    MaxExecutionTime: 10 * time.Second, // Execution timeout
+}
+
+doc.Pipeline().
+    WithOptions(options).
+    Filter(func(r Record) bool { return r["active"].(bool) }).
+    Execute()
+
+// Default options
+// MaxOperations: 100
+// MaxExecutionTime: 30 seconds
+```
+
+#### Format-Aware Transformations
+
+Operations can adapt behavior based on target output format:
+
+```go
+// Execute with specific format context
+transformedDoc := doc.Pipeline().
+    Filter(func(r Record) bool { return r["visible"].(bool) }).
+    ExecuteWithFormat(context.Background(), "json")
+
+// Operations can check format and adapt behavior
+// (Advanced usage - most operations work across all formats)
+```
+
+#### Error Handling
+
+Pipeline operations use fail-fast error handling with detailed context:
+
+```go
+transformedDoc, err := doc.Pipeline().
+    Filter(func(r Record) bool {
+        // This could panic if "score" field doesn't exist
+        return r["score"].(float64) > 50.0
+    }).
+    Execute()
+
+if err != nil {
+    var pipelineErr *PipelineError
+    if errors.As(err, &pipelineErr) {
+        fmt.Printf("Pipeline failed at operation: %s\n", pipelineErr.Operation)
+        fmt.Printf("Stage: %d\n", pipelineErr.Stage)
+        fmt.Printf("Cause: %v\n", pipelineErr.Cause)
+        // Access additional context
+        fmt.Printf("Context: %+v\n", pipelineErr.Context)
+    }
+}
+```
+
+**Error Types**:
+- `PipelineError`: Detailed pipeline execution error
+- `ValidationError`: Pre-execution validation error
+- **Context Information**: Operation name, stage, input sample, context data
+
+#### Performance Optimization
+
+Pipeline automatically optimizes operation order:
+
+```go
+// User-defined order (potentially inefficient)
+doc.Pipeline().
+    Sort("name", Ascending).        // Expensive operation first
+    Filter(func(r Record) bool {    // Filter after sort
+        return r["active"].(bool)
+    }).
+    Limit(10)                       // Limit after operations
+
+// Automatically optimized to:
+// 1. Filter (reduces dataset size)
+// 2. Sort (operates on smaller dataset)  
+// 3. Limit (gets top N of final results)
+```
+
+**Optimization Strategy**:
+1. **Filter**: Applied first to reduce data size
+2. **AddColumn**: Added next (may be needed for sorting/grouping)
+3. **GroupBy**: Applied to further reduce data
+4. **Sort**: Applied to smaller datasets
+5. **Limit**: Applied last to get top N results
+
+#### Complete Pipeline Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+    
+    output "github.com/ArjenSchwarz/go-output/v2"
+)
+
+func main() {
+    // Create sample data
+    salesData := []map[string]any{
+        {
+            "salesperson": "Alice",
+            "region":      "North",
+            "amount":      15000.50,
+            "date":        time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+            "status":      "completed",
+        },
+        {
+            "salesperson": "Bob",
+            "region":      "South",
+            "amount":      22000.75,
+            "date":        time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC),
+            "status":      "completed",
+        },
+        {
+            "salesperson": "Carol",
+            "region":      "North",
+            "amount":      8000.25,
+            "date":        time.Date(2024, 1, 20, 0, 0, 0, 0, time.UTC),
+            "status":      "pending",
+        },
+        // ... more data
+    }
+
+    // Create document
+    doc := output.New().
+        Table("Sales Data", salesData, 
+            output.WithKeys("salesperson", "region", "amount", "date", "status")).
+        Build()
+
+    // Transform data with pipeline
+    transformedDoc, err := doc.Pipeline().
+        // Filter completed sales only
+        Filter(func(r output.Record) bool {
+            return r["status"] == "completed"
+        }).
+        // Add calculated commission field
+        AddColumn("commission", func(r output.Record) any {
+            amount := r["amount"].(float64)
+            return amount * 0.05 // 5% commission
+        }).
+        // Add days since sale
+        AddColumn("days_ago", func(r output.Record) any {
+            saleDate := r["date"].(time.Time)
+            return int(time.Since(saleDate).Hours() / 24)
+        }).
+        // Sort by amount (highest first)
+        SortBy("amount", output.Descending).
+        // Limit to top 10
+        Limit(10).
+        Execute()
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Output results
+    out := output.NewOutput(
+        output.WithFormats(output.Table, output.JSON),
+        output.WithWriter(output.NewStdoutWriter()),
+    )
+
+    if err := out.Render(context.Background(), transformedDoc); err != nil {
+        log.Fatal(err)
+    }
+
+    // Access transformation statistics
+    if stats := transformedDoc.GetTransformStats(); stats != nil {
+        fmt.Printf("\nTransformation Stats:\n")
+        fmt.Printf("Input Records: %d\n", stats.InputRecords)
+        fmt.Printf("Output Records: %d\n", stats.OutputRecords)
+        fmt.Printf("Filtered Count: %d\n", stats.FilteredCount)
+        fmt.Printf("Duration: %v\n", stats.Duration)
+        
+        for _, opStat := range stats.Operations {
+            fmt.Printf("Operation %s: %v (%d records)\n", 
+                opStat.Name, opStat.Duration, opStat.RecordsProcessed)
+        }
+    }
+}
+```
+
+#### Best Practices
+
+1. **Type Safety**: Always use type assertions when accessing record fields
+2. **Error Handling**: Handle pipeline errors with proper context checking
+3. **Performance**: Let pipeline optimize operation order automatically
+4. **Immutability**: Pipeline returns new documents, preserving originals
+5. **Resource Limits**: Use appropriate pipeline options for large datasets
+6. **Schema Preservation**: Pipeline maintains table schema and key ordering
+
+#### Migration from Byte Transformers
+
+**Old Approach** (byte transformers):
+```go
+// Post-rendering text manipulation
+transformer := &output.SortTransformer{Key: "name", Ascending: true}
+out := output.NewOutput(
+    output.WithTransformer(transformer),
+)
+```
+
+**New Approach** (data pipeline):
+```go
+// Pre-rendering data transformation
+transformedDoc := doc.Pipeline().
+    SortBy("name", output.Ascending).
+    Execute()
+```
+
+**When to Use Each**:
+- **Data Pipeline**: For data operations (filter, sort, aggregate, calculate fields)
+- **Byte Transformers**: For presentation styling (colors, emoji, formatting)
+
 ### Progress System
 
 #### Progress Interface
