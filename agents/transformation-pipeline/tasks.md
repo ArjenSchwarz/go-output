@@ -221,14 +221,14 @@
     - Ensure all tests from 14.1 pass after implementation
     - References: Requirement 2.3, 2.4, Design Format Context Everywhere
 
-- [ ] 15. Create Basic Resource Management
-  - [ ] 15.1. Write tests for resource limits and timeouts
+- [x] 15. Create Basic Resource Management
+  - [x] 15.1. Write tests for resource limits and timeouts
     - Test MaxOperations limit enforcement
     - Test MaxExecutionTime timeout behavior
     - Test context cancellation propagation
     - Tests will initially fail until implementation is complete
     - References: Decision Log: Resource Limits from Day One
-  - [ ] 15.2. Implement operation limits and timeouts
+  - [x] 15.2. Implement operation limits and timeouts
     - Add MaxOperations check in pipeline execution
     - Implement timeout through context.WithTimeout
     - Support context cancellation in all operations
@@ -236,15 +236,15 @@
     - Ensure all tests from 15.1 pass after implementation
     - References: Design Preventing Runaway Operations
 
-- [ ] 16. Performance Benchmarking and Optimization
-  - [ ] 16.1. Create comprehensive benchmark suite
+- [x] 16. Performance Benchmarking and Optimization
+  - [x] 16.1. Create comprehensive benchmark suite
     - Benchmark filter operations with various data sizes
     - Benchmark sort operations with different key counts
     - Benchmark aggregation operations
     - Compare with manual data manipulation baseline
     - Benchmarks should demonstrate acceptable performance
     - References: Requirement 8.6, Design Performance Targets
-  - [ ] 16.2. Implement basic optimizations
+  - [x] 16.2. Implement basic optimizations
     - Optimize operation ordering in pipeline
     - Minimize data copying where possible
     - Implement efficient schema cloning
