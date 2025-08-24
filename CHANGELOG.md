@@ -1,6 +1,23 @@
 ## [Unreleased]
 
 ### Added
+- **Pipeline Performance Benchmarking Suite**
+  - Comprehensive benchmark suite for pipeline operations with varying data sizes (10, 100, 1000, 10000 records)
+  - Filter operation benchmarks demonstrating performance across different dataset sizes
+  - Sort operation benchmarks with 1, 2, and 3 sort keys showing multi-key sorting overhead
+  - Aggregation benchmarks testing GroupBy performance with 10, 50, and 100 distinct groups
+  - Complex pipeline chain benchmarks measuring combined filter, sort, and limit operations
+  - AddColumn calculated field benchmarks for performance analysis of field transformations
+  - Manual vs pipeline comparison benchmarks showing pipeline efficiency relative to manual data manipulation
+  - Operation optimization benchmarks demonstrating effectiveness of filter-before-sort optimization
+  - Memory allocation benchmarks with allocation reporting for performance profiling
+  - Timeout and context cancellation benchmarks measuring overhead of resource management
+  - Concurrent pipeline execution benchmarks validating thread-safe performance characteristics
+  - GroupBy with multiple aggregate functions benchmarks comparing single vs multiple aggregates
+  - Performance tests demonstrate acceptable overhead and validate optimization strategies
+  - Marked performance benchmarking tasks (16.1, 16.2) as completed in transformation-pipeline feature
+
+### Added
 - **Format-Aware Transformation Support**
   - Implemented FormatAwareOperation interface extending Operation with format context support
   - Added ApplyWithFormat() method to all operation types (FilterOp, SortOp, LimitOp, GroupByOp, AddColumnOp) for format-aware transformation
