@@ -206,14 +206,14 @@
     - Ensure all tests from 13.1 continue to pass
     - References: Requirement 5.4, 5.5, 9.4, 9.5
 
-- [ ] 14. Implement Format-Aware Transformation Support
-  - [ ] 14.1. Write tests for format-specific behavior
+- [x] 14. Implement Format-Aware Transformation Support
+  - [x] 14.1. Write tests for format-specific behavior
     - Test transformers receiving correct format parameter
     - Test CanTransform() method with different formats
     - Test format-specific transformer behavior
     - Tests will initially fail until implementation is complete
     - References: Requirement 2.1, 2.2, 2.5
-  - [ ] 14.2. Add format context throughout transformation pipeline
+  - [x] 14.2. Add format context throughout transformation pipeline
     - Pass format information to DataTransformer.TransformData()
     - Update existing Transformer interface calls with format
     - Implement CanTransform() checking in renderer

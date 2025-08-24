@@ -1,6 +1,18 @@
 ## [Unreleased]
 
 ### Added
+- **Format-Aware Transformation Support**
+  - Implemented FormatAwareOperation interface extending Operation with format context support
+  - Added ApplyWithFormat() method to all operation types (FilterOp, SortOp, LimitOp, GroupByOp, AddColumnOp) for format-aware transformation
+  - Added CanTransform() method to check if operations apply to specific content and format combinations
+  - Enhanced Pipeline with ExecuteWithFormat() and ExecuteWithFormatContext() methods for format-aware pipeline execution
+  - Added format validation ensuring only valid formats (JSON, YAML, CSV, HTML, Table, Markdown, DOT, Mermaid, DrawIO) are processed
+  - Operations now maintain backward compatibility through delegation to existing Apply() methods when format awareness isn't needed
+  - Enhanced error handling with format context tracking in PipelineError for debugging transformation issues
+  - Comprehensive test suite with 250+ lines covering format parameter passing, operation filtering, and backward compatibility
+  - Marked format-aware transformation tasks (14.1, 14.2) as completed in transformation-pipeline feature
+
+### Added
 - **Comprehensive Backward Compatibility Test Suite**
   - Added backward compatibility integration tests verifying existing transformers work without modification
   - Added backward compatibility performance benchmarks to prevent performance degradation

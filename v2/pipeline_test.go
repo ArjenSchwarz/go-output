@@ -2399,3 +2399,254 @@ func TestGetTransformStats(t *testing.T) {
 		}
 	})
 }
+
+// TestPipelineFormatAware tests format-aware pipeline functionality
+func TestPipelineFormatAware(t *testing.T) {
+	t.Run("Pipeline ExecuteWithFormat passes format to operations", func(t *testing.T) {
+		receivedFormats := []string{}
+
+		// Create a custom operation that tracks formats
+		formatTrackingOp := &mockOperation{
+			name: "format-tracker",
+			applyFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				receivedFormats = append(receivedFormats, format)
+				return content, nil
+			},
+		}
+
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		pipeline := doc.Pipeline()
+		pipeline.operations = []Operation{formatTrackingOp}
+
+		// Test with different formats
+		formats := []string{FormatJSON, FormatYAML, FormatCSV, FormatHTML}
+		for _, format := range formats {
+			receivedFormats = []string{} // Reset
+			_, err := pipeline.ExecuteWithFormat(context.Background(), format)
+			if err != nil {
+				t.Fatalf("ExecuteWithFormat(%s) error = %v", format, err)
+			}
+			if len(receivedFormats) != 1 || receivedFormats[0] != format {
+				t.Errorf("Expected format %s to be passed to operation, got %v", format, receivedFormats)
+			}
+		}
+	})
+
+	t.Run("Pipeline operations receive format context", func(t *testing.T) {
+		transformCalls := []struct {
+			operation string
+			format    string
+		}{}
+
+		filterOp := &mockOperation{
+			name: "filter-op",
+			applyFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				transformCalls = append(transformCalls, struct {
+					operation string
+					format    string
+				}{"filter", format})
+				return content, nil
+			},
+		}
+
+		sortOp := &mockOperation{
+			name: "sort-op",
+			applyFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				transformCalls = append(transformCalls, struct {
+					operation string
+					format    string
+				}{"sort", format})
+				return content, nil
+			},
+		}
+
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		pipeline := doc.Pipeline()
+		pipeline.operations = []Operation{filterOp, sortOp}
+
+		_, err := pipeline.ExecuteWithFormat(context.Background(), FormatJSON)
+		if err != nil {
+			t.Fatalf("ExecuteWithFormat() error = %v", err)
+		}
+
+		if len(transformCalls) != 2 {
+			t.Fatalf("Expected 2 operation calls, got %d", len(transformCalls))
+		}
+
+		for i, call := range transformCalls {
+			if call.format != FormatJSON {
+				t.Errorf("Operation %d (%s) should receive JSON format, got %s", i, call.operation, call.format)
+			}
+		}
+	})
+
+	t.Run("Pipeline ExecuteWithFormat validates format parameter", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		pipeline := doc.Pipeline()
+
+		// Test with invalid format
+		_, err := pipeline.ExecuteWithFormat(context.Background(), "invalid-format")
+		if err == nil {
+			t.Fatal("Expected error for invalid format")
+		}
+
+		// Test with empty format
+		_, err = pipeline.ExecuteWithFormat(context.Background(), "")
+		if err == nil {
+			t.Fatal("Expected error for empty format")
+		}
+	})
+
+	t.Run("Pipeline backward compatibility with Execute method", func(t *testing.T) {
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		pipeline := doc.Pipeline()
+
+		// Execute without format should still work (uses default format)
+		result, err := pipeline.Execute()
+		if err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+
+		if result == nil {
+			t.Fatal("Execute() should return a document")
+		}
+	})
+
+	t.Run("Format-aware operations with CanTransform", func(t *testing.T) {
+		appliedOperations := []string{}
+
+		jsonOnlyOp := &mockOperation{
+			name: "json-only",
+			canTransformFn: func(content Content, format string) bool {
+				return format == FormatJSON
+			},
+			applyFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				appliedOperations = append(appliedOperations, "json-only")
+				return content, nil
+			},
+		}
+
+		csvOnlyOp := &mockOperation{
+			name: "csv-only",
+			canTransformFn: func(content Content, format string) bool {
+				return format == FormatCSV
+			},
+			applyFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				appliedOperations = append(appliedOperations, "csv-only")
+				return content, nil
+			},
+		}
+
+		universalOp := &mockOperation{
+			name: "universal",
+			canTransformFn: func(content Content, format string) bool {
+				return true // Always applicable
+			},
+			applyFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				appliedOperations = append(appliedOperations, "universal")
+				return content, nil
+			},
+		}
+
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		pipeline := doc.Pipeline()
+		pipeline.operations = []Operation{jsonOnlyOp, csvOnlyOp, universalOp}
+
+		// Test with JSON format
+		appliedOperations = []string{} // Reset
+		_, err := pipeline.ExecuteWithFormat(context.Background(), FormatJSON)
+		if err != nil {
+			t.Fatalf("ExecuteWithFormat(JSON) error = %v", err)
+		}
+
+		expectedJSON := []string{"json-only", "universal"}
+		if !slices.Equal(appliedOperations, expectedJSON) {
+			t.Errorf("JSON format: expected %v, got %v", expectedJSON, appliedOperations)
+		}
+
+		// Test with CSV format
+		appliedOperations = []string{} // Reset
+		_, err = pipeline.ExecuteWithFormat(context.Background(), FormatCSV)
+		if err != nil {
+			t.Fatalf("ExecuteWithFormat(CSV) error = %v", err)
+		}
+
+		expectedCSV := []string{"csv-only", "universal"}
+		if !slices.Equal(appliedOperations, expectedCSV) {
+			t.Errorf("CSV format: expected %v, got %v", expectedCSV, appliedOperations)
+		}
+	})
+}
+
+// mockOperation for testing format-aware behavior
+type mockOperation struct {
+	name           string
+	applyFn        func(ctx context.Context, content Content, format string) (Content, error)
+	canTransformFn func(content Content, format string) bool
+	validateFn     func() error
+	canOptimizeFn  func(with Operation) bool
+}
+
+func (m *mockOperation) Name() string {
+	return m.name
+}
+
+func (m *mockOperation) Apply(ctx context.Context, content Content) (Content, error) {
+	if m.applyFn != nil {
+		return m.applyFn(ctx, content, "") // Format will be passed differently in format-aware version
+	}
+	return content, nil
+}
+
+func (m *mockOperation) ApplyWithFormat(ctx context.Context, content Content, format string) (Content, error) {
+	if m.applyFn != nil {
+		return m.applyFn(ctx, content, format)
+	}
+	return content, nil
+}
+
+func (m *mockOperation) CanTransform(content Content, format string) bool {
+	if m.canTransformFn != nil {
+		return m.canTransformFn(content, format)
+	}
+	return true
+}
+
+func (m *mockOperation) Validate() error {
+	if m.validateFn != nil {
+		return m.validateFn()
+	}
+	return nil
+}
+
+func (m *mockOperation) CanOptimize(with Operation) bool {
+	if m.canOptimizeFn != nil {
+		return m.canOptimizeFn(with)
+	}
+	return false
+}
