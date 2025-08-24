@@ -418,3 +418,223 @@ func TestDataTransformerPriority(t *testing.T) {
 		}
 	})
 }
+
+// TestFormatSpecificBehavior tests format-specific transformer behavior
+func TestFormatSpecificBehavior(t *testing.T) {
+	t.Run("Transformer receives correct format parameter", func(t *testing.T) {
+		receivedFormat := ""
+		transformer := &mockDataTransformer{
+			transformFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				receivedFormat = format
+				return content, nil
+			},
+		}
+
+		content := &TableContent{
+			records: []Record{{"test": "value"}},
+			schema:  &Schema{Fields: []Field{{Name: "test"}}, keyOrder: []string{"test"}},
+		}
+
+		formats := []string{FormatJSON, FormatYAML, FormatCSV, FormatHTML, FormatTable, FormatMarkdown}
+		for _, expectedFormat := range formats {
+			receivedFormat = "" // Reset
+			_, err := transformer.TransformData(context.Background(), content, expectedFormat)
+			if err != nil {
+				t.Fatalf("TransformData() error = %v", err)
+			}
+			if receivedFormat != expectedFormat {
+				t.Errorf("Expected format %s, received %s", expectedFormat, receivedFormat)
+			}
+		}
+	})
+
+	t.Run("CanTransform works with all supported formats", func(t *testing.T) {
+		// Test format-specific transformer
+		jsonYamlTransformer := &mockDataTransformer{
+			formats: []string{FormatJSON, FormatYAML},
+		}
+
+		tabularTransformer := &mockDataTransformer{
+			formats: []string{FormatTable, FormatCSV, FormatHTML, FormatMarkdown},
+		}
+
+		content := &TableContent{
+			records: []Record{{"test": "value"}},
+			schema:  &Schema{Fields: []Field{{Name: "test"}}, keyOrder: []string{"test"}},
+		}
+
+		// Test JSON/YAML transformer
+		if !jsonYamlTransformer.CanTransform(content, FormatJSON) {
+			t.Error("JSON/YAML transformer should support JSON")
+		}
+		if !jsonYamlTransformer.CanTransform(content, FormatYAML) {
+			t.Error("JSON/YAML transformer should support YAML")
+		}
+		if jsonYamlTransformer.CanTransform(content, FormatCSV) {
+			t.Error("JSON/YAML transformer should not support CSV")
+		}
+
+		// Test tabular transformer
+		if !tabularTransformer.CanTransform(content, FormatTable) {
+			t.Error("Tabular transformer should support Table")
+		}
+		if !tabularTransformer.CanTransform(content, FormatCSV) {
+			t.Error("Tabular transformer should support CSV")
+		}
+		if tabularTransformer.CanTransform(content, FormatJSON) {
+			t.Error("Tabular transformer should not support JSON")
+		}
+	})
+
+	t.Run("Format-specific behavior changes based on format", func(t *testing.T) {
+		// Transformer that behaves differently for different formats
+		formatAwareTransformer := &mockDataTransformer{
+			transformFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				if tc, ok := content.(*TableContent); ok {
+					newRecords := make([]Record, len(tc.records))
+					for i, record := range tc.records {
+						newRecord := make(Record)
+						for k, v := range record {
+							// Transform values based on format
+							switch format {
+							case FormatJSON:
+								newRecord[k] = fmt.Sprintf("json_%v", v)
+							case FormatCSV:
+								newRecord[k] = fmt.Sprintf("csv_%v", v)
+							case FormatHTML:
+								newRecord[k] = fmt.Sprintf("<span>%v</span>", v)
+							default:
+								newRecord[k] = v
+							}
+						}
+						newRecords[i] = newRecord
+					}
+					return &TableContent{
+						records: newRecords,
+						schema:  tc.schema,
+					}, nil
+				}
+				return content, nil
+			},
+		}
+
+		originalContent := &TableContent{
+			records: []Record{{"name": "test", "value": "data"}},
+			schema: &Schema{
+				Fields:   []Field{{Name: "name"}, {Name: "value"}},
+				keyOrder: []string{"name", "value"},
+			},
+		}
+
+		ctx := context.Background()
+
+		// Test JSON format
+		jsonResult, err := formatAwareTransformer.TransformData(ctx, originalContent, FormatJSON)
+		if err != nil {
+			t.Fatalf("TransformData() error for JSON = %v", err)
+		}
+		if tc, ok := jsonResult.(*TableContent); ok {
+			if tc.records[0]["name"] != "json_test" {
+				t.Errorf("Expected JSON formatted value 'json_test', got %v", tc.records[0]["name"])
+			}
+		}
+
+		// Test CSV format
+		csvResult, err := formatAwareTransformer.TransformData(ctx, originalContent, FormatCSV)
+		if err != nil {
+			t.Fatalf("TransformData() error for CSV = %v", err)
+		}
+		if tc, ok := csvResult.(*TableContent); ok {
+			if tc.records[0]["name"] != "csv_test" {
+				t.Errorf("Expected CSV formatted value 'csv_test', got %v", tc.records[0]["name"])
+			}
+		}
+
+		// Test HTML format
+		htmlResult, err := formatAwareTransformer.TransformData(ctx, originalContent, FormatHTML)
+		if err != nil {
+			t.Fatalf("TransformData() error for HTML = %v", err)
+		}
+		if tc, ok := htmlResult.(*TableContent); ok {
+			if tc.records[0]["name"] != "<span>test</span>" {
+				t.Errorf("Expected HTML formatted value '<span>test</span>', got %v", tc.records[0]["name"])
+			}
+		}
+	})
+
+	t.Run("Multiple format-specific transformers in sequence", func(t *testing.T) {
+		transformOrder := []string{}
+
+		jsonTransformer := &mockDataTransformer{
+			name:    "json-transformer",
+			formats: []string{FormatJSON},
+			transformFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				transformOrder = append(transformOrder, "json")
+				return content, nil
+			},
+		}
+
+		csvTransformer := &mockDataTransformer{
+			name:    "csv-transformer",
+			formats: []string{FormatCSV},
+			transformFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				transformOrder = append(transformOrder, "csv")
+				return content, nil
+			},
+		}
+
+		universalTransformer := &mockDataTransformer{
+			name: "universal-transformer",
+			transformFn: func(ctx context.Context, content Content, format string) (Content, error) {
+				transformOrder = append(transformOrder, "universal")
+				return content, nil
+			},
+		}
+
+		content := &TableContent{
+			records: []Record{{"test": "value"}},
+			schema:  &Schema{Fields: []Field{{Name: "test"}}, keyOrder: []string{"test"}},
+		}
+
+		transformers := []DataTransformer{jsonTransformer, csvTransformer, universalTransformer}
+
+		// Test JSON format - only JSON and universal transformers should apply
+		transformOrder = []string{} // Reset
+		ctx := context.Background()
+		var result Content = content
+		for _, transformer := range transformers {
+			if transformer.CanTransform(result, FormatJSON) {
+				result, _ = transformer.TransformData(ctx, result, FormatJSON)
+			}
+		}
+
+		expectedJSONOrder := []string{"json", "universal"}
+		if len(transformOrder) != len(expectedJSONOrder) {
+			t.Fatalf("Expected %d transformations for JSON, got %d", len(expectedJSONOrder), len(transformOrder))
+		}
+		for i, expected := range expectedJSONOrder {
+			if transformOrder[i] != expected {
+				t.Errorf("Expected %s at position %d for JSON, got %s", expected, i, transformOrder[i])
+			}
+		}
+
+		// Test CSV format - only CSV and universal transformers should apply
+		transformOrder = []string{} // Reset
+		result = content
+		for _, transformer := range transformers {
+			if transformer.CanTransform(result, FormatCSV) {
+				result, _ = transformer.TransformData(ctx, result, FormatCSV)
+			}
+		}
+
+		expectedCSVOrder := []string{"csv", "universal"}
+		if len(transformOrder) != len(expectedCSVOrder) {
+			t.Fatalf("Expected %d transformations for CSV, got %d", len(expectedCSVOrder), len(transformOrder))
+		}
+		for i, expected := range expectedCSVOrder {
+			if transformOrder[i] != expected {
+				t.Errorf("Expected %s at position %d for CSV, got %s", expected, i, transformOrder[i])
+			}
+		}
+	})
+}

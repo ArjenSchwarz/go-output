@@ -92,6 +92,18 @@ func (o *FilterOp) Validate() error {
 	return nil
 }
 
+// ApplyWithFormat applies the filter operation with format context
+func (o *FilterOp) ApplyWithFormat(ctx context.Context, content Content, format string) (Content, error) {
+	// Filter operations are format-agnostic, so delegate to Apply
+	return o.Apply(ctx, content)
+}
+
+// CanTransform checks if filter operation applies to the given content and format
+func (o *FilterOp) CanTransform(content Content, format string) bool {
+	// Filter works with table content in any format
+	return content.Type() == ContentTypeTable
+}
+
 // SortOp implements sorting operation using keys or custom comparators
 type SortOp struct {
 	keys       []SortKey             // Sort keys (column and direction)
@@ -291,6 +303,18 @@ func (o *SortOp) Validate() error {
 	return nil
 }
 
+// ApplyWithFormat applies the sort operation with format context
+func (o *SortOp) ApplyWithFormat(ctx context.Context, content Content, format string) (Content, error) {
+	// Sort operations are format-agnostic, so delegate to Apply
+	return o.Apply(ctx, content)
+}
+
+// CanTransform checks if sort operation applies to the given content and format
+func (o *SortOp) CanTransform(content Content, format string) bool {
+	// Sort works with table content in any format
+	return content.Type() == ContentTypeTable
+}
+
 // LimitOp implements limit operation to restrict the number of records
 type LimitOp struct {
 	count int // Number of records to keep
@@ -333,6 +357,18 @@ func (o *LimitOp) Validate() error {
 		return NewValidationError("count", o.count, "limit count must be non-negative (>= 0)")
 	}
 	return nil
+}
+
+// ApplyWithFormat applies the limit operation with format context
+func (o *LimitOp) ApplyWithFormat(ctx context.Context, content Content, format string) (Content, error) {
+	// Limit operations are format-agnostic, so delegate to Apply
+	return o.Apply(ctx, content)
+}
+
+// CanTransform checks if limit operation applies to the given content and format
+func (o *LimitOp) CanTransform(content Content, format string) bool {
+	// Limit works with table content in any format
+	return content.Type() == ContentTypeTable
 }
 
 // NewFilterOp creates a new filter operation with the given predicate
@@ -572,6 +608,18 @@ func (o *GroupByOp) Validate() error {
 	}
 
 	return nil
+}
+
+// ApplyWithFormat applies the groupBy operation with format context
+func (o *GroupByOp) ApplyWithFormat(ctx context.Context, content Content, format string) (Content, error) {
+	// GroupBy operations are format-agnostic, so delegate to Apply
+	return o.Apply(ctx, content)
+}
+
+// CanTransform checks if groupBy operation applies to the given content and format
+func (o *GroupByOp) CanTransform(content Content, format string) bool {
+	// GroupBy works with table content in any format
+	return content.Type() == ContentTypeTable
 }
 
 // Built-in aggregate functions
@@ -835,6 +883,18 @@ func (o *AddColumnOp) Validate() error {
 		return NewValidationError("column_position", *o.position, "addColumn position must be non-negative (>= 0)")
 	}
 	return nil
+}
+
+// ApplyWithFormat applies the addColumn operation with format context
+func (o *AddColumnOp) ApplyWithFormat(ctx context.Context, content Content, format string) (Content, error) {
+	// AddColumn operations are format-agnostic, so delegate to Apply
+	return o.Apply(ctx, content)
+}
+
+// CanTransform checks if addColumn operation applies to the given content and format
+func (o *AddColumnOp) CanTransform(content Content, format string) bool {
+	// AddColumn works with table content in any format
+	return content.Type() == ContentTypeTable
 }
 
 // NewAddColumnOp creates a new addColumn operation
