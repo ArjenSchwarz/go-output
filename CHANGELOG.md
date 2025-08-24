@@ -1,6 +1,18 @@
 ## [Unreleased]
 
 ### Added
+- **Data Transformation Pipeline Documentation and Examples**
+  - Comprehensive API documentation for Pipeline system with detailed interface reference for all transformation operations
+  - Complete pipeline documentation covering Filter, Sort, Limit, GroupBy, AddColumn operations with usage examples
+  - Migration guide section for transitioning from byte transformers to data pipeline system with best practices
+  - Format-aware transformation documentation explaining when to use data pipeline vs byte transformers
+  - Performance comparison tables and optimization guidance for pipeline operations
+  - Real-world pipeline transformation example demonstrating sales data analysis with filtering, calculations, sorting, and limiting
+  - Complete pipeline example application with comprehensive transformation statistics and error handling
+  - Migration patterns and checklist for systematic transition from manual data operations to pipeline API
+  - Marked documentation and examples tasks (17.1, 17.2) as completed in transformation-pipeline feature
+
+### Added
 - **Pipeline Performance Benchmarking Suite**
   - Comprehensive benchmark suite for pipeline operations with varying data sizes (10, 100, 1000, 10000 records)
   - Filter operation benchmarks demonstrating performance across different dataset sizes
