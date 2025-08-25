@@ -405,7 +405,7 @@ func errorHandlingExample(salesData []map[string]any) {
 
 	// Now demonstrate successful pipeline with performance stats using the safe result from earlier
 	fmt.Println("\n✅ Successful Pipeline with Performance Tracking:")
-	
+
 	// Use the successfulDoc from the earlier safe pipeline, not the timeout one
 
 	// Show detailed performance statistics from the safe successful pipeline
