@@ -130,11 +130,18 @@ func (o *SortOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Validate that sort columns exist in the data (only if we have records and are using keys)
 	if len(cloned.records) > 0 && o.comparator == nil && len(o.keys) > 0 {
 		// Check first record for column existence
+		// Note: Missing columns in other records will be treated as nil values during comparison
 		firstRecord := cloned.records[0]
+		availableColumns := make([]string, 0, len(firstRecord))
+		for col := range firstRecord {
+			availableColumns = append(availableColumns, col)
+		}
+
 		for _, key := range o.keys {
 			if _, exists := firstRecord[key.Column]; !exists {
 				return nil, NewValidationError("sort_column", key.Column,
-					fmt.Sprintf("sort column '%s' does not exist in table data", key.Column))
+					fmt.Sprintf("sort column '%s' does not exist in table data. Available columns: %v",
+						key.Column, availableColumns))
 			}
 		}
 	}

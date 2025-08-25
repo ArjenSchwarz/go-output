@@ -1,6 +1,18 @@
 ## [Unreleased]
 
 ### Fixed
+- **Progress Tracking Implementation**
+  - Simplified noOpProgress to be a true no-op implementation by removing unused state fields
+  - Eliminated theoretical race condition concerns by removing unnecessary field storage
+  - Improved code clarity by making the no-op intent explicit
+
+### Changed
+- **Sort Operation Error Messages**
+  - Enhanced sort validation error messages to include list of available columns
+  - Added clarifying comment that missing columns in records are handled as nil values during comparison
+  - Improved developer experience with more informative validation errors
+
+### Fixed
 - **Sort Operation Validation Enhancement**
   - Added validation to check that sort columns exist in the table data before attempting to sort
   - Sort operations now return a descriptive ValidationError when attempting to sort by non-existent columns
