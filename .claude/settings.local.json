@@ -43,7 +43,11 @@
       "mcp__serena__think_about_task_adherence",
       "mcp__serena__think_about_whether_you_are_done",
       "Bash(gh pr view:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(modernize ./...)",
+      "mcp__devtools__q-developer-agent",
+      "mcp__devtools__find_long_files",
+      "mcp__serena__find_file"
     ],
     "deny": []
   }

@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Added
+- **Code Cleanup and Tooling Planning**
+  - Comprehensive feature planning documentation for code modernization using Go 1.24+ features
+  - Requirements specification for applying modernize tool suggestions to leverage performance optimizations and modern idioms
+  - Design documentation outlining phased approach for automated modernization across 118 identified improvements
+  - Test organization strategy following Go 2025 best practices including map-based table tests and environment-based integration test separation
+  - Makefile architecture design with comprehensive targets for test, lint, format, and development workflows
+  - Task breakdown for implementing modernization including benchmarks conversion to new b.Loop() pattern
+  - Decision log documenting scope limitation to v2 directory and modernization priorities
+  - Research documentation on Go unit testing best practices for 2025 including b.Loop() benchmarks and integration test patterns
+
 ### Fixed
 - **Progress Tracking Implementation**
   - Simplified noOpProgress to be a true no-op implementation by removing unused state fields
