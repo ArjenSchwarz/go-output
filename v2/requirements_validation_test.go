@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+// Performance test constants
+const (
+	// largeDatasetSize defines the number of records used in performance tests
+	largeDatasetSize = 1000
+)
+
 // TestRequirementsValidation validates that all transformation pipeline requirements
 // from the tasks.md file are properly implemented and working
 func TestRequirementsValidation(t *testing.T) {
@@ -286,8 +292,8 @@ func TestRequirementsValidation(t *testing.T) {
 
 	t.Run("Requirement 8.1-8.6: Performance optimization and acceptable overhead", func(t *testing.T) {
 		// Create larger dataset for performance testing
-		largeRecords := make([]Record, 1000)
-		for i := 0; i < 1000; i++ {
+		largeRecords := make([]Record, largeDatasetSize)
+		for i := 0; i < largeDatasetSize; i++ {
 			largeRecords[i] = Record{
 				"id":     i + 1,
 				"value":  i * 10,

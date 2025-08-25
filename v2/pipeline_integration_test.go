@@ -551,10 +551,6 @@ func TestPipelineIntegration_ErrorScenarios(t *testing.T) {
 	})
 
 	t.Run("invalid sort column", func(t *testing.T) {
-		// Skip this test for now as it reveals a bug in the sort implementation
-		// that should be fixed separately - it currently panics instead of returning error
-		t.Skip("Sort operation error handling needs improvement - currently panics on invalid column")
-
 		_, err := doc.Pipeline().
 			Sort(SortKey{Column: "nonexistent_column", Direction: Ascending}).
 			Execute()
@@ -563,8 +559,8 @@ func TestPipelineIntegration_ErrorScenarios(t *testing.T) {
 			t.Error("Expected error from invalid sort column")
 		}
 
-		if !strings.Contains(err.Error(), "Sort") {
-			t.Errorf("Error should mention Sort operation, got: %v", err)
+		if !strings.Contains(err.Error(), "nonexistent_column") {
+			t.Errorf("Error should mention the invalid column name, got: %v", err)
 		}
 	})
 

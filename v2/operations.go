@@ -127,6 +127,18 @@ func (o *SortOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Clone the content to preserve immutability
 	cloned := tableContent.Clone().(*TableContent)
 
+	// Validate that sort columns exist in the data (only if we have records and are using keys)
+	if len(cloned.records) > 0 && o.comparator == nil && len(o.keys) > 0 {
+		// Check first record for column existence
+		firstRecord := cloned.records[0]
+		for _, key := range o.keys {
+			if _, exists := firstRecord[key.Column]; !exists {
+				return nil, NewValidationError("sort_column", key.Column,
+					fmt.Sprintf("sort column '%s' does not exist in table data", key.Column))
+			}
+		}
+	}
+
 	// Create a copy of records for sorting
 	records := make([]Record, len(cloned.records))
 	copy(records, cloned.records)

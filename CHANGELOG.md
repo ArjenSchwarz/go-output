@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+### Fixed
+- **Sort Operation Validation Enhancement**
+  - Added validation to check that sort columns exist in the table data before attempting to sort
+  - Sort operations now return a descriptive ValidationError when attempting to sort by non-existent columns
+  - Prevents potential panics or undefined behavior when sorting with invalid column names
+  - Re-enabled previously skipped integration test for invalid sort column error handling
+
+### Changed
+- **Code Quality Improvements**
+  - Modernized test loops to use `range` over int in pipeline benchmark tests
+  - Replaced manual slice searching with `slices.Contains` for improved readability in requirements validation tests
+  - Added performance test constant for improved maintainability
+
 ### Added
 - **Comprehensive Integration Testing and Requirements Validation**
   - End-to-end integration tests for complete transformation pipeline with multiple operations chained together (Filter → Sort → AddColumn → Limit)
