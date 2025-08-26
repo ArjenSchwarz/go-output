@@ -140,17 +140,17 @@ This document outlines the implementation tasks for the code cleanup and tooling
 
 ### 5. Update Integration Test Markers
 
-- [ ] **5.1 Identify existing integration tests in the codebase**
+- [x] **5.1 Identify existing integration tests in the codebase**
   - Search for tests that require external resources or full system setup
   - Create list of tests to be marked as integration tests
   - Reference: Requirements 2.1
 
-- [ ] **5.2 Add skipIfNotIntegration calls to integration tests**
+- [x] **5.2 Add skipIfNotIntegration calls to integration tests**
   - Modify identified integration tests to use the helper function
   - Ensure skip messages are descriptive
   - Reference: Requirements 2.1, Design Integration Test Separation
 
-- [ ] **5.3 Verify integration test separation works correctly**
+- [x] **5.3 Verify integration test separation works correctly**
   - Run tests without INTEGRATION=1 and verify integration tests skip
   - Run tests with INTEGRATION=1 and verify all tests run
   - Reference: Requirements 2.1
