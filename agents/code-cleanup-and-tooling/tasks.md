@@ -50,12 +50,12 @@ This document outlines the implementation tasks for the code cleanup and tooling
   - Review identified files to determine logical boundaries for splitting
   - Reference: Requirements 2.4
 
-- [ ] **3.2 Split pipeline_test.go by operation type**
+- [x] **3.2 Split pipeline_test.go by operation type**
   - Create pipeline_filter_test.go for filter operations
-  - Create pipeline_sort_test.go for sorting operations
-  - Create pipeline_aggregate_test.go for aggregation operations
-  - Create pipeline_transform_test.go for transformation operations
-  - Create pipeline_validation_test.go for validation and error cases
+  - Create pipeline_sort_test.go for sorting operations  
+  - Create pipeline_limit_test.go for limit operations
+  - Create pipeline_core_test.go for core pipeline functionality
+  - Create pipeline_advanced_test.go for advanced pipeline features
   - Reference: Requirements 2.4, Design Test File Splitting Strategy
 
 - [ ] **3.3 Split renderer_test.go by renderer type**
@@ -71,7 +71,7 @@ This document outlines the implementation tasks for the code cleanup and tooling
   - Split progress_test.go by progress feature if > 800 lines
   - Reference: Requirements 2.4
 
-- [ ] **3.5 Verify all tests pass after splitting**
+- [x] **3.5 Verify all tests pass after splitting**
   - Run full test suite to ensure no tests were lost or broken
   - Confirm each new test file follows naming conventions
   - Reference: Requirements 2.3, 2.4

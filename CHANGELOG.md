@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Changed
+- **Pipeline Test Organization**
+  - Split large pipeline_test.go into focused test files organized by operation type
+  - Created pipeline_core_test.go for core pipeline functionality and initialization tests
+  - Created pipeline_filter_test.go for comprehensive filter operation test coverage
+  - Created pipeline_sort_test.go for sort operation test validation
+  - Created pipeline_limit_test.go for limit operation test scenarios
+  - Created pipeline_advanced_test.go for advanced pipeline features and optimization tests
+  - Improved test organization and maintainability while preserving all existing test coverage
+  - Enhanced test discoverability through logical grouping of related test scenarios
+
 ### Added
 - **Test Helper Functions for Integration Test Separation**
   - Created `skipIfNotIntegration` helper function to separate integration tests from unit tests
