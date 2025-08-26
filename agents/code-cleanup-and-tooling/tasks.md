@@ -33,12 +33,12 @@ This document outlines the implementation tasks for the code cleanup and tooling
 
 ### 2. Implement Test Organization Helper Functions
 
-- [ ] **2.1 Create test helper for integration test separation**
+- [x] **2.1 Create test helper for integration test separation**
   - Write `skipIfNotIntegration` helper function
   - Use environment variable INTEGRATION=1 check
   - Reference: Requirements 2.1, Design Integration Test Separation
 
-- [ ] **2.2 Write tests for the integration test helper**
+- [x] **2.2 Write tests for the integration test helper**
   - Test behavior with and without INTEGRATION environment variable
   - Verify proper skip messages
   - Reference: Requirements 2.1

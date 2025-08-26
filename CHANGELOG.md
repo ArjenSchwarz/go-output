@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Added
+- **Test Helper Functions for Integration Test Separation**
+  - Created `skipIfNotIntegration` helper function to separate integration tests from unit tests
+  - Integration tests can now be skipped by default and run only when `INTEGRATION=1` environment variable is set
+  - Helper provides clear skip messages indicating how to run integration tests
+  - Comprehensive test coverage for helper function behavior with different environment variable values
+  - Follows Go 2025 best practices for test organization and separation
+
 ### Changed
 - **Code Modernization with Go 1.24+ Features**
   - Modernized all benchmark tests to use Go 1.24's new `b.Loop()` pattern replacing `for i := 0; i < b.N; i++` loops
