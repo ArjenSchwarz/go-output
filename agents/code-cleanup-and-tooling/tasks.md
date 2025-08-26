@@ -45,7 +45,7 @@ This document outlines the implementation tasks for the code cleanup and tooling
 
 ### 3. Split Large Test Files
 
-- [ ] **3.1 Identify test files exceeding 800 lines**
+- [x] **3.1 Identify test files exceeding 800 lines**
   - Use find_long_files tool to locate test files over 800 lines in v2 directory
   - Review identified files to determine logical boundaries for splitting
   - Reference: Requirements 2.4
@@ -58,20 +58,46 @@ This document outlines the implementation tasks for the code cleanup and tooling
   - Create pipeline_advanced_test.go for advanced pipeline features
   - Reference: Requirements 2.4, Design Test File Splitting Strategy
 
-- [ ] **3.3 Split renderer_test.go by renderer type**
+- [x] **3.3 Split renderer_test.go by renderer type**
   - Create renderer_json_test.go for JSON rendering tests
   - Create renderer_yaml_test.go for YAML rendering tests
-  - Create renderer_html_test.go for HTML rendering tests
+  - Create renderer_csv_test.go for CSV rendering tests
+  - Create renderer_base_test.go for base renderer and interface tests
   - Create renderer_markdown_test.go for Markdown rendering tests
+  - Create renderer_json_yaml_test.go for shared JSON/YAML tests
+  - Original file completely eliminated, split into 6 focused files
   - Reference: Requirements 2.4, Design Test File Splitting Strategy
 
-- [ ] **3.4 Split other large test files by logical functionality**
-  - Split operations_test.go by operation category if > 800 lines
-  - Split errors_test.go by error type if > 800 lines
-  - Split progress_test.go by progress feature if > 800 lines
+- [x] **3.4 Split operations_test.go by operation category (1853 lines)**
+  - Create operations_filter_test.go for filter operation tests
+  - Create operations_transform_test.go for transform operation tests
+  - Create operations_aggregate_test.go for aggregate operation tests
+  - Create operations_sort_test.go for sort operation tests
+  - Create operations_core_test.go for core operation tests
   - Reference: Requirements 2.4
 
-- [x] **3.5 Verify all tests pass after splitting**
+- [x] **3.5 Split errors_test.go by error type (1281 lines)**
+  - Create errors_validation_test.go for validation error tests
+  - Create errors_pipeline_test.go for pipeline error tests
+  - Create errors_renderer_test.go for renderer error tests
+  - Create errors_core_test.go for core error handling tests
+  - Reference: Requirements 2.4
+
+- [x] **3.6 Split progress_test.go by progress feature (1261 lines)**
+  - Create progress_indicator_test.go for progress indicator tests
+  - Create progress_callback_test.go for callback mechanism tests
+  - Create progress_concurrent_test.go for concurrent progress tests
+  - Create progress_core_test.go for core progress functionality tests
+  - Reference: Requirements 2.4
+
+- [x] **3.7 Split builder_methods_test.go by builder functionality (838 lines)**
+  - Create builder_table_test.go for table building method tests
+  - Create builder_text_test.go for text building method tests
+  - Create builder_section_test.go for section building method tests
+  - Create builder_core_test.go for core builder functionality tests
+  - Reference: Requirements 2.4
+
+- [x] **3.8 Verify all tests pass after splitting**
   - Run full test suite to ensure no tests were lost or broken
   - Confirm each new test file follows naming conventions
   - Reference: Requirements 2.3, 2.4

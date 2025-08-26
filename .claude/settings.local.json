@@ -48,7 +48,9 @@
       "mcp__devtools__q-developer-agent",
       "mcp__devtools__find_long_files",
       "mcp__serena__find_file",
-      "Bash(modernize:*)"
+      "Bash(modernize:*)",
+      "mcp__serena__replace_symbol_body",
+      "Bash(python3 move_code_section.py:*)"
     ],
     "deny": []
   }

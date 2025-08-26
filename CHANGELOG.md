@@ -1,6 +1,15 @@
 ## [Unreleased]
 
 ### Changed
+- **Test File Organization for Better Maintainability**
+  - Split `builder_methods_test.go` (838 lines) into 4 focused test files: `builder_core_test.go`, `builder_table_test.go`, `builder_text_test.go`, and `builder_section_test.go`
+  - Split `renderer_test.go` into 6 renderer-specific test files: `renderer_json_test.go`, `renderer_yaml_test.go`, `renderer_csv_test.go`, `renderer_base_test.go`, `renderer_markdown_test.go`, and `renderer_json_yaml_test.go`
+  - Split `operations_test.go` (1853 lines) into 5 operation-focused test files: `operations_core_test.go`, `operations_filter_test.go`, `operations_transform_test.go`, `operations_aggregate_test.go`, and `operations_sort_test.go`
+  - Split `errors_test.go` (1281 lines) into 4 error-category test files: `errors_core_test.go`, `errors_validation_test.go`, `errors_pipeline_test.go`, and `errors_renderer_test.go`
+  - Split `progress_test.go` (1261 lines) into 4 progress-feature test files: `progress_core_test.go`, `progress_indicator_test.go`, `progress_callback_test.go`, and `progress_concurrent_test.go`
+  - Improved test organization following Go 2025 best practices for maintainable test suites with focused files under 800 lines each
+
+### Changed
 - **Pipeline Test Organization**
   - Split large pipeline_test.go into focused test files organized by operation type
   - Created pipeline_core_test.go for core pipeline functionality and initialization tests
