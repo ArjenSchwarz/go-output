@@ -106,7 +106,6 @@ func TestTextProgress_BasicOperations(t *testing.T) {
 	}
 }
 
-
 func TestTextProgress_WithStatus(t *testing.T) {
 	var buf bytes.Buffer
 	status := "analyzing data"

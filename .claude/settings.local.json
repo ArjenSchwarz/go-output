@@ -50,7 +50,8 @@
       "mcp__serena__find_file",
       "Bash(modernize:*)",
       "mcp__serena__replace_symbol_body",
-      "Bash(python3 move_code_section.py:*)"
+      "Bash(python3 move_code_section.py:*)",
+      "Bash(make:*)"
     ],
     "deny": []
   }

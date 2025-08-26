@@ -104,36 +104,36 @@ This document outlines the implementation tasks for the code cleanup and tooling
 
 ### 4. Create Makefile with Developer Tooling
 
-- [ ] **4.1 Create base Makefile structure with help system**
+- [x] **4.1 Create base Makefile structure with help system**
   - Implement help target that documents all available targets
   - Set up proper .PHONY declarations
   - Reference: Requirements 4.12
 
-- [ ] **4.2 Implement test targets**
+- [x] **4.2 Implement test targets**
   - Create `test` target for unit tests
   - Create `test-integration` target with INTEGRATION=1
   - Create `test-all` target combining both
   - Create `test-coverage` target with coverage report generation
   - Reference: Requirements 4.1, 4.2, 4.3, 4.4
 
-- [ ] **4.3 Implement code quality targets**
+- [x] **4.3 Implement code quality targets**
   - Create `lint` target running golangci-lint
   - Create `fmt` target for v2 and all example directories
   - Create `modernize` target running the modernize tool
   - Reference: Requirements 4.5, 4.6, 4.10
 
-- [ ] **4.4 Implement development utility targets**
+- [x] **4.4 Implement development utility targets**
   - Create `mod-tidy` target for go mod tidy
   - Create `benchmark` target for performance tests
   - Create `clean` target to remove generated files and test caches
   - Reference: Requirements 4.7, 4.8, 4.11
 
-- [ ] **4.5 Implement composite check target**
+- [x] **4.5 Implement composite check target**
   - Create `check` target that runs fmt, lint, and tests in sequence
   - Ensure proper error propagation between steps
   - Reference: Requirements 4.9
 
-- [ ] **4.6 Write tests to verify Makefile targets work correctly**
+- [x] **4.6 Write tests to verify Makefile targets work correctly**
   - Create script to test each Makefile target
   - Verify targets fail appropriately on errors
   - Reference: Requirements 4.1-4.12
