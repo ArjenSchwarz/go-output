@@ -11,6 +11,8 @@ import (
 
 // TestIntegration_CompleteWorkflow tests a complete document creation and rendering workflow
 func TestIntegration_CompleteWorkflow(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	// Create a comprehensive document with all content types
 	doc := New().
 		SetMetadata("title", "Integration Test Document").
@@ -73,6 +75,8 @@ func TestIntegration_CompleteWorkflow(t *testing.T) {
 
 // TestIntegration_ConcurrentDocumentBuilding tests thread-safe document building
 func TestIntegration_ConcurrentDocumentBuilding(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	builder := New()
 
 	// Use a WaitGroup to ensure all goroutines complete
@@ -119,6 +123,8 @@ func TestIntegration_ConcurrentDocumentBuilding(t *testing.T) {
 
 // TestIntegration_RenderingPipeline tests the complete rendering pipeline
 func TestIntegration_RenderingPipeline(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	// Create document
 	doc := New().
 		Table("Products", []map[string]any{
@@ -153,6 +159,8 @@ func TestIntegration_RenderingPipeline(t *testing.T) {
 
 // TestIntegration_ErrorHandling tests error handling throughout the system
 func TestIntegration_ErrorHandling(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	builder := New()
 
 	// Add some valid content
@@ -182,6 +190,8 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 
 // TestIntegration_ProgressWithRendering tests progress integration
 func TestIntegration_ProgressWithRendering(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	// Create a large document
 	builder := New()
 	for i := range 100 {
@@ -215,6 +225,8 @@ func TestIntegration_ProgressWithRendering(t *testing.T) {
 
 // TestIntegration_ContextCancellation tests context cancellation
 func TestIntegration_ContextCancellation(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	// Create a large document
 	builder := New()
 	for i := range 1000 {
@@ -254,6 +266,8 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 
 // TestIntegration_MixedContentTypes tests documents with all content types
 func TestIntegration_MixedContentTypes(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	doc := New().
 		Header("Document Title").
 		Text("Introduction paragraph.").
@@ -328,6 +342,8 @@ func (s *slowWriter) Write(ctx context.Context, format string, data []byte) erro
 
 // TestIntegration_LargeDataset tests handling of large datasets
 func TestIntegration_LargeDataset(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	if testing.Short() {
 		t.Skip("Skipping large dataset test in short mode")
 	}

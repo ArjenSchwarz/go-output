@@ -6,6 +6,8 @@ import (
 )
 
 func TestIntegration_DocumentWithTables(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	// Create a document with multiple tables demonstrating key order preservation
 	doc := New().
 		Table("Users", []map[string]any{
@@ -135,6 +137,8 @@ func TestIntegration_DocumentWithTables(t *testing.T) {
 }
 
 func TestIntegration_SchemaWithFormatters(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	// Test custom formatter functionality
 	fields := []Field{
 		{
@@ -196,6 +200,8 @@ func TestIntegration_SchemaWithFormatters(t *testing.T) {
 }
 
 func TestIntegration_ThreadSafeDocument(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	// Test that document building is thread-safe
 	builder := New()
 

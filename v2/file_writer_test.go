@@ -10,6 +10,8 @@ import (
 )
 
 func TestNewFileWriter(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	tempDir := t.TempDir()
 
 	tests := []struct {
@@ -72,6 +74,8 @@ func TestNewFileWriter(t *testing.T) {
 }
 
 func TestFileWriterWrite(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	tempDir := t.TempDir()
 	fw, err := NewFileWriter(tempDir, "test-{format}.{ext}")
 	if err != nil {
@@ -161,6 +165,8 @@ func TestFileWriterWrite(t *testing.T) {
 }
 
 func TestFileWriterConcurrency(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	tempDir := t.TempDir()
 	fw, err := NewFileWriter(tempDir, "concurrent-{format}.{ext}")
 	if err != nil {
@@ -205,6 +211,8 @@ func (fw *FileWriter) generateFilenameForTest(format string) string {
 }
 
 func TestFileWriterSecurityValidation(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	tempDir := t.TempDir()
 	fw, err := NewFileWriter(tempDir, "{format}")
 	if err != nil {
@@ -235,6 +243,8 @@ func TestFileWriterSecurityValidation(t *testing.T) {
 }
 
 func TestFileWriterContextCancellation(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	tempDir := t.TempDir()
 	fw, err := NewFileWriter(tempDir, "test-{format}.{ext}")
 	if err != nil {
@@ -255,6 +265,8 @@ func TestFileWriterContextCancellation(t *testing.T) {
 }
 
 func TestFileWriterCustomExtensions(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	tempDir := t.TempDir()
 
 	customExt := map[string]string{
@@ -296,6 +308,8 @@ func TestFileWriterCustomExtensions(t *testing.T) {
 }
 
 func TestFileWriterOverwrite(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	tempDir := t.TempDir()
 	fw, err := NewFileWriter(tempDir, "overwrite-test.txt")
 	if err != nil {
@@ -360,6 +374,8 @@ func TestGenerateFilename(t *testing.T) {
 }
 
 func TestFileWriterAbsolutePaths(t *testing.T) {
+	skipIfNotIntegration(t)
+
 	tempDir := t.TempDir()
 
 	// Test that absolute paths are rejected by default

@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Changed
+- **Integration Test Enhancement**
+  - Marked all integration test separation tasks (5.1-5.3) as completed in agents/code-cleanup-and-tooling/tasks.md
+  - Added skipIfNotIntegration helper function calls to all integration tests in file writer test suite
+  - Applied integration test markers to comprehensive integration test suite including workflow, concurrency, rendering pipeline, error handling, progress integration, context cancellation, mixed content types, and large dataset tests
+  - Enhanced Claude Code settings to support INTEGRATION=1 test execution command for integration test workflows
+
 ### Added
 - **Developer Makefile with Comprehensive Tooling**
   - Created comprehensive Makefile with 13 targets for v2 development workflow
