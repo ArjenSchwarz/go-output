@@ -26,7 +26,7 @@ func BenchmarkPipelineFilter(b *testing.B) {
 			doc := New().Table("test", records).Build()
 
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				_, err := doc.Pipeline().
 					Filter(func(r Record) bool {
 						return r["active"].(bool)
@@ -77,7 +77,7 @@ func BenchmarkPipelineSort(b *testing.B) {
 				}
 
 				b.ResetTimer()
-				for i := 0; i < b.N; i++ {
+				for b.Loop() {
 					_, err := pipeline.Execute()
 					if err != nil {
 						b.Fatal(err)
@@ -109,7 +109,7 @@ func BenchmarkPipelineAggregation(b *testing.B) {
 				doc := New().Table("test", records).Build()
 
 				b.ResetTimer()
-				for i := 0; i < b.N; i++ {
+				for b.Loop() {
 					_, err := doc.Pipeline().
 						GroupBy([]string{"category"}, map[string]AggregateFunc{
 							"total": SumAggregate("value"),
@@ -146,7 +146,7 @@ func BenchmarkPipelineComplexChain(b *testing.B) {
 			doc := New().Table("test", records).Build()
 
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				_, err := doc.Pipeline().
 					Filter(func(r Record) bool {
 						return r["active"].(bool)
@@ -181,7 +181,7 @@ func BenchmarkPipelineAddColumn(b *testing.B) {
 			doc := New().Table("test", records).Build()
 
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				_, err := doc.Pipeline().
 					AddColumn("total", func(r Record) any {
 						price := r["price"].(float64)
@@ -213,7 +213,7 @@ func BenchmarkManualVsPipeline(b *testing.B) {
 
 	b.Run("manual", func(b *testing.B) {
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			// Manual filter
 			filtered := make([]Record, 0, len(records))
 			for _, r := range records {
@@ -245,7 +245,7 @@ func BenchmarkManualVsPipeline(b *testing.B) {
 		doc := New().Table("test", records).Build()
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, err := doc.Pipeline().
 				Filter(func(r Record) bool {
 					return r["active"].(bool)
@@ -279,7 +279,7 @@ func BenchmarkPipelineOptimization(b *testing.B) {
 	// Test unoptimized order (sort then filter - processes all records for sort)
 	b.Run("unoptimized_sort_then_filter", func(b *testing.B) {
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			// This should ideally be optimized to filter first
 			_, err := doc.Pipeline().
 				Sort(SortKey{Column: "value", Direction: Descending}).
@@ -296,7 +296,7 @@ func BenchmarkPipelineOptimization(b *testing.B) {
 	// Test optimized order (filter then sort - processes fewer records for sort)
 	b.Run("optimized_filter_then_sort", func(b *testing.B) {
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, err := doc.Pipeline().
 				Filter(func(r Record) bool {
 					return r["id"].(int) < 100
@@ -330,7 +330,7 @@ func BenchmarkPipelineMemoryAllocation(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
 
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				_, err := doc.Pipeline().
 					Filter(func(r Record) bool {
 						return r["id"].(int)%2 == 0
@@ -361,7 +361,7 @@ func BenchmarkPipelineWithTimeout(b *testing.B) {
 
 	b.Run("with_timeout", func(b *testing.B) {
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, err := doc.Pipeline().
 				WithOptions(PipelineOptions{
 					MaxOperations:    100,
@@ -379,7 +379,7 @@ func BenchmarkPipelineWithTimeout(b *testing.B) {
 
 	b.Run("without_timeout", func(b *testing.B) {
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, err := doc.Pipeline().
 				Filter(func(r Record) bool {
 					return r["id"].(int)%2 == 0
@@ -447,7 +447,7 @@ func BenchmarkPipelineGroupByWithAggregates(b *testing.B) {
 		}
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, err := pipeline.Execute()
 			if err != nil {
 				b.Fatal(err)
@@ -468,7 +468,7 @@ func BenchmarkPipelineGroupByWithAggregates(b *testing.B) {
 		}
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, err := pipeline.Execute()
 			if err != nil {
 				b.Fatal(err)
@@ -494,7 +494,7 @@ func BenchmarkPipelineContextCancellation(b *testing.B) {
 
 	b.Run("with_context_checks", func(b *testing.B) {
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			ctx := context.Background()
 			_, err := doc.Pipeline().
 				Filter(func(r Record) bool {

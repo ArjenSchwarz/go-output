@@ -380,7 +380,7 @@ func TestValidation_ThreadSafety(t *testing.T) {
 
 	// Concurrent metadata updates
 	done := make(chan bool, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		go func(idx int) {
 			builder.SetMetadata("key", idx)
 			done <- true
@@ -388,7 +388,7 @@ func TestValidation_ThreadSafety(t *testing.T) {
 	}
 
 	// Wait for all goroutines
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 

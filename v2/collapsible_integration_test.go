@@ -487,7 +487,7 @@ func TestCollapsibleIntegration_PerformanceWithLargeData(t *testing.T) {
 	// Create large dataset with collapsible content
 	size := 1000
 	data := make([]map[string]any, size)
-	for i := 0; i < size; i++ {
+	for i := range size {
 		data[i] = map[string]any{
 			"id":     i,
 			"errors": []string{"error1", "error2", "error3", "error4", "error5"},

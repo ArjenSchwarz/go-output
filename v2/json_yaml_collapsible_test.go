@@ -447,7 +447,7 @@ func TestJSONYAMLRenderers_CollapsibleStreaming(t *testing.T) {
 	const numRecords = 1000
 	testData := make([]map[string]any, numRecords)
 
-	for i := 0; i < numRecords; i++ {
+	for i := range numRecords {
 		testData[i] = map[string]any{
 			"id": i,
 			"error": NewCollapsibleValue(

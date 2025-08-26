@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync"
 )
 
@@ -113,9 +114,7 @@ func WithFrontMatter(fm map[string]string) OutputOption {
 		if o.frontMatter == nil {
 			o.frontMatter = make(map[string]string)
 		}
-		for k, v := range fm {
-			o.frontMatter[k] = v
-		}
+		maps.Copy(o.frontMatter, fm)
 	}
 }
 
@@ -257,9 +256,7 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 					var contextErr *ContextError
 					if AsError(err, &contextErr) {
 						component = contextErr.Operation
-						for k, v := range contextErr.Context {
-							details[k] = v
-						}
+						maps.Copy(details, contextErr.Context)
 					}
 				}
 			}

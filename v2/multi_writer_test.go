@@ -245,11 +245,11 @@ func TestMultiWriterConcurrency(t *testing.T) {
 	numGoroutines := 10
 	numWrites := 10
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < numWrites; j++ {
+			for range numWrites {
 				if err := mw.Write(ctx, FormatText, []byte("data")); err != nil {
 					t.Errorf("concurrent write failed: %v", err)
 				}

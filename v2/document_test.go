@@ -195,7 +195,7 @@ func TestBuilder_ThreadSafety(t *testing.T) {
 	wg.Add(numGoroutines * 2)
 
 	// Concurrent metadata operations
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(index int) {
 			defer wg.Done()
 			builder.SetMetadata(string(rune('a'+index%26)), index)
@@ -203,7 +203,7 @@ func TestBuilder_ThreadSafety(t *testing.T) {
 	}
 
 	// Concurrent content operations
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(index int) {
 			defer wg.Done()
 			content := &testContent{
@@ -235,7 +235,7 @@ func TestDocument_ThreadSafety(t *testing.T) {
 	builder := New()
 
 	// Add some initial content
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		builder.AddContent(&testContent{
 			id:          GenerateID(),
 			contentType: ContentType(i % 4),
@@ -252,7 +252,7 @@ func TestDocument_ThreadSafety(t *testing.T) {
 	wg.Add(numReaders * 2)
 
 	// Concurrent content reads
-	for i := 0; i < numReaders; i++ {
+	for range numReaders {
 		go func() {
 			defer wg.Done()
 			contents := doc.GetContents()
@@ -263,7 +263,7 @@ func TestDocument_ThreadSafety(t *testing.T) {
 	}
 
 	// Concurrent metadata reads
-	for i := 0; i < numReaders; i++ {
+	for range numReaders {
 		go func() {
 			defer wg.Done()
 			metadata := doc.GetMetadata()
@@ -385,7 +385,7 @@ func TestBuilder_ErrorHandling_ThreadSafety(t *testing.T) {
 	wg.Add(numGoroutines * 2)
 
 	// Concurrent valid operations
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(index int) {
 			defer wg.Done()
 			builder.Table(fmt.Sprintf("Table%d", index), []map[string]any{{"key": fmt.Sprintf("value%d", index)}}, WithKeys("key"))
@@ -393,7 +393,7 @@ func TestBuilder_ErrorHandling_ThreadSafety(t *testing.T) {
 	}
 
 	// Concurrent invalid operations (should generate errors)
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(index int) {
 			defer wg.Done()
 			builder.Table(fmt.Sprintf("InvalidTable%d", index), "invalid data", WithKeys("key"))

@@ -291,7 +291,7 @@ func TestBackwardCompatibility_ConcurrentAccess(t *testing.T) {
 	const numGoroutines = 10
 
 	// Test concurrent modifications
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

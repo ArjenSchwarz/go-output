@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -42,12 +43,7 @@ func (m *rendererMockDataTransformer) CanTransform(content Content, format strin
 	}
 
 	// Check format support
-	for _, f := range m.formats {
-		if f == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(m.formats, format)
 }
 
 func (m *rendererMockDataTransformer) Describe() string {
@@ -117,12 +113,7 @@ func (m *rendererMockByteTransformer) Priority() int {
 }
 
 func (m *rendererMockByteTransformer) CanTransform(format string) bool {
-	for _, f := range m.formats {
-		if f == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(m.formats, format)
 }
 
 func (m *rendererMockByteTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
@@ -479,12 +470,7 @@ func (f *rendererFailingDataTransformer) CanTransform(content Content, format st
 	if content.Type() != ContentTypeTable {
 		return false
 	}
-	for _, fmt := range f.formats {
-		if fmt == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(f.formats, format)
 }
 func (f *rendererFailingDataTransformer) TransformData(ctx context.Context, content Content, format string) (Content, error) {
 	return nil, fmt.Errorf("simulated failure in transformer %s", f.name)
@@ -507,7 +493,7 @@ func TestRenderer_ConcurrentTransformerAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	errors := make(chan error, numGoroutines)
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

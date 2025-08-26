@@ -149,7 +149,7 @@ func generateLargeDataset(size int) []map[string]any {
 	categories := []string{"Electronics", "Books", "Clothing", "Home", "Sports"}
 	statuses := []string{"Active", "Pending", "Completed", "Cancelled"}
 
-	for i := 0; i < size; i++ {
+	for i := range size {
 		dataset[i] = map[string]any{
 			"ID":       fmt.Sprintf("REC-%04d", i+1),
 			"Name":     fmt.Sprintf("Item %d", i+1),

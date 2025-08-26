@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"path"
 	"strings"
 )
@@ -162,9 +163,7 @@ type S3WriterOption func(*S3Writer)
 // WithContentTypes sets custom content types
 func WithContentTypes(contentTypes map[string]string) S3WriterOption {
 	return func(sw *S3Writer) {
-		for format, ct := range contentTypes {
-			sw.contentTypes[format] = ct
-		}
+		maps.Copy(sw.contentTypes, contentTypes)
 	}
 }
 

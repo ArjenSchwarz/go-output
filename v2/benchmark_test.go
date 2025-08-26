@@ -16,8 +16,7 @@ func BenchmarkBuilder_Table(b *testing.B) {
 	}
 	keys := []string{"ID", "Name", "Email"}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		builder := New()
 		builder.Table("Users", data, WithKeys(keys...))
 		builder.Build()
@@ -29,7 +28,7 @@ func BenchmarkBuilder_LargeTable(b *testing.B) {
 	// Create large dataset
 	rows := 1000
 	data := make([]map[string]any, rows)
-	for i := 0; i < rows; i++ {
+	for i := range rows {
 		data[i] = map[string]any{
 			"ID":     i,
 			"Name":   "User" + string(rune('A'+i%26)),
@@ -40,8 +39,7 @@ func BenchmarkBuilder_LargeTable(b *testing.B) {
 	}
 	keys := []string{"ID", "Name", "Email", "Active", "Score"}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		builder := New()
 		builder.Table("LargeTable", data, WithKeys(keys...))
 		builder.Build()
@@ -50,8 +48,8 @@ func BenchmarkBuilder_LargeTable(b *testing.B) {
 
 // BenchmarkBuilder_MixedContent benchmarks building documents with mixed content
 func BenchmarkBuilder_MixedContent(b *testing.B) {
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		builder := New()
 		builder.
 			Header("Document Title").
@@ -78,7 +76,7 @@ func BenchmarkKeyOrderPreservation(b *testing.B) {
 
 	b.Run("ForwardOrder", func(b *testing.B) {
 		keys := []string{"A", "B", "M", "Y", "Z"}
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			builder := New()
 			builder.Table("Test", data, WithKeys(keys...))
 			builder.Build()
@@ -87,7 +85,7 @@ func BenchmarkKeyOrderPreservation(b *testing.B) {
 
 	b.Run("ReverseOrder", func(b *testing.B) {
 		keys := []string{"Z", "Y", "M", "B", "A"}
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			builder := New()
 			builder.Table("Test", data, WithKeys(keys...))
 			builder.Build()
@@ -96,7 +94,7 @@ func BenchmarkKeyOrderPreservation(b *testing.B) {
 
 	b.Run("RandomOrder", func(b *testing.B) {
 		keys := []string{"M", "Z", "A", "Y", "B"}
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			builder := New()
 			builder.Table("Test", data, WithKeys(keys...))
 			builder.Build()
@@ -109,7 +107,7 @@ func BenchmarkConcurrentBuilding(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			builder := New()
-			for i := 0; i < 10; i++ {
+			for i := range 10 {
 				builder.Text("Content " + string(rune('A'+i)))
 			}
 			builder.Build()
@@ -134,8 +132,7 @@ func BenchmarkRendering_JSON(b *testing.B) {
 	)
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		output.Render(ctx, doc)
 	}
 }
@@ -157,8 +154,7 @@ func BenchmarkRendering_Table(b *testing.B) {
 	)
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		output.Render(ctx, doc)
 	}
 }
@@ -182,7 +178,7 @@ func BenchmarkTransformers(b *testing.B) {
 		)
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			output.Render(ctx, doc)
 		}
 	})
@@ -195,7 +191,7 @@ func BenchmarkTransformers(b *testing.B) {
 		)
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			output.Render(ctx, doc)
 		}
 	})
@@ -210,7 +206,7 @@ func BenchmarkTransformers(b *testing.B) {
 		)
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			output.Render(ctx, doc)
 		}
 	})
@@ -220,7 +216,7 @@ func BenchmarkTransformers(b *testing.B) {
 func BenchmarkMemoryAllocation(b *testing.B) {
 	b.Run("SmallDocument", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			doc := New().
 				Text("Hello").
 				Build()
@@ -230,9 +226,9 @@ func BenchmarkMemoryAllocation(b *testing.B) {
 
 	b.Run("LargeDocument", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			builder := New()
-			for j := 0; j < 100; j++ {
+			for j := range 100 {
 				builder.Table("Table", []map[string]any{
 					{"A": j, "B": j * 2},
 				}, WithKeys("A", "B"))
@@ -265,7 +261,7 @@ func BenchmarkSchemaDetection(b *testing.B) {
 	}
 
 	b.Run("DetectSchemaFromMap", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = DetectSchemaFromMap(data)
 		}
 	})
@@ -277,7 +273,7 @@ func BenchmarkSchemaDetection(b *testing.B) {
 		}
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			for _, v := range values {
 				_ = DetectType(v)
 			}
@@ -293,7 +289,7 @@ func BenchmarkOptions(b *testing.B) {
 			WithAutoSchema(),
 		}
 
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = ApplyTableOptions(opts...)
 		}
 	})
@@ -306,7 +302,7 @@ func BenchmarkOptions(b *testing.B) {
 			WithSize(16),
 		}
 
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = ApplyTextOptions(opts...)
 		}
 	})
@@ -333,8 +329,7 @@ func BenchmarkAppendText(b *testing.B) {
 
 	buf := make([]byte, 0, 1024)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf = buf[:0] // Reset buffer
 		_, _ = table.AppendText(buf)
 	}
@@ -348,7 +343,7 @@ func BenchmarkAppendText(b *testing.B) {
 func BenchmarkCollapsibleValue(b *testing.B) {
 	b.Run("Creation", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			cv := NewCollapsibleValue("Summary text", "Detail content")
 			_ = cv
 		}
@@ -357,14 +352,14 @@ func BenchmarkCollapsibleValue(b *testing.B) {
 	b.Run("Summary_Access", func(b *testing.B) {
 		cv := NewCollapsibleValue("Summary text", "Detail content")
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = cv.Summary()
 		}
 	})
 
 	b.Run("Details_First_Access", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			cv := NewCollapsibleValue("Summary", "Detail content")
 			_ = cv.Details()
 		}
@@ -374,7 +369,7 @@ func BenchmarkCollapsibleValue(b *testing.B) {
 		cv := NewCollapsibleValue("Summary", "Detail content")
 		cv.Details() // First access to cache
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = cv.Details()
 		}
 	})
@@ -383,7 +378,7 @@ func BenchmarkCollapsibleValue(b *testing.B) {
 		cv := NewCollapsibleValue("Summary", "Detail content",
 			WithFormatHint("json", map[string]any{"style": "compact"}))
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = cv.FormatHint("json")
 		}
 	})
@@ -399,13 +394,13 @@ func BenchmarkCollapsibleValue_LargeContent(b *testing.B) {
 		largeArray[i] = fmt.Sprintf("Item %d with some content", i)
 	}
 	largeMap := make(map[string]any, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		largeMap[fmt.Sprintf("key_%d", i)] = fmt.Sprintf("value_%d_with_content", i)
 	}
 
 	b.Run("LargeString_Processing", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			cv := NewCollapsibleValue("Large content", largeString)
 			_ = cv.Details()
 		}
@@ -413,7 +408,7 @@ func BenchmarkCollapsibleValue_LargeContent(b *testing.B) {
 
 	b.Run("LargeArray_Processing", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			cv := NewCollapsibleValue("Large array", largeArray)
 			_ = cv.Details()
 		}
@@ -421,7 +416,7 @@ func BenchmarkCollapsibleValue_LargeContent(b *testing.B) {
 
 	b.Run("LargeMap_Processing", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			cv := NewCollapsibleValue("Large map", largeMap)
 			_ = cv.Details()
 		}
@@ -434,21 +429,21 @@ func BenchmarkCollapsibleValue_Truncation(b *testing.B) {
 	longContent := strings.Repeat("Long content that will be truncated. ", 100) // ~3.7KB
 
 	b.Run("No_Truncation", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			cv := NewCollapsibleValue("Summary", longContent, WithMaxLength(0))
 			_ = cv.Details()
 		}
 	})
 
 	b.Run("With_Truncation_500", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			cv := NewCollapsibleValue("Summary", longContent, WithMaxLength(500))
 			_ = cv.Details()
 		}
 	})
 
 	b.Run("With_Truncation_100", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			cv := NewCollapsibleValue("Summary", longContent, WithMaxLength(100))
 			_ = cv.Details()
 		}
@@ -469,20 +464,20 @@ func BenchmarkMemoryOptimizedProcessor(b *testing.B) {
 
 	b.Run("ProcessLargeString", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, _ = processor.ProcessLargeDetails(largeString, 1000)
 		}
 	})
 
 	b.Run("ProcessLargeArray", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, _ = processor.ProcessLargeDetails(largeArray, 5000)
 		}
 	})
 
 	b.Run("BufferPooling", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			buf := processor.GetBuffer()
 			buf.WriteString("Test content")
 			processor.ReturnBuffer(buf)
@@ -490,7 +485,7 @@ func BenchmarkMemoryOptimizedProcessor(b *testing.B) {
 	})
 
 	b.Run("StringSlicePooling", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			slice := processor.GetStringSlice()
 			slice = append(slice, "item1", "item2", "item3")
 			processor.ReturnStringSlice(slice)
@@ -529,7 +524,7 @@ func BenchmarkRendering_WithCollapsible(b *testing.B) {
 			WithWriter(&benchmarkWriter{}),
 		)
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			output.Render(ctx, doc)
 		}
 	})
@@ -540,7 +535,7 @@ func BenchmarkRendering_WithCollapsible(b *testing.B) {
 			WithWriter(&benchmarkWriter{}),
 		)
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			output.Render(ctx, doc)
 		}
 	})
@@ -551,7 +546,7 @@ func BenchmarkRendering_WithCollapsible(b *testing.B) {
 			WithWriter(&benchmarkWriter{}),
 		)
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			output.Render(ctx, doc)
 		}
 	})
@@ -569,7 +564,7 @@ func BenchmarkTypeAssertion(b *testing.B) {
 	}
 
 	b.Run("DirectTypeAssertion", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			for _, val := range values {
 				if cv, ok := val.(CollapsibleValue); ok {
 					_ = cv.Summary()
@@ -580,7 +575,7 @@ func BenchmarkTypeAssertion(b *testing.B) {
 
 	b.Run("OptimizedProcessing", func(b *testing.B) {
 		baseRenderer := &baseRenderer{}
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			for _, val := range values {
 				processed := baseRenderer.processFieldValueOptimized(val, nil)
 				if processed.IsCollapsible {
@@ -612,7 +607,7 @@ func BenchmarkStreamingProcessor(b *testing.B) {
 
 	b.Run("BatchProcessing", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = processor.ProcessBatch(values, fields, processFunc)
 		}
 	})
@@ -640,7 +635,7 @@ func BenchmarkBackwardCompatibility(b *testing.B) {
 		ctx := context.Background()
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			output.Render(ctx, doc)
 		}
 	})
@@ -669,7 +664,7 @@ func BenchmarkBackwardCompatibility(b *testing.B) {
 		ctx := context.Background()
 
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			output.Render(ctx, doc)
 		}
 	})

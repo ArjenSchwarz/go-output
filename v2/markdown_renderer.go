@@ -93,10 +93,7 @@ func (m *markdownRenderer) generateTableOfContents(doc *Document) string {
 		switch c := content.(type) {
 		case *SectionContent:
 			// Add section to ToC
-			level := c.Level()
-			if level < 1 {
-				level = 1
-			}
+			level := max(c.Level(), 1)
 			indent := strings.Repeat("  ", level-1)
 			anchor := m.createMarkdownAnchor(c.Title())
 			fmt.Fprintf(&toc, "%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Title()), anchor)
@@ -121,20 +118,14 @@ func (m *markdownRenderer) addSubsectionsToToC(toc *strings.Builder, contents []
 	for _, content := range contents {
 		switch c := content.(type) {
 		case *SectionContent:
-			level := parentLevel + 1
-			if level < 1 {
-				level = 1
-			}
+			level := max(parentLevel+1, 1)
 			indent := strings.Repeat("  ", level-1)
 			anchor := m.createMarkdownAnchor(c.Title())
 			fmt.Fprintf(toc, "%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Title()), anchor)
 			m.addSubsectionsToToC(toc, c.Contents(), level)
 		case *TextContent:
 			if c.Style().Header {
-				level := parentLevel + 1
-				if level < 1 {
-					level = 1
-				}
+				level := max(parentLevel+1, 1)
 				indent := strings.Repeat("  ", level-1)
 				anchor := m.createMarkdownAnchor(c.Text())
 				fmt.Fprintf(toc, "%s- [%s](#%s)\n", indent, m.escapeMarkdown(c.Text()), anchor)
@@ -274,7 +265,7 @@ func (m *markdownRenderer) renderRawContentMarkdown(raw *RawContent) ([]byte, er
 	} else {
 		// Escape other formats as code block
 		escaped := m.escapeMarkdown(string(raw.Data()))
-		return []byte(fmt.Sprintf("```\n%s\n```\n\n", escaped)), nil
+		return fmt.Appendf(nil, "```\n%s\n```\n\n", escaped), nil
 	}
 }
 

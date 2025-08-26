@@ -244,7 +244,7 @@ func TestCollapsibleBackwardCompatibility_PerformanceRegression(t *testing.T) {
 	// Create large dataset without collapsible content
 	size := 1000
 	data := make([]map[string]any, size)
-	for i := 0; i < size; i++ {
+	for i := range size {
 		data[i] = map[string]any{
 			"id":     i,
 			"name":   "User " + string(rune('A'+i%26)),
@@ -274,7 +274,7 @@ func TestCollapsibleBackwardCompatibility_PerformanceRegression(t *testing.T) {
 
 			// Measure multiple runs
 			runs := 5
-			for i := 0; i < runs; i++ {
+			for range runs {
 				buf.Reset()
 				err := output.Render(context.Background(), doc)
 				if err != nil {

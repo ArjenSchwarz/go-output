@@ -258,7 +258,7 @@ func TestPipelineIntegration_AllOutputFormats(t *testing.T) {
 // TestPipelineIntegration_ConcurrentExecution tests concurrent pipeline operations
 func TestPipelineIntegration_ConcurrentExecution(t *testing.T) {
 	records := make([]Record, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		records[i] = Record{
 			"id":     i + 1,
 			"name":   fmt.Sprintf("User%d", i+1),
@@ -278,7 +278,7 @@ func TestPipelineIntegration_ConcurrentExecution(t *testing.T) {
 		var wg sync.WaitGroup
 
 		// Execute the same pipeline concurrently
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			wg.Add(1)
 			go func(index int) {
 				defer wg.Done()
@@ -347,7 +347,7 @@ func TestPipelineIntegration_ConcurrentExecution(t *testing.T) {
 		var wg sync.WaitGroup
 		resultCounts := make([]int, numGoroutines)
 
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			wg.Add(1)
 			go func(index int) {
 				defer wg.Done()
@@ -393,7 +393,7 @@ func TestPipelineIntegration_LargeDataset(t *testing.T) {
 
 	departments := []string{"Engineering", "Marketing", "Sales", "HR", "Finance"}
 
-	for i := 0; i < datasetSize; i++ {
+	for i := range datasetSize {
 		records[i] = Record{
 			"id":         i + 1,
 			"name":       fmt.Sprintf("Employee%d", i+1),

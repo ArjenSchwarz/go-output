@@ -55,7 +55,7 @@ func (h *htmlRenderer) renderContent(content Content) ([]byte, error) {
 			return nil, err
 		}
 		escaped := html.EscapeString(string(data))
-		return []byte(fmt.Sprintf("<pre>%s</pre>\n", escaped)), nil
+		return fmt.Appendf(nil, "<pre>%s</pre>\n", escaped), nil
 	}
 }
 
@@ -174,7 +174,7 @@ func (h *htmlRenderer) renderRawContentHTML(raw *RawContent) ([]byte, error) {
 	} else {
 		// Escape non-HTML raw content
 		escaped := html.EscapeString(string(raw.Data()))
-		return []byte(fmt.Sprintf("<pre class=\"raw-content\">%s</pre>\n", escaped)), nil
+		return fmt.Appendf(nil, "<pre class=\"raw-content\">%s</pre>\n", escaped), nil
 	}
 }
 
@@ -183,13 +183,7 @@ func (h *htmlRenderer) renderSectionContentHTML(section *SectionContent) ([]byte
 	var result strings.Builder
 
 	// Create section with appropriate heading level
-	headingLevel := section.Level()
-	if headingLevel < 1 {
-		headingLevel = 1
-	}
-	if headingLevel > 6 {
-		headingLevel = 6
-	}
+	headingLevel := min(max(section.Level(), 1), 6)
 
 	result.WriteString("<section class=\"content-section\">\n")
 	result.WriteString(fmt.Sprintf("  <h%d>%s</h%d>\n", headingLevel, html.EscapeString(section.Title()), headingLevel))
@@ -203,8 +197,8 @@ func (h *htmlRenderer) renderSectionContentHTML(section *SectionContent) ([]byte
 		}
 
 		// Indent the content
-		lines := strings.Split(string(contentHTML), "\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(string(contentHTML), "\n")
+		for line := range lines {
 			if strings.TrimSpace(line) != "" {
 				result.WriteString("    ")
 				result.WriteString(line)

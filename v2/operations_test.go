@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -1482,13 +1483,7 @@ func TestAddColumnOpApply(t *testing.T) {
 
 		// Check that key order was updated
 		keyOrder := resultTable.schema.GetKeyOrder()
-		found := false
-		for _, key := range keyOrder {
-			if key == "calculated_field" {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(keyOrder, "calculated_field")
 		if !found {
 			t.Error("new field 'calculated_field' not found in key order")
 		}

@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"slices"
 	"strings"
 )
 
@@ -16,45 +17,25 @@ func NewFormatDetector() *FormatDetector {
 // IsTextBasedFormat checks if a format supports text-based transformations
 func (fd *FormatDetector) IsTextBasedFormat(format string) bool {
 	textFormats := []string{"table", "markdown", "html", "csv", "yaml"}
-	for _, tf := range textFormats {
-		if format == tf {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(textFormats, format)
 }
 
 // IsStructuredFormat checks if a format is structured (like JSON, YAML)
 func (fd *FormatDetector) IsStructuredFormat(format string) bool {
 	structuredFormats := []string{"json", "yaml"}
-	for _, sf := range structuredFormats {
-		if format == sf {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(structuredFormats, format)
 }
 
 // IsTabularFormat checks if a format represents tabular data
 func (fd *FormatDetector) IsTabularFormat(format string) bool {
 	tabularFormats := []string{"table", "csv", "html", "markdown"}
-	for _, tf := range tabularFormats {
-		if format == tf {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tabularFormats, format)
 }
 
 // IsGraphFormat checks if a format is for graph/diagram output
 func (fd *FormatDetector) IsGraphFormat(format string) bool {
 	graphFormats := []string{"dot", "mermaid", "drawio"}
-	for _, gf := range graphFormats {
-		if format == gf {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(graphFormats, format)
 }
 
 // SupportsColors checks if a format supports ANSI color codes

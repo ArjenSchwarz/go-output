@@ -293,9 +293,7 @@ func (p *Pipeline) ExecuteWithFormatContext(ctx context.Context, format string) 
 	newMetadata := make(map[string]any, len(originalMetadata)+1)
 
 	// Copy original metadata
-	for k, v := range originalMetadata {
-		newMetadata[k] = v
-	}
+	maps.Copy(newMetadata, originalMetadata)
 
 	// Add transformation stats
 	newMetadata["transform_stats"] = stats
@@ -394,9 +392,7 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 	newMetadata := make(map[string]any, len(originalMetadata)+1)
 
 	// Copy original metadata
-	for k, v := range originalMetadata {
-		newMetadata[k] = v
-	}
+	maps.Copy(newMetadata, originalMetadata)
 
 	// Add transformation stats
 	newMetadata["transform_stats"] = stats

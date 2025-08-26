@@ -185,7 +185,7 @@ func (f *failingWriter) Write(ctx context.Context, format string, data []byte) e
 // generateLargeData creates test data for cancellation demo
 func generateLargeData(size int) []map[string]any {
 	data := make([]map[string]any, size)
-	for i := 0; i < size; i++ {
+	for i := range size {
 		data[i] = map[string]any{
 			"ID":    i,
 			"Value": fmt.Sprintf("Item-%d", i),

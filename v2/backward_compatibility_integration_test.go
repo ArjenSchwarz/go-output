@@ -232,12 +232,12 @@ func TestBackwardCompatibility_ThreadSafety(t *testing.T) {
 		errors := make(chan error, numGoroutines*operationsPerGoroutine)
 
 		// Test concurrent Add operations
-		for i := 0; i < numGoroutines; i++ {
+		for i := range numGoroutines {
 			wg.Add(1)
 			go func(id int) {
 				defer wg.Done()
 
-				for j := 0; j < operationsPerGoroutine; j++ {
+				for j := range operationsPerGoroutine {
 					transformer := &mockTransformer{
 						name:     fmt.Sprintf("transformer-%d-%d", id, j),
 						priority: id*100 + j,
@@ -283,12 +283,12 @@ func TestBackwardCompatibility_ThreadSafety(t *testing.T) {
 		results := make(chan string, numGoroutines*transformsPerGoroutine)
 		errors := make(chan error, numGoroutines*transformsPerGoroutine)
 
-		for i := 0; i < numGoroutines; i++ {
+		for range numGoroutines {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
 
-				for j := 0; j < transformsPerGoroutine; j++ {
+				for range transformsPerGoroutine {
 					ctx := context.Background()
 					result, err := transformer.Transform(ctx, []byte("OK test"), FormatTable)
 					if err != nil {

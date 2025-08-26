@@ -52,7 +52,7 @@ func TestGenerateID_Uniqueness(t *testing.T) {
 	ids := make(map[string]bool)
 	const numIDs = 1000
 
-	for i := 0; i < numIDs; i++ {
+	for range numIDs {
 		id := GenerateID()
 		if ids[id] {
 			t.Errorf("GenerateID() generated duplicate ID: %v", id)

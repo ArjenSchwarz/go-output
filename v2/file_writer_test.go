@@ -172,7 +172,7 @@ func TestFileWriterConcurrency(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Write files concurrently
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		for _, format := range formats {
 			wg.Add(1)
 			go func(idx int, fmt string) {

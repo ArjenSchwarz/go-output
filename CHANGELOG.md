@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Changed
+- **Code Modernization with Go 1.24+ Features**
+  - Modernized all benchmark tests to use Go 1.24's new `b.Loop()` pattern replacing `for i := 0; i < b.N; i++` loops
+  - Updated all test loops to use modern `range` over integers syntax (e.g., `for i := range n` instead of `for i := 0; i < n; i++`)
+  - Replaced manual slice searching with `slices.Contains` for improved readability
+  - Simplified error handling and reduced code complexity across test suites
+  - Removed unnecessary `b.ResetTimer()` calls now handled automatically by `b.Loop()`
+  - Applied modernization consistently across 30+ test files including benchmarks, integration tests, and unit tests
+  - Improved code maintainability and leveraged Go 1.24 performance optimizations
+
 ### Added
 - **Code Cleanup and Tooling Planning**
   - Comprehensive feature planning documentation for code modernization using Go 1.24+ features

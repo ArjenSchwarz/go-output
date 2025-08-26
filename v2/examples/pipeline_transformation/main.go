@@ -47,7 +47,7 @@ func generateSalesData(count int) []map[string]any {
 	data := make([]map[string]any, count)
 	baseDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		amount := rand.Float64()*50000 + 5000 // $5,000 to $55,000
 
 		// Weight status towards completed for realistic data

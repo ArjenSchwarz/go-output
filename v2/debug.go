@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"os"
 	"runtime"
 	"strings"
@@ -131,9 +132,7 @@ func (dt *DebugTracer) shouldLog(level DebugLevel) bool {
 func (dt *DebugTracer) formatMessage(level DebugLevel, operation string, message string, args ...any) string {
 	dt.mu.RLock()
 	contexts := make(map[string]any, len(dt.contexts))
-	for k, v := range dt.contexts {
-		contexts[k] = v
-	}
+	maps.Copy(contexts, dt.contexts)
 	dt.mu.RUnlock()
 
 	// Get caller information

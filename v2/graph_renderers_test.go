@@ -289,7 +289,7 @@ func TestMermaidRenderer_Render(t *testing.T) {
 func TestDOTRenderer_ContextCancellation(t *testing.T) {
 	// Create a large document
 	var edges []Edge
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		edges = append(edges, Edge{
 			From: "Node" + string(rune(i)),
 			To:   "Node" + string(rune(i+1)),
