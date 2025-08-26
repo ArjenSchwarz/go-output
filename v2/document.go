@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 )
 
@@ -30,9 +31,7 @@ func (d *Document) GetMetadata() map[string]any {
 
 	// Return a copy of the map to prevent external modification
 	metadata := make(map[string]any, len(d.metadata))
-	for k, v := range d.metadata {
-		metadata[k] = v
-	}
+	maps.Copy(metadata, d.metadata)
 	return metadata
 }
 

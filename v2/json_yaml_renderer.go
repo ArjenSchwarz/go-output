@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 
 	"gopkg.in/yaml.v3"
 )
@@ -188,9 +189,7 @@ func (j *jsonRenderer) formatValueForJSON(val any, field *Field) any {
 
 		// Add format-specific hints (Requirement 4.3)
 		if hints := cv.FormatHint(FormatJSON); hints != nil {
-			for k, v := range hints {
-				result[k] = v
-			}
+			maps.Copy(result, hints)
 		}
 
 		return result
@@ -866,9 +865,7 @@ func (y *yamlRenderer) formatValueForYAML(val any, field *Field) any {
 
 		// YAML-specific formatting hints (Requirement 5.2)
 		if hints := cv.FormatHint(FormatYAML); hints != nil {
-			for k, v := range hints {
-				result[k] = v
-			}
+			maps.Copy(result, hints)
 		}
 
 		return result
@@ -1069,9 +1066,7 @@ func (j *jsonRenderer) renderCollapsibleSectionJSON(section *DefaultCollapsibleS
 
 	// Add format-specific hints (Requirement 15.5)
 	if hints := section.FormatHint(FormatJSON); hints != nil {
-		for k, v := range hints {
-			result[k] = v
-		}
+		maps.Copy(result, hints)
 	}
 
 	return json.MarshalIndent(result, "", "  ")
@@ -1105,9 +1100,7 @@ func (y *yamlRenderer) renderCollapsibleSectionYAML(section *DefaultCollapsibleS
 
 	// Add format-specific hints for YAML structure (Requirement 15.5)
 	if hints := section.FormatHint(FormatYAML); hints != nil {
-		for k, v := range hints {
-			result[k] = v
-		}
+		maps.Copy(result, hints)
 	}
 
 	return yaml.Marshal(result)

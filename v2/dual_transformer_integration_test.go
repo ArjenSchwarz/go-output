@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -207,12 +208,7 @@ func (t *testDataTransformer) CanTransform(content Content, format string) bool 
 		return false
 	}
 
-	for _, f := range t.formats {
-		if f == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(t.formats, format)
 }
 
 func (t *testDataTransformer) TransformData(ctx context.Context, content Content, format string) (Content, error) {
@@ -267,12 +263,7 @@ func (t *testByteTransformer) Name() string  { return t.name }
 func (t *testByteTransformer) Priority() int { return t.priority }
 
 func (t *testByteTransformer) CanTransform(format string) bool {
-	for _, f := range t.formats {
-		if f == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(t.formats, format)
 }
 
 func (t *testByteTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {

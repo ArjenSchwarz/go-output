@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -224,9 +225,7 @@ type FileWriterOption func(*FileWriter)
 // WithExtensions sets custom format to extension mappings
 func WithExtensions(extensions map[string]string) FileWriterOption {
 	return func(fw *FileWriter) {
-		for format, ext := range extensions {
-			fw.extensions[format] = ext
-		}
+		maps.Copy(fw.extensions, extensions)
 	}
 }
 

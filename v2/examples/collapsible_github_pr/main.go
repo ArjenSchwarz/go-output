@@ -204,7 +204,7 @@ var strings = struct {
 }{
 	Repeat: func(s string, count int) string {
 		result := ""
-		for i := 0; i < count; i++ {
+		for range count {
 			result += s
 		}
 		return result

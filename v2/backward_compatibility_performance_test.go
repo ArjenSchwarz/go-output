@@ -20,8 +20,7 @@ func BenchmarkBackwardCompatibility_TransformPipeline(b *testing.B) {
 	input := []byte("OK test data\nname,value\nAlice,100\nBob,200")
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := pipeline.Transform(ctx, input, FormatTable)
 		if err != nil {
 			b.Fatal(err)
@@ -35,8 +34,7 @@ func BenchmarkBackwardCompatibility_EmojiTransformer(b *testing.B) {
 	input := []byte("OK No !! Yes true false")
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, FormatTable)
 		if err != nil {
 			b.Fatal(err)
@@ -51,14 +49,13 @@ func BenchmarkBackwardCompatibility_SortTransformer(b *testing.B) {
 	// Create larger data for meaningful benchmarking
 	var data []string
 	data = append(data, "name,age,score")
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		data = append(data, fmt.Sprintf("Person%d,%d,%d", i, 20+i%40, 50+i%50))
 	}
 	input := []byte(strings.Join(data, "\n"))
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, FormatCSV)
 		if err != nil {
 			b.Fatal(err)
@@ -72,8 +69,7 @@ func BenchmarkBackwardCompatibility_ColorTransformer(b *testing.B) {
 	input := []byte("✅ success ❌ failure 🚨 alert")
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, FormatTable)
 		if err != nil {
 			b.Fatal(err)
@@ -87,8 +83,7 @@ func BenchmarkBackwardCompatibility_LineSplitTransformer(b *testing.B) {
 	input := []byte("name|data\ntest1|a,b,c\ntest2|d,e,f\ntest3|g,h,i")
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, FormatTable)
 		if err != nil {
 			b.Fatal(err)
@@ -102,8 +97,7 @@ func BenchmarkBackwardCompatibility_RemoveColorsTransformer(b *testing.B) {
 	input := []byte("\x1B[31mred text\x1B[0m\x1B[32mgreen text\x1B[0m\x1B[33myellow text\x1B[0m")
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, FormatTable)
 		if err != nil {
 			b.Fatal(err)
@@ -116,7 +110,7 @@ func BenchmarkBackwardCompatibility_PipelinePrioritySort(b *testing.B) {
 	pipeline := NewTransformPipeline()
 
 	// Add many transformers with random priorities for stress testing
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		priority := (i * 37) % 1000 // Pseudo-random priorities
 		transformer := &mockTransformer{
 			name:     fmt.Sprintf("bench-%d", i),
@@ -129,8 +123,7 @@ func BenchmarkBackwardCompatibility_PipelinePrioritySort(b *testing.B) {
 	input := []byte("benchmark input")
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := pipeline.Transform(ctx, input, FormatJSON)
 		if err != nil {
 			b.Fatal(err)
@@ -164,14 +157,13 @@ func BenchmarkBackwardCompatibility_LargeDataTransform(b *testing.B) {
 
 	// Create large input data
 	var data []string
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		data = append(data, fmt.Sprintf("Record %d: OK No !!", i))
 	}
 	input := []byte(strings.Join(data, "\n"))
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := pipeline.Transform(ctx, input, FormatTable)
 		if err != nil {
 			b.Fatal(err)

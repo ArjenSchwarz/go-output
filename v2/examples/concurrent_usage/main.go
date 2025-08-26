@@ -22,7 +22,7 @@ func main() {
 	results := make(chan *output.Document, 3)
 
 	// Simulate 3 concurrent processes building documents
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
@@ -121,12 +121,12 @@ func main() {
 
 	// Stage 1: Data producers
 	var producerWG sync.WaitGroup
-	for i := 0; i < numProducers; i++ {
+	for i := range numProducers {
 		producerWG.Add(1)
 		go func(producerID int) {
 			defer producerWG.Done()
 
-			for j := 0; j < itemsPerProducer; j++ {
+			for j := range itemsPerProducer {
 				data := map[string]any{
 					"ID":        fmt.Sprintf("P%d-I%d", producerID, j),
 					"Producer":  producerID,
@@ -153,7 +153,7 @@ func main() {
 
 	// Stage 2: Document builders (consumers)
 	var consumerWG sync.WaitGroup
-	for i := 0; i < numConsumers; i++ {
+	for i := range numConsumers {
 		consumerWG.Add(1)
 		go func(consumerID int) {
 			defer consumerWG.Done()
@@ -231,7 +231,7 @@ func main() {
 // generateWorkerData creates test data for a specific worker
 func generateWorkerData(workerID, count int) []map[string]any {
 	data := make([]map[string]any, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		data[i] = map[string]any{
 			"ID":        fmt.Sprintf("W%d-R%d", workerID, i),
 			"WorkerID":  workerID,

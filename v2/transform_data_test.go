@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 )
@@ -31,12 +32,7 @@ func (m *mockDataTransformer) CanTransform(content Content, format string) bool 
 	if len(m.formats) == 0 {
 		return true
 	}
-	for _, f := range m.formats {
-		if f == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(m.formats, format)
 }
 
 func (m *mockDataTransformer) Priority() int {
@@ -270,12 +266,7 @@ func (m *mockByteTransformer) CanTransform(format string) bool {
 	if len(m.formats) == 0 {
 		return true
 	}
-	for _, f := range m.formats {
-		if f == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(m.formats, format)
 }
 
 func (m *mockByteTransformer) Priority() int {

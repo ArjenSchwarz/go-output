@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -40,12 +41,7 @@ func (m *mockTransformer) Priority() int {
 }
 
 func (m *mockTransformer) CanTransform(format string) bool {
-	for _, f := range m.formats {
-		if f == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(m.formats, format)
 }
 
 func (m *mockTransformer) Transform(ctx context.Context, input []byte, format string) ([]byte, error) {
@@ -59,7 +55,7 @@ func (m *mockTransformer) Transform(ctx context.Context, input []byte, format st
 	}
 
 	if m.output != "" {
-		return []byte(fmt.Sprintf("%s[%s]", string(input), m.output)), nil
+		return fmt.Appendf(nil, "%s[%s]", string(input), m.output), nil
 	}
 
 	return input, nil
@@ -382,7 +378,7 @@ func TestTransformPipeline_ConcurrentAccess(t *testing.T) {
 
 	// Start multiple goroutines adding and removing transformers
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		wg.Add(2)
 
 		go func(i int) {
@@ -442,7 +438,7 @@ func BenchmarkTransformPipeline_Transform(b *testing.B) {
 	pipeline := NewTransformPipeline()
 
 	// Add several transformers
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		transformer := newMockTransformer(fmt.Sprintf("bench-%d", i), i*100, []string{FormatJSON}, "")
 		pipeline.Add(transformer)
 	}
@@ -450,8 +446,7 @@ func BenchmarkTransformPipeline_Transform(b *testing.B) {
 	input := []byte("benchmark input data")
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := pipeline.Transform(ctx, input, FormatJSON)
 		if err != nil {
 			b.Fatal(err)
@@ -463,7 +458,7 @@ func BenchmarkTransformPipeline_PrioritySort(b *testing.B) {
 	pipeline := NewTransformPipeline()
 
 	// Add many transformers in random order
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		priority := (i * 37) % 1000 // Pseudo-random priorities
 		transformer := newMockTransformer(fmt.Sprintf("bench-%d", i), priority, []string{FormatJSON}, "")
 		pipeline.Add(transformer)
@@ -472,8 +467,7 @@ func BenchmarkTransformPipeline_PrioritySort(b *testing.B) {
 	input := []byte("benchmark input")
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := pipeline.Transform(ctx, input, FormatJSON)
 		if err != nil {
 			b.Fatal(err)

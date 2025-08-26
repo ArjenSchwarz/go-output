@@ -336,7 +336,7 @@ func TestS3WriterConcurrency(t *testing.T) {
 	formats := []string{FormatJSON, FormatYAML, FormatCSV, FormatHTML, FormatMarkdown}
 	numWrites := 10
 
-	for i := 0; i < numWrites; i++ {
+	for i := range numWrites {
 		for _, format := range formats {
 			wg.Add(1)
 			go func(f string, n int) {

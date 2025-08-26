@@ -422,7 +422,7 @@ func TestOutput_ThreadSafety(t *testing.T) {
 	done := make(chan bool, 3)
 	errors := make(chan error, 3)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		go func() {
 			err := output.RenderTo(doc)
 			errors <- err
@@ -431,7 +431,7 @@ func TestOutput_ThreadSafety(t *testing.T) {
 	}
 
 	// Wait for all goroutines
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		<-done
 		err := <-errors
 		if err != nil {

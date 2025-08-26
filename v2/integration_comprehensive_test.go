@@ -83,11 +83,11 @@ func TestIntegration_ConcurrentDocumentBuilding(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	// Concurrently add content
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(goroutineID int) {
 			defer wg.Done()
 
-			for j := 0; j < itemsPerGoroutine; j++ {
+			for j := range itemsPerGoroutine {
 				// Add different types of content
 				switch j % 3 {
 				case 0:
@@ -184,7 +184,7 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 func TestIntegration_ProgressWithRendering(t *testing.T) {
 	// Create a large document
 	builder := New()
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		builder.Table("Table", []map[string]any{
 			{"Index": i, "Value": i * 10},
 		}, WithKeys("Index", "Value"))
@@ -217,7 +217,7 @@ func TestIntegration_ProgressWithRendering(t *testing.T) {
 func TestIntegration_ContextCancellation(t *testing.T) {
 	// Create a large document
 	builder := New()
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		builder.Table("Large Table", []map[string]any{
 			{"Row": i, "Data": strings.Repeat("x", 1000)},
 		}, WithKeys("Row", "Data"))
@@ -335,7 +335,7 @@ func TestIntegration_LargeDataset(t *testing.T) {
 	// Create a document with a large table
 	rows := 10000
 	data := make([]map[string]any, rows)
-	for i := 0; i < rows; i++ {
+	for i := range rows {
 		data[i] = map[string]any{
 			"ID":    i,
 			"Name":  "Item " + string(rune('A'+i%26)),

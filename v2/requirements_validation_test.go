@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -293,7 +294,7 @@ func TestRequirementsValidation(t *testing.T) {
 	t.Run("Requirement 8.1-8.6: Performance optimization and acceptable overhead", func(t *testing.T) {
 		// Create larger dataset for performance testing
 		largeRecords := make([]Record, largeDatasetSize)
-		for i := 0; i < largeDatasetSize; i++ {
+		for i := range largeDatasetSize {
 			largeRecords[i] = Record{
 				"id":     i + 1,
 				"value":  i * 10,
@@ -481,12 +482,7 @@ func (m *validationMockFormatAwareTransformer) CanTransform(content Content, for
 		return false
 	}
 
-	for _, f := range m.supportedFormats {
-		if f == format {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(m.supportedFormats, format)
 }
 
 func (m *validationMockFormatAwareTransformer) TransformData(ctx context.Context, content Content, format string) (Content, error) {

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding"
 	"fmt"
+	"maps"
 )
 
 const (
@@ -136,9 +137,7 @@ func (t *TableContent) Records() []Record {
 	records := make([]Record, len(t.records))
 	for i, record := range t.records {
 		newRecord := make(Record, len(record))
-		for k, v := range record {
-			newRecord[k] = v
-		}
+		maps.Copy(newRecord, record)
 		records[i] = newRecord
 	}
 	return records
@@ -540,7 +539,7 @@ func splitLines(content []byte) [][]byte {
 	var lines [][]byte
 	start := 0
 
-	for i := 0; i < len(content); i++ {
+	for i := range content {
 		if content[i] == '\n' {
 			lines = append(lines, content[start:i])
 			start = i + 1

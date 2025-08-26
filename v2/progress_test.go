@@ -335,7 +335,7 @@ func TestTextProgress_ThreadSafety(t *testing.T) {
 	done := make(chan bool, 3)
 
 	go func() {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			progress.Increment(1)
 			time.Sleep(time.Millisecond)
 		}
@@ -343,7 +343,7 @@ func TestTextProgress_ThreadSafety(t *testing.T) {
 	}()
 
 	go func() {
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			progress.SetStatus("working")
 			time.Sleep(2 * time.Millisecond)
 		}
@@ -351,7 +351,7 @@ func TestTextProgress_ThreadSafety(t *testing.T) {
 	}()
 
 	go func() {
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			progress.SetCurrent(i * 10)
 			time.Sleep(3 * time.Millisecond)
 		}
@@ -890,7 +890,7 @@ func TestPrettyProgress_ThreadSafety(t *testing.T) {
 	done := make(chan bool, 3)
 
 	go func() {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			progress.Increment(1)
 			time.Sleep(time.Millisecond)
 		}
@@ -898,7 +898,7 @@ func TestPrettyProgress_ThreadSafety(t *testing.T) {
 	}()
 
 	go func() {
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			progress.SetStatus("working")
 			time.Sleep(2 * time.Millisecond)
 		}
@@ -906,7 +906,7 @@ func TestPrettyProgress_ThreadSafety(t *testing.T) {
 	}()
 
 	go func() {
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			progress.SetCurrent(i * 10)
 			time.Sleep(3 * time.Millisecond)
 		}

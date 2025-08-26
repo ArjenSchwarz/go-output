@@ -447,7 +447,7 @@ func TestBaseRenderer_ThreadSafety(t *testing.T) {
 
 	// Test concurrent Render calls
 	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 			_, err := base.renderDocument(context.Background(), doc, renderFunc)
@@ -1035,7 +1035,7 @@ func TestJSONYAMLRenderers_LargeDataset(t *testing.T) {
 	// Create a larger dataset to test streaming performance
 	const recordCount = 1000
 	var data []map[string]any
-	for i := 0; i < recordCount; i++ {
+	for i := range recordCount {
 		data = append(data, map[string]any{
 			"id":       i,
 			"name":     "User " + strings.Repeat("X", i%10), // Varying length

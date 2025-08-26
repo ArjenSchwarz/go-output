@@ -539,8 +539,7 @@ func BenchmarkEmojiTransformer_Transform(b *testing.B) {
 	ctx := context.Background()
 	input := []byte("Status: OK, Warning: !!, Active: Yes, Inactive: No, Running: true, Stopped: false")
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, "table")
 		if err != nil {
 			b.Fatal(err)
@@ -555,13 +554,12 @@ func BenchmarkSortTransformer_Transform(b *testing.B) {
 	// Create a larger dataset for benchmarking
 	var lines []string
 	lines = append(lines, "Name\tAge\tCity")
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		lines = append(lines, "Person"+string(rune(90-i%26))+"\t"+string(rune(20+i%50))+"\tCity"+string(rune(65+i%26)))
 	}
 	input := []byte(strings.Join(lines, "\n"))
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, "table")
 		if err != nil {
 			b.Fatal(err)
@@ -574,8 +572,7 @@ func BenchmarkLineSplitTransformer_Transform(b *testing.B) {
 	ctx := context.Background()
 	input := []byte("Name\tTags\tStatus\nAlice\ttag1\ntag2\ntag3\tActive\nBob\ttag4\ntag5\tInactive")
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, "table")
 		if err != nil {
 			b.Fatal(err)

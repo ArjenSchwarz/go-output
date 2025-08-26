@@ -548,8 +548,7 @@ func TestFormatAware_UnsupportedFormat(t *testing.T) {
 func BenchmarkFormatDetector_SupportsEmoji(b *testing.B) {
 	detector := NewFormatDetector()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		detector.SupportsEmoji(FormatTable)
 		detector.SupportsEmoji(FormatHTML)
 		detector.SupportsEmoji(FormatJSON)
@@ -562,8 +561,7 @@ func BenchmarkEnhancedEmojiTransformer_Transform(b *testing.B) {
 	ctx := context.Background()
 	input := []byte("Status: OK, Warning: !!, Active: Yes, Inactive: No")
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := transformer.Transform(ctx, input, FormatTable)
 		if err != nil {
 			b.Fatal(err)
@@ -575,8 +573,7 @@ func BenchmarkDataIntegrityValidator_ValidateIntegrity(b *testing.B) {
 	originalData := []byte("This is some test data that we want to validate for integrity")
 	validator := NewDataIntegrityValidator(originalData)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		validator.ValidateIntegrity(originalData)
 	}
 }
