@@ -7,34 +7,30 @@ import (
 )
 
 func TestTableRenderer_KeyOrderPreservation(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		keys     []string
 		data     []map[string]any
 		expected []string
-	}{
-		{
-			name: "preserve explicit key order",
-			keys: []string{"c", "a", "b"},
-			data: []map[string]any{
-				{"a": "alpha", "b": "beta", "c": "gamma"},
-				{"c": "charlie", "b": "bravo", "a": "alpha"},
-			},
-			expected: []string{"c", "a", "b"},
-		},
-		{
-			name: "preserve numeric and string keys",
-			keys: []string{"id", "name", "score", "active"},
-			data: []map[string]any{
-				{"name": "Alice", "id": 1, "active": true, "score": 95.5},
-				{"score": 87.2, "id": 2, "name": "Bob", "active": false},
-			},
-			expected: []string{"id", "name", "score", "active"},
-		},
-	}
+	}{"preserve explicit key order": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		keys: []string{"c", "a", "b"},
+		data: []map[string]any{
+			{"a": "alpha", "b": "beta", "c": "gamma"},
+			{"c": "charlie", "b": "bravo", "a": "alpha"},
+		},
+		expected: []string{"c", "a", "b"},
+	}, "preserve numeric and string keys": {
+
+		keys: []string{"id", "name", "score", "active"},
+		data: []map[string]any{
+			{"name": "Alice", "id": 1, "active": true, "score": 95.5},
+			{"score": 87.2, "id": 2, "name": "Bob", "active": false},
+		},
+		expected: []string{"id", "name", "score", "active"},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create table with explicit key order
 			doc := New().
 				Table("Test Table", tt.data, WithKeys(tt.keys...)).
@@ -196,35 +192,33 @@ func TestTableRenderer_StyleConfiguration(t *testing.T) {
 		{"name": "Bob", "age": 25},
 	}
 
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		renderer  *tableRenderer
 		styleName string
-	}{
-		{
-			name:      "default style",
-			renderer:  &tableRenderer{},
-			styleName: "ColoredBright", // default
-		},
-		{
-			name:      "bold style",
-			renderer:  NewTableRendererWithStyle("Bold").(*tableRenderer),
-			styleName: "Bold",
-		},
-		{
-			name:      "light style",
-			renderer:  NewTableRendererWithStyle("Light").(*tableRenderer),
-			styleName: "Light",
-		},
-		{
-			name:      "rounded style",
-			renderer:  NewTableRendererWithStyle("Rounded").(*tableRenderer),
-			styleName: "Rounded",
-		},
-	}
+	}{"bold style":
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	// default
+
+	{
+
+		renderer:  NewTableRendererWithStyle("Bold").(*tableRenderer),
+		styleName: "Bold",
+	}, "default style": {
+
+		renderer:  &tableRenderer{},
+		styleName: "ColoredBright",
+	}, "light style": {
+
+		renderer:  NewTableRendererWithStyle("Light").(*tableRenderer),
+		styleName: "Light",
+	}, "rounded style": {
+
+		renderer:  NewTableRendererWithStyle("Rounded").(*tableRenderer),
+		styleName: "Rounded",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			doc := New().
 				Table("Styled Table", data, WithKeys("name", "age")).
 				Build()

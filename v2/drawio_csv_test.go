@@ -41,104 +41,99 @@ func TestDrawIOContent_Creation(t *testing.T) {
 }
 
 func TestDrawIORenderer_CSVGeneration(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		content  Content
 		contains []string
-	}{
-		{
-			name: "drawio content with custom header",
-			content: NewDrawIOContent("Network Diagram", []Record{
-				{"Name": "Router", "IP": "192.168.1.1", "Type": "Gateway"},
-				{"Name": "Switch", "IP": "192.168.1.2", "Type": "Switch"},
-			}, DrawIOHeader{
-				Label:        "%Name%",
-				Style:        "shape=%Type%;fillColor=lightblue",
-				Layout:       DrawIOLayoutVerticalFlow,
-				NodeSpacing:  60,
-				LevelSpacing: 120,
-				EdgeSpacing:  50,
-				Height:       "80",
-				Width:        "120",
-				Ignore:       "Type",
-			}),
-			contains: []string{
-				"# label: %Name%",
-				"# style: shape=%Type%;fillColor=lightblue",
-				"# height: 80",
-				"# width: 120",
-				"# ignore: Type",
-				"# nodespacing: 60",
-				"# levelspacing: 120",
-				"# edgespacing: 50",
-				"# layout: verticalflow",
-				"Router",
-				"192.168.1.1",
-				"Gateway",
-				"Switch",
-				"192.168.1.2",
-			},
-		},
-		{
-			name: "drawio content with connections",
-			content: NewDrawIOContent("Service Map", []Record{
-				{"Service": "Frontend", "Port": "80", "Backend": "API"},
-				{"Service": "API", "Port": "8080", "Backend": "Database"},
-			}, DrawIOHeader{
-				Label: "%Service%",
-				Style: "rounded=1;whiteSpace=wrap;html=1;",
-				Connections: []DrawIOConnection{
-					{From: "Service", To: "Backend", Label: "Port", Style: DrawIODefaultConnectionStyle},
-				},
-				Layout: DrawIOLayoutAuto,
-			}),
-			contains: []string{
-				"# label: %Service%",
-				"# style: rounded=1;whiteSpace=wrap;html=1;",
-				`# connect: {"from":"Service","to":"Backend","invert":false,"label":"Port","style":"curved=1;endArrow=blockThin;endFill=1;fontSize=11;"}`,
-				"# layout: auto",
-				"Frontend",
-				"80",
-				"API",
-				"8080",
-				"Database",
-			},
-		},
-		{
-			name: "drawio content with hierarchy",
-			content: NewDrawIOContent("Org Chart", []Record{
-				{"Name": "CEO", "Title": "Chief Executive", "Manager": "", "ID": "1"},
-				{"Name": "CTO", "Title": "Chief Technology", "Manager": "CEO", "ID": "2"},
-				{"Name": "Developer", "Title": "Software Engineer", "Manager": "CTO", "ID": "3"},
-			}, DrawIOHeader{
-				Label:       "%Name%",
-				Style:       "rounded=1;fillColor=lightgreen;",
-				Identity:    "ID",
-				Parent:      "Manager",
-				ParentStyle: DrawIODefaultParentStyle,
-				Layout:      DrawIOLayoutVerticalTree,
-				Namespace:   "org-chart-",
-			}),
-			contains: []string{
-				"# label: %Name%",
-				"# style: rounded=1;fillColor=lightgreen;",
-				"# identity: ID",
-				"# parent: Manager",
-				"# parentstyle: " + DrawIODefaultParentStyle,
-				"# namespace: org-chart-",
-				"# layout: verticaltree",
-				"CEO",
-				"Chief Executive",
-				"CTO",
-				"Chief Technology",
-				"Developer",
-				"Software Engineer",
-			},
-		},
-	}
+	}{"drawio content with connections": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		content: NewDrawIOContent("Service Map", []Record{
+			{"Service": "Frontend", "Port": "80", "Backend": "API"},
+			{"Service": "API", "Port": "8080", "Backend": "Database"},
+		}, DrawIOHeader{
+			Label: "%Service%",
+			Style: "rounded=1;whiteSpace=wrap;html=1;",
+			Connections: []DrawIOConnection{
+				{From: "Service", To: "Backend", Label: "Port", Style: DrawIODefaultConnectionStyle},
+			},
+			Layout: DrawIOLayoutAuto,
+		}),
+		contains: []string{
+			"# label: %Service%",
+			"# style: rounded=1;whiteSpace=wrap;html=1;",
+			`# connect: {"from":"Service","to":"Backend","invert":false,"label":"Port","style":"curved=1;endArrow=blockThin;endFill=1;fontSize=11;"}`,
+			"# layout: auto",
+			"Frontend",
+			"80",
+			"API",
+			"8080",
+			"Database",
+		},
+	}, "drawio content with custom header": {
+
+		content: NewDrawIOContent("Network Diagram", []Record{
+			{"Name": "Router", "IP": "192.168.1.1", "Type": "Gateway"},
+			{"Name": "Switch", "IP": "192.168.1.2", "Type": "Switch"},
+		}, DrawIOHeader{
+			Label:        "%Name%",
+			Style:        "shape=%Type%;fillColor=lightblue",
+			Layout:       DrawIOLayoutVerticalFlow,
+			NodeSpacing:  60,
+			LevelSpacing: 120,
+			EdgeSpacing:  50,
+			Height:       "80",
+			Width:        "120",
+			Ignore:       "Type",
+		}),
+		contains: []string{
+			"# label: %Name%",
+			"# style: shape=%Type%;fillColor=lightblue",
+			"# height: 80",
+			"# width: 120",
+			"# ignore: Type",
+			"# nodespacing: 60",
+			"# levelspacing: 120",
+			"# edgespacing: 50",
+			"# layout: verticalflow",
+			"Router",
+			"192.168.1.1",
+			"Gateway",
+			"Switch",
+			"192.168.1.2",
+		},
+	}, "drawio content with hierarchy": {
+
+		content: NewDrawIOContent("Org Chart", []Record{
+			{"Name": "CEO", "Title": "Chief Executive", "Manager": "", "ID": "1"},
+			{"Name": "CTO", "Title": "Chief Technology", "Manager": "CEO", "ID": "2"},
+			{"Name": "Developer", "Title": "Software Engineer", "Manager": "CTO", "ID": "3"},
+		}, DrawIOHeader{
+			Label:       "%Name%",
+			Style:       "rounded=1;fillColor=lightgreen;",
+			Identity:    "ID",
+			Parent:      "Manager",
+			ParentStyle: DrawIODefaultParentStyle,
+			Layout:      DrawIOLayoutVerticalTree,
+			Namespace:   "org-chart-",
+		}),
+		contains: []string{
+			"# label: %Name%",
+			"# style: rounded=1;fillColor=lightgreen;",
+			"# identity: ID",
+			"# parent: Manager",
+			"# parentstyle: " + DrawIODefaultParentStyle,
+			"# namespace: org-chart-",
+			"# layout: verticaltree",
+			"CEO",
+			"Chief Executive",
+			"CTO",
+			"Chief Technology",
+			"Developer",
+			"Software Engineer",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			doc := New().AddContent(tt.content).Build()
 			renderer := &drawioRenderer{}
 

@@ -5,30 +5,25 @@ import (
 )
 
 func TestBuilder_HeaderMethod(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		text     string
 		expected string
-	}{
-		{
-			name:     "simple header",
-			text:     "Test Header",
-			expected: "Test Header",
-		},
-		{
-			name:     "empty header",
-			text:     "",
-			expected: "",
-		},
-		{
-			name:     "header with special characters",
-			text:     "Header: Test & Examples",
-			expected: "Header: Test & Examples",
-		},
-	}
+	}{"empty header": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		text:     "",
+		expected: "",
+	}, "header with special characters": {
+
+		text:     "Header: Test & Examples",
+		expected: "Header: Test & Examples",
+	}, "simple header": {
+
+		text:     "Test Header",
+		expected: "Test Header",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			builder := New()
 			result := builder.Header(tt.text)
 

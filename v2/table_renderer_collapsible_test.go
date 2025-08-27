@@ -8,91 +8,83 @@ import (
 )
 
 func TestTableRenderer_CollapsibleValue(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		value          any
 		formatter      func(any) any
 		config         RendererConfig
 		expectedOutput string
 		description    string
-	}{
-		{
-			name:  "CollapsibleValue collapsed with default indicator",
-			value: "test data",
-			formatter: func(val any) any {
-				return NewCollapsibleValue("Summary: test", "Detailed content: test data")
-			},
-			config:         DefaultRendererConfig,
-			expectedOutput: "Summary: test [details hidden - use --expand for full view]",
-			description:    "Test Requirements 6.1, 6.6: summary display with default indicator",
+	}{"CollapsibleValue collapsed with default indicator": {
+
+		value: "test data",
+		formatter: func(val any) any {
+			return NewCollapsibleValue("Summary: test", "Detailed content: test data")
 		},
-		{
-			name:  "CollapsibleValue expanded by default",
-			value: "test data",
-			formatter: func(val any) any {
-				return NewCollapsibleValue("Summary: test", "Detailed content here", WithExpanded(true))
-			},
-			config: DefaultRendererConfig,
-			expectedOutput: `Summary: test
+		config:         DefaultRendererConfig,
+		expectedOutput: "Summary: test [details hidden - use --expand for full view]",
+		description:    "Test Requirements 6.1, 6.6: summary display with default indicator",
+	}, "CollapsibleValue expanded by default": {
+
+		value: "test data",
+		formatter: func(val any) any {
+			return NewCollapsibleValue("Summary: test", "Detailed content here", WithExpanded(true))
+		},
+		config: DefaultRendererConfig,
+		expectedOutput: `Summary: test
   Detailed content here`,
-			description: "Test Requirement 6.2: show both summary and indented details when expanded",
+		description: "Test Requirement 6.2: show both summary and indented details when expanded",
+	}, "CollapsibleValue with custom indicator": {
+
+		value: "test data",
+		formatter: func(val any) any {
+			return NewCollapsibleValue("Summary", "Details")
 		},
-		{
-			name:  "CollapsibleValue with custom indicator",
-			value: "test data",
-			formatter: func(val any) any {
-				return NewCollapsibleValue("Summary", "Details")
-			},
-			config: RendererConfig{
-				ForceExpansion:       false,
-				TableHiddenIndicator: "[expand for details]",
-			},
-			expectedOutput: "Summary [expand for details]",
-			description:    "Test Requirement 6.6: custom indicator text configuration",
+		config: RendererConfig{
+			ForceExpansion:       false,
+			TableHiddenIndicator: "[expand for details]",
 		},
-		{
-			name:  "CollapsibleValue with global expansion override",
-			value: "test data",
-			formatter: func(val any) any {
-				return NewCollapsibleValue("Summary", "Detail content", WithExpanded(false))
-			},
-			config: RendererConfig{
-				ForceExpansion: true,
-			},
-			expectedOutput: `Summary
+		expectedOutput: "Summary [expand for details]",
+		description:    "Test Requirement 6.6: custom indicator text configuration",
+	}, "CollapsibleValue with global expansion override": {
+
+		value: "test data",
+		formatter: func(val any) any {
+			return NewCollapsibleValue("Summary", "Detail content", WithExpanded(false))
+		},
+		config: RendererConfig{
+			ForceExpansion: true,
+		},
+		expectedOutput: `Summary
   Detail content`,
-			description: "Test Requirement 6.7, 13.1: global expansion override",
+		description: "Test Requirement 6.7, 13.1: global expansion override",
+	}, "CollapsibleValue with string array details": {
+
+		value: []string{"error1", "error2", "error3"},
+		formatter: func(val any) any {
+			if arr, ok := val.([]string); ok {
+				return NewCollapsibleValue("3 errors", arr, WithExpanded(true))
+			}
+			return val
 		},
-		{
-			name:  "CollapsibleValue with string array details",
-			value: []string{"error1", "error2", "error3"},
-			formatter: func(val any) any {
-				if arr, ok := val.([]string); ok {
-					return NewCollapsibleValue("3 errors", arr, WithExpanded(true))
-				}
-				return val
-			},
-			config: DefaultRendererConfig,
-			expectedOutput: `3 errors
+		config: DefaultRendererConfig,
+		expectedOutput: `3 errors
   error1
   error2
   error3`,
-			description: "Test Requirement 6.3: proper indentation for multi-line content",
-		},
-		{
-			name:  "Non-collapsible value unchanged",
-			value: "regular value",
-			formatter: func(val any) any {
-				return val // No CollapsibleValue returned
-			},
-			config:         DefaultRendererConfig,
-			expectedOutput: "regular value",
-			description:    "Test backward compatibility: non-collapsible values render normally",
-		},
-	}
+		description: "Test Requirement 6.3: proper indentation for multi-line content",
+	}, "Non-collapsible value unchanged": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		value: "regular value",
+		formatter: func(val any) any {
+			return val // No CollapsibleValue returned
+		},
+		config:         DefaultRendererConfig,
+		expectedOutput: "regular value",
+		description:    "Test backward compatibility: non-collapsible values render normally",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create table renderer with test configuration
 			renderer := &tableRenderer{
 				styleName:         "Default",
@@ -122,35 +114,29 @@ func TestTableRenderer_DetailFormatting(t *testing.T) {
 		collapsibleConfig: DefaultRendererConfig,
 	}
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		details  any
 		expected string
-	}{
-		{
-			name:     "String details with indentation",
-			details:  "single line content",
-			expected: "  single line content",
-		},
-		{
-			name:     "Multi-line string details",
-			details:  "line 1\nline 2\nline 3",
-			expected: "  line 1\n  line 2\n  line 3",
-		},
-		{
-			name:     "String array details",
-			details:  []string{"item1", "item2", "item3"},
-			expected: "  item1\n  item2\n  item3",
-		},
-		{
-			name:     "Complex data fallback",
-			details:  map[string]string{"key": "value"},
-			expected: "  map[key:value]",
-		},
-	}
+	}{"Complex data fallback": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		details:  map[string]string{"key": "value"},
+		expected: "  map[key:value]",
+	}, "Multi-line string details": {
+
+		details:  "line 1\nline 2\nline 3",
+		expected: "  line 1\n  line 2\n  line 3",
+	}, "String array details": {
+
+		details:  []string{"item1", "item2", "item3"},
+		expected: "  item1\n  item2\n  item3",
+	}, "String details with indentation": {
+
+		details:  "single line content",
+		expected: "  single line content",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := renderer.formatDetailsForTable(tt.details)
 			if result != tt.expected {
 				t.Errorf("Expected %q, got %q", tt.expected, result)
@@ -165,35 +151,29 @@ func TestTableRenderer_IndentText(t *testing.T) {
 		collapsibleConfig: DefaultRendererConfig,
 	}
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		input    string
 		expected string
-	}{
-		{
-			name:     "Single line",
-			input:    "single line",
-			expected: "  single line",
-		},
-		{
-			name:     "Multiple lines",
-			input:    "line 1\nline 2\nline 3",
-			expected: "  line 1\n  line 2\n  line 3",
-		},
-		{
-			name:     "Empty line in middle",
-			input:    "line 1\n\nline 3",
-			expected: "  line 1\n  \n  line 3",
-		},
-		{
-			name:     "Empty string",
-			input:    "",
-			expected: "  ",
-		},
-	}
+	}{"Empty line in middle": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		input:    "line 1\n\nline 3",
+		expected: "  line 1\n  \n  line 3",
+	}, "Empty string": {
+
+		input:    "",
+		expected: "  ",
+	}, "Multiple lines": {
+
+		input:    "line 1\nline 2\nline 3",
+		expected: "  line 1\n  line 2\n  line 3",
+	}, "Single line": {
+
+		input:    "single line",
+		expected: "  single line",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := renderer.indentText(tt.input)
 			if result != tt.expected {
 				t.Errorf("Expected %q, got %q", tt.expected, result)
@@ -240,39 +220,34 @@ func TestTableRenderer_FullTableWithCollapsibleValues(t *testing.T) {
 		t.Fatalf("Failed to create table: %v", err)
 	}
 
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		config         RendererConfig
 		expectedInFull string
 		description    string
-	}{
-		{
-			name:           "Collapsed view with default indicator",
-			config:         DefaultRendererConfig,
-			expectedInFull: "3 errors [details hidden - use --expand for full view]",
-			description:    "Test Requirements 6.1, 6.6: collapsed collapsible values in full table",
-		},
-		{
-			name: "Expanded view with global expansion",
-			config: RendererConfig{
-				ForceExpansion: true,
-			},
-			expectedInFull: "  syntax error",
-			description:    "Test Requirement 6.7: global expansion in full table context",
-		},
-		{
-			name: "Custom indicator text",
-			config: RendererConfig{
-				ForceExpansion:       false,
-				TableHiddenIndicator: "[click to expand]",
-			},
-			expectedInFull: "3 errors [click to expand]",
-			description:    "Test Requirement 6.6: custom indicator in full table",
-		},
-	}
+	}{"Collapsed view with default indicator": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		config:         DefaultRendererConfig,
+		expectedInFull: "3 errors [details hidden - use --expand for full view]",
+		description:    "Test Requirements 6.1, 6.6: collapsed collapsible values in full table",
+	}, "Custom indicator text": {
+
+		config: RendererConfig{
+			ForceExpansion:       false,
+			TableHiddenIndicator: "[click to expand]",
+		},
+		expectedInFull: "3 errors [click to expand]",
+		description:    "Test Requirement 6.6: custom indicator in full table",
+	}, "Expanded view with global expansion": {
+
+		config: RendererConfig{
+			ForceExpansion: true,
+		},
+		expectedInFull: "  syntax error",
+		description:    "Test Requirement 6.7: global expansion in full table context",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create renderer with test configuration
 			renderer := NewTableRendererWithCollapsible("Default", tt.config)
 

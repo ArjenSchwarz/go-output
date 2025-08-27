@@ -395,56 +395,49 @@ func TestMarkdownRenderer_TableCellEscaping(t *testing.T) {
 
 // TestMarkdownRenderer_CollapsibleValues tests collapsible value rendering in markdown
 func TestMarkdownRenderer_CollapsibleValues(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		collapsible    CollapsibleValue
 		expectedOutput string
-	}{
-		{
-			name: "collapsed string details",
-			collapsible: NewCollapsibleValue(
-				"3 errors",
-				"Error 1\nError 2\nError 3",
-			),
-			expectedOutput: "<details><summary>3 errors</summary><br/>Error 1<br>Error 2<br>Error 3</details>",
-		},
-		{
-			name: "expanded string details with open attribute",
-			collapsible: NewCollapsibleValue(
-				"System status",
-				"All systems operational",
-				WithExpanded(true),
-			),
-			expectedOutput: "<details open><summary>System status</summary><br/>All systems operational</details>",
-		},
-		{
-			name: "string array details",
-			collapsible: NewCollapsibleValue(
-				"File list (3 items)",
-				[]string{"file1.go", "file2.go", "file3.go"},
-			),
-			expectedOutput: "<details><summary>File list (3 items)</summary><br/>file1.go<br/>file2.go<br/>file3.go</details>",
-		},
-		{
-			name: "map details as key-value pairs",
-			collapsible: NewCollapsibleValue(
-				"Config settings",
-				map[string]any{"debug": true, "port": 8080, "host": "localhost"},
-			),
-			expectedOutput: "<details><summary>Config settings</summary><br/><strong>debug:</strong> true<br/><strong>port:</strong> 8080<br/><strong>host:</strong> localhost</details>",
-		},
-		{
-			name: "empty summary fallback",
-			collapsible: NewCollapsibleValue(
-				"",
-				"Some details",
-			),
-			expectedOutput: "<details><summary>[no summary]</summary><br/>Some details</details>",
-		},
-	}
+	}{"collapsed string details": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		collapsible: NewCollapsibleValue(
+			"3 errors",
+			"Error 1\nError 2\nError 3",
+		),
+		expectedOutput: "<details><summary>3 errors</summary><br/>Error 1<br>Error 2<br>Error 3</details>",
+	}, "empty summary fallback": {
+
+		collapsible: NewCollapsibleValue(
+			"",
+			"Some details",
+		),
+		expectedOutput: "<details><summary>[no summary]</summary><br/>Some details</details>",
+	}, "expanded string details with open attribute": {
+
+		collapsible: NewCollapsibleValue(
+			"System status",
+			"All systems operational",
+			WithExpanded(true),
+		),
+		expectedOutput: "<details open><summary>System status</summary><br/>All systems operational</details>",
+	}, "map details as key-value pairs": {
+
+		collapsible: NewCollapsibleValue(
+			"Config settings",
+			map[string]any{"debug": true, "port": 8080, "host": "localhost"},
+		),
+		expectedOutput: "<details><summary>Config settings</summary><br/><strong>debug:</strong> true<br/><strong>port:</strong> 8080<br/><strong>host:</strong> localhost</details>",
+	}, "string array details": {
+
+		collapsible: NewCollapsibleValue(
+			"File list (3 items)",
+			[]string{"file1.go", "file2.go", "file3.go"},
+		),
+		expectedOutput: "<details><summary>File list (3 items)</summary><br/>file1.go<br/>file2.go<br/>file3.go</details>",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			renderer := &markdownRenderer{
 				baseRenderer:      baseRenderer{},
 				headingLevel:      1,
@@ -454,7 +447,7 @@ func TestMarkdownRenderer_CollapsibleValues(t *testing.T) {
 			result := renderer.renderCollapsibleValue(tt.collapsible)
 
 			// Check that all expected parts are present (order may vary for maps)
-			if tt.name == "map details as key-value pairs" {
+			if name == "map details as key-value pairs" {
 				// For maps, check individual components since order varies
 				expectedParts := []string{
 					"<details><summary>Config settings</summary><br/>",
@@ -557,25 +550,21 @@ func TestMarkdownRenderer_GlobalExpansionOverride(t *testing.T) {
 		WithExpanded(false), // Explicitly set to collapsed
 	)
 
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		forceExpansion bool
 		expectOpen     bool
-	}{
-		{
-			name:           "respect individual setting when global expansion disabled",
-			forceExpansion: false,
-			expectOpen:     false,
-		},
-		{
-			name:           "override individual setting when global expansion enabled",
-			forceExpansion: true,
-			expectOpen:     true,
-		},
-	}
+	}{"override individual setting when global expansion enabled": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		forceExpansion: true,
+		expectOpen:     true,
+	}, "respect individual setting when global expansion disabled": {
+
+		forceExpansion: false,
+		expectOpen:     false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			config := DefaultRendererConfig
 			config.ForceExpansion = tt.forceExpansion
 
@@ -608,38 +597,32 @@ func TestMarkdownRenderer_CollapsibleDetailsFormatting(t *testing.T) {
 		collapsibleConfig: DefaultRendererConfig,
 	}
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		details  any
 		expected string
-	}{
-		{
-			name:     "string details",
-			details:  "Simple string",
-			expected: "Simple string",
-		},
-		{
-			name:     "string array details",
-			details:  []string{"item1", "item2", "item3"},
-			expected: "item1<br/>item2<br/>item3",
-		},
-		{
-			name:     "map details",
-			details:  map[string]any{"key1": "value1", "key2": "value2"},
-			expected: "<strong>key1:</strong> value1<br/><strong>key2:</strong> value2",
-		},
-		{
-			name:     "complex type fallback",
-			details:  struct{ Name string }{Name: "test"},
-			expected: "{test}",
-		},
-	}
+	}{"complex type fallback": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		details:  struct{ Name string }{Name: "test"},
+		expected: "{test}",
+	}, "map details": {
+
+		details:  map[string]any{"key1": "value1", "key2": "value2"},
+		expected: "<strong>key1:</strong> value1<br/><strong>key2:</strong> value2",
+	}, "string array details": {
+
+		details:  []string{"item1", "item2", "item3"},
+		expected: "item1<br/>item2<br/>item3",
+	}, "string details": {
+
+		details:  "Simple string",
+		expected: "Simple string",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := renderer.formatDetailsForMarkdown(tt.details)
 
-			if tt.name == "map details" {
+			if name == "map details" {
 				// For maps, check both possible orders
 				option1 := "<strong>key1:</strong> value1<br/><strong>key2:</strong> value2"
 				option2 := "<strong>key2:</strong> value2<br/><strong>key1:</strong> value1"

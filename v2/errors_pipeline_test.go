@@ -8,8 +8,7 @@ import (
 )
 
 func TestPipelineError(t *testing.T) {
-	tests := []struct {
-		name              string
+	tests := map[string]struct {
 		operation         string
 		stage             int
 		input             any
@@ -18,91 +17,90 @@ func TestPipelineError(t *testing.T) {
 		cause             error
 		expectParts       []string
 		expectNotContains []string
-	}{
-		{
-			name:      "filter operation error",
-			operation: "Filter",
-			stage:     0,
-			input:     map[string]any{"id": 1, "status": "active"},
-			context:   map[string]any{"predicate": "status == 'invalid'", "record_count": 100},
-			pipelineContext: map[string]any{
-				"total_operations": 3,
-				"document_id":      "doc-123",
-			},
-			cause: errors.New("predicate evaluation failed"),
-			expectParts: []string{
-				"pipeline operation \"Filter\" failed",
-				"stage=0",
-				"pipeline_context=[",
-				"document_id=doc-123",
-				"total_operations=3",
-				"operation_context=[",
-				"predicate=status == 'invalid'",
-				"record_count=100",
-				"input_sample=map[id:1 status:active]",
-				"cause: predicate evaluation failed",
-			},
-		},
-		{
-			name:      "sort operation error",
-			operation: "Sort",
-			stage:     2,
-			context:   map[string]any{"column": "timestamp", "direction": "asc"},
-			pipelineContext: map[string]any{
-				"total_operations": 5,
-			},
-			cause: errors.New("column 'timestamp' not found"),
-			expectParts: []string{
-				"pipeline operation \"Sort\" failed",
-				"stage=2",
-				"pipeline_context=[total_operations=5]",
-				"operation_context=[",
-				"column=timestamp",
-				"direction=asc",
-				"cause: column 'timestamp' not found",
-			},
-			expectNotContains: []string{
-				"input_sample=",
-			},
-		},
-		{
-			name:  "minimal pipeline error",
-			stage: -1, // No stage
-			cause: errors.New("generic pipeline failure"),
-			expectParts: []string{
-				"pipeline failed",
-				"cause: generic pipeline failure",
-			},
-			expectNotContains: []string{
-				"stage=",
-				"pipeline_context=",
-				"operation_context=",
-				"input_sample=",
-			},
-		},
-		{
-			name:      "aggregation error with type mismatch",
-			operation: "GroupBy",
-			stage:     1,
-			input:     []map[string]any{{"id": 1, "amount": "not-a-number"}},
-			context: map[string]any{
-				"aggregate_function": "Sum",
-				"field":              "amount",
-				"group_columns":      []string{"department"},
-			},
-			cause: errors.New("cannot sum non-numeric values"),
-			expectParts: []string{
-				"pipeline operation \"GroupBy\" failed",
-				"stage=1",
-				"aggregate_function=Sum",
-				"field=amount",
-				"cause: cannot sum non-numeric values",
-			},
-		},
-	}
+	}{"aggregation error with type mismatch":
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	// No stage
+
+	{
+
+		operation: "GroupBy",
+		stage:     1,
+		input:     []map[string]any{{"id": 1, "amount": "not-a-number"}},
+		context: map[string]any{
+			"aggregate_function": "Sum",
+			"field":              "amount",
+			"group_columns":      []string{"department"},
+		},
+		cause: errors.New("cannot sum non-numeric values"),
+		expectParts: []string{
+			"pipeline operation \"GroupBy\" failed",
+			"stage=1",
+			"aggregate_function=Sum",
+			"field=amount",
+			"cause: cannot sum non-numeric values",
+		},
+	}, "filter operation error": {
+
+		operation: "Filter",
+		stage:     0,
+		input:     map[string]any{"id": 1, "status": "active"},
+		context:   map[string]any{"predicate": "status == 'invalid'", "record_count": 100},
+		pipelineContext: map[string]any{
+			"total_operations": 3,
+			"document_id":      "doc-123",
+		},
+		cause: errors.New("predicate evaluation failed"),
+		expectParts: []string{
+			"pipeline operation \"Filter\" failed",
+			"stage=0",
+			"pipeline_context=[",
+			"document_id=doc-123",
+			"total_operations=3",
+			"operation_context=[",
+			"predicate=status == 'invalid'",
+			"record_count=100",
+			"input_sample=map[id:1 status:active]",
+			"cause: predicate evaluation failed",
+		},
+	}, "minimal pipeline error": {
+
+		stage: -1,
+		cause: errors.New("generic pipeline failure"),
+		expectParts: []string{
+			"pipeline failed",
+			"cause: generic pipeline failure",
+		},
+		expectNotContains: []string{
+			"stage=",
+			"pipeline_context=",
+			"operation_context=",
+			"input_sample=",
+		},
+	}, "sort operation error": {
+
+		operation: "Sort",
+		stage:     2,
+		context:   map[string]any{"column": "timestamp", "direction": "asc"},
+		pipelineContext: map[string]any{
+			"total_operations": 5,
+		},
+		cause: errors.New("column 'timestamp' not found"),
+		expectParts: []string{
+			"pipeline operation \"Sort\" failed",
+			"stage=2",
+			"pipeline_context=[total_operations=5]",
+			"operation_context=[",
+			"column=timestamp",
+			"direction=asc",
+			"cause: column 'timestamp' not found",
+		},
+		expectNotContains: []string{
+			"input_sample=",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var err *PipelineError
 			if tt.input != nil {
 				err = NewPipelineErrorWithInput(tt.operation, tt.stage, tt.input, tt.cause)
@@ -215,50 +213,44 @@ func TestFailFastErrorHandling(t *testing.T) {
 
 // TestValidationErrorsForPipelineOperations tests validation errors for pipeline operations
 func TestPipelineErrorTypeMismatch(t *testing.T) {
-	tests := []struct {
-		name         string
+	tests := map[string]struct {
 		operation    string
 		expectedType string
 		actualType   string
 		field        string
 		value        any
-	}{
-		{
-			name:         "filter requires table content",
-			operation:    "Filter",
-			expectedType: "table",
-			actualType:   "text",
-			field:        "content_type",
-			value:        "text",
-		},
-		{
-			name:         "sort requires table content",
-			operation:    "Sort",
-			expectedType: "table",
-			actualType:   "raw",
-			field:        "content_type",
-			value:        "raw",
-		},
-		{
-			name:         "groupBy requires table content",
-			operation:    "GroupBy",
-			expectedType: "table",
-			actualType:   "section",
-			field:        "content_type",
-			value:        "section",
-		},
-		{
-			name:         "numeric comparison with string value",
-			operation:    "Sort",
-			expectedType: "numeric",
-			actualType:   "string",
-			field:        "field_value",
-			value:        "not-a-number",
-		},
-	}
+	}{"filter requires table content": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		operation:    "Filter",
+		expectedType: "table",
+		actualType:   "text",
+		field:        "content_type",
+		value:        "text",
+	}, "groupBy requires table content": {
+
+		operation:    "GroupBy",
+		expectedType: "table",
+		actualType:   "section",
+		field:        "content_type",
+		value:        "section",
+	}, "numeric comparison with string value": {
+
+		operation:    "Sort",
+		expectedType: "numeric",
+		actualType:   "string",
+		field:        "field_value",
+		value:        "not-a-number",
+	}, "sort requires table content": {
+
+		operation:    "Sort",
+		expectedType: "table",
+		actualType:   "raw",
+		field:        "content_type",
+		value:        "raw",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create a type mismatch error
 			message := fmt.Sprintf("%s requires %s type, got %s", tt.operation, tt.expectedType, tt.actualType)
 			validationErr := NewValidationError(tt.field, tt.value, message)

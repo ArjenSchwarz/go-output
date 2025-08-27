@@ -5,39 +5,34 @@ import (
 )
 
 func TestBuilder_SectionMethod(t *testing.T) {
-	tests := []struct {
-		name            string
+	tests := map[string]struct {
 		title           string
 		opts            []SectionOption
 		contentCount    int
 		expectedLevel   int
 		expectedContent []string
-	}{
-		{
-			name:          "simple section",
-			title:         "Test Section",
-			opts:          []SectionOption{},
-			contentCount:  2,
-			expectedLevel: 0,
-		},
-		{
-			name:          "section with level",
-			title:         "Nested Section",
-			opts:          []SectionOption{WithLevel(2)},
-			contentCount:  1,
-			expectedLevel: 2,
-		},
-		{
-			name:          "empty section",
-			title:         "Empty Section",
-			opts:          []SectionOption{},
-			contentCount:  0,
-			expectedLevel: 0,
-		},
-	}
+	}{"empty section": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		title:         "Empty Section",
+		opts:          []SectionOption{},
+		contentCount:  0,
+		expectedLevel: 0,
+	}, "section with level": {
+
+		title:         "Nested Section",
+		opts:          []SectionOption{WithLevel(2)},
+		contentCount:  1,
+		expectedLevel: 2,
+	}, "simple section": {
+
+		title:         "Test Section",
+		opts:          []SectionOption{},
+		contentCount:  2,
+		expectedLevel: 0,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			builder := New()
 
 			var sectionBuilder *Builder
@@ -88,54 +83,49 @@ func TestBuilder_SectionMethod(t *testing.T) {
 
 // TestBuilder_Graph tests the Graph method
 func TestBuilder_AddCollapsibleSection(t *testing.T) {
-	tests := []struct {
-		name             string
+	tests := map[string]struct {
 		title            string
 		content          []Content
 		opts             []CollapsibleSectionOption
 		expectedLevel    int
 		expectedContent  int
 		expectedExpanded bool
-	}{
-		{
-			name:  "simple collapsible section",
-			title: "Expandable Details",
-			content: []Content{
-				NewTextContent("Detail text 1"),
-				NewTextContent("Detail text 2"),
-			},
-			opts:             []CollapsibleSectionOption{},
-			expectedLevel:    0,
-			expectedContent:  2,
-			expectedExpanded: false,
-		},
-		{
-			name:  "expanded section with level",
-			title: "Important Information",
-			content: []Content{
-				NewTextContent("Critical details"),
-			},
-			opts: []CollapsibleSectionOption{
-				WithSectionExpanded(true),
-				WithSectionLevel(2),
-			},
-			expectedLevel:    2,
-			expectedContent:  1,
-			expectedExpanded: true,
-		},
-		{
-			name:             "empty collapsible section",
-			title:            "No Details",
-			content:          []Content{},
-			opts:             []CollapsibleSectionOption{},
-			expectedLevel:    0,
-			expectedContent:  0,
-			expectedExpanded: false,
-		},
-	}
+	}{"empty collapsible section": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		title:            "No Details",
+		content:          []Content{},
+		opts:             []CollapsibleSectionOption{},
+		expectedLevel:    0,
+		expectedContent:  0,
+		expectedExpanded: false,
+	}, "expanded section with level": {
+
+		title: "Important Information",
+		content: []Content{
+			NewTextContent("Critical details"),
+		},
+		opts: []CollapsibleSectionOption{
+			WithSectionExpanded(true),
+			WithSectionLevel(2),
+		},
+		expectedLevel:    2,
+		expectedContent:  1,
+		expectedExpanded: true,
+	}, "simple collapsible section": {
+
+		title: "Expandable Details",
+		content: []Content{
+			NewTextContent("Detail text 1"),
+			NewTextContent("Detail text 2"),
+		},
+		opts:             []CollapsibleSectionOption{},
+		expectedLevel:    0,
+		expectedContent:  2,
+		expectedExpanded: false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			builder := New()
 			result := builder.AddCollapsibleSection(tt.title, tt.content, tt.opts...)
 
@@ -177,39 +167,34 @@ func TestBuilder_AddCollapsibleSection(t *testing.T) {
 
 // TestBuilder_AddCollapsibleTable tests the AddCollapsibleTable method
 func TestBuilder_CollapsibleSection(t *testing.T) {
-	tests := []struct {
-		name            string
+	tests := map[string]struct {
 		title           string
 		opts            []CollapsibleSectionOption
 		contentCount    int
 		expectedLevel   int
 		expectedContent []string
-	}{
-		{
-			name:          "simple collapsible section with sub-builder",
-			title:         "Analysis Results",
-			opts:          []CollapsibleSectionOption{},
-			contentCount:  2,
-			expectedLevel: 0,
-		},
-		{
-			name:          "expanded section with level and sub-builder",
-			title:         "Important Findings",
-			opts:          []CollapsibleSectionOption{WithSectionLevel(1), WithSectionExpanded(true)},
-			contentCount:  3,
-			expectedLevel: 1,
-		},
-		{
-			name:          "empty collapsible section",
-			title:         "No Results",
-			opts:          []CollapsibleSectionOption{},
-			contentCount:  0,
-			expectedLevel: 0,
-		},
-	}
+	}{"empty collapsible section": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		title:         "No Results",
+		opts:          []CollapsibleSectionOption{},
+		contentCount:  0,
+		expectedLevel: 0,
+	}, "expanded section with level and sub-builder": {
+
+		title:         "Important Findings",
+		opts:          []CollapsibleSectionOption{WithSectionLevel(1), WithSectionExpanded(true)},
+		contentCount:  3,
+		expectedLevel: 1,
+	}, "simple collapsible section with sub-builder": {
+
+		title:         "Analysis Results",
+		opts:          []CollapsibleSectionOption{},
+		contentCount:  2,
+		expectedLevel: 0,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			builder := New()
 
 			var sectionBuilder *Builder

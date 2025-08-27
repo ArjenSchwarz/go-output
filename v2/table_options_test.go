@@ -96,51 +96,44 @@ func TestWithAutoSchemaOrdered(t *testing.T) {
 }
 
 func TestDetectSchemaFromData(t *testing.T) {
-	tests := []struct {
-		name          string
+	tests := map[string]struct {
 		data          any
 		expectedKeys  []string
 		expectedTypes []string
-	}{
-		{
-			name: "slice of maps",
-			data: []map[string]any{
-				{"name": "Alice", "age": 30, "active": true},
-				{"name": "Bob", "age": 25, "active": false},
-			},
-			expectedKeys:  []string{"name", "age", "active"},
-			expectedTypes: []string{"string", "int", "bool"},
-		},
-		{
-			name:          "single map",
-			data:          map[string]any{"id": int64(1), "value": 3.14, "data": nil},
-			expectedKeys:  []string{"id", "value", "data"},
-			expectedTypes: []string{"int", "float", "nil"},
-		},
-		{
-			name: "slice of interface with map",
-			data: []any{
-				map[string]any{"key": "value"},
-			},
-			expectedKeys:  []string{"key"},
-			expectedTypes: []string{"string"},
-		},
-		{
-			name:          "empty slice",
-			data:          []map[string]any{},
-			expectedKeys:  []string{},
-			expectedTypes: []string{},
-		},
-		{
-			name:          "unsupported type",
-			data:          "not a map or slice",
-			expectedKeys:  []string{},
-			expectedTypes: []string{},
-		},
-	}
+	}{"empty slice": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		data:          []map[string]any{},
+		expectedKeys:  []string{},
+		expectedTypes: []string{},
+	}, "single map": {
+
+		data:          map[string]any{"id": int64(1), "value": 3.14, "data": nil},
+		expectedKeys:  []string{"id", "value", "data"},
+		expectedTypes: []string{"int", "float", "nil"},
+	}, "slice of interface with map": {
+
+		data: []any{
+			map[string]any{"key": "value"},
+		},
+		expectedKeys:  []string{"key"},
+		expectedTypes: []string{"string"},
+	}, "slice of maps": {
+
+		data: []map[string]any{
+			{"name": "Alice", "age": 30, "active": true},
+			{"name": "Bob", "age": 25, "active": false},
+		},
+		expectedKeys:  []string{"name", "age", "active"},
+		expectedTypes: []string{"string", "int", "bool"},
+	}, "unsupported type": {
+
+		data:          "not a map or slice",
+		expectedKeys:  []string{},
+		expectedTypes: []string{},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			schema := DetectSchemaFromData(tt.data)
 
 			// Extract field names and types

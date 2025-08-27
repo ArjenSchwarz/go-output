@@ -93,43 +93,37 @@ func TestWriteError(t *testing.T) {
 func TestBaseWriterValidation(t *testing.T) {
 	bw := &baseWriter{name: "test"}
 
-	tests := []struct {
-		name    string
+	tests := map[string]struct {
 		format  string
 		data    []byte
 		wantErr bool
 		errMsg  string
-	}{
-		{
-			name:    "valid input",
-			format:  FormatJSON,
-			data:    []byte("test"),
-			wantErr: false,
-		},
-		{
-			name:    "empty format",
-			format:  "",
-			data:    []byte("test"),
-			wantErr: true,
-			errMsg:  "format cannot be empty",
-		},
-		{
-			name:    "nil data",
-			format:  FormatJSON,
-			data:    nil,
-			wantErr: true,
-			errMsg:  "data cannot be nil",
-		},
-		{
-			name:    "empty data is valid",
-			format:  FormatJSON,
-			data:    []byte{},
-			wantErr: false,
-		},
-	}
+	}{"empty data is valid": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		format:  FormatJSON,
+		data:    []byte{},
+		wantErr: false,
+	}, "empty format": {
+
+		format:  "",
+		data:    []byte("test"),
+		wantErr: true,
+		errMsg:  "format cannot be empty",
+	}, "nil data": {
+
+		format:  FormatJSON,
+		data:    nil,
+		wantErr: true,
+		errMsg:  "data cannot be nil",
+	}, "valid input": {
+
+		format:  FormatJSON,
+		data:    []byte("test"),
+		wantErr: false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			err := bw.validateInput(tt.format, tt.data)
 			if tt.wantErr {
 				if err == nil {

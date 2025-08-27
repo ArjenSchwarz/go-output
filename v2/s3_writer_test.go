@@ -47,28 +47,24 @@ func (m *mockS3Client) getCalls() []S3PutObjectInput {
 func TestNewS3Writer(t *testing.T) {
 	client := &mockS3Client{}
 
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		bucket      string
 		keyPattern  string
 		wantPattern string
-	}{
-		{
-			name:        "with custom pattern",
-			bucket:      "test-bucket",
-			keyPattern:  "reports/{format}/data.{ext}",
-			wantPattern: "reports/{format}/data.{ext}",
-		},
-		{
-			name:        "with default pattern",
-			bucket:      "test-bucket",
-			keyPattern:  "",
-			wantPattern: "output-{format}.{ext}",
-		},
-	}
+	}{"with custom pattern": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		bucket:      "test-bucket",
+		keyPattern:  "reports/{format}/data.{ext}",
+		wantPattern: "reports/{format}/data.{ext}",
+	}, "with default pattern": {
+
+		bucket:      "test-bucket",
+		keyPattern:  "",
+		wantPattern: "output-{format}.{ext}",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			sw := NewS3Writer(client, tt.bucket, tt.keyPattern)
 
 			if sw == nil {
@@ -94,8 +90,7 @@ func TestS3WriterWrite(t *testing.T) {
 	ctx := context.Background()
 	testData := []byte("test content")
 
-	tests := []struct {
-		name            string
+	tests := map[string]struct {
 		format          string
 		data            []byte
 		bucket          string
@@ -104,92 +99,83 @@ func TestS3WriterWrite(t *testing.T) {
 		wantErr         bool
 		wantKey         string
 		wantContentType string
-	}{
-		{
-			name:            "successful write JSON",
-			format:          FormatJSON,
-			data:            testData,
-			bucket:          "test-bucket",
-			keyPattern:      "data/{format}.{ext}",
-			client:          &mockS3Client{},
-			wantErr:         false,
-			wantKey:         "data/json.json",
-			wantContentType: "application/json",
-		},
-		{
-			name:            "successful write CSV",
-			format:          FormatCSV,
-			data:            testData,
-			bucket:          "test-bucket",
-			keyPattern:      "reports/{format}-output.{ext}",
-			client:          &mockS3Client{},
-			wantErr:         false,
-			wantKey:         "reports/csv-output.csv",
-			wantContentType: "text/csv",
-		},
-		{
-			name:       "empty format",
-			format:     "",
-			data:       testData,
-			bucket:     "test-bucket",
-			keyPattern: "data/{format}.{ext}",
-			client:     &mockS3Client{},
-			wantErr:    true,
-		},
-		{
-			name:       "nil data",
-			format:     FormatJSON,
-			data:       nil,
-			bucket:     "test-bucket",
-			keyPattern: "data/{format}.{ext}",
-			client:     &mockS3Client{},
-			wantErr:    true,
-		},
-		{
-			name:       "empty bucket",
-			format:     FormatJSON,
-			data:       testData,
-			bucket:     "",
-			keyPattern: "data/{format}.{ext}",
-			client:     &mockS3Client{},
-			wantErr:    true,
-		},
-		{
-			name:       "nil client",
-			format:     FormatJSON,
-			data:       testData,
-			bucket:     "test-bucket",
-			keyPattern: "data/{format}.{ext}",
-			client:     nil,
-			wantErr:    true,
-		},
-		{
-			name:       "S3 error",
-			format:     FormatJSON,
-			data:       testData,
-			bucket:     "test-bucket",
-			keyPattern: "data/{format}.{ext}",
-			client: &mockS3Client{
-				putObjectFunc: func(ctx context.Context, input *S3PutObjectInput) (*S3PutObjectOutput, error) {
-					return nil, errors.New("S3 error")
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name:       "empty data is valid",
-			format:     FormatJSON,
-			data:       []byte{},
-			bucket:     "test-bucket",
-			keyPattern: "empty.{ext}",
-			client:     &mockS3Client{},
-			wantErr:    false,
-			wantKey:    "empty.json",
-		},
-	}
+	}{"S3 error": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		format:     FormatJSON,
+		data:       testData,
+		bucket:     "test-bucket",
+		keyPattern: "data/{format}.{ext}",
+		client: &mockS3Client{
+			putObjectFunc: func(ctx context.Context, input *S3PutObjectInput) (*S3PutObjectOutput, error) {
+				return nil, errors.New("S3 error")
+			},
+		},
+		wantErr: true,
+	}, "empty bucket": {
+
+		format:     FormatJSON,
+		data:       testData,
+		bucket:     "",
+		keyPattern: "data/{format}.{ext}",
+		client:     &mockS3Client{},
+		wantErr:    true,
+	}, "empty data is valid": {
+
+		format:     FormatJSON,
+		data:       []byte{},
+		bucket:     "test-bucket",
+		keyPattern: "empty.{ext}",
+		client:     &mockS3Client{},
+		wantErr:    false,
+		wantKey:    "empty.json",
+	}, "empty format": {
+
+		format:     "",
+		data:       testData,
+		bucket:     "test-bucket",
+		keyPattern: "data/{format}.{ext}",
+		client:     &mockS3Client{},
+		wantErr:    true,
+	}, "nil client": {
+
+		format:     FormatJSON,
+		data:       testData,
+		bucket:     "test-bucket",
+		keyPattern: "data/{format}.{ext}",
+		client:     nil,
+		wantErr:    true,
+	}, "nil data": {
+
+		format:     FormatJSON,
+		data:       nil,
+		bucket:     "test-bucket",
+		keyPattern: "data/{format}.{ext}",
+		client:     &mockS3Client{},
+		wantErr:    true,
+	}, "successful write CSV": {
+
+		format:          FormatCSV,
+		data:            testData,
+		bucket:          "test-bucket",
+		keyPattern:      "reports/{format}-output.{ext}",
+		client:          &mockS3Client{},
+		wantErr:         false,
+		wantKey:         "reports/csv-output.csv",
+		wantContentType: "text/csv",
+	}, "successful write JSON": {
+
+		format:          FormatJSON,
+		data:            testData,
+		bucket:          "test-bucket",
+		keyPattern:      "data/{format}.{ext}",
+		client:          &mockS3Client{},
+		wantErr:         false,
+		wantKey:         "data/json.json",
+		wantContentType: "application/json",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var sw *S3Writer
 			if tt.client != nil {
 				sw = NewS3Writer(tt.client, tt.bucket, tt.keyPattern)
@@ -388,34 +374,29 @@ func TestGenerateKey(t *testing.T) {
 }
 
 func TestGenerateKeyEdgeCases(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		pattern     string
 		format      string
 		expectedKey string
-	}{
-		{
-			name:        "leading slash removed",
-			pattern:     "/data/{format}.{ext}",
-			format:      FormatJSON,
-			expectedKey: "data/json.json",
-		},
-		{
-			name:        "double slashes cleaned",
-			pattern:     "data//{format}//{ext}",
-			format:      FormatJSON,
-			expectedKey: "data/json/json",
-		},
-		{
-			name:        "no placeholders",
-			pattern:     "static-file.txt",
-			format:      FormatJSON,
-			expectedKey: "static-file.txt",
-		},
-	}
+	}{"double slashes cleaned": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		pattern:     "data//{format}//{ext}",
+		format:      FormatJSON,
+		expectedKey: "data/json/json",
+	}, "leading slash removed": {
+
+		pattern:     "/data/{format}.{ext}",
+		format:      FormatJSON,
+		expectedKey: "data/json.json",
+	}, "no placeholders": {
+
+		pattern:     "static-file.txt",
+		format:      FormatJSON,
+		expectedKey: "static-file.txt",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			sw := &S3Writer{keyPattern: tt.pattern}
 			key, err := sw.generateKey(tt.format)
 			if err != nil {

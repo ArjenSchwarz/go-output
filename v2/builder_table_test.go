@@ -5,37 +5,33 @@ import (
 )
 
 func TestBuilder_AddCollapsibleTable(t *testing.T) {
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		title     string
 		tableData []map[string]any
 		opts      []CollapsibleSectionOption
-	}{
-		{
-			name:  "simple collapsible table",
-			title: "User Data",
-			tableData: []map[string]any{
-				{"name": "Alice", "age": 30},
-				{"name": "Bob", "age": 25},
-			},
-			opts: []CollapsibleSectionOption{},
-		},
-		{
-			name:  "expanded collapsible table with level",
-			title: "Critical Issues",
-			tableData: []map[string]any{
-				{"severity": "high", "count": 5},
-				{"severity": "medium", "count": 10},
-			},
-			opts: []CollapsibleSectionOption{
-				WithSectionExpanded(true),
-				WithSectionLevel(1),
-			},
-		},
-	}
+	}{"expanded collapsible table with level": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		title: "Critical Issues",
+		tableData: []map[string]any{
+			{"severity": "high", "count": 5},
+			{"severity": "medium", "count": 10},
+		},
+		opts: []CollapsibleSectionOption{
+			WithSectionExpanded(true),
+			WithSectionLevel(1),
+		},
+	}, "simple collapsible table": {
+
+		title: "User Data",
+		tableData: []map[string]any{
+			{"name": "Alice", "age": 30},
+			{"name": "Bob", "age": 25},
+		},
+		opts: []CollapsibleSectionOption{},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create table content first
 			table, err := NewTableContent("Test Table", tt.tableData)
 			if err != nil {

@@ -314,34 +314,29 @@ func TestEnhancedEmojiTransformer_FormatSpecificTransform(t *testing.T) {
 	transformer := NewEnhancedEmojiTransformer()
 	ctx := context.Background()
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		format   string
 		input    string
 		expected string
-	}{
-		{
-			name:     "markdown format conservative emoji",
-			format:   FormatMarkdown,
-			input:    "!! Warning OK",
-			expected: "⚠️ Warning ✅",
-		},
-		{
-			name:     "html format with HTML entities",
-			format:   FormatHTML,
-			input:    "!! Warning OK Yes No",
-			expected: "&#x1F6A8; Warning &#x2705; &#x2705; &#x274C;",
-		},
-		{
-			name:     "table format default behavior",
-			format:   FormatTable,
-			input:    "!! Warning OK",
-			expected: "🚨 Warning ✅",
-		},
-	}
+	}{"html format with HTML entities": {
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		format:   FormatHTML,
+		input:    "!! Warning OK Yes No",
+		expected: "&#x1F6A8; Warning &#x2705; &#x2705; &#x274C;",
+	}, "markdown format conservative emoji": {
+
+		format:   FormatMarkdown,
+		input:    "!! Warning OK",
+		expected: "⚠️ Warning ✅",
+	}, "table format default behavior": {
+
+		format:   FormatTable,
+		input:    "!! Warning OK",
+		expected: "🚨 Warning ✅",
+	}}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
 			result, err := transformer.Transform(ctx, []byte(test.input), test.format)
 			if err != nil {
 				t.Fatalf("EnhancedEmojiTransformer.Transform() error = %v", err)

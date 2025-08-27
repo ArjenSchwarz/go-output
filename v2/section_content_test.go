@@ -31,35 +31,29 @@ func TestSectionContent_Basic(t *testing.T) {
 }
 
 func TestSectionContent_WithLevel(t *testing.T) {
-	tests := []struct {
-		name          string
+	tests := map[string]struct {
 		level         int
 		expectedLevel int
-	}{
-		{
-			name:          "level 0",
-			level:         0,
-			expectedLevel: 0,
-		},
-		{
-			name:          "level 1",
-			level:         1,
-			expectedLevel: 1,
-		},
-		{
-			name:          "level 3",
-			level:         3,
-			expectedLevel: 3,
-		},
-		{
-			name:          "negative level (should default to 0)",
-			level:         -1,
-			expectedLevel: 0,
-		},
-	}
+	}{"level 0": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		level:         0,
+		expectedLevel: 0,
+	}, "level 1": {
+
+		level:         1,
+		expectedLevel: 1,
+	}, "level 3": {
+
+		level:         3,
+		expectedLevel: 3,
+	}, "negative level (should default to 0)": {
+
+		level:         -1,
+		expectedLevel: 0,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			content := NewSectionContent("Test", WithLevel(tt.level))
 			if content.Level() != tt.expectedLevel {
 				t.Errorf("Expected level %d, got %d", tt.expectedLevel, content.Level())
@@ -149,50 +143,41 @@ func TestSectionContent_AppendText_WithContent(t *testing.T) {
 }
 
 func TestSectionContent_HierarchicalLevels(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		level          int
 		expectedPrefix string
-	}{
-		{
-			name:           "level 0",
-			level:          0,
-			expectedPrefix: "# ",
-		},
-		{
-			name:           "level 1",
-			level:          1,
-			expectedPrefix: "## ",
-		},
-		{
-			name:           "level 2",
-			level:          2,
-			expectedPrefix: "### ",
-		},
-		{
-			name:           "level 3",
-			level:          3,
-			expectedPrefix: "#### ",
-		},
-		{
-			name:           "level 4",
-			level:          4,
-			expectedPrefix: "##### ",
-		},
-		{
-			name:           "level 5",
-			level:          5,
-			expectedPrefix: "###### ",
-		},
-		{
-			name:           "level 6",
-			level:          6,
-			expectedPrefix: "####### ",
-		},
-	}
+	}{"level 0": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		level:          0,
+		expectedPrefix: "# ",
+	}, "level 1": {
+
+		level:          1,
+		expectedPrefix: "## ",
+	}, "level 2": {
+
+		level:          2,
+		expectedPrefix: "### ",
+	}, "level 3": {
+
+		level:          3,
+		expectedPrefix: "#### ",
+	}, "level 4": {
+
+		level:          4,
+		expectedPrefix: "##### ",
+	}, "level 5": {
+
+		level:          5,
+		expectedPrefix: "###### ",
+	}, "level 6": {
+
+		level:          6,
+		expectedPrefix: "####### ",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			section := NewSectionContent("Test Title", WithLevel(tt.level))
 
 			result, err := section.AppendText([]byte{})
@@ -424,40 +409,33 @@ func TestSectionContent_ErrorHandling(t *testing.T) {
 }
 
 func TestSplitLines(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		input    []byte
 		expected [][]byte
-	}{
-		{
-			name:     "empty input",
-			input:    []byte{},
-			expected: [][]byte{},
-		},
-		{
-			name:     "single line",
-			input:    []byte("hello"),
-			expected: [][]byte{[]byte("hello")},
-		},
-		{
-			name:     "multiple lines",
-			input:    []byte("line1\nline2\nline3"),
-			expected: [][]byte{[]byte("line1"), []byte("line2"), []byte("line3")},
-		},
-		{
-			name:     "trailing newline",
-			input:    []byte("line1\nline2\n"),
-			expected: [][]byte{[]byte("line1"), []byte("line2")},
-		},
-		{
-			name:     "empty lines",
-			input:    []byte("line1\n\nline3"),
-			expected: [][]byte{[]byte("line1"), []byte(""), []byte("line3")},
-		},
-	}
+	}{"empty input": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		input:    []byte{},
+		expected: [][]byte{},
+	}, "empty lines": {
+
+		input:    []byte("line1\n\nline3"),
+		expected: [][]byte{[]byte("line1"), []byte(""), []byte("line3")},
+	}, "multiple lines": {
+
+		input:    []byte("line1\nline2\nline3"),
+		expected: [][]byte{[]byte("line1"), []byte("line2"), []byte("line3")},
+	}, "single line": {
+
+		input:    []byte("hello"),
+		expected: [][]byte{[]byte("hello")},
+	}, "trailing newline": {
+
+		input:    []byte("line1\nline2\n"),
+		expected: [][]byte{[]byte("line1"), []byte("line2")},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := splitLines(tt.input)
 
 			if len(result) != len(tt.expected) {
@@ -475,52 +453,44 @@ func TestSplitLines(t *testing.T) {
 }
 
 func TestIndentContent(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		content  []byte
 		level    int
 		expected string
-	}{
-		{
-			name:     "level 0 (no indentation)",
-			content:  []byte("line1\nline2"),
-			level:    0,
-			expected: "line1\nline2",
-		},
-		{
-			name:     "level 1",
-			content:  []byte("line1\nline2"),
-			level:    1,
-			expected: "  line1\n  line2",
-		},
-		{
-			name:     "level 2",
-			content:  []byte("line1\nline2"),
-			level:    2,
-			expected: "    line1\n    line2",
-		},
-		{
-			name:     "empty lines preserved",
-			content:  []byte("line1\n\nline3"),
-			level:    1,
-			expected: "  line1\n\n  line3",
-		},
-		{
-			name:     "negative level",
-			content:  []byte("line1\nline2"),
-			level:    -1,
-			expected: "line1\nline2",
-		},
-		{
-			name:     "empty content",
-			content:  []byte{},
-			level:    1,
-			expected: "",
-		},
-	}
+	}{"empty content": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		content:  []byte{},
+		level:    1,
+		expected: "",
+	}, "empty lines preserved": {
+
+		content:  []byte("line1\n\nline3"),
+		level:    1,
+		expected: "  line1\n\n  line3",
+	}, "level 0 (no indentation)": {
+
+		content:  []byte("line1\nline2"),
+		level:    0,
+		expected: "line1\nline2",
+	}, "level 1": {
+
+		content:  []byte("line1\nline2"),
+		level:    1,
+		expected: "  line1\n  line2",
+	}, "level 2": {
+
+		content:  []byte("line1\nline2"),
+		level:    2,
+		expected: "    line1\n    line2",
+	}, "negative level": {
+
+		content:  []byte("line1\nline2"),
+		level:    -1,
+		expected: "line1\nline2",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := indentContent(tt.content, tt.level)
 			if string(result) != tt.expected {
 				t.Errorf("Expected %q, got %q", tt.expected, string(result))

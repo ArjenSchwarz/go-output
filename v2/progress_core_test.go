@@ -241,46 +241,45 @@ func TestTextProgress_RateDisplay(t *testing.T) {
 }
 
 func TestProgress_ConfigurationOptions(t *testing.T) {
-	tests := []struct {
-		name string
+	tests := map[string]struct {
 		opts []ProgressOption
 		test func(*testing.T, Progress)
-	}{
-		{
-			name: "WithPercentage false",
-			opts: []ProgressOption{WithPercentage(false)},
-			test: func(t *testing.T, p Progress) {
-				// We can't easily test this without accessing internals,
-				// so we just verify it doesn't panic
-				p.SetTotal(100)
-				p.SetCurrent(50)
-				p.Complete()
-			},
-		},
-		{
-			name: "WithWidth custom",
-			opts: []ProgressOption{WithWidth(5)},
-			test: func(t *testing.T, p Progress) {
-				// Test custom width doesn't cause issues
-				p.SetTotal(100)
-				p.SetCurrent(50)
-				p.Complete()
-			},
-		},
-		{
-			name: "WithTemplate custom",
-			opts: []ProgressOption{WithTemplate("custom template")},
-			test: func(t *testing.T, p Progress) {
-				// Test custom template doesn't cause issues
-				p.SetTotal(100)
-				p.SetCurrent(50)
-				p.Complete()
-			},
-		},
-	}
+	}{"WithPercentage false": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		opts: []ProgressOption{WithPercentage(false)},
+		test: func(t *testing.T, p Progress) {
+			// We can't easily test this without accessing internals,
+			// so we just verify it doesn't panic
+			p.SetTotal(100)
+			p.SetCurrent(50)
+			p.Complete()
+		},
+	}, "WithTemplate custom":
+
+	// Test custom width doesn't cause issues
+
+	{
+
+		opts: []ProgressOption{WithTemplate("custom template")},
+		test: func(t *testing.T, p Progress) {
+			// Test custom template doesn't cause issues
+			p.SetTotal(100)
+			p.SetCurrent(50)
+			p.Complete()
+		},
+	}, "WithWidth custom": {
+
+		opts: []ProgressOption{WithWidth(5)},
+		test: func(t *testing.T, p Progress) {
+
+			p.SetTotal(100)
+			p.SetCurrent(50)
+			p.Complete()
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var buf bytes.Buffer
 			opts := append(tt.opts, WithProgressWriter(&buf), WithUpdateInterval(0))
 			progress := NewProgress(opts...)
@@ -830,65 +829,54 @@ func TestPrettyProgress_AutoFallback(t *testing.T) {
 // Test format-aware progress creation
 
 func TestNewProgressForFormat(t *testing.T) {
-	tests := []struct {
-		name         string
+	tests := map[string]struct {
 		format       Format
-		expectedType string // We can't test exact type, but can test behavior
-	}{
-		{
-			name:         "JSON format uses NoOp",
-			format:       JSON,
-			expectedType: "noop",
-		},
-		{
-			name:         "CSV format uses NoOp",
+		expectedType string
+	}{ // We can't test exact type, but can test behavior
+		"CSV format uses NoOp": {
+
 			format:       CSV,
 			expectedType: "noop",
-		},
-		{
-			name:         "YAML format uses NoOp",
-			format:       YAML,
-			expectedType: "noop",
-		},
-		{
-			name:         "DOT format uses NoOp",
+		}, "DOT format uses NoOp": {
+
 			format:       DOT,
 			expectedType: "noop",
-		},
-		{
-			name:         "Table format uses visual progress",
-			format:       Table,
-			expectedType: "visual",
-		},
-		{
-			name:         "HTML format uses visual progress",
-			format:       HTML,
-			expectedType: "visual",
-		},
-		{
-			name:         "Markdown format uses visual progress",
-			format:       Markdown,
-			expectedType: "visual",
-		},
-		{
-			name:         "Mermaid format uses visual progress",
-			format:       Mermaid,
-			expectedType: "visual",
-		},
-		{
-			name:         "DrawIO format uses visual progress",
+		}, "DrawIO format uses visual progress": {
+
 			format:       DrawIO,
 			expectedType: "visual",
-		},
-		{
-			name:         "Unknown format uses text progress",
+		}, "HTML format uses visual progress": {
+
+			format:       HTML,
+			expectedType: "visual",
+		}, "JSON format uses NoOp": {
+
+			format:       JSON,
+			expectedType: "noop",
+		}, "Markdown format uses visual progress": {
+
+			format:       Markdown,
+			expectedType: "visual",
+		}, "Mermaid format uses visual progress": {
+
+			format:       Mermaid,
+			expectedType: "visual",
+		}, "Table format uses visual progress": {
+
+			format:       Table,
+			expectedType: "visual",
+		}, "Unknown format uses text progress": {
+
 			format:       Format{Name: "unknown"},
 			expectedType: "text",
-		},
-	}
+		}, "YAML format uses NoOp": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+			format:       YAML,
+			expectedType: "noop",
+		}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var buf bytes.Buffer
 			progress := NewProgressForFormat(tt.format, WithProgressWriter(&buf))
 
@@ -924,45 +912,37 @@ func TestNewProgressForFormat(t *testing.T) {
 }
 
 func TestNewProgressForFormats(t *testing.T) {
-	tests := []struct {
-		name         string
+	tests := map[string]struct {
 		formats      []Format
 		expectedType string
-	}{
-		{
-			name:         "Empty formats uses NoOp",
-			formats:      []Format{},
-			expectedType: "noop",
-		},
-		{
-			name:         "Only non-visual formats uses NoOp",
-			formats:      []Format{JSON, CSV, YAML},
-			expectedType: "noop",
-		},
-		{
-			name:         "Only visual formats uses visual progress",
-			formats:      []Format{Table, HTML},
-			expectedType: "visual",
-		},
-		{
-			name:         "Mixed formats uses conservative approach",
-			formats:      []Format{JSON, Table, CSV},
-			expectedType: "mixed",
-		},
-		{
-			name:         "Single visual format",
-			formats:      []Format{Markdown},
-			expectedType: "visual",
-		},
-		{
-			name:         "Single non-visual format",
-			formats:      []Format{DOT},
-			expectedType: "noop",
-		},
-	}
+	}{"Empty formats uses NoOp": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		formats:      []Format{},
+		expectedType: "noop",
+	}, "Mixed formats uses conservative approach": {
+
+		formats:      []Format{JSON, Table, CSV},
+		expectedType: "mixed",
+	}, "Only non-visual formats uses NoOp": {
+
+		formats:      []Format{JSON, CSV, YAML},
+		expectedType: "noop",
+	}, "Only visual formats uses visual progress": {
+
+		formats:      []Format{Table, HTML},
+		expectedType: "visual",
+	}, "Single non-visual format": {
+
+		formats:      []Format{DOT},
+		expectedType: "noop",
+	}, "Single visual format": {
+
+		formats:      []Format{Markdown},
+		expectedType: "visual",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var buf bytes.Buffer
 			progress := NewProgressForFormats(tt.formats, WithProgressWriter(&buf))
 
@@ -1059,30 +1039,25 @@ func TestFormat_Constants(t *testing.T) {
 }
 
 func TestNewProgressForFormatName(t *testing.T) {
-	tests := []struct {
-		name         string
+	tests := map[string]struct {
 		formatName   string
 		expectedType string
-	}{
-		{
-			name:         "JSON format name uses NoOp",
-			formatName:   "json",
-			expectedType: "noop",
-		},
-		{
-			name:         "Table format name uses visual progress",
-			formatName:   "table",
-			expectedType: "visual",
-		},
-		{
-			name:         "Unknown format name uses text progress",
-			formatName:   "unknown",
-			expectedType: "text",
-		},
-	}
+	}{"JSON format name uses NoOp": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		formatName:   "json",
+		expectedType: "noop",
+	}, "Table format name uses visual progress": {
+
+		formatName:   "table",
+		expectedType: "visual",
+	}, "Unknown format name uses text progress": {
+
+		formatName:   "unknown",
+		expectedType: "text",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var buf bytes.Buffer
 			progress := NewProgressForFormatName(tt.formatName, WithProgressWriter(&buf))
 

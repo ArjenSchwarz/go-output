@@ -7,45 +7,39 @@ import (
 )
 
 func TestValidationError(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		field    string
 		value    any
 		message  string
 		cause    error
 		expected string
-	}{
-		{
-			name:     "simple validation error",
-			field:    "name",
-			value:    "",
-			message:  "cannot be empty",
-			expected: `field "name": value : cannot be empty`,
-		},
-		{
-			name:     "validation error with cause",
-			field:    "age",
-			value:    -1,
-			message:  "must be positive",
-			cause:    errors.New("range error"),
-			expected: `field "age": value -1: must be positive: range error`,
-		},
-		{
-			name:     "validation error without message",
-			field:    "data",
-			value:    nil,
-			expected: `field "data": value <nil>: validation failed`,
-		},
-		{
-			name:     "validation error without field",
-			value:    "invalid",
-			message:  "format not supported",
-			expected: `value invalid: format not supported`,
-		},
-	}
+	}{"simple validation error": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		field:    "name",
+		value:    "",
+		message:  "cannot be empty",
+		expected: `field "name": value : cannot be empty`,
+	}, "validation error with cause": {
+
+		field:    "age",
+		value:    -1,
+		message:  "must be positive",
+		cause:    errors.New("range error"),
+		expected: `field "age": value -1: must be positive: range error`,
+	}, "validation error without field": {
+
+		value:    "invalid",
+		message:  "format not supported",
+		expected: `value invalid: format not supported`,
+	}, "validation error without message": {
+
+		field:    "data",
+		value:    nil,
+		expected: `field "data": value <nil>: validation failed`,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var err *ValidationError
 			if tt.cause != nil {
 				err = NewValidationErrorWithCause(tt.field, tt.value, tt.message, tt.cause)
@@ -124,55 +118,49 @@ func TestValidationHelpers(t *testing.T) {
 }
 
 func TestValidationErrorsForPipelineOperations(t *testing.T) {
-	tests := []struct {
-		name          string
+	tests := map[string]struct {
 		field         string
 		value         any
 		message       string
 		expectedField string
 		expectedValue any
 		expectedMsg   string
-	}{
-		{
-			name:          "invalid predicate function",
-			field:         "predicate",
-			value:         nil,
-			message:       "filter predicate cannot be nil",
-			expectedField: "predicate",
-			expectedValue: nil,
-			expectedMsg:   "filter predicate cannot be nil",
-		},
-		{
-			name:          "negative limit count",
-			field:         "count",
-			value:         -5,
-			message:       "limit count must be non-negative",
-			expectedField: "count",
-			expectedValue: -5,
-			expectedMsg:   "limit count must be non-negative",
-		},
-		{
-			name:          "empty sort keys",
-			field:         "sort_keys",
-			value:         "[]",
-			message:       "sort requires at least one key",
-			expectedField: "sort_keys",
-			expectedValue: "[]",
-			expectedMsg:   "sort requires at least one key",
-		},
-		{
-			name:          "invalid aggregate function",
-			field:         "aggregate_function",
-			value:         "unknown_function",
-			message:       "unsupported aggregate function",
-			expectedField: "aggregate_function",
-			expectedValue: "unknown_function",
-			expectedMsg:   "unsupported aggregate function",
-		},
-	}
+	}{"empty sort keys": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		field:         "sort_keys",
+		value:         "[]",
+		message:       "sort requires at least one key",
+		expectedField: "sort_keys",
+		expectedValue: "[]",
+		expectedMsg:   "sort requires at least one key",
+	}, "invalid aggregate function": {
+
+		field:         "aggregate_function",
+		value:         "unknown_function",
+		message:       "unsupported aggregate function",
+		expectedField: "aggregate_function",
+		expectedValue: "unknown_function",
+		expectedMsg:   "unsupported aggregate function",
+	}, "invalid predicate function": {
+
+		field:         "predicate",
+		value:         nil,
+		message:       "filter predicate cannot be nil",
+		expectedField: "predicate",
+		expectedValue: nil,
+		expectedMsg:   "filter predicate cannot be nil",
+	}, "negative limit count": {
+
+		field:         "count",
+		value:         -5,
+		message:       "limit count must be non-negative",
+		expectedField: "count",
+		expectedValue: -5,
+		expectedMsg:   "limit count must be non-negative",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			err := NewValidationError(tt.field, tt.value, tt.message)
 
 			if err.Field != tt.expectedField {

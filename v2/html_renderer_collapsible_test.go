@@ -8,75 +8,67 @@ import (
 
 // TestHTMLRenderer_CollapsibleValue tests the HTML renderer's handling of CollapsibleValue interface
 func TestHTMLRenderer_CollapsibleValue(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		collapsible    CollapsibleValue
 		config         RendererConfig
 		expectedOutput string
 		checkOpen      bool
 		checkClasses   bool
-	}{
-		{
-			name:           "collapsed by default",
-			collapsible:    NewCollapsibleValue("2 errors", []string{"syntax error", "missing import"}),
-			config:         DefaultRendererConfig,
-			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">2 errors</summary><br/><div class="collapsible-details">syntax error<br/>missing import</div></details>`,
-			checkOpen:      false,
-			checkClasses:   true,
-		},
-		{
-			name:           "expanded by default",
-			collapsible:    NewCollapsibleValue("File path", "/very/long/path/to/file.txt", WithExpanded(true)),
-			config:         DefaultRendererConfig,
-			expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">File path</summary><br/><div class="collapsible-details">/very/long/path/to/file.txt</div></details>`,
-			checkOpen:      true,
-			checkClasses:   true,
-		},
-		{
-			name:        "force expansion override",
-			collapsible: NewCollapsibleValue("Settings", "configuration data"),
-			config: RendererConfig{
-				ForceExpansion: true,
-				HTMLCSSClasses: DefaultRendererConfig.HTMLCSSClasses,
-			},
-			expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">Settings</summary><br/><div class="collapsible-details">configuration data</div></details>`,
-			checkOpen:      true,
-			checkClasses:   true,
-		},
-		{
-			name:        "custom CSS classes",
-			collapsible: NewCollapsibleValue("Data", "Some content"),
-			config: RendererConfig{
-				HTMLCSSClasses: map[string]string{
-					"details": "custom-details",
-					"summary": "custom-summary",
-					"content": "custom-content",
-				},
-			},
-			expectedOutput: `<details class="custom-details"><summary class="custom-summary">Data</summary><br/><div class="custom-content">Some content</div></details>`,
-			checkOpen:      false,
-			checkClasses:   true,
-		},
-		{
-			name:           "empty array details",
-			collapsible:    NewCollapsibleValue("Empty list", []string{}),
-			config:         DefaultRendererConfig,
-			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">Empty list</summary><br/><div class="collapsible-details"></div></details>`,
-			checkOpen:      false,
-			checkClasses:   true,
-		},
-		{
-			name:           "nil details fallback",
-			collapsible:    NewCollapsibleValue("Test", nil),
-			config:         DefaultRendererConfig,
-			expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">Test</summary><br/><div class="collapsible-details">Test</div></details>`,
-			checkOpen:      false,
-			checkClasses:   true,
-		},
-	}
+	}{"collapsed by default": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		collapsible:    NewCollapsibleValue("2 errors", []string{"syntax error", "missing import"}),
+		config:         DefaultRendererConfig,
+		expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">2 errors</summary><br/><div class="collapsible-details">syntax error<br/>missing import</div></details>`,
+		checkOpen:      false,
+		checkClasses:   true,
+	}, "custom CSS classes": {
+
+		collapsible: NewCollapsibleValue("Data", "Some content"),
+		config: RendererConfig{
+			HTMLCSSClasses: map[string]string{
+				"details": "custom-details",
+				"summary": "custom-summary",
+				"content": "custom-content",
+			},
+		},
+		expectedOutput: `<details class="custom-details"><summary class="custom-summary">Data</summary><br/><div class="custom-content">Some content</div></details>`,
+		checkOpen:      false,
+		checkClasses:   true,
+	}, "empty array details": {
+
+		collapsible:    NewCollapsibleValue("Empty list", []string{}),
+		config:         DefaultRendererConfig,
+		expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">Empty list</summary><br/><div class="collapsible-details"></div></details>`,
+		checkOpen:      false,
+		checkClasses:   true,
+	}, "expanded by default": {
+
+		collapsible:    NewCollapsibleValue("File path", "/very/long/path/to/file.txt", WithExpanded(true)),
+		config:         DefaultRendererConfig,
+		expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">File path</summary><br/><div class="collapsible-details">/very/long/path/to/file.txt</div></details>`,
+		checkOpen:      true,
+		checkClasses:   true,
+	}, "force expansion override": {
+
+		collapsible: NewCollapsibleValue("Settings", "configuration data"),
+		config: RendererConfig{
+			ForceExpansion: true,
+			HTMLCSSClasses: DefaultRendererConfig.HTMLCSSClasses,
+		},
+		expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">Settings</summary><br/><div class="collapsible-details">configuration data</div></details>`,
+		checkOpen:      true,
+		checkClasses:   true,
+	}, "nil details fallback": {
+
+		collapsible:    NewCollapsibleValue("Test", nil),
+		config:         DefaultRendererConfig,
+		expectedOutput: `<details class="collapsible-cell"><summary class="collapsible-summary">Test</summary><br/><div class="collapsible-details">Test</div></details>`,
+		checkOpen:      false,
+		checkClasses:   true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			renderer := NewHTMLRendererWithCollapsible(tt.config)
 			htmlRenderer := renderer.(*htmlRenderer)
 
@@ -118,58 +110,48 @@ func TestHTMLRenderer_FormatDetailsAsHTML(t *testing.T) {
 	renderer := NewHTMLRendererWithCollapsible(DefaultRendererConfig)
 	htmlRenderer := renderer.(*htmlRenderer)
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		details  any
 		expected string
-	}{
-		{
-			name:     "string details",
-			details:  "Simple text content",
-			expected: "Simple text content",
-		},
-		{
-			name:     "string array as br-separated text",
-			details:  []string{"item 1", "item 2", "item 3"},
-			expected: "item 1<br/>item 2<br/>item 3",
-		},
-		{
-			name:     "empty string array",
-			details:  []string{},
-			expected: "",
-		},
-		{
-			name:     "map as key-value pairs",
-			details:  map[string]any{"key1": "value1", "key2": "value2"},
-			expected: "<strong>key1:</strong> value1<br/><strong>key2:</strong> value2",
-		},
-		{
-			name:     "empty map",
-			details:  map[string]any{},
-			expected: "",
-		},
-		{
-			name:     "HTML escaping in strings",
-			details:  "Content with <script>alert('xss')</script> tags",
-			expected: "Content with &lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt; tags",
-		},
-		{
-			name:     "HTML escaping in arrays",
-			details:  []string{"<b>bold</b>", "normal text"},
-			expected: "&lt;b&gt;bold&lt;/b&gt;<br/>normal text",
-		},
-		{
-			name:     "HTML escaping in maps",
-			details:  map[string]any{"<key>": "<value>"},
-			expected: "<strong>&lt;key&gt;:</strong> &lt;value&gt;",
-		},
-	}
+	}{"HTML escaping in arrays": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		details:  []string{"<b>bold</b>", "normal text"},
+		expected: "&lt;b&gt;bold&lt;/b&gt;<br/>normal text",
+	}, "HTML escaping in maps": {
+
+		details:  map[string]any{"<key>": "<value>"},
+		expected: "<strong>&lt;key&gt;:</strong> &lt;value&gt;",
+	}, "HTML escaping in strings": {
+
+		details:  "Content with <script>alert('xss')</script> tags",
+		expected: "Content with &lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt; tags",
+	}, "empty map": {
+
+		details:  map[string]any{},
+		expected: "",
+	}, "empty string array": {
+
+		details:  []string{},
+		expected: "",
+	}, "map as key-value pairs": {
+
+		details:  map[string]any{"key1": "value1", "key2": "value2"},
+		expected: "<strong>key1:</strong> value1<br/><strong>key2:</strong> value2",
+	}, "string array as br-separated text": {
+
+		details:  []string{"item 1", "item 2", "item 3"},
+		expected: "item 1<br/>item 2<br/>item 3",
+	}, "string details": {
+
+		details:  "Simple text content",
+		expected: "Simple text content",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := htmlRenderer.formatDetailsAsHTML(tt.details)
 
-			if tt.name == "map as key-value pairs" || tt.name == "HTML escaping in maps" {
+			if name == "map as key-value pairs" || name == "HTML escaping in maps" {
 				// For maps, order is not guaranteed, so check that all expected parts are present
 				// Check for each key-value pair in the new format
 				if strings.Contains(tt.expected, "key1") {
@@ -321,30 +303,25 @@ func TestHTMLRenderer_CollapsibleErrorHandling(t *testing.T) {
 	renderer := NewHTMLRendererWithCollapsible(DefaultRendererConfig)
 	htmlRenderer := renderer.(*htmlRenderer)
 
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		collapsible CollapsibleValue
 		shouldPanic bool
-	}{
-		{
-			name:        "empty summary fallback",
-			collapsible: NewCollapsibleValue("", "details"),
-			shouldPanic: false,
-		},
-		{
-			name:        "nil details",
-			collapsible: NewCollapsibleValue("summary", nil),
-			shouldPanic: false,
-		},
-		{
-			name:        "complex nested data",
-			collapsible: NewCollapsibleValue("nested", map[string]any{"level1": map[string]any{"level2": "value"}}),
-			shouldPanic: false,
-		},
-	}
+	}{"complex nested data": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		collapsible: NewCollapsibleValue("nested", map[string]any{"level1": map[string]any{"level2": "value"}}),
+		shouldPanic: false,
+	}, "empty summary fallback": {
+
+		collapsible: NewCollapsibleValue("", "details"),
+		shouldPanic: false,
+	}, "nil details": {
+
+		collapsible: NewCollapsibleValue("summary", nil),
+		shouldPanic: false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil && !tt.shouldPanic {
 					t.Errorf("Unexpected panic: %v", r)

@@ -7,57 +7,50 @@ import (
 )
 
 func TestSchemaKeyOrderPreservation(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		fields   []Field
 		expected []string
-	}{
-		{
-			name: "basic field order",
-			fields: []Field{
-				{Name: "Z"},
-				{Name: "A"},
-				{Name: "M"},
-			},
-			expected: []string{"Z", "A", "M"},
-		},
-		{
-			name: "fields with hidden",
-			fields: []Field{
-				{Name: "First"},
-				{Name: "Hidden", Hidden: true},
-				{Name: "Last"},
-			},
-			expected: []string{"First", "Last"},
-		},
-		{
-			name: "all hidden fields",
-			fields: []Field{
-				{Name: "Hidden1", Hidden: true},
-				{Name: "Hidden2", Hidden: true},
-			},
-			expected: []string{},
-		},
-		{
-			name:     "empty fields",
-			fields:   []Field{},
-			expected: []string{},
-		},
-		{
-			name: "complex field order",
-			fields: []Field{
-				{Name: "ID", Type: "int"},
-				{Name: "Name", Type: "string"},
-				{Name: "Email", Type: "string"},
-				{Name: "Age", Type: "int"},
-				{Name: "Status", Type: "bool"},
-			},
-			expected: []string{"ID", "Name", "Email", "Age", "Status"},
-		},
-	}
+	}{"all hidden fields": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		fields: []Field{
+			{Name: "Hidden1", Hidden: true},
+			{Name: "Hidden2", Hidden: true},
+		},
+		expected: []string{},
+	}, "basic field order": {
+
+		fields: []Field{
+			{Name: "Z"},
+			{Name: "A"},
+			{Name: "M"},
+		},
+		expected: []string{"Z", "A", "M"},
+	}, "complex field order": {
+
+		fields: []Field{
+			{Name: "ID", Type: "int"},
+			{Name: "Name", Type: "string"},
+			{Name: "Email", Type: "string"},
+			{Name: "Age", Type: "int"},
+			{Name: "Status", Type: "bool"},
+		},
+		expected: []string{"ID", "Name", "Email", "Age", "Status"},
+	}, "empty fields": {
+
+		fields:   []Field{},
+		expected: []string{},
+	}, "fields with hidden": {
+
+		fields: []Field{
+			{Name: "First"},
+			{Name: "Hidden", Hidden: true},
+			{Name: "Last"},
+		},
+		expected: []string{"First", "Last"},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			schema := NewSchemaFromFields(tt.fields)
 
 			// Verify key order is preserved
@@ -182,47 +175,41 @@ func TestSchemaFieldLookup(t *testing.T) {
 }
 
 func TestSchemaVisibleFieldCount(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		fields   []Field
 		expected int
-	}{
-		{
-			name: "all visible",
-			fields: []Field{
-				{Name: "A"},
-				{Name: "B"},
-				{Name: "C"},
-			},
-			expected: 3,
-		},
-		{
-			name: "some hidden",
-			fields: []Field{
-				{Name: "A"},
-				{Name: "B", Hidden: true},
-				{Name: "C"},
-				{Name: "D", Hidden: true},
-			},
-			expected: 2,
-		},
-		{
-			name: "all hidden",
-			fields: []Field{
-				{Name: "A", Hidden: true},
-				{Name: "B", Hidden: true},
-			},
-			expected: 0,
-		},
-		{
-			name:     "no fields",
-			fields:   []Field{},
-			expected: 0,
-		},
-	}
+	}{"all hidden": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		fields: []Field{
+			{Name: "A", Hidden: true},
+			{Name: "B", Hidden: true},
+		},
+		expected: 0,
+	}, "all visible": {
+
+		fields: []Field{
+			{Name: "A"},
+			{Name: "B"},
+			{Name: "C"},
+		},
+		expected: 3,
+	}, "no fields": {
+
+		fields:   []Field{},
+		expected: 0,
+	}, "some hidden": {
+
+		fields: []Field{
+			{Name: "A"},
+			{Name: "B", Hidden: true},
+			{Name: "C"},
+			{Name: "D", Hidden: true},
+		},
+		expected: 2,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			schema := NewSchemaFromFields(tt.fields)
 			count := schema.VisibleFieldCount()
 			if count != tt.expected {

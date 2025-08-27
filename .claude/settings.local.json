@@ -52,7 +52,9 @@
       "mcp__serena__replace_symbol_body",
       "Bash(python3 move_code_section.py:*)",
       "Bash(make:*)",
-      "Bash(INTEGRATION=1 go test -v -run \"TestIntegration\" ./...)"
+      "Bash(INTEGRATION=1 go test -v -run \"TestIntegration\" ./...)",
+      "Bash(./test-conversion:*)",
+      "Bash(../test-conversion/test-conversion content_test.go)"
     ],
     "deny": []
   }

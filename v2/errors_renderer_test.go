@@ -7,38 +7,33 @@ import (
 )
 
 func TestRenderError(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		format   string
 		content  Content
 		cause    error
 		expected string
-	}{
-		{
-			name:     "with table content",
-			format:   "json",
-			content:  &TableContent{id: "test-123"},
-			cause:    errors.New("serialization failed"),
-			expected: "render failed; format=json; content_type=table; content_id=test-123; cause: serialization failed",
-		},
-		{
-			name:     "with text content",
-			format:   "html",
-			content:  &TextContent{id: "text-456"},
-			cause:    errors.New("encoding error"),
-			expected: "render failed; format=html; content_type=text; content_id=text-456; cause: encoding error",
-		},
-		{
-			name:     "with nil content",
-			format:   "csv",
-			content:  nil,
-			cause:    errors.New("content missing"),
-			expected: "render failed; format=csv; cause: content missing",
-		},
-	}
+	}{"with nil content": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		format:   "csv",
+		content:  nil,
+		cause:    errors.New("content missing"),
+		expected: "render failed; format=csv; cause: content missing",
+	}, "with table content": {
+
+		format:   "json",
+		content:  &TableContent{id: "test-123"},
+		cause:    errors.New("serialization failed"),
+		expected: "render failed; format=json; content_type=table; content_id=test-123; cause: serialization failed",
+	}, "with text content": {
+
+		format:   "html",
+		content:  &TextContent{id: "text-456"},
+		cause:    errors.New("encoding error"),
+		expected: "render failed; format=html; content_type=text; content_id=text-456; cause: encoding error",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			err := NewRenderError(tt.format, tt.content, tt.cause)
 
 			if err.Error() != tt.expected {
@@ -56,8 +51,7 @@ func TestRenderError(t *testing.T) {
 	}
 }
 func TestEnhancedRenderError(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		format      string
 		renderer    string
 		operation   string
@@ -65,41 +59,38 @@ func TestEnhancedRenderError(t *testing.T) {
 		context     map[string]any
 		cause       error
 		expectParts []string
-	}{
-		{
-			name:      "detailed render error",
-			format:    "json",
-			renderer:  "JSONRenderer",
-			operation: "encode",
-			content:   &TableContent{id: "test-123"},
-			context:   map[string]any{"data_size": 1024, "encoding": "utf-8"},
-			cause:     errors.New("json encoding failed"),
-			expectParts: []string{
-				"operation \"encode\" failed",
-				"format=json",
-				"renderer=JSONRenderer",
-				"content_type=table",
-				"content_id=test-123",
-				"data_size=1024",
-				"encoding=utf-8",
-				"cause: json encoding failed",
-			},
-		},
-		{
-			name:    "minimal render error",
-			format:  "csv",
-			content: nil,
-			cause:   errors.New("content missing"),
-			expectParts: []string{
-				"render failed",
-				"format=csv",
-				"cause: content missing",
-			},
-		},
-	}
+	}{"detailed render error": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		format:    "json",
+		renderer:  "JSONRenderer",
+		operation: "encode",
+		content:   &TableContent{id: "test-123"},
+		context:   map[string]any{"data_size": 1024, "encoding": "utf-8"},
+		cause:     errors.New("json encoding failed"),
+		expectParts: []string{
+			"operation \"encode\" failed",
+			"format=json",
+			"renderer=JSONRenderer",
+			"content_type=table",
+			"content_id=test-123",
+			"data_size=1024",
+			"encoding=utf-8",
+			"cause: json encoding failed",
+		},
+	}, "minimal render error": {
+
+		format:  "csv",
+		content: nil,
+		cause:   errors.New("content missing"),
+		expectParts: []string{
+			"render failed",
+			"format=csv",
+			"cause: content missing",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var err *RenderError
 			if tt.renderer != "" && tt.operation != "" {
 				err = NewRenderErrorWithDetails(tt.format, tt.renderer, tt.operation, tt.content, tt.cause)
@@ -129,47 +120,43 @@ func TestEnhancedRenderError(t *testing.T) {
 
 // TestWriterError tests the new WriterError type
 func TestWriterError(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		writer      string
 		format      string
 		operation   string
 		context     map[string]any
 		cause       error
 		expectParts []string
-	}{
-		{
-			name:      "detailed writer error",
-			writer:    "FileWriter",
-			format:    "html",
-			operation: "write",
-			context:   map[string]any{"file_path": "/tmp/output.html", "data_size": 2048},
-			cause:     errors.New("permission denied"),
-			expectParts: []string{
-				"operation \"write\" failed",
-				"format=html",
-				"writer=FileWriter",
-				"file_path=/tmp/output.html",
-				"data_size=2048",
-				"cause: permission denied",
-			},
-		},
-		{
-			name:   "minimal writer error",
-			writer: "S3Writer",
-			format: "json",
-			cause:  errors.New("network timeout"),
-			expectParts: []string{
-				"write failed",
-				"format=json",
-				"writer=S3Writer",
-				"cause: network timeout",
-			},
-		},
-	}
+	}{"detailed writer error": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		writer:    "FileWriter",
+		format:    "html",
+		operation: "write",
+		context:   map[string]any{"file_path": "/tmp/output.html", "data_size": 2048},
+		cause:     errors.New("permission denied"),
+		expectParts: []string{
+			"operation \"write\" failed",
+			"format=html",
+			"writer=FileWriter",
+			"file_path=/tmp/output.html",
+			"data_size=2048",
+			"cause: permission denied",
+		},
+	}, "minimal writer error": {
+
+		writer: "S3Writer",
+		format: "json",
+		cause:  errors.New("network timeout"),
+		expectParts: []string{
+			"write failed",
+			"format=json",
+			"writer=S3Writer",
+			"cause: network timeout",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var err *WriterError
 			if tt.operation != "" {
 				err = NewWriterErrorWithDetails(tt.writer, tt.format, tt.operation, tt.cause)

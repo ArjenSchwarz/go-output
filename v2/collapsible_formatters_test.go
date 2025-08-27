@@ -7,61 +7,55 @@ import (
 )
 
 func TestCollapsibleFormatter(t *testing.T) {
-	tests := []struct {
-		name            string
+	tests := map[string]struct {
 		summaryTemplate string
 		detailFunc      func(any) any
 		input           any
 		wantSummary     string
 		wantDetails     any
 		shouldCollapse  bool
-	}{
-		{
-			name:            "basic collapsible formatter",
-			summaryTemplate: "Value: %v (expand for details)",
-			detailFunc: func(val any) any {
-				return fmt.Sprintf("Full details: %v", val)
-			},
-			input:          "test",
-			wantSummary:    "Value: test (expand for details)",
-			wantDetails:    "Full details: test",
-			shouldCollapse: true,
-		},
-		{
-			name:            "nil detail function returns original",
-			summaryTemplate: "Summary: %v",
-			detailFunc:      nil,
-			input:           "test",
-			wantSummary:     "",
-			wantDetails:     nil,
-			shouldCollapse:  false,
-		},
-		{
-			name:            "detail function returns nil",
-			summaryTemplate: "Summary: %v",
-			detailFunc: func(val any) any {
-				return nil
-			},
-			input:          "test",
-			wantSummary:    "",
-			wantDetails:    nil,
-			shouldCollapse: false,
-		},
-		{
-			name:            "detail function returns same value",
-			summaryTemplate: "Summary: %v",
-			detailFunc: func(val any) any {
-				return val
-			},
-			input:          "test",
-			wantSummary:    "",
-			wantDetails:    nil,
-			shouldCollapse: false,
-		},
-	}
+	}{"basic collapsible formatter": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		summaryTemplate: "Value: %v (expand for details)",
+		detailFunc: func(val any) any {
+			return fmt.Sprintf("Full details: %v", val)
+		},
+		input:          "test",
+		wantSummary:    "Value: test (expand for details)",
+		wantDetails:    "Full details: test",
+		shouldCollapse: true,
+	}, "detail function returns nil": {
+
+		summaryTemplate: "Summary: %v",
+		detailFunc: func(val any) any {
+			return nil
+		},
+		input:          "test",
+		wantSummary:    "",
+		wantDetails:    nil,
+		shouldCollapse: false,
+	}, "detail function returns same value": {
+
+		summaryTemplate: "Summary: %v",
+		detailFunc: func(val any) any {
+			return val
+		},
+		input:          "test",
+		wantSummary:    "",
+		wantDetails:    nil,
+		shouldCollapse: false,
+	}, "nil detail function returns original": {
+
+		summaryTemplate: "Summary: %v",
+		detailFunc:      nil,
+		input:           "test",
+		wantSummary:     "",
+		wantDetails:     nil,
+		shouldCollapse:  false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			formatter := CollapsibleFormatter(tt.summaryTemplate, tt.detailFunc)
 			result := formatter(tt.input)
 
@@ -91,51 +85,43 @@ func TestCollapsibleFormatter(t *testing.T) {
 }
 
 func TestErrorListFormatter(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		input          any
 		wantSummary    string
 		wantDetails    []string
 		shouldCollapse bool
-	}{
-		{
-			name:           "string array with errors",
-			input:          []string{"error 1", "error 2", "error 3"},
-			wantSummary:    "3 errors (click to expand)",
-			wantDetails:    []string{"error 1", "error 2", "error 3"},
-			shouldCollapse: true,
-		},
-		{
-			name:           "error array",
-			input:          []error{errors.New("error 1"), errors.New("error 2")},
-			wantSummary:    "2 errors (click to expand)",
-			wantDetails:    []string{"error 1", "error 2"},
-			shouldCollapse: true,
-		},
-		{
-			name:           "empty string array",
-			input:          []string{},
-			shouldCollapse: false,
-		},
-		{
-			name:           "empty error array",
-			input:          []error{},
-			shouldCollapse: false,
-		},
-		{
-			name:           "incompatible type",
-			input:          "not an array",
-			shouldCollapse: false,
-		},
-		{
-			name:           "nil input",
-			input:          nil,
-			shouldCollapse: false,
-		},
-	}
+	}{"empty error array": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		input:          []error{},
+		shouldCollapse: false,
+	}, "empty string array": {
+
+		input:          []string{},
+		shouldCollapse: false,
+	}, "error array": {
+
+		input:          []error{errors.New("error 1"), errors.New("error 2")},
+		wantSummary:    "2 errors (click to expand)",
+		wantDetails:    []string{"error 1", "error 2"},
+		shouldCollapse: true,
+	}, "incompatible type": {
+
+		input:          "not an array",
+		shouldCollapse: false,
+	}, "nil input": {
+
+		input:          nil,
+		shouldCollapse: false,
+	}, "string array with errors": {
+
+		input:          []string{"error 1", "error 2", "error 3"},
+		wantSummary:    "3 errors (click to expand)",
+		wantDetails:    []string{"error 1", "error 2", "error 3"},
+		shouldCollapse: true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			formatter := ErrorListFormatter()
 			result := formatter(tt.input)
 
@@ -197,52 +183,45 @@ func TestErrorListFormatter(t *testing.T) {
 }
 
 func TestFilePathFormatter(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		maxLength      int
 		input          any
 		wantSummary    string
 		wantDetails    string
 		shouldCollapse bool
-	}{
-		{
-			name:           "long path gets collapsed",
-			maxLength:      50,
-			input:          "/very/long/path/to/some/deeply/nested/file/that/exceeds/the/maximum/length.txt",
-			wantSummary:    "...e/maximum/length.txt (show full path)",
-			wantDetails:    "/very/long/path/to/some/deeply/nested/file/that/exceeds/the/maximum/length.txt",
-			shouldCollapse: true,
-		},
-		{
-			name:           "short path not collapsed",
-			maxLength:      50,
-			input:          "/short/path.txt",
-			shouldCollapse: false,
-		},
-		{
-			name:           "non-string input not collapsed",
-			maxLength:      10,
-			input:          123,
-			shouldCollapse: false,
-		},
-		{
-			name:           "path exactly at limit not collapsed",
-			maxLength:      10,
-			input:          "1234567890",
-			shouldCollapse: false,
-		},
-		{
-			name:           "very short path with small max length",
-			maxLength:      5,
-			input:          "/short.txt",
-			wantSummary:    ".../short.txt (show full path)",
-			wantDetails:    "/short.txt",
-			shouldCollapse: true,
-		},
-	}
+	}{"long path gets collapsed": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		maxLength:      50,
+		input:          "/very/long/path/to/some/deeply/nested/file/that/exceeds/the/maximum/length.txt",
+		wantSummary:    "...e/maximum/length.txt (show full path)",
+		wantDetails:    "/very/long/path/to/some/deeply/nested/file/that/exceeds/the/maximum/length.txt",
+		shouldCollapse: true,
+	}, "non-string input not collapsed": {
+
+		maxLength:      10,
+		input:          123,
+		shouldCollapse: false,
+	}, "path exactly at limit not collapsed": {
+
+		maxLength:      10,
+		input:          "1234567890",
+		shouldCollapse: false,
+	}, "short path not collapsed": {
+
+		maxLength:      50,
+		input:          "/short/path.txt",
+		shouldCollapse: false,
+	}, "very short path with small max length": {
+
+		maxLength:      5,
+		input:          "/short.txt",
+		wantSummary:    ".../short.txt (show full path)",
+		wantDetails:    "/short.txt",
+		shouldCollapse: true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			formatter := FilePathFormatter(tt.maxLength)
 			result := formatter(tt.input)
 
@@ -272,37 +251,32 @@ func TestFilePathFormatter(t *testing.T) {
 }
 
 func TestJSONFormatter(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		maxLength      int
 		input          any
 		wantSummary    string
 		shouldCollapse bool
 		expectError    bool
-	}{
-		{
-			name:           "complex data structure",
-			maxLength:      10,
-			input:          map[string]any{"key1": "value1", "key2": []int{1, 2, 3}},
-			wantSummary:    "JSON data (52 bytes)", // Approximate size
-			shouldCollapse: true,
-		},
-		{
-			name:           "small data not collapsed",
-			maxLength:      100,
-			input:          map[string]any{"key": "value"},
-			shouldCollapse: false,
-		},
-		{
-			name:           "unmarshalable input not collapsed",
-			maxLength:      10,
-			input:          make(chan int), // Cannot be marshaled to JSON
-			shouldCollapse: false,
-		},
-	}
+	}{"complex data structure": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		maxLength:      10,
+		input:          map[string]any{"key1": "value1", "key2": []int{1, 2, 3}},
+		wantSummary:    "JSON data (52 bytes)", // Approximate size
+		shouldCollapse: true,
+	}, "small data not collapsed": {
+
+		maxLength:      100,
+		input:          map[string]any{"key": "value"},
+		shouldCollapse: false,
+	}, "unmarshalable input not collapsed": {
+
+		maxLength:      10,
+		input:          make(chan int), // Cannot be marshaled to JSON
+		shouldCollapse: false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			formatter := JSONFormatter(tt.maxLength)
 			result := formatter(tt.input)
 

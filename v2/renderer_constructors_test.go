@@ -7,25 +7,21 @@ import (
 
 // TestNewMarkdownRendererWithToC tests the markdown renderer with TOC constructor
 func TestNewMarkdownRendererWithToC(t *testing.T) {
-	tests := []struct {
-		name    string
+	tests := map[string]struct {
 		enabled bool
 		wantToC bool
-	}{
-		{
-			name:    "TOC enabled",
-			enabled: true,
-			wantToC: true,
-		},
-		{
-			name:    "TOC disabled",
-			enabled: false,
-			wantToC: false,
-		},
-	}
+	}{"TOC disabled": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		enabled: false,
+		wantToC: false,
+	}, "TOC enabled": {
+
+		enabled: true,
+		wantToC: true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			renderer := NewMarkdownRendererWithToC(tt.enabled)
 
 			if renderer == nil {
@@ -46,30 +42,25 @@ func TestNewMarkdownRendererWithToC(t *testing.T) {
 
 // TestNewMarkdownRendererWithFrontMatter tests the markdown renderer with front matter constructor
 func TestNewMarkdownRendererWithFrontMatter(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		frontMatter map[string]string
-	}{
-		{
-			name: "with front matter",
-			frontMatter: map[string]string{
-				"title":  "Test Document",
-				"author": "Test Author",
-				"date":   "2024-01-01",
-			},
-		},
-		{
-			name:        "empty front matter",
-			frontMatter: map[string]string{},
-		},
-		{
-			name:        "nil front matter",
-			frontMatter: nil,
-		},
-	}
+	}{"empty front matter": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		frontMatter: map[string]string{},
+	}, "nil front matter": {
+
+		frontMatter: nil,
+	}, "with front matter": {
+
+		frontMatter: map[string]string{
+			"title":  "Test Document",
+			"author": "Test Author",
+			"date":   "2024-01-01",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			renderer := NewMarkdownRendererWithFrontMatter(tt.frontMatter)
 
 			if renderer == nil {
@@ -91,40 +82,34 @@ func TestNewMarkdownRendererWithFrontMatter(t *testing.T) {
 
 // TestNewMarkdownRendererWithOptions tests the full options constructor
 func TestNewMarkdownRendererWithOptions(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		includeToC  bool
 		frontMatter map[string]string
-	}{
-		{
-			name:       "with both TOC and front matter",
-			includeToC: true,
-			frontMatter: map[string]string{
-				"title": "Full Document",
-				"toc":   "true",
-			},
-		},
-		{
-			name:        "TOC only",
-			includeToC:  true,
-			frontMatter: nil,
-		},
-		{
-			name:       "front matter only",
-			includeToC: false,
-			frontMatter: map[string]string{
-				"author": "Test",
-			},
-		},
-		{
-			name:        "neither TOC nor front matter",
-			includeToC:  false,
-			frontMatter: nil,
-		},
-	}
+	}{"TOC only": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		includeToC:  true,
+		frontMatter: nil,
+	}, "front matter only": {
+
+		includeToC: false,
+		frontMatter: map[string]string{
+			"author": "Test",
+		},
+	}, "neither TOC nor front matter": {
+
+		includeToC:  false,
+		frontMatter: nil,
+	}, "with both TOC and front matter": {
+
+		includeToC: true,
+		frontMatter: map[string]string{
+			"title": "Full Document",
+			"toc":   "true",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			renderer := NewMarkdownRendererWithOptions(tt.includeToC, tt.frontMatter)
 
 			if renderer == nil {
@@ -144,38 +129,30 @@ func TestNewMarkdownRendererWithOptions(t *testing.T) {
 
 // TestNewTableRendererWithStyle tests the table renderer with style constructor
 func TestNewTableRendererWithStyle(t *testing.T) {
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		styleName string
-	}{
-		{
-			name:      "default style",
-			styleName: "Default",
-		},
-		{
-			name:      "light style",
-			styleName: "Light",
-		},
-		{
-			name:      "bold style",
-			styleName: "Bold",
-		},
-		{
-			name:      "colored bright style",
-			styleName: "ColoredBright",
-		},
-		{
-			name:      "empty style",
-			styleName: "",
-		},
-		{
-			name:      "custom style",
-			styleName: "CustomStyle",
-		},
-	}
+	}{"bold style": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		styleName: "Bold",
+	}, "colored bright style": {
+
+		styleName: "ColoredBright",
+	}, "custom style": {
+
+		styleName: "CustomStyle",
+	}, "default style": {
+
+		styleName: "Default",
+	}, "empty style": {
+
+		styleName: "",
+	}, "light style": {
+
+		styleName: "Light",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			renderer := NewTableRendererWithStyle(tt.styleName)
 
 			if renderer == nil {

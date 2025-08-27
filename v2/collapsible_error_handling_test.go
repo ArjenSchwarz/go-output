@@ -10,55 +10,54 @@ import (
 
 // TestCollapsibleValue_ErrorHandling tests error handling and edge cases in CollapsibleValue
 func TestCollapsibleValue_ErrorHandling(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		summary  string
 		details  any
 		expected struct {
 			summary string
 			details any
 		}
-	}{
-		{
-			name:    "empty summary fallback",
-			summary: "",
-			details: "some details",
-			expected: struct {
-				summary string
-				details any
-			}{
-				summary: "[no summary]",
-				details: "some details",
-			},
-		},
-		{
-			name:    "nil details fallback",
-			summary: "test summary",
-			details: nil,
-			expected: struct {
-				summary string
-				details any
-			}{
-				summary: "test summary",
-				details: "test summary", // Should fallback to summary
-			},
-		},
-		{
-			name:    "character limit truncation",
-			summary: "test",
-			details: strings.Repeat("a", 600), // Longer than default 500 limit
-			expected: struct {
-				summary string
-				details any
-			}{
-				summary: "test",
-				details: strings.Repeat("a", 500) + "[...truncated]",
-			},
-		},
-	}
+	}{"character limit truncation":
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	// Should fallback to summary
+
+	{
+
+		summary: "test",
+		details: strings.Repeat("a", 600), // Longer than default 500 limit
+		expected: struct {
+			summary string
+			details any
+		}{
+			summary: "test",
+			details: strings.Repeat("a", 500) + "[...truncated]",
+		},
+	}, "empty summary fallback": {
+
+		summary: "",
+		details: "some details",
+		expected: struct {
+			summary string
+			details any
+		}{
+			summary: "[no summary]",
+			details: "some details",
+		},
+	}, "nil details fallback": {
+
+		summary: "test summary",
+		details: nil,
+		expected: struct {
+			summary string
+			details any
+		}{
+			summary: "test summary",
+			details: "test summary",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			cv := NewCollapsibleValue(tt.summary, tt.details)
 
 			if cv.Summary() != tt.expected.summary {
@@ -77,48 +76,51 @@ func TestNestedCollapsibleValue_Prevention(t *testing.T) {
 	// Create a base CollapsibleValue
 	innerCV := NewCollapsibleValue("inner summary", "inner details")
 
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		formatter func(any) any
 		input     any
 		expected  any
-	}{
-		{
-			name:      "CollapsibleFormatter with CollapsibleValue input",
-			formatter: CollapsibleFormatter("template %v", func(v any) any { return "details" }),
-			input:     innerCV,
-			expected:  innerCV, // Should return original CollapsibleValue
-		},
-		{
-			name:      "ErrorListFormatter with CollapsibleValue input",
-			formatter: ErrorListFormatter(),
-			input:     innerCV,
-			expected:  innerCV, // Should return original CollapsibleValue
-		},
-		{
-			name:      "FilePathFormatter with CollapsibleValue input",
-			formatter: FilePathFormatter(10),
-			input:     innerCV,
-			expected:  innerCV, // Should return original CollapsibleValue
-		},
-		{
-			name:      "JSONFormatter with CollapsibleValue input",
-			formatter: JSONFormatter(10),
-			input:     innerCV,
-			expected:  innerCV, // Should return original CollapsibleValue
-		},
-		{
-			name: "CollapsibleFormatter with CollapsibleValue details",
-			formatter: CollapsibleFormatter("template %v", func(v any) any {
-				return innerCV // Return CollapsibleValue as details
-			}),
-			input:    "test",
-			expected: "test", // Should return original value to prevent nesting
-		},
-	}
+	}{"CollapsibleFormatter with CollapsibleValue details":
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	// Should return original CollapsibleValue
+
+	// Should return original CollapsibleValue
+
+	// Should return original CollapsibleValue
+
+	// Should return original CollapsibleValue
+
+	{
+
+		formatter: CollapsibleFormatter("template %v", func(v any) any {
+			return innerCV // Return CollapsibleValue as details
+		}),
+		input:    "test",
+		expected: "test", // Should return original value to prevent nesting
+	}, "CollapsibleFormatter with CollapsibleValue input": {
+
+		formatter: CollapsibleFormatter("template %v", func(v any) any { return "details" }),
+		input:     innerCV,
+		expected:  innerCV,
+	}, "ErrorListFormatter with CollapsibleValue input": {
+
+		formatter: ErrorListFormatter(),
+		input:     innerCV,
+		expected:  innerCV,
+	}, "FilePathFormatter with CollapsibleValue input": {
+
+		formatter: FilePathFormatter(10),
+		input:     innerCV,
+		expected:  innerCV,
+	}, "JSONFormatter with CollapsibleValue input": {
+
+		formatter: JSONFormatter(10),
+		input:     innerCV,
+		expected:  innerCV,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := tt.formatter(tt.input)
 			if result != tt.expected {
 				t.Errorf("formatter result = %v, want %v", result, tt.expected)
@@ -131,35 +133,29 @@ func TestNestedCollapsibleValue_Prevention(t *testing.T) {
 func TestMarkdownRenderer_ErrorRecovery(t *testing.T) {
 	renderer := NewMarkdownRendererWithCollapsible(DefaultRendererConfig)
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		cv       CollapsibleValue
 		expected string
-	}{
-		{
-			name:     "nil CollapsibleValue",
-			cv:       nil,
-			expected: "[invalid collapsible value]",
-		},
-		{
-			name:     "nested CollapsibleValue in details",
-			cv:       NewCollapsibleValue("outer", NewCollapsibleValue("inner", "inner details")),
-			expected: "<details><summary>outer</summary><br/>[nested collapsible: inner]</details>",
-		},
-		{
-			name:     "empty summary",
-			cv:       NewCollapsibleValue("", "details"),
-			expected: "<details><summary>[no summary]</summary><br/>details</details>",
-		},
-		{
-			name:     "nil details",
-			cv:       NewCollapsibleValue("summary", nil),
-			expected: "<details><summary>summary</summary><br/>summary</details>", // Nil details fallback to summary
-		},
-	}
+	}{"empty summary": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		cv:       NewCollapsibleValue("", "details"),
+		expected: "<details><summary>[no summary]</summary><br/>details</details>",
+	}, "nested CollapsibleValue in details": {
+
+		cv:       NewCollapsibleValue("outer", NewCollapsibleValue("inner", "inner details")),
+		expected: "<details><summary>outer</summary><br/>[nested collapsible: inner]</details>",
+	}, "nil CollapsibleValue": {
+
+		cv:       nil,
+		expected: "[invalid collapsible value]",
+	}, "nil details": {
+
+		cv:       NewCollapsibleValue("summary", nil),
+		expected: "<details><summary>summary</summary><br/>summary</details>", // Nil details fallback to summary
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var result string
 			if tt.cv == nil {
 				// Test nil handling directly
@@ -180,35 +176,29 @@ func TestTableRenderer_ErrorRecovery(t *testing.T) {
 	renderer := NewTableRendererWithCollapsible("default", DefaultRendererConfig)
 	tableRenderer := renderer.(*tableRenderer)
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		cv       CollapsibleValue
 		expected string
-	}{
-		{
-			name:     "nil CollapsibleValue",
-			cv:       nil,
-			expected: "[invalid collapsible value]",
-		},
-		{
-			name:     "nested CollapsibleValue in details",
-			cv:       NewCollapsibleValue("outer", NewCollapsibleValue("inner", "inner details")),
-			expected: "outer [details hidden - use --expand for full view]",
-		},
-		{
-			name:     "empty summary",
-			cv:       NewCollapsibleValue("", "details"),
-			expected: "[no summary] [details hidden - use --expand for full view]",
-		},
-		{
-			name:     "nil details",
-			cv:       NewCollapsibleValue("summary", nil),
-			expected: "summary [details hidden - use --expand for full view]",
-		},
-	}
+	}{"empty summary": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		cv:       NewCollapsibleValue("", "details"),
+		expected: "[no summary] [details hidden - use --expand for full view]",
+	}, "nested CollapsibleValue in details": {
+
+		cv:       NewCollapsibleValue("outer", NewCollapsibleValue("inner", "inner details")),
+		expected: "outer [details hidden - use --expand for full view]",
+	}, "nil CollapsibleValue": {
+
+		cv:       nil,
+		expected: "[invalid collapsible value]",
+	}, "nil details": {
+
+		cv:       NewCollapsibleValue("summary", nil),
+		expected: "summary [details hidden - use --expand for full view]",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var result string
 			if tt.cv == nil {
 				// Test nil handling directly
@@ -266,36 +256,30 @@ func TestCharacterLimitEnforcement(t *testing.T) {
 
 // TestComplexDataErrorHandling tests error handling with complex data structures
 func TestComplexDataErrorHandling(t *testing.T) {
-	tests := []struct {
-		name    string
+	tests := map[string]struct {
 		details any
 		expect  string
-	}{
-		{
-			name:    "empty string array",
-			details: []string{},
-			expect:  "[empty list]",
-		},
-		{
-			name:    "empty map",
-			details: map[string]any{},
-			expect:  "[empty map]",
-		},
-		{
-			name:    "map with nil values",
-			details: map[string]any{"key1": nil, "key2": "value"},
-			expect:  "<strong>key1:</strong> [nil]", // Should handle nil values with HTML formatting
-		},
-		{
-			name:    "nil interface",
-			details: nil,
-			expect:  "test", // Nil details fallback to summary
-		},
-	}
+	}{"empty map": {
+
+		details: map[string]any{},
+		expect:  "[empty map]",
+	}, "empty string array": {
+
+		details: []string{},
+		expect:  "[empty list]",
+	}, "map with nil values": {
+
+		details: map[string]any{"key1": nil, "key2": "value"},
+		expect:  "<strong>key1:</strong> [nil]", // Should handle nil values with HTML formatting
+	}, "nil interface": {
+
+		details: nil,
+		expect:  "test", // Nil details fallback to summary
+	}}
 
 	// Test through public API by creating tables with complex data
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			cv := NewCollapsibleValue("test", tt.details)
 			data := []map[string]any{
 				{"item": cv},
@@ -394,44 +378,49 @@ func (p *panicCollapsibleValue) FormatHint(format string) map[string]any {
 
 // TestFieldFormatterErrorHandling tests error handling in field formatters
 func TestFieldFormatterErrorHandling(t *testing.T) {
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		formatter func(any) any
 		input     any
 		expected  any
-	}{
-		{
-			name:      "ErrorListFormatter with invalid type",
-			formatter: ErrorListFormatter(),
-			input:     123, // Not a string array or error array
-			expected:  123, // Should return original value
-		},
-		{
-			name:      "FilePathFormatter with non-string",
-			formatter: FilePathFormatter(10),
-			input:     123, // Not a string
-			expected:  123, // Should return original value
-		},
-		{
-			name:      "JSONFormatter with unmarshalable data",
-			formatter: JSONFormatter(10),
-			input:     make(chan int), // Cannot be marshaled to JSON
-			expected:  make(chan int), // Should return original value
-		},
-		{
-			name:      "CollapsibleFormatter with nil detail function",
-			formatter: CollapsibleFormatter("template", nil),
-			input:     "test",
-			expected:  "test", // Should return original value
-		},
-	}
+	}{"CollapsibleFormatter with nil detail function":
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	// Not a string array or error array
+	// Should return original value
+
+	// Not a string
+	// Should return original value
+
+	// Cannot be marshaled to JSON
+	// Should return original value
+
+	{
+
+		formatter: CollapsibleFormatter("template", nil),
+		input:     "test",
+		expected:  "test", // Should return original value
+	}, "ErrorListFormatter with invalid type": {
+
+		formatter: ErrorListFormatter(),
+		input:     123,
+		expected:  123,
+	}, "FilePathFormatter with non-string": {
+
+		formatter: FilePathFormatter(10),
+		input:     123,
+		expected:  123,
+	}, "JSONFormatter with unmarshalable data": {
+
+		formatter: JSONFormatter(10),
+		input:     make(chan int),
+		expected:  make(chan int),
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := tt.formatter(tt.input)
 
 			// For channel comparison, we need to handle it specially
-			if tt.name == "JSONFormatter with unmarshalable data" {
+			if name == "JSONFormatter with unmarshalable data" {
 				if result == nil {
 					t.Error("Expected non-nil result for unmarshalable data")
 				}

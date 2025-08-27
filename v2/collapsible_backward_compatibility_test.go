@@ -10,30 +10,13 @@ import (
 // TestCollapsibleBackwardCompatibility_ExistingFormatters tests that existing Field.Formatter functions continue to work
 func TestCollapsibleBackwardCompatibility_ExistingFormatters(t *testing.T) {
 	// Test traditional string-returning formatters
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		formatter func(any) any
 		input     any
-		expectOld bool // Whether we expect old behavior
-	}{
-		{
-			name: "Legacy string formatter",
-			formatter: func(val any) any {
-				return "formatted: " + string(val.(string))
-			},
-			input:     "test",
-			expectOld: true,
-		},
-		{
-			name: "New collapsible formatter",
-			formatter: func(val any) any {
-				return NewCollapsibleValue("summary", "details")
-			},
-			input:     "test",
-			expectOld: false,
-		},
-		{
-			name: "Conditional formatter",
+		expectOld bool
+	}{ // Whether we expect old behavior
+		"Conditional formatter": {
+
 			formatter: func(val any) any {
 				if str, ok := val.(string); ok && len(str) > 10 {
 					return NewCollapsibleValue("long text", str)
@@ -42,17 +25,29 @@ func TestCollapsibleBackwardCompatibility_ExistingFormatters(t *testing.T) {
 			},
 			input:     "short",
 			expectOld: true,
-		},
-		{
-			name:      "Nil formatter",
+		}, "Legacy string formatter": {
+
+			formatter: func(val any) any {
+				return "formatted: " + string(val.(string))
+			},
+			input:     "test",
+			expectOld: true,
+		}, "New collapsible formatter": {
+
+			formatter: func(val any) any {
+				return NewCollapsibleValue("summary", "details")
+			},
+			input:     "test",
+			expectOld: false,
+		}, "Nil formatter": {
+
 			formatter: nil,
 			input:     "test",
 			expectOld: true,
-		},
-	}
+		}}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create table with the formatter
 			data := []map[string]any{
 				{"value": tt.input},

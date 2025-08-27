@@ -22,105 +22,96 @@ func TestTextContent_Basic(t *testing.T) {
 }
 
 func TestTextContent_WithStyles(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		text     string
 		options  []TextOption
 		expected TextStyle
-	}{
-		{
-			name:    "with bold",
-			text:    "Bold text",
-			options: []TextOption{WithBold(true)},
-			expected: TextStyle{
-				Bold:   true,
-				Italic: false,
-				Color:  "",
-				Size:   0,
-				Header: false,
-			},
-		},
-		{
-			name:    "with italic",
-			text:    "Italic text",
-			options: []TextOption{WithItalic(true)},
-			expected: TextStyle{
-				Bold:   false,
-				Italic: true,
-				Color:  "",
-				Size:   0,
-				Header: false,
-			},
-		},
-		{
-			name:    "with color",
-			text:    "Colored text",
-			options: []TextOption{WithColor("red")},
-			expected: TextStyle{
-				Bold:   false,
-				Italic: false,
-				Color:  "red",
-				Size:   0,
-				Header: false,
-			},
-		},
-		{
-			name:    "with size",
-			text:    "Sized text",
-			options: []TextOption{WithSize(14)},
-			expected: TextStyle{
-				Bold:   false,
-				Italic: false,
-				Color:  "",
-				Size:   14,
-				Header: false,
-			},
-		},
-		{
-			name:    "with header",
-			text:    "Header text",
-			options: []TextOption{WithHeader(true)},
-			expected: TextStyle{
-				Bold:   false,
-				Italic: false,
-				Color:  "",
-				Size:   0,
-				Header: true,
-			},
-		},
-		{
-			name: "with multiple styles",
-			text: "Multi-styled text",
-			options: []TextOption{
-				WithBold(true),
-				WithItalic(true),
-				WithColor("blue"),
-				WithSize(16),
-			},
-			expected: TextStyle{
-				Bold:   true,
-				Italic: true,
-				Color:  "blue",
-				Size:   16,
-				Header: false,
-			},
-		},
-		{
-			name:    "with complete style",
-			text:    "Complete style text",
-			options: []TextOption{WithTextStyle(TextStyle{Bold: true, Italic: true, Color: "green", Size: 18, Header: true})},
-			expected: TextStyle{
-				Bold:   true,
-				Italic: true,
-				Color:  "green",
-				Size:   18,
-				Header: true,
-			},
-		},
-	}
+	}{"with bold": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		text:    "Bold text",
+		options: []TextOption{WithBold(true)},
+		expected: TextStyle{
+			Bold:   true,
+			Italic: false,
+			Color:  "",
+			Size:   0,
+			Header: false,
+		},
+	}, "with color": {
+
+		text:    "Colored text",
+		options: []TextOption{WithColor("red")},
+		expected: TextStyle{
+			Bold:   false,
+			Italic: false,
+			Color:  "red",
+			Size:   0,
+			Header: false,
+		},
+	}, "with complete style": {
+
+		text:    "Complete style text",
+		options: []TextOption{WithTextStyle(TextStyle{Bold: true, Italic: true, Color: "green", Size: 18, Header: true})},
+		expected: TextStyle{
+			Bold:   true,
+			Italic: true,
+			Color:  "green",
+			Size:   18,
+			Header: true,
+		},
+	}, "with header": {
+
+		text:    "Header text",
+		options: []TextOption{WithHeader(true)},
+		expected: TextStyle{
+			Bold:   false,
+			Italic: false,
+			Color:  "",
+			Size:   0,
+			Header: true,
+		},
+	}, "with italic": {
+
+		text:    "Italic text",
+		options: []TextOption{WithItalic(true)},
+		expected: TextStyle{
+			Bold:   false,
+			Italic: true,
+			Color:  "",
+			Size:   0,
+			Header: false,
+		},
+	}, "with multiple styles": {
+
+		text: "Multi-styled text",
+		options: []TextOption{
+			WithBold(true),
+			WithItalic(true),
+			WithColor("blue"),
+			WithSize(16),
+		},
+		expected: TextStyle{
+			Bold:   true,
+			Italic: true,
+			Color:  "blue",
+			Size:   16,
+			Header: false,
+		},
+	}, "with size": {
+
+		text:    "Sized text",
+		options: []TextOption{WithSize(14)},
+		expected: TextStyle{
+			Bold:   false,
+			Italic: false,
+			Color:  "",
+			Size:   14,
+			Header: false,
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			content := NewTextContent(tt.text, tt.options...)
 
 			style := content.Style()
@@ -136,40 +127,34 @@ func TestTextContent_WithStyles(t *testing.T) {
 }
 
 func TestTextContent_AppendText(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		text     string
 		input    []byte
 		expected string
-	}{
-		{
-			name:     "empty input",
-			text:     "Hello",
-			input:    []byte{},
-			expected: "Hello\n",
-		},
-		{
-			name:     "with existing content",
-			text:     "World",
-			input:    []byte("Hello "),
-			expected: "Hello World\n",
-		},
-		{
-			name:     "multiline text",
-			text:     "Line 1\nLine 2",
-			input:    []byte{},
-			expected: "Line 1\nLine 2\n",
-		},
-		{
-			name:     "text already ending with newline",
-			text:     "Text with newline\n",
-			input:    []byte{},
-			expected: "Text with newline\n",
-		},
-	}
+	}{"empty input": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		text:     "Hello",
+		input:    []byte{},
+		expected: "Hello\n",
+	}, "multiline text": {
+
+		text:     "Line 1\nLine 2",
+		input:    []byte{},
+		expected: "Line 1\nLine 2\n",
+	}, "text already ending with newline": {
+
+		text:     "Text with newline\n",
+		input:    []byte{},
+		expected: "Text with newline\n",
+	}, "with existing content": {
+
+		text:     "World",
+		input:    []byte("Hello "),
+		expected: "Hello World\n",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			content := NewTextContent(tt.text)
 			result, err := content.AppendText(tt.input)
 

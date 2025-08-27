@@ -14,34 +14,29 @@ func TestNewFileWriter(t *testing.T) {
 
 	tempDir := t.TempDir()
 
-	tests := []struct {
-		name    string
+	tests := map[string]struct {
 		dir     string
 		pattern string
 		wantErr bool
-	}{
-		{
-			name:    "valid directory",
-			dir:     tempDir,
-			pattern: "test-{format}.{ext}",
-			wantErr: false,
-		},
-		{
-			name:    "create new directory",
-			dir:     filepath.Join(tempDir, "new", "nested", "dir"),
-			pattern: "",
-			wantErr: false,
-		},
-		{
-			name:    "default pattern",
-			dir:     tempDir,
-			pattern: "",
-			wantErr: false,
-		},
-	}
+	}{"create new directory": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		dir:     filepath.Join(tempDir, "new", "nested", "dir"),
+		pattern: "",
+		wantErr: false,
+	}, "default pattern": {
+
+		dir:     tempDir,
+		pattern: "",
+		wantErr: false,
+	}, "valid directory": {
+
+		dir:     tempDir,
+		pattern: "test-{format}.{ext}",
+		wantErr: false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			fw, err := NewFileWriter(tt.dir, tt.pattern)
 			if tt.wantErr {
 				if err == nil {
@@ -85,57 +80,49 @@ func TestFileWriterWrite(t *testing.T) {
 	ctx := context.Background()
 	testData := []byte("test content")
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		format   string
 		data     []byte
 		wantFile string
 		wantErr  bool
-	}{
-		{
-			name:     "write JSON file",
-			format:   FormatJSON,
-			data:     testData,
-			wantFile: "test-json.json",
-			wantErr:  false,
-		},
-		{
-			name:     "write YAML file",
-			format:   FormatYAML,
-			data:     testData,
-			wantFile: "test-yaml.yaml",
-			wantErr:  false,
-		},
-		{
-			name:     "write CSV file",
-			format:   FormatCSV,
-			data:     testData,
-			wantFile: "test-csv.csv",
-			wantErr:  false,
-		},
-		{
-			name:    "empty format",
-			format:  "",
-			data:    testData,
-			wantErr: true,
-		},
-		{
-			name:    "nil data",
-			format:  FormatJSON,
-			data:    nil,
-			wantErr: true,
-		},
-		{
-			name:     "empty data is valid",
-			format:   FormatJSON,
-			data:     []byte{},
-			wantFile: "test-json.json",
-			wantErr:  false,
-		},
-	}
+	}{"empty data is valid": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		format:   FormatJSON,
+		data:     []byte{},
+		wantFile: "test-json.json",
+		wantErr:  false,
+	}, "empty format": {
+
+		format:  "",
+		data:    testData,
+		wantErr: true,
+	}, "nil data": {
+
+		format:  FormatJSON,
+		data:    nil,
+		wantErr: true,
+	}, "write CSV file": {
+
+		format:   FormatCSV,
+		data:     testData,
+		wantFile: "test-csv.csv",
+		wantErr:  false,
+	}, "write JSON file": {
+
+		format:   FormatJSON,
+		data:     testData,
+		wantFile: "test-json.json",
+		wantErr:  false,
+	}, "write YAML file": {
+
+		format:   FormatYAML,
+		data:     testData,
+		wantFile: "test-yaml.yaml",
+		wantErr:  false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			err := fw.Write(ctx, tt.format, tt.data)
 			if tt.wantErr {
 				if err == nil {

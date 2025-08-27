@@ -55,78 +55,70 @@ func TestMultiWriterWrite(t *testing.T) {
 	ctx := context.Background()
 	testData := []byte("test data")
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		writers  []Writer
 		format   string
 		data     []byte
 		wantErr  bool
 		errCount int
-	}{
-		{
-			name: "write to multiple writers",
-			writers: []Writer{
-				&mockWriter{name: "w1"},
-				&mockWriter{name: "w2"},
-				&mockWriter{name: "w3"},
-			},
-			format:  FormatText,
-			data:    testData,
-			wantErr: false,
-		},
-		{
-			name:    "no writers",
-			writers: []Writer{},
-			format:  FormatText,
-			data:    testData,
-			wantErr: true,
-		},
-		{
-			name: "one writer fails",
-			writers: []Writer{
-				&mockWriter{name: "w1"},
-				&mockWriter{name: "w2", failErr: errors.New("write failed")},
-				&mockWriter{name: "w3"},
-			},
-			format:   FormatText,
-			data:     testData,
-			wantErr:  true,
-			errCount: 1,
-		},
-		{
-			name: "multiple writers fail",
-			writers: []Writer{
-				&mockWriter{name: "w1", failErr: errors.New("fail 1")},
-				&mockWriter{name: "w2"},
-				&mockWriter{name: "w3", failErr: errors.New("fail 2")},
-			},
-			format:   FormatText,
-			data:     testData,
-			wantErr:  true,
-			errCount: 2,
-		},
-		{
-			name: "empty format",
-			writers: []Writer{
-				&mockWriter{name: "w1"},
-			},
-			format:  "",
-			data:    testData,
-			wantErr: true,
-		},
-		{
-			name: "nil data",
-			writers: []Writer{
-				&mockWriter{name: "w1"},
-			},
-			format:  FormatText,
-			data:    nil,
-			wantErr: true,
-		},
-	}
+	}{"empty format": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		writers: []Writer{
+			&mockWriter{name: "w1"},
+		},
+		format:  "",
+		data:    testData,
+		wantErr: true,
+	}, "multiple writers fail": {
+
+		writers: []Writer{
+			&mockWriter{name: "w1", failErr: errors.New("fail 1")},
+			&mockWriter{name: "w2"},
+			&mockWriter{name: "w3", failErr: errors.New("fail 2")},
+		},
+		format:   FormatText,
+		data:     testData,
+		wantErr:  true,
+		errCount: 2,
+	}, "nil data": {
+
+		writers: []Writer{
+			&mockWriter{name: "w1"},
+		},
+		format:  FormatText,
+		data:    nil,
+		wantErr: true,
+	}, "no writers": {
+
+		writers: []Writer{},
+		format:  FormatText,
+		data:    testData,
+		wantErr: true,
+	}, "one writer fails": {
+
+		writers: []Writer{
+			&mockWriter{name: "w1"},
+			&mockWriter{name: "w2", failErr: errors.New("write failed")},
+			&mockWriter{name: "w3"},
+		},
+		format:   FormatText,
+		data:     testData,
+		wantErr:  true,
+		errCount: 1,
+	}, "write to multiple writers": {
+
+		writers: []Writer{
+			&mockWriter{name: "w1"},
+			&mockWriter{name: "w2"},
+			&mockWriter{name: "w3"},
+		},
+		format:  FormatText,
+		data:    testData,
+		wantErr: false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			mw := NewMultiWriter(tt.writers...)
 			err := mw.Write(ctx, tt.format, tt.data)
 

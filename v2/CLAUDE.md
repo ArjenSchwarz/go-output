@@ -8,33 +8,62 @@ This is the **v2** directory of the go-output library, representing a complete r
 
 ## Development Commands
 
+**Recommended**: Use the Makefile targets for consistent development workflows:
+
 ### Testing
 ```bash
-# Run all tests
-go test ./...
+# Run unit tests only
+make test
 
-# Run specific test
-go test -v -run TestSchemaKeyOrderPreservation
+# Run integration tests (requires INTEGRATION=1)
+make test-integration
 
-# Run tests with coverage
-go test -cover ./...
+# Run all tests (unit + integration)
+make test-all
+
+# Generate coverage report with HTML output
+make test-coverage
+
+# Direct go commands (if Makefile not available)
+go test ./...                                    # Unit tests
+INTEGRATION=1 go test ./...                      # All tests including integration
+go test -cover ./...                             # Coverage
+go test -v -run TestSchemaKeyOrderPreservation   # Specific test
 ```
 
 ### Code Quality
 ```bash
-# Run linter (configured with .golangci.yml)
-golangci-lint run
+# Run linter
+make lint
 
-# Format code (automatically converts interface{} to any)
-go fmt ./...
+# Format all code (v2 + examples)
+make fmt
+
+# Apply modernize tool fixes
+make modernize
+
+# Run full validation pipeline (fmt + lint + tests)
+make check
+
+# Direct go commands (if Makefile not available)  
+golangci-lint run           # Linter
+go fmt ./...               # Format v2 code only
+modernize -fix ./...       # Apply modernization
 ```
 
-### Module Management
+### Development Utilities
 ```bash
-# Update dependencies
-go mod tidy
+# Clean test caches and generated files
+make clean
 
-# Verify dependencies
+# Update dependencies
+make mod-tidy
+
+# Run benchmarks
+make benchmark
+
+# Direct go commands (if Makefile not available)
+go mod tidy
 go mod verify
 ```
 
@@ -110,11 +139,38 @@ This v2 is designed to replace v1 completely. The agents/ directory contains:
 
 The v1 codebase (in parent directory) remains for reference but will not receive updates after v2 release.
 
-### Testing Philosophy
-- **Key Order**: Extensive testing of key preservation across scenarios
+### Testing Philosophy and Organization
+
+The v2 codebase follows modern Go 2025 testing best practices:
+
+#### Test Structure
+- **Map-based Table Tests**: Tests use `map[string]struct` pattern for better isolation and clarity
+- **Test Separation**: Integration tests use `INTEGRATION=1` environment variable (not build tags)
+- **File Organization**: Large test files (>800 lines) split by logical functionality
+- **Naming Conventions**: Descriptive test names and consistent got/want error patterns
+
+#### Test Categories
+- **Unit Tests**: Run by default with `make test` or `go test ./...`
+- **Integration Tests**: Require `INTEGRATION=1`, run with `make test-integration`
+- **Benchmark Tests**: Use modern `b.Loop()` pattern (Go 1.24+)
+- **Key Order Tests**: Extensive testing of key preservation across scenarios
 - **Thread Safety**: Concurrent operation tests with multiple goroutines
 - **Immutability**: Tests ensuring documents cannot be modified after Build()
 - **Interface Compliance**: All content types must implement the Content interface properly
+
+#### Test File Organization
+Large test files have been split for maintainability:
+- `pipeline_*.go` - Split by operation type (filter, sort, limit, etc.)
+- `renderer_*.go` - Split by renderer type (JSON, YAML, CSV, etc.)
+- `operations_*.go` - Split by operation category
+- `errors_*.go` - Split by error type
+- `progress_*.go` - Split by progress feature
+
+#### Test Conversion Tools
+The `v2/test-conversion/` directory contains tools for modernizing test patterns:
+- Converts slice-based to map-based table tests
+- Updates for loop patterns to use map keys
+- Maintains test functionality while improving organization
 
 ### Future Implementation Areas
 Based on the task breakdown in agents/v2-redesign/tasks.md, the following major components are planned:
