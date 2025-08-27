@@ -1,6 +1,16 @@
 ## [Unreleased]
 
 ### Changed
+- **Enhanced Development Tooling and Documentation**
+  - Added comprehensive Makefile documentation to README.md with detailed command reference and development workflow guide
+  - Updated Claude Code settings to support `.claude/scripts/copilot-pr-comments.sh` execution for improved PR workflow
+  - Added `.claude/scripts` directory to .gitignore to exclude local automation scripts
+
+### Fixed
+- **Code Formatting**
+  - Fixed malformed test structure in v2/progress_core_test.go by properly closing map entry and fixing comment placement
+
+### Changed
 - **Test Modernization to Map-Based Table Pattern**
   - Converted 47 test files from slice-based to map-based table tests for better test isolation and clarity
   - Created automated conversion tool in v2/test-conversion for systematic test modernization

@@ -186,6 +186,35 @@ cd examples
 go run basic_usage/main.go
 ```
 
+### Makefile Commands
+
+The project includes a comprehensive Makefile for streamlined development workflows. All commands operate on the v2 directory and examples:
+
+```bash
+# Show all available targets
+make help
+
+# Quick development workflow
+make check          # Run complete validation (fmt, lint, tests)
+
+# Testing
+make test           # Run unit tests only
+make test-all       # Run all tests including integration tests
+make test-coverage  # Generate HTML coverage report
+
+# Code quality
+make fmt            # Format all Go code (v2 + examples)
+make lint           # Run golangci-lint
+make modernize      # Apply modernize tool fixes + formatting
+
+# Development utilities
+make benchmark      # Run performance benchmarks
+make mod-tidy       # Update Go modules (v2 + examples)
+make clean          # Remove generated files and test caches
+```
+
+The Makefile automatically handles both the v2 library code and all example directories, ensuring consistent formatting and quality across the entire project.
+
 ### Code Contributions
 - Fork the repository and create a feature branch
 - Follow Go best practices and maintain existing code style

@@ -254,11 +254,7 @@ func TestProgress_ConfigurationOptions(t *testing.T) {
 			p.SetCurrent(50)
 			p.Complete()
 		},
-	}, "WithTemplate custom":
-
-	// Test custom width doesn't cause issues
-
-	{
+	}, "WithTemplate custom": {
 
 		opts: []ProgressOption{WithTemplate("custom template")},
 		test: func(t *testing.T, p Progress) {
@@ -829,10 +825,11 @@ func TestPrettyProgress_AutoFallback(t *testing.T) {
 // Test format-aware progress creation
 
 func TestNewProgressForFormat(t *testing.T) {
+	// We can't test exact type, but can test behavior
 	tests := map[string]struct {
 		format       Format
 		expectedType string
-	}{ // We can't test exact type, but can test behavior
+	}{
 		"CSV format uses NoOp": {
 
 			format:       CSV,
