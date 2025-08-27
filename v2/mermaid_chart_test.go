@@ -7,86 +7,81 @@ import (
 )
 
 func TestMermaidRenderer_ChartSupport(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		chart       *ChartContent
 		contains    []string
 		notContains []string
-	}{
-		{
-			name: "gantt chart rendering",
-			chart: NewGanttChart("Project Timeline", []GanttTask{
-				{
-					ID:        "task1",
-					Title:     "Design Phase",
-					StartDate: "2024-01-01",
-					Duration:  "5d",
-					Status:    "done",
-					Section:   "Planning",
-				},
-				{
-					ID:        "task2",
-					Title:     "Development Phase",
-					StartDate: "2024-01-08",
-					Duration:  "10d",
-					Status:    "active",
-					Section:   "Implementation",
-				},
-			}),
-			contains: []string{
-				"gantt",
-				"title Project Timeline",
-				"dateFormat YYYY-MM-DD",
-				"section Planning",
-				"Design Phase :done, task1, 2024-01-01, 5d",
-				"section Implementation",
-				"Development Phase :active, task2, 2024-01-08, 10d",
-			},
-			notContains: []string{
-				"graph TD",
-				"pie",
-			},
-		},
-		{
-			name: "pie chart rendering",
-			chart: NewPieChart("Browser Market Share", []PieSlice{
-				{Label: "Chrome", Value: 65.2},
-				{Label: "Firefox", Value: 18.8},
-				{Label: "Safari", Value: 9.6},
-			}, true),
-			contains: []string{
-				"pie showData",
-				"title Browser Market Share",
-				`"Chrome" : 65.20`,
-				`"Firefox" : 18.80`,
-				`"Safari" : 9.60`,
-			},
-			notContains: []string{
-				"gantt",
-				"graph TD",
-			},
-		},
-		{
-			name: "pie chart without data",
-			chart: NewPieChart("Simple Pie", []PieSlice{
-				{Label: "A", Value: 50},
-				{Label: "B", Value: 50},
-			}, false),
-			contains: []string{
-				"pie\n", // pie without showData
-				"title Simple Pie",
-				`"A" : 50.00`,
-				`"B" : 50.00`,
-			},
-			notContains: []string{
-				"showData",
-				"gantt",
-			},
-		},
-	}
+	}{"gantt chart rendering": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		chart: NewGanttChart("Project Timeline", []GanttTask{
+			{
+				ID:        "task1",
+				Title:     "Design Phase",
+				StartDate: "2024-01-01",
+				Duration:  "5d",
+				Status:    "done",
+				Section:   "Planning",
+			},
+			{
+				ID:        "task2",
+				Title:     "Development Phase",
+				StartDate: "2024-01-08",
+				Duration:  "10d",
+				Status:    "active",
+				Section:   "Implementation",
+			},
+		}),
+		contains: []string{
+			"gantt",
+			"title Project Timeline",
+			"dateFormat YYYY-MM-DD",
+			"section Planning",
+			"Design Phase :done, task1, 2024-01-01, 5d",
+			"section Implementation",
+			"Development Phase :active, task2, 2024-01-08, 10d",
+		},
+		notContains: []string{
+			"graph TD",
+			"pie",
+		},
+	}, "pie chart rendering": {
+
+		chart: NewPieChart("Browser Market Share", []PieSlice{
+			{Label: "Chrome", Value: 65.2},
+			{Label: "Firefox", Value: 18.8},
+			{Label: "Safari", Value: 9.6},
+		}, true),
+		contains: []string{
+			"pie showData",
+			"title Browser Market Share",
+			`"Chrome" : 65.20`,
+			`"Firefox" : 18.80`,
+			`"Safari" : 9.60`,
+		},
+		notContains: []string{
+			"gantt",
+			"graph TD",
+		},
+	}, "pie chart without data": {
+
+		chart: NewPieChart("Simple Pie", []PieSlice{
+			{Label: "A", Value: 50},
+			{Label: "B", Value: 50},
+		}, false),
+		contains: []string{
+			"pie\n", // pie without showData
+			"title Simple Pie",
+			`"A" : 50.00`,
+			`"B" : 50.00`,
+		},
+		notContains: []string{
+			"showData",
+			"gantt",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			renderer := &mermaidRenderer{}
 			doc := New().AddContent(tt.chart).Build()
 
@@ -248,22 +243,18 @@ func TestMermaidRenderer_GanttTaskProperties(t *testing.T) {
 }
 
 func TestMermaidRenderer_EmptyCharts(t *testing.T) {
-	tests := []struct {
-		name  string
+	tests := map[string]struct {
 		chart *ChartContent
-	}{
-		{
-			name:  "empty gantt",
-			chart: NewGanttChart("Empty Project", []GanttTask{}),
-		},
-		{
-			name:  "empty pie",
-			chart: NewPieChart("Empty Pie", []PieSlice{}, false),
-		},
-	}
+	}{"empty gantt": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		chart: NewGanttChart("Empty Project", []GanttTask{}),
+	}, "empty pie": {
+
+		chart: NewPieChart("Empty Pie", []PieSlice{}, false),
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			doc := New().AddContent(tt.chart).Build()
 			renderer := &mermaidRenderer{}
 

@@ -401,42 +401,37 @@ func TestValidation_ThreadSafety(t *testing.T) {
 
 // TestValidation_ErrorConditions tests various error conditions
 func TestValidation_ErrorConditions(t *testing.T) {
-	tests := []struct {
-		name string
-		fn   func() error
-	}{
-		{
-			name: "InvalidTableData",
-			fn: func() error {
-				_, err := NewTableContent("Test", struct{}{})
-				return err
-			},
-		},
-		{
-			name: "InvalidRawFormat",
-			fn: func() error {
-				_, err := NewRawContent("", []byte("data"))
-				return err
-			},
-		},
-		{
-			name: "ContextCancellation",
-			fn: func() error {
-				ctx, cancel := context.WithCancel(context.Background())
-				cancel() // Cancel immediately
+	tests := map[string]struct {
+		fn func() error
+	}{"ContextCancellation": {
 
-				doc := New().Text("Test").Build()
-				output := NewOutput(
-					WithFormat(JSON),
-					WithWriter(&nullWriter{}),
-				)
-				return output.Render(ctx, doc)
-			},
-		},
-	}
+		fn: func() error {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel() // Cancel immediately
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+			doc := New().Text("Test").Build()
+			output := NewOutput(
+				WithFormat(JSON),
+				WithWriter(&nullWriter{}),
+			)
+			return output.Render(ctx, doc)
+		},
+	}, "InvalidRawFormat": {
+
+		fn: func() error {
+			_, err := NewRawContent("", []byte("data"))
+			return err
+		},
+	}, "InvalidTableData": {
+
+		fn: func() error {
+			_, err := NewTableContent("Test", struct{}{})
+			return err
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			err := tt.fn()
 			if err == nil {
 				t.Error("Expected error but got nil")

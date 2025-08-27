@@ -159,45 +159,37 @@ func TestCancelledError(t *testing.T) {
 }
 
 func TestIsCancelled(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		err      error
 		expected bool
-	}{
-		{
-			name:     "nil error",
-			err:      nil,
-			expected: false,
-		},
-		{
-			name:     "context.Canceled",
-			err:      context.Canceled,
-			expected: true,
-		},
-		{
-			name:     "context.DeadlineExceeded",
-			err:      context.DeadlineExceeded,
-			expected: true,
-		},
-		{
-			name:     "CancelledError",
-			err:      NewCancelledError("test", context.Canceled),
-			expected: true,
-		},
-		{
-			name:     "wrapped CancelledError",
-			err:      fmt.Errorf("wrapper: %w", NewCancelledError("test", context.Canceled)),
-			expected: true,
-		},
-		{
-			name:     "regular error",
-			err:      errors.New("regular error"),
-			expected: false,
-		},
-	}
+	}{"CancelledError": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		err:      NewCancelledError("test", context.Canceled),
+		expected: true,
+	}, "context.Canceled": {
+
+		err:      context.Canceled,
+		expected: true,
+	}, "context.DeadlineExceeded": {
+
+		err:      context.DeadlineExceeded,
+		expected: true,
+	}, "nil error": {
+
+		err:      nil,
+		expected: false,
+	}, "regular error": {
+
+		err:      errors.New("regular error"),
+		expected: false,
+	}, "wrapped CancelledError": {
+
+		err:      fmt.Errorf("wrapper: %w", NewCancelledError("test", context.Canceled)),
+		expected: true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := IsCancelled(tt.err)
 			if result != tt.expected {
 				t.Errorf("IsCancelled(%v) = %v, want %v", tt.err, result, tt.expected)
@@ -338,8 +330,7 @@ func TestMultiErrorWithSourceTracking(t *testing.T) {
 
 // TestStructuredError tests the new StructuredError type
 func TestStructuredError(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		code        string
 		component   string
 		operation   string
@@ -348,42 +339,39 @@ func TestStructuredError(t *testing.T) {
 		details     map[string]any
 		cause       error
 		expectParts []string
-	}{
-		{
-			name:      "complete structured error",
-			code:      "RENDER_001",
-			component: "renderer",
-			operation: "encode",
-			message:   "JSON encoding failed",
-			context:   map[string]any{"format": "json", "content_type": "table"},
-			details:   map[string]any{"input_size": 1024},
-			cause:     errors.New("invalid character"),
-			expectParts: []string{
-				"code=RENDER_001",
-				"component=renderer",
-				"operation=encode",
-				"message=JSON encoding failed",
-				"context=[content_type=table, format=json]", // Alphabetically sorted keys
-				"cause: invalid character",
-			},
-		},
-		{
-			name:      "minimal structured error",
-			code:      "GENERIC_001",
-			component: "system",
-			operation: "process",
-			message:   "Operation failed",
-			expectParts: []string{
-				"code=GENERIC_001",
-				"component=system",
-				"operation=process",
-				"message=Operation failed",
-			},
-		},
-	}
+	}{"complete structured error": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		code:      "RENDER_001",
+		component: "renderer",
+		operation: "encode",
+		message:   "JSON encoding failed",
+		context:   map[string]any{"format": "json", "content_type": "table"},
+		details:   map[string]any{"input_size": 1024},
+		cause:     errors.New("invalid character"),
+		expectParts: []string{
+			"code=RENDER_001",
+			"component=renderer",
+			"operation=encode",
+			"message=JSON encoding failed",
+			"context=[content_type=table, format=json]", // Alphabetically sorted keys
+			"cause: invalid character",
+		},
+	}, "minimal structured error": {
+
+		code:      "GENERIC_001",
+		component: "system",
+		operation: "process",
+		message:   "Operation failed",
+		expectParts: []string{
+			"code=GENERIC_001",
+			"component=system",
+			"operation=process",
+			"message=Operation failed",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var err *StructuredError
 			if tt.cause != nil {
 				err = NewStructuredErrorWithCause(tt.code, tt.component, tt.operation, tt.message, tt.cause)
@@ -425,8 +413,7 @@ func TestStructuredError(t *testing.T) {
 
 // TestToStructuredError tests conversion of various error types to StructuredError
 func TestToStructuredError(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		inputError     error
 		defaultCode    string
 		defaultComp    string
@@ -434,70 +421,64 @@ func TestToStructuredError(t *testing.T) {
 		expectedCode   string
 		expectedComp   string
 		expectedFields map[string]any
-	}{
-		{
-			name:         "render error conversion",
-			inputError:   NewRenderError("json", &TableContent{id: "test"}, errors.New("failed")),
-			defaultCode:  "DEFAULT",
-			defaultComp:  "default",
-			defaultOp:    "default",
-			expectedCode: "RENDER_ERROR",
-			expectedComp: "renderer",
-			expectedFields: map[string]any{
-				"format":       "json",
-				"content_type": "table",
-				"content_id":   "test",
-			},
-		},
-		{
-			name:         "transform error conversion",
-			inputError:   NewTransformError("emoji", "html", []byte("test"), errors.New("failed")),
-			defaultCode:  "DEFAULT",
-			defaultComp:  "default",
-			defaultOp:    "default",
-			expectedCode: "TRANSFORM_ERROR",
-			expectedComp: "transformer",
-			expectedFields: map[string]any{
-				"transformer": "emoji",
-				"format":      "html",
-				"input_size":  4,
-			},
-		},
-		{
-			name:         "writer error conversion",
-			inputError:   NewWriterError("FileWriter", "csv", errors.New("failed")),
-			defaultCode:  "DEFAULT",
-			defaultComp:  "default",
-			defaultOp:    "default",
-			expectedCode: "WRITER_ERROR",
-			expectedComp: "writer",
-			expectedFields: map[string]any{
-				"writer": "FileWriter",
-				"format": "csv",
-			},
-		},
-		{
-			name:         "unknown error conversion",
-			inputError:   errors.New("unknown error"),
-			defaultCode:  "UNKNOWN_001",
-			defaultComp:  "system",
-			defaultOp:    "process",
-			expectedCode: "UNKNOWN_001",
-			expectedComp: "system",
-		},
-		{
-			name:         "nil error",
-			inputError:   nil,
-			defaultCode:  "DEFAULT",
-			defaultComp:  "default",
-			defaultOp:    "default",
-			expectedCode: "",
-			expectedComp: "",
-		},
-	}
+	}{"nil error": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		inputError:   nil,
+		defaultCode:  "DEFAULT",
+		defaultComp:  "default",
+		defaultOp:    "default",
+		expectedCode: "",
+		expectedComp: "",
+	}, "render error conversion": {
+
+		inputError:   NewRenderError("json", &TableContent{id: "test"}, errors.New("failed")),
+		defaultCode:  "DEFAULT",
+		defaultComp:  "default",
+		defaultOp:    "default",
+		expectedCode: "RENDER_ERROR",
+		expectedComp: "renderer",
+		expectedFields: map[string]any{
+			"format":       "json",
+			"content_type": "table",
+			"content_id":   "test",
+		},
+	}, "transform error conversion": {
+
+		inputError:   NewTransformError("emoji", "html", []byte("test"), errors.New("failed")),
+		defaultCode:  "DEFAULT",
+		defaultComp:  "default",
+		defaultOp:    "default",
+		expectedCode: "TRANSFORM_ERROR",
+		expectedComp: "transformer",
+		expectedFields: map[string]any{
+			"transformer": "emoji",
+			"format":      "html",
+			"input_size":  4,
+		},
+	}, "unknown error conversion": {
+
+		inputError:   errors.New("unknown error"),
+		defaultCode:  "UNKNOWN_001",
+		defaultComp:  "system",
+		defaultOp:    "process",
+		expectedCode: "UNKNOWN_001",
+		expectedComp: "system",
+	}, "writer error conversion": {
+
+		inputError:   NewWriterError("FileWriter", "csv", errors.New("failed")),
+		defaultCode:  "DEFAULT",
+		defaultComp:  "default",
+		defaultOp:    "default",
+		expectedCode: "WRITER_ERROR",
+		expectedComp: "writer",
+		expectedFields: map[string]any{
+			"writer": "FileWriter",
+			"format": "csv",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			result := ToStructuredError(tt.inputError, tt.defaultCode, tt.defaultComp, tt.defaultOp)
 
 			if tt.inputError == nil {

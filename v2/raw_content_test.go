@@ -39,52 +39,45 @@ func TestRawContent_Basic(t *testing.T) {
 }
 
 func TestRawContent_FormatValidation(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		format      string
 		data        []byte
 		opts        []RawOption
 		expectError bool
-	}{
-		{
-			name:        "valid html format",
-			format:      FormatHTML,
-			data:        []byte("<p>test</p>"),
-			opts:        []RawOption{WithFormatValidation(true)},
-			expectError: false,
-		},
-		{
-			name:        "valid json format",
-			format:      FormatJSON,
-			data:        []byte(`{"key": "value"}`),
-			opts:        []RawOption{WithFormatValidation(true)},
-			expectError: false,
-		},
-		{
-			name:        "invalid format with validation",
-			format:      "invalid",
-			data:        []byte("some data"),
-			opts:        []RawOption{WithFormatValidation(true)},
-			expectError: true,
-		},
-		{
-			name:        "invalid format without validation",
-			format:      "invalid",
-			data:        []byte("some data"),
-			opts:        []RawOption{WithFormatValidation(false)},
-			expectError: false,
-		},
-		{
-			name:        "default validation (enabled)",
-			format:      "invalid",
-			data:        []byte("some data"),
-			opts:        []RawOption{},
-			expectError: true,
-		},
-	}
+	}{"default validation (enabled)": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		format:      "invalid",
+		data:        []byte("some data"),
+		opts:        []RawOption{},
+		expectError: true,
+	}, "invalid format with validation": {
+
+		format:      "invalid",
+		data:        []byte("some data"),
+		opts:        []RawOption{WithFormatValidation(true)},
+		expectError: true,
+	}, "invalid format without validation": {
+
+		format:      "invalid",
+		data:        []byte("some data"),
+		opts:        []RawOption{WithFormatValidation(false)},
+		expectError: false,
+	}, "valid html format": {
+
+		format:      FormatHTML,
+		data:        []byte("<p>test</p>"),
+		opts:        []RawOption{WithFormatValidation(true)},
+		expectError: false,
+	}, "valid json format": {
+
+		format:      FormatJSON,
+		data:        []byte(`{"key": "value"}`),
+		opts:        []RawOption{WithFormatValidation(true)},
+		expectError: false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			_, err := NewRawContent(tt.format, tt.data, tt.opts...)
 
 			if tt.expectError && err == nil {
@@ -151,38 +144,33 @@ func TestRawContent_DataPreservation(t *testing.T) {
 }
 
 func TestRawContent_AppendText(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		format   string
 		data     []byte
 		input    []byte
 		expected string
-	}{
-		{
-			name:     "html content",
-			format:   FormatHTML,
-			data:     []byte("<div>Hello</div>"),
-			input:    []byte("Prefix: "),
-			expected: "Prefix: <div>Hello</div>",
-		},
-		{
-			name:     "json content",
-			format:   FormatJSON,
-			data:     []byte(`{"key": "value"}`),
-			input:    []byte{},
-			expected: `{"key": "value"}`,
-		},
-		{
-			name:     "empty data",
-			format:   FormatText,
-			data:     []byte{},
-			input:    []byte("Start: "),
-			expected: "Start: ",
-		},
-	}
+	}{"empty data": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		format:   FormatText,
+		data:     []byte{},
+		input:    []byte("Start: "),
+		expected: "Start: ",
+	}, "html content": {
+
+		format:   FormatHTML,
+		data:     []byte("<div>Hello</div>"),
+		input:    []byte("Prefix: "),
+		expected: "Prefix: <div>Hello</div>",
+	}, "json content": {
+
+		format:   FormatJSON,
+		data:     []byte(`{"key": "value"}`),
+		input:    []byte{},
+		expected: `{"key": "value"}`,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			content, err := NewRawContent(tt.format, tt.data)
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)

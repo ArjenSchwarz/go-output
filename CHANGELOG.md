@@ -1,6 +1,23 @@
 ## [Unreleased]
 
 ### Changed
+- **Test Modernization to Map-Based Table Pattern**
+  - Converted 47 test files from slice-based to map-based table tests for better test isolation and clarity
+  - Created automated conversion tool in v2/test-conversion for systematic test modernization
+  - Applied consistent got/want naming conventions across all converted tests
+  - Maintained descriptive test names for improved test clarity and debugging
+  - Tests now use `map[string]struct` pattern following Go 2025 best practices
+
+### Added
+- **Comprehensive Testing Documentation**
+  - Enhanced v2/CLAUDE.md with detailed testing philosophy and organization section
+  - Documented test structure patterns: map-based table tests, test separation, file organization
+  - Added test categories documentation: unit tests, integration tests, benchmarks, thread safety tests
+  - Documented test file organization patterns and splitting strategies for maintainability
+  - Created test conversion tools documentation for modernizing test patterns
+  - Updated v2/docs/README.md with testing strategy and development quick start guide
+
+### Changed
 - **Integration Test Enhancement**
   - Marked all integration test separation tasks (5.1-5.3) as completed in agents/code-cleanup-and-tooling/tasks.md
   - Added skipIfNotIntegration helper function calls to all integration tests in file writer test suite

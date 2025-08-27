@@ -50,45 +50,37 @@ func TestEmojiTransformer_Transform(t *testing.T) {
 	transformer := &EmojiTransformer{}
 	ctx := context.Background()
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		input    string
 		expected string
-	}{
-		{
-			name:     "warning indicators",
-			input:    "!! Critical error !!",
-			expected: "🚨 Critical error 🚨",
-		},
-		{
-			name:     "success indicators",
-			input:    "Status: OK",
-			expected: "Status: ✅",
-		},
-		{
-			name:     "yes/no indicators",
-			input:    "Active: Yes, Enabled: No",
-			expected: "Active: ✅, Enabled: ❌",
-		},
-		{
-			name:     "boolean values",
-			input:    "Running: true, Stopped: false",
-			expected: "Running: ✅, Stopped: ❌",
-		},
-		{
-			name:     "mixed content",
-			input:    "!! Error: task failed\nResult: OK\nEnabled: true",
-			expected: "🚨 Error: task failed\nResult: ✅\nEnabled: ✅",
-		},
-		{
-			name:     "no changes needed",
-			input:    "This is normal text with no indicators",
-			expected: "This is normal text with no indicators",
-		},
-	}
+	}{"boolean values": {
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		input:    "Running: true, Stopped: false",
+		expected: "Running: ✅, Stopped: ❌",
+	}, "mixed content": {
+
+		input:    "!! Error: task failed\nResult: OK\nEnabled: true",
+		expected: "🚨 Error: task failed\nResult: ✅\nEnabled: ✅",
+	}, "no changes needed": {
+
+		input:    "This is normal text with no indicators",
+		expected: "This is normal text with no indicators",
+	}, "success indicators": {
+
+		input:    "Status: OK",
+		expected: "Status: ✅",
+	}, "warning indicators": {
+
+		input:    "!! Critical error !!",
+		expected: "🚨 Critical error 🚨",
+	}, "yes/no indicators": {
+
+		input:    "Active: Yes, Enabled: No",
+		expected: "Active: ✅, Enabled: ❌",
+	}}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
 			result, err := transformer.Transform(ctx, []byte(test.input), "table")
 			if err != nil {
 				t.Fatalf("EmojiTransformer.Transform() error = %v", err)
@@ -144,30 +136,24 @@ func TestColorTransformer_Transform(t *testing.T) {
 	transformer := NewColorTransformer()
 	ctx := context.Background()
 
-	tests := []struct {
-		name  string
+	tests := map[string]struct {
 		input string
-	}{
-		{
-			name:  "success content",
-			input: "Status: ✅",
-		},
-		{
-			name:  "error content",
-			input: "Status: ❌",
-		},
-		{
-			name:  "warning content",
-			input: "Alert: 🚨",
-		},
-		{
-			name:  "info content",
-			input: "Info: ℹ️",
-		},
-	}
+	}{"error content": {
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		input: "Status: ❌",
+	}, "info content": {
+
+		input: "Info: ℹ️",
+	}, "success content": {
+
+		input: "Status: ✅",
+	}, "warning content": {
+
+		input: "Alert: 🚨",
+	}}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
 			result, err := transformer.Transform(ctx, []byte(test.input), "table")
 			if err != nil {
 				t.Fatalf("ColorTransformer.Transform() error = %v", err)
@@ -245,52 +231,44 @@ func TestSortTransformer_CanTransform(t *testing.T) {
 func TestSortTransformer_Transform(t *testing.T) {
 	ctx := context.Background()
 
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		transformer *SortTransformer
 		input       string
 		expected    string
-	}{
-		{
-			name:        "tab-separated ascending sort",
-			transformer: NewSortTransformerAscending("Name"),
-			input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
-			expected:    "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t35\tLos Angeles\nCharlie\t30\tChicago",
-		},
-		{
-			name:        "csv format ascending sort",
-			transformer: NewSortTransformerAscending("Age"),
-			input:       "Name,Age,City\nCharlie,30,Chicago\nAlice,25,New York\nBob,35,Los Angeles",
-			expected:    "Name,Age,City\nAlice,25,New York\nCharlie,30,Chicago\nBob,35,Los Angeles",
-		},
-		{
-			name:        "descending sort",
-			transformer: NewSortTransformer("Age", false),
-			input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
-			expected:    "Name\tAge\tCity\nBob\t35\tLos Angeles\nCharlie\t30\tChicago\nAlice\t25\tNew York",
-		},
-		{
-			name:        "string sort",
-			transformer: NewSortTransformerAscending("City"),
-			input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
-			expected:    "Name\tAge\tCity\nCharlie\t30\tChicago\nBob\t35\tLos Angeles\nAlice\t25\tNew York",
-		},
-		{
-			name:        "no sort key",
-			transformer: NewSortTransformer("", true),
-			input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
-			expected:    "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
-		},
-		{
-			name:        "sort key not found",
-			transformer: NewSortTransformerAscending("NonExistent"),
-			input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
-			expected:    "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
-		},
-	}
+	}{"csv format ascending sort": {
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		transformer: NewSortTransformerAscending("Age"),
+		input:       "Name,Age,City\nCharlie,30,Chicago\nAlice,25,New York\nBob,35,Los Angeles",
+		expected:    "Name,Age,City\nAlice,25,New York\nCharlie,30,Chicago\nBob,35,Los Angeles",
+	}, "descending sort": {
+
+		transformer: NewSortTransformer("Age", false),
+		input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
+		expected:    "Name\tAge\tCity\nBob\t35\tLos Angeles\nCharlie\t30\tChicago\nAlice\t25\tNew York",
+	}, "no sort key": {
+
+		transformer: NewSortTransformer("", true),
+		input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
+		expected:    "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
+	}, "sort key not found": {
+
+		transformer: NewSortTransformerAscending("NonExistent"),
+		input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
+		expected:    "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
+	}, "string sort": {
+
+		transformer: NewSortTransformerAscending("City"),
+		input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
+		expected:    "Name\tAge\tCity\nCharlie\t30\tChicago\nBob\t35\tLos Angeles\nAlice\t25\tNew York",
+	}, "tab-separated ascending sort": {
+
+		transformer: NewSortTransformerAscending("Name"),
+		input:       "Name\tAge\tCity\nCharlie\t30\tChicago\nAlice\t25\tNew York\nBob\t35\tLos Angeles",
+		expected:    "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t35\tLos Angeles\nCharlie\t30\tChicago",
+	}}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
 			result, err := test.transformer.Transform(ctx, []byte(test.input), "table")
 			if err != nil {
 				t.Fatalf("SortTransformer.Transform() error = %v", err)
@@ -346,46 +324,39 @@ func TestLineSplitTransformer_CanTransform(t *testing.T) {
 func TestLineSplitTransformer_Transform(t *testing.T) {
 	ctx := context.Background()
 
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		transformer *LineSplitTransformer
 		input       string
 		expected    string
-	}{
-		{
-			name:        "pipe split tab-separated",
-			transformer: NewLineSplitTransformer("|"),
-			input:       "Name\tTags\tStatus\nAlice\ttag1|tag2\tActive\nBob\tsingle\tInactive",
-			expected:    "Name\tTags\tStatus\nAlice\ttag1\tActive\n\ttag2\t\nBob\tsingle\tInactive",
-		},
-		{
-			name:        "comma split within CSV field",
-			transformer: NewLineSplitTransformer(";"),
-			input:       "Name,Skills,Level\nAlice,Java;Go,Expert\nBob,Python,Beginner",
-			expected:    "Name,Skills,Level\nAlice,Java,Expert\n,Go,\nBob,Python,Beginner",
-		},
-		{
-			name:        "semicolon split",
-			transformer: NewLineSplitTransformer(";"),
-			input:       "Name\tRoles\tDept\nAlice\tDev;Lead\tEng\nBob\tDev\tEng",
-			expected:    "Name\tRoles\tDept\nAlice\tDev\tEng\n\tLead\t\nBob\tDev\tEng",
-		},
-		{
-			name:        "no splits needed",
-			transformer: NewLineSplitTransformerDefault(),
-			input:       "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t30\tChicago",
-			expected:    "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t30\tChicago",
-		},
-		{
-			name:        "empty input",
-			transformer: NewLineSplitTransformerDefault(),
-			input:       "",
-			expected:    "",
-		},
-	}
+	}{"comma split within CSV field": {
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		transformer: NewLineSplitTransformer(";"),
+		input:       "Name,Skills,Level\nAlice,Java;Go,Expert\nBob,Python,Beginner",
+		expected:    "Name,Skills,Level\nAlice,Java,Expert\n,Go,\nBob,Python,Beginner",
+	}, "empty input": {
+
+		transformer: NewLineSplitTransformerDefault(),
+		input:       "",
+		expected:    "",
+	}, "no splits needed": {
+
+		transformer: NewLineSplitTransformerDefault(),
+		input:       "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t30\tChicago",
+		expected:    "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t30\tChicago",
+	}, "pipe split tab-separated": {
+
+		transformer: NewLineSplitTransformer("|"),
+		input:       "Name\tTags\tStatus\nAlice\ttag1|tag2\tActive\nBob\tsingle\tInactive",
+		expected:    "Name\tTags\tStatus\nAlice\ttag1\tActive\n\ttag2\t\nBob\tsingle\tInactive",
+	}, "semicolon split": {
+
+		transformer: NewLineSplitTransformer(";"),
+		input:       "Name\tRoles\tDept\nAlice\tDev;Lead\tEng\nBob\tDev\tEng",
+		expected:    "Name\tRoles\tDept\nAlice\tDev\tEng\n\tLead\t\nBob\tDev\tEng",
+	}}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
 			result, err := test.transformer.Transform(ctx, []byte(test.input), "table")
 			if err != nil {
 				t.Fatalf("LineSplitTransformer.Transform() error = %v", err)
@@ -430,35 +401,29 @@ func TestRemoveColorsTransformer_Transform(t *testing.T) {
 	transformer := NewRemoveColorsTransformer()
 	ctx := context.Background()
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		input    string
 		expected string
-	}{
-		{
-			name:     "remove basic color codes",
-			input:    "\x1B[31mRed text\x1B[0m and \x1B[32mGreen text\x1B[0m",
-			expected: "Red text and Green text",
-		},
-		{
-			name:     "remove complex color codes",
-			input:    "\x1B[1;31;40mBold red on black\x1B[0m",
-			expected: "Bold red on black",
-		},
-		{
-			name:     "no color codes",
-			input:    "Plain text without colors",
-			expected: "Plain text without colors",
-		},
-		{
-			name:     "mixed content",
-			input:    "Normal text \x1B[33mwarning\x1B[0m more text",
-			expected: "Normal text warning more text",
-		},
-	}
+	}{"mixed content": {
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		input:    "Normal text \x1B[33mwarning\x1B[0m more text",
+		expected: "Normal text warning more text",
+	}, "no color codes": {
+
+		input:    "Plain text without colors",
+		expected: "Plain text without colors",
+	}, "remove basic color codes": {
+
+		input:    "\x1B[31mRed text\x1B[0m and \x1B[32mGreen text\x1B[0m",
+		expected: "Red text and Green text",
+	}, "remove complex color codes": {
+
+		input:    "\x1B[1;31;40mBold red on black\x1B[0m",
+		expected: "Bold red on black",
+	}}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
 			result, err := transformer.Transform(ctx, []byte(test.input), "table")
 			if err != nil {
 				t.Fatalf("RemoveColorsTransformer.Transform() error = %v", err)

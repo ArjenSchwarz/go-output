@@ -5,40 +5,36 @@ import (
 )
 
 func TestChartContent_Creation(t *testing.T) {
-	tests := []struct {
-		name      string
+	tests := map[string]struct {
 		title     string
 		chartType string
 		data      any
-	}{
-		{
-			name:      "gantt chart",
-			title:     "Project Timeline",
-			chartType: ChartTypeGantt,
-			data: &GanttData{
-				DateFormat: "YYYY-MM-DD",
-				AxisFormat: "%Y-%m-%d",
-				Tasks: []GanttTask{
-					{Title: "Task 1", StartDate: "2024-01-01", Duration: "3d"},
-				},
-			},
-		},
-		{
-			name:      "pie chart",
-			title:     "Market Share",
-			chartType: ChartTypePie,
-			data: &PieData{
-				ShowData: true,
-				Slices: []PieSlice{
-					{Label: "Product A", Value: 45.5},
-					{Label: "Product B", Value: 30.2},
-				},
-			},
-		},
-	}
+	}{"gantt chart": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		title:     "Project Timeline",
+		chartType: ChartTypeGantt,
+		data: &GanttData{
+			DateFormat: "YYYY-MM-DD",
+			AxisFormat: "%Y-%m-%d",
+			Tasks: []GanttTask{
+				{Title: "Task 1", StartDate: "2024-01-01", Duration: "3d"},
+			},
+		},
+	}, "pie chart": {
+
+		title:     "Market Share",
+		chartType: ChartTypePie,
+		data: &PieData{
+			ShowData: true,
+			Slices: []PieSlice{
+				{Label: "Product A", Value: 45.5},
+				{Label: "Product B", Value: 30.2},
+			},
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			chart := NewChartContent(tt.title, tt.chartType, tt.data)
 
 			if chart.GetTitle() != tt.title {
@@ -138,31 +134,27 @@ func TestNewPieChart(t *testing.T) {
 }
 
 func TestChartContent_AppendText(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		chart    *ChartContent
 		contains []string
-	}{
-		{
-			name: "gantt chart text",
-			chart: NewGanttChart("Project Timeline", []GanttTask{
-				{Title: "Task 1", StartDate: "2024-01-01", Duration: "3d"},
-				{Title: "Task 2", StartDate: "2024-01-05", Duration: "2d"},
-			}),
-			contains: []string{"Project Timeline", "Chart Type: gantt", "Task 1", "Task 2"},
-		},
-		{
-			name: "pie chart text",
-			chart: NewPieChart("Market Share", []PieSlice{
-				{Label: "Product A", Value: 45.5},
-				{Label: "Product B", Value: 30.2},
-			}, true),
-			contains: []string{"Market Share", "Chart Type: pie", "Product A: 45.50", "Product B: 30.20"},
-		},
-	}
+	}{"gantt chart text": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		chart: NewGanttChart("Project Timeline", []GanttTask{
+			{Title: "Task 1", StartDate: "2024-01-01", Duration: "3d"},
+			{Title: "Task 2", StartDate: "2024-01-05", Duration: "2d"},
+		}),
+		contains: []string{"Project Timeline", "Chart Type: gantt", "Task 1", "Task 2"},
+	}, "pie chart text": {
+
+		chart: NewPieChart("Market Share", []PieSlice{
+			{Label: "Product A", Value: 45.5},
+			{Label: "Product B", Value: 30.2},
+		}, true),
+		contains: []string{"Market Share", "Chart Type: pie", "Product A: 45.50", "Product B: 30.20"},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var buf []byte
 			result, err := tt.chart.AppendText(buf)
 			if err != nil {

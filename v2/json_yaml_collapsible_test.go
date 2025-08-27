@@ -10,55 +10,50 @@ import (
 
 // TestJSONRenderer_CollapsibleValue tests JSON rendering of CollapsibleValue
 func TestJSONRenderer_CollapsibleValue(t *testing.T) {
-	tests := []struct {
-		name             string
+	tests := map[string]struct {
 		collapsibleVal   *DefaultCollapsibleValue
 		expectedType     string
 		expectedSummary  string
 		expectedDetails  any
 		expectedExpanded bool
 		formatHints      map[string]any
-	}{
-		{
-			name: "basic collapsible value",
-			collapsibleVal: NewCollapsibleValue(
-				"2 errors",
-				[]string{"syntax error", "missing import"},
-			),
-			expectedType:     "collapsible",
-			expectedSummary:  "2 errors",
-			expectedDetails:  []string{"syntax error", "missing import"},
-			expectedExpanded: false,
-		},
-		{
-			name: "expanded collapsible value",
-			collapsibleVal: NewCollapsibleValue(
-				"Config details",
-				map[string]any{"debug": true, "port": 8080},
-				WithExpanded(true),
-			),
-			expectedType:     "collapsible",
-			expectedSummary:  "Config details",
-			expectedDetails:  map[string]any{"debug": true, "port": 8080},
-			expectedExpanded: true,
-		},
-		{
-			name: "collapsible with JSON format hints",
-			collapsibleVal: NewCollapsibleValue(
-				"File info",
-				"/very/long/path/to/file.go",
-				WithFormatHint(FormatJSON, map[string]any{"priority": "high", "category": "file"}),
-			),
-			expectedType:     "collapsible",
-			expectedSummary:  "File info",
-			expectedDetails:  "/very/long/path/to/file.go",
-			expectedExpanded: false,
-			formatHints:      map[string]any{"priority": "high", "category": "file"},
-		},
-	}
+	}{"basic collapsible value": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		collapsibleVal: NewCollapsibleValue(
+			"2 errors",
+			[]string{"syntax error", "missing import"},
+		),
+		expectedType:     "collapsible",
+		expectedSummary:  "2 errors",
+		expectedDetails:  []string{"syntax error", "missing import"},
+		expectedExpanded: false,
+	}, "collapsible with JSON format hints": {
+
+		collapsibleVal: NewCollapsibleValue(
+			"File info",
+			"/very/long/path/to/file.go",
+			WithFormatHint(FormatJSON, map[string]any{"priority": "high", "category": "file"}),
+		),
+		expectedType:     "collapsible",
+		expectedSummary:  "File info",
+		expectedDetails:  "/very/long/path/to/file.go",
+		expectedExpanded: false,
+		formatHints:      map[string]any{"priority": "high", "category": "file"},
+	}, "expanded collapsible value": {
+
+		collapsibleVal: NewCollapsibleValue(
+			"Config details",
+			map[string]any{"debug": true, "port": 8080},
+			WithExpanded(true),
+		),
+		expectedType:     "collapsible",
+		expectedSummary:  "Config details",
+		expectedDetails:  map[string]any{"debug": true, "port": 8080},
+		expectedExpanded: true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create test data with CollapsibleValue
 			testData := []map[string]any{
 				{
@@ -185,51 +180,46 @@ func TestJSONRenderer_CollapsibleValue(t *testing.T) {
 
 // TestYAMLRenderer_CollapsibleValue tests YAML rendering of CollapsibleValue
 func TestYAMLRenderer_CollapsibleValue(t *testing.T) {
-	tests := []struct {
-		name             string
+	tests := map[string]struct {
 		collapsibleVal   *DefaultCollapsibleValue
 		expectedSummary  string
 		expectedDetails  any
 		expectedExpanded bool
 		formatHints      map[string]any
-	}{
-		{
-			name: "basic collapsible value",
-			collapsibleVal: NewCollapsibleValue(
-				"3 warnings",
-				[]string{"deprecated API", "unused variable", "missing docs"},
-			),
-			expectedSummary:  "3 warnings",
-			expectedDetails:  []string{"deprecated API", "unused variable", "missing docs"},
-			expectedExpanded: false,
-		},
-		{
-			name: "expanded collapsible value with map",
-			collapsibleVal: NewCollapsibleValue(
-				"Server config",
-				map[string]any{"host": "localhost", "port": 3000, "ssl": false},
-				WithExpanded(true),
-			),
-			expectedSummary:  "Server config",
-			expectedDetails:  map[string]any{"host": "localhost", "port": 3000, "ssl": false},
-			expectedExpanded: true,
-		},
-		{
-			name: "collapsible with YAML format hints",
-			collapsibleVal: NewCollapsibleValue(
-				"Database info",
-				"postgresql://localhost:5432/mydb",
-				WithFormatHint(FormatYAML, map[string]any{"secure": true, "pool_size": 10}),
-			),
-			expectedSummary:  "Database info",
-			expectedDetails:  "postgresql://localhost:5432/mydb",
-			expectedExpanded: false,
-			formatHints:      map[string]any{"secure": true, "pool_size": 10},
-		},
-	}
+	}{"basic collapsible value": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		collapsibleVal: NewCollapsibleValue(
+			"3 warnings",
+			[]string{"deprecated API", "unused variable", "missing docs"},
+		),
+		expectedSummary:  "3 warnings",
+		expectedDetails:  []string{"deprecated API", "unused variable", "missing docs"},
+		expectedExpanded: false,
+	}, "collapsible with YAML format hints": {
+
+		collapsibleVal: NewCollapsibleValue(
+			"Database info",
+			"postgresql://localhost:5432/mydb",
+			WithFormatHint(FormatYAML, map[string]any{"secure": true, "pool_size": 10}),
+		),
+		expectedSummary:  "Database info",
+		expectedDetails:  "postgresql://localhost:5432/mydb",
+		expectedExpanded: false,
+		formatHints:      map[string]any{"secure": true, "pool_size": 10},
+	}, "expanded collapsible value with map": {
+
+		collapsibleVal: NewCollapsibleValue(
+			"Server config",
+			map[string]any{"host": "localhost", "port": 3000, "ssl": false},
+			WithExpanded(true),
+		),
+		expectedSummary:  "Server config",
+		expectedDetails:  map[string]any{"host": "localhost", "port": 3000, "ssl": false},
+		expectedExpanded: true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create test data with CollapsibleValue
 			testData := []map[string]any{
 				{

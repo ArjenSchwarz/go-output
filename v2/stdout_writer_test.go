@@ -26,57 +26,49 @@ func TestNewStdoutWriter(t *testing.T) {
 }
 
 func TestStdoutWriterWrite(t *testing.T) {
-	tests := []struct {
-		name       string
+	tests := map[string]struct {
 		format     string
 		data       []byte
 		wantOutput string
 		wantErr    bool
-	}{
-		{
-			name:       "write with newline",
-			format:     FormatText,
-			data:       []byte("hello world\n"),
-			wantOutput: "hello world\n",
-			wantErr:    false,
-		},
-		{
-			name:       "write without newline",
-			format:     FormatText,
-			data:       []byte("hello world"),
-			wantOutput: "hello world\n",
-			wantErr:    false,
-		},
-		{
-			name:       "empty data with newline",
-			format:     FormatText,
-			data:       []byte{},
-			wantOutput: "",
-			wantErr:    false,
-		},
-		{
-			name:       "multiple lines",
-			format:     FormatText,
-			data:       []byte("line1\nline2\nline3"),
-			wantOutput: "line1\nline2\nline3\n",
-			wantErr:    false,
-		},
-		{
-			name:    "empty format",
-			format:  "",
-			data:    []byte("test"),
-			wantErr: true,
-		},
-		{
-			name:    "nil data",
-			format:  FormatText,
-			data:    nil,
-			wantErr: true,
-		},
-	}
+	}{"empty data with newline": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		format:     FormatText,
+		data:       []byte{},
+		wantOutput: "",
+		wantErr:    false,
+	}, "empty format": {
+
+		format:  "",
+		data:    []byte("test"),
+		wantErr: true,
+	}, "multiple lines": {
+
+		format:     FormatText,
+		data:       []byte("line1\nline2\nline3"),
+		wantOutput: "line1\nline2\nline3\n",
+		wantErr:    false,
+	}, "nil data": {
+
+		format:  FormatText,
+		data:    nil,
+		wantErr: true,
+	}, "write with newline": {
+
+		format:     FormatText,
+		data:       []byte("hello world\n"),
+		wantOutput: "hello world\n",
+		wantErr:    false,
+	}, "write without newline": {
+
+		format:     FormatText,
+		data:       []byte("hello world"),
+		wantOutput: "hello world\n",
+		wantErr:    false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var buf bytes.Buffer
 			sw := NewStdoutWriter()
 			sw.SetWriter(&buf)

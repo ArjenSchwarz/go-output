@@ -9,42 +9,38 @@ import (
 )
 
 func TestJSONRenderer_TableKeyOrderPreservation(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		keys     []string
 		data     []map[string]any
-		expected []string // Expected key order in output
-	}{
-		{
-			name: "explicit key order Z-A-M",
+		expected []string
+	}{ // Expected key order in output
+		"explicit key order Z-A-M": {
+
 			keys: []string{"Z", "A", "M"},
 			data: []map[string]any{
 				{"A": 1, "M": 2, "Z": 3},
 				{"Z": 6, "M": 5, "A": 4},
 			},
 			expected: []string{"Z", "A", "M"},
-		},
-		{
-			name: "numeric and string fields ordered",
+		}, "numeric and string fields ordered": {
+
 			keys: []string{"id", "name", "score", "active"},
 			data: []map[string]any{
 				{"name": "Alice", "id": 1, "active": true, "score": 95.5},
 				{"score": 87.2, "id": 2, "name": "Bob", "active": false},
 			},
 			expected: []string{"id", "name", "score", "active"},
-		},
-		{
-			name: "single record key preservation",
+		}, "single record key preservation": {
+
 			keys: []string{"last", "first", "middle"},
 			data: []map[string]any{
 				{"first": "John", "last": "Doe", "middle": "Q"},
 			},
 			expected: []string{"last", "first", "middle"},
-		},
-	}
+		}}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create table with explicit key order
 			doc := New().
 				Table("test", tt.data, WithKeys(tt.keys...)).

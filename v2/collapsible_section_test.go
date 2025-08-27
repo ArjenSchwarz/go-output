@@ -6,79 +6,73 @@ import (
 )
 
 func TestCollapsibleSectionInterface(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		section  CollapsibleSection
 		expected struct {
 			title      string
 			isExpanded bool
 			level      int
 		}
-	}{
-		{
-			name: "basic section with defaults",
-			section: NewCollapsibleSection("Test Section", []Content{
-				NewTextContent("Test content"),
-			}),
-			expected: struct {
-				title      string
-				isExpanded bool
-				level      int
-			}{
-				title:      "Test Section",
-				isExpanded: false,
-				level:      0,
-			},
-		},
-		{
-			name: "section with expanded option",
-			section: NewCollapsibleSection("Expanded Section", []Content{
-				NewTextContent("Test content"),
-			}, WithSectionExpanded(true)),
-			expected: struct {
-				title      string
-				isExpanded bool
-				level      int
-			}{
-				title:      "Expanded Section",
-				isExpanded: true,
-				level:      0,
-			},
-		},
-		{
-			name: "section with level option",
-			section: NewCollapsibleSection("Nested Section", []Content{
-				NewTextContent("Test content"),
-			}, WithSectionLevel(2)),
-			expected: struct {
-				title      string
-				isExpanded bool
-				level      int
-			}{
-				title:      "Nested Section",
-				isExpanded: false,
-				level:      2,
-			},
-		},
-		{
-			name: "empty title fallback",
-			section: NewCollapsibleSection("", []Content{
-				NewTextContent("Test content"),
-			}),
-			expected: struct {
-				title      string
-				isExpanded bool
-				level      int
-			}{
-				title:      "[untitled section]",
-				isExpanded: false,
-				level:      0,
-			},
-		},
-	}
+	}{"basic section with defaults": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		section: NewCollapsibleSection("Test Section", []Content{
+			NewTextContent("Test content"),
+		}),
+		expected: struct {
+			title      string
+			isExpanded bool
+			level      int
+		}{
+			title:      "Test Section",
+			isExpanded: false,
+			level:      0,
+		},
+	}, "empty title fallback": {
+
+		section: NewCollapsibleSection("", []Content{
+			NewTextContent("Test content"),
+		}),
+		expected: struct {
+			title      string
+			isExpanded bool
+			level      int
+		}{
+			title:      "[untitled section]",
+			isExpanded: false,
+			level:      0,
+		},
+	}, "section with expanded option": {
+
+		section: NewCollapsibleSection("Expanded Section", []Content{
+			NewTextContent("Test content"),
+		}, WithSectionExpanded(true)),
+		expected: struct {
+			title      string
+			isExpanded bool
+			level      int
+		}{
+			title:      "Expanded Section",
+			isExpanded: true,
+			level:      0,
+		},
+	}, "section with level option": {
+
+		section: NewCollapsibleSection("Nested Section", []Content{
+			NewTextContent("Test content"),
+		}, WithSectionLevel(2)),
+		expected: struct {
+			title      string
+			isExpanded bool
+			level      int
+		}{
+			title:      "Nested Section",
+			isExpanded: false,
+			level:      2,
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Test Title()
 			if got := tt.section.Title(); got != tt.expected.title {
 				t.Errorf("Title() = %v, want %v", got, tt.expected.title)
@@ -105,49 +99,44 @@ func TestCollapsibleSectionContent(t *testing.T) {
 		[]map[string]any{{"col1": "value1"}},
 		WithKeys("col1"))
 
-	tests := []struct {
-		name            string
+	tests := map[string]struct {
 		content         []Content
 		expectedCount   int
 		validateContent func([]Content) error
-	}{
-		{
-			name:          "single content item",
-			content:       []Content{text1},
-			expectedCount: 1,
-			validateContent: func(content []Content) error {
-				if content[0] != text1 {
-					return errorf("expected text1, got %v", content[0])
-				}
-				return nil
-			},
-		},
-		{
-			name:          "multiple content items",
-			content:       []Content{text1, text2, table1},
-			expectedCount: 3,
-			validateContent: func(content []Content) error {
-				if content[0] != text1 || content[1] != text2 || content[2] != table1 {
-					return errorf("content items not in expected order")
-				}
-				return nil
-			},
-		},
-		{
-			name:          "empty content",
-			content:       []Content{},
-			expectedCount: 0,
-			validateContent: func(content []Content) error {
-				if len(content) != 0 {
-					return errorf("expected empty content, got %d items", len(content))
-				}
-				return nil
-			},
-		},
-	}
+	}{"empty content": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		content:       []Content{},
+		expectedCount: 0,
+		validateContent: func(content []Content) error {
+			if len(content) != 0 {
+				return errorf("expected empty content, got %d items", len(content))
+			}
+			return nil
+		},
+	}, "multiple content items": {
+
+		content:       []Content{text1, text2, table1},
+		expectedCount: 3,
+		validateContent: func(content []Content) error {
+			if content[0] != text1 || content[1] != text2 || content[2] != table1 {
+				return errorf("content items not in expected order")
+			}
+			return nil
+		},
+	}, "single content item": {
+
+		content:       []Content{text1},
+		expectedCount: 1,
+		validateContent: func(content []Content) error {
+			if content[0] != text1 {
+				return errorf("expected text1, got %v", content[0])
+			}
+			return nil
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			section := NewCollapsibleSection("Test Section", tt.content)
 
 			// Get content
@@ -180,22 +169,21 @@ func TestCollapsibleSectionContent(t *testing.T) {
 }
 
 func TestCollapsibleSectionLevelLimits(t *testing.T) {
-	tests := []struct {
-		name          string
+	tests := map[string]struct {
 		inputLevel    int
 		expectedLevel int
 	}{
-		{"valid level 0", 0, 0},
-		{"valid level 1", 1, 1},
-		{"valid level 2", 2, 2},
-		{"valid level 3", 3, 3},
-		{"level too high", 4, 0}, // Should be ignored, default to 0
-		{"level too high 10", 10, 0},
-		{"negative level", -1, 0}, // Should be ignored, default to 0
+		"valid level 0":     {0, 0},
+		"valid level 1":     {1, 1},
+		"valid level 2":     {2, 2},
+		"valid level 3":     {3, 3},
+		"level too high":    {4, 0}, // Should be ignored, default to 0
+		"level too high 10": {10, 0},
+		"negative level":    {-1, 0}, // Should be ignored, default to 0
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			section := NewCollapsibleSection("Test", []Content{}, WithSectionLevel(tt.inputLevel))
 			if got := section.Level(); got != tt.expectedLevel {
 				t.Errorf("Level() = %v, want %v", got, tt.expectedLevel)
@@ -220,19 +208,18 @@ func TestCollapsibleSectionFormatHints(t *testing.T) {
 		WithSectionFormatHint("json", jsonHints),
 	)
 
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		format   string
 		expected map[string]any
 	}{
-		{"markdown hints", "markdown", markdownHints},
-		{"json hints", "json", jsonHints},
-		{"non-existent format", "xml", nil},
-		{"empty format", "", nil},
+		"markdown hints":      {"markdown", markdownHints},
+		"json hints":          {"json", jsonHints},
+		"non-existent format": {"xml", nil},
+		"empty format":        {"", nil},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			got := section.FormatHint(tt.format)
 			if !reflect.DeepEqual(got, tt.expected) {
 				t.Errorf("FormatHint(%q) = %v, want %v", tt.format, got, tt.expected)

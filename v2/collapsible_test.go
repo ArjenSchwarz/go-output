@@ -61,18 +61,17 @@ func TestNewCollapsibleValue_WithOptions(t *testing.T) {
 
 // TestCollapsibleValue_Summary tests Summary method with edge cases
 func TestCollapsibleValue_Summary(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		summary  string
 		expected string
 	}{
-		{"Normal summary", "test summary", "test summary"},
-		{"Empty summary", "", "[no summary]"},
-		{"Whitespace summary", "   ", "   "},
+		"Normal summary":     {"test summary", "test summary"},
+		"Empty summary":      {"", "[no summary]"},
+		"Whitespace summary": {"   ", "   "},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			cv := NewCollapsibleValue(tt.summary, "details")
 			if got := cv.Summary(); got != tt.expected {
 				t.Errorf("Summary() = %q, want %q", got, tt.expected)
@@ -83,20 +82,19 @@ func TestCollapsibleValue_Summary(t *testing.T) {
 
 // TestCollapsibleValue_Details tests Details method with various data types
 func TestCollapsibleValue_Details(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		details  any
 		expected any
 	}{
-		{"String details", "test details", "test details"},
-		{"Array details", []string{"a", "b", "c"}, []string{"a", "b", "c"}},
-		{"Map details", map[string]any{"key": "value"}, map[string]any{"key": "value"}},
-		{"Number details", 42, 42},
-		{"Bool details", true, true},
+		"String details": {"test details", "test details"},
+		"Array details":  {[]string{"a", "b", "c"}, []string{"a", "b", "c"}},
+		"Map details":    {map[string]any{"key": "value"}, map[string]any{"key": "value"}},
+		"Number details": {42, 42},
+		"Bool details":   {true, true},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			cv := NewCollapsibleValue("summary", tt.details)
 			if got := cv.Details(); !reflect.DeepEqual(got, tt.expected) {
 				t.Errorf("Details() = %v, want %v", got, tt.expected)
@@ -119,50 +117,44 @@ func TestCollapsibleValue_NilDetails(t *testing.T) {
 func TestCollapsibleValue_CharacterTruncation(t *testing.T) {
 	longDetails := "This is a very long string that should be truncated when the character limit is exceeded"
 
-	tests := []struct {
-		name              string
+	tests := map[string]struct {
 		maxLength         int
 		truncateIndicator string
 		details           any
 		expectedPrefix    string
 		shouldTruncate    bool
-	}{
-		{
-			name:              "Truncate long string",
-			maxLength:         20,
-			truncateIndicator: "[...truncated]",
-			details:           longDetails,
-			expectedPrefix:    "This is a very long ",
-			shouldTruncate:    true,
-		},
-		{
-			name:              "No truncation for short string",
-			maxLength:         200,
-			truncateIndicator: "[...truncated]",
-			details:           "Short string",
-			expectedPrefix:    "Short string",
-			shouldTruncate:    false,
-		},
-		{
-			name:              "Zero length disables truncation",
-			maxLength:         0,
-			truncateIndicator: "[...truncated]",
-			details:           longDetails,
-			expectedPrefix:    longDetails,
-			shouldTruncate:    false,
-		},
-		{
-			name:              "Non-string details not truncated",
-			maxLength:         5,
-			truncateIndicator: "[...truncated]",
-			details:           []string{"a", "b", "c"},
-			expectedPrefix:    "",
-			shouldTruncate:    false,
-		},
-	}
+	}{"No truncation for short string": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		maxLength:         200,
+		truncateIndicator: "[...truncated]",
+		details:           "Short string",
+		expectedPrefix:    "Short string",
+		shouldTruncate:    false,
+	}, "Non-string details not truncated": {
+
+		maxLength:         5,
+		truncateIndicator: "[...truncated]",
+		details:           []string{"a", "b", "c"},
+		expectedPrefix:    "",
+		shouldTruncate:    false,
+	}, "Truncate long string": {
+
+		maxLength:         20,
+		truncateIndicator: "[...truncated]",
+		details:           longDetails,
+		expectedPrefix:    "This is a very long ",
+		shouldTruncate:    true,
+	}, "Zero length disables truncation": {
+
+		maxLength:         0,
+		truncateIndicator: "[...truncated]",
+		details:           longDetails,
+		expectedPrefix:    longDetails,
+		shouldTruncate:    false,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			cv := NewCollapsibleValue("summary", tt.details,
 				WithMaxLength(tt.maxLength),
 				WithTruncateIndicator(tt.truncateIndicator),
@@ -182,7 +174,7 @@ func TestCollapsibleValue_CharacterTruncation(t *testing.T) {
 					t.Errorf("Details() = %q, want %q", resultStr, expectedResult)
 				}
 			} else {
-				if tt.name == "Non-string details not truncated" {
+				if name == "Non-string details not truncated" {
 					// Non-string details should be returned as-is
 					if !reflect.DeepEqual(result, tt.details) {
 						t.Errorf("Details() = %v, want %v", result, tt.details)
@@ -200,19 +192,18 @@ func TestCollapsibleValue_CharacterTruncation(t *testing.T) {
 
 // TestCollapsibleValue_IsExpanded tests expansion state
 func TestCollapsibleValue_IsExpanded(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		expanded bool
 	}{
-		{"Default collapsed", false},
-		{"Explicitly expanded", true},
-		{"Explicitly collapsed", false},
+		"Default collapsed":    {false},
+		"Explicitly expanded":  {true},
+		"Explicitly collapsed": {false},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			var cv *DefaultCollapsibleValue
-			if tt.name == "Default collapsed" {
+			if name == "Default collapsed" {
 				cv = NewCollapsibleValue("summary", "details")
 			} else {
 				cv = NewCollapsibleValue("summary", "details", WithExpanded(tt.expanded))
@@ -274,34 +265,29 @@ func TestCollapsibleValue_DefaultConfiguration(t *testing.T) {
 
 // TestCollapsibleValue_String tests the String method for debugging
 func TestCollapsibleValue_String(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		summary  string
 		expanded bool
 		expected string
-	}{
-		{
-			name:     "Collapsed value",
-			summary:  "test summary",
-			expanded: false,
-			expected: `CollapsibleValue{summary: "test summary", expanded: false}`,
-		},
-		{
-			name:     "Expanded value",
-			summary:  "another summary",
-			expanded: true,
-			expected: `CollapsibleValue{summary: "another summary", expanded: true}`,
-		},
-		{
-			name:     "Empty summary",
-			summary:  "",
-			expanded: false,
-			expected: `CollapsibleValue{summary: "", expanded: false}`,
-		},
-	}
+	}{"Collapsed value": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		summary:  "test summary",
+		expanded: false,
+		expected: `CollapsibleValue{summary: "test summary", expanded: false}`,
+	}, "Empty summary": {
+
+		summary:  "",
+		expanded: false,
+		expected: `CollapsibleValue{summary: "", expanded: false}`,
+	}, "Expanded value": {
+
+		summary:  "another summary",
+		expanded: true,
+		expected: `CollapsibleValue{summary: "another summary", expanded: true}`,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			cv := NewCollapsibleValue(tt.summary, "details", WithExpanded(tt.expanded))
 			if got := cv.String(); got != tt.expected {
 				t.Errorf("String() = %q, want %q", got, tt.expected)

@@ -6,22 +6,18 @@ import (
 
 // TestWithFormatValidation verifies format validation option
 func TestWithFormatValidation(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		validate bool
-	}{
-		{
-			name:     "enable validation",
-			validate: true,
-		},
-		{
-			name:     "disable validation",
-			validate: false,
-		},
-	}
+	}{"disable validation": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		validate: false,
+	}, "enable validation": {
+
+		validate: true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			rc := &rawConfig{
 				validateFormat: !tt.validate, // Start with opposite
 				preserveData:   true,
@@ -42,22 +38,18 @@ func TestWithFormatValidation(t *testing.T) {
 
 // TestWithDataPreservation verifies data preservation option
 func TestWithDataPreservation(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		preserve bool
-	}{
-		{
-			name:     "enable preservation",
-			preserve: true,
-		},
-		{
-			name:     "disable preservation",
-			preserve: false,
-		},
-	}
+	}{"disable preservation": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		preserve: false,
+	}, "enable preservation": {
+
+		preserve: true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			rc := &rawConfig{
 				validateFormat: true,
 				preserveData:   !tt.preserve, // Start with opposite
@@ -78,68 +70,60 @@ func TestWithDataPreservation(t *testing.T) {
 
 // TestApplyRawOptions verifies option application with defaults
 func TestApplyRawOptions(t *testing.T) {
-	tests := []struct {
-		name               string
+	tests := map[string]struct {
 		opts               []RawOption
 		expectedValidation bool
 		expectedPreserve   bool
-	}{
-		{
-			name:               "no options uses defaults",
-			opts:               []RawOption{},
-			expectedValidation: true,
-			expectedPreserve:   true,
-		},
-		{
-			name: "disable validation only",
-			opts: []RawOption{
-				WithFormatValidation(false),
-			},
-			expectedValidation: false,
-			expectedPreserve:   true,
-		},
-		{
-			name: "disable preservation only",
-			opts: []RawOption{
-				WithDataPreservation(false),
-			},
-			expectedValidation: true,
-			expectedPreserve:   false,
-		},
-		{
-			name: "disable both",
-			opts: []RawOption{
-				WithFormatValidation(false),
-				WithDataPreservation(false),
-			},
-			expectedValidation: false,
-			expectedPreserve:   false,
-		},
-		{
-			name: "last option wins",
-			opts: []RawOption{
-				WithFormatValidation(false),
-				WithFormatValidation(true),
-				WithDataPreservation(false),
-				WithDataPreservation(true),
-			},
-			expectedValidation: true,
-			expectedPreserve:   true,
-		},
-		{
-			name: "mixed order",
-			opts: []RawOption{
-				WithDataPreservation(false),
-				WithFormatValidation(false),
-				WithDataPreservation(true),
-			},
-			expectedValidation: false,
-			expectedPreserve:   true,
-		},
-	}
+	}{"disable both": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		opts: []RawOption{
+			WithFormatValidation(false),
+			WithDataPreservation(false),
+		},
+		expectedValidation: false,
+		expectedPreserve:   false,
+	}, "disable preservation only": {
+
+		opts: []RawOption{
+			WithDataPreservation(false),
+		},
+		expectedValidation: true,
+		expectedPreserve:   false,
+	}, "disable validation only": {
+
+		opts: []RawOption{
+			WithFormatValidation(false),
+		},
+		expectedValidation: false,
+		expectedPreserve:   true,
+	}, "last option wins": {
+
+		opts: []RawOption{
+			WithFormatValidation(false),
+			WithFormatValidation(true),
+			WithDataPreservation(false),
+			WithDataPreservation(true),
+		},
+		expectedValidation: true,
+		expectedPreserve:   true,
+	}, "mixed order": {
+
+		opts: []RawOption{
+			WithDataPreservation(false),
+			WithFormatValidation(false),
+			WithDataPreservation(true),
+		},
+		expectedValidation: false,
+		expectedPreserve:   true,
+	}, "no options uses defaults": {
+
+		opts:               []RawOption{},
+		expectedValidation: true,
+		expectedPreserve:   true,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			rc := ApplyRawOptions(tt.opts...)
 
 			if rc.validateFormat != tt.expectedValidation {

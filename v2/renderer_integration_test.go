@@ -132,28 +132,24 @@ func (m *rendererMockByteTransformer) CallCount() int {
 
 // Test TransformerAdapter detection and functionality
 func TestTransformerAdapter_Detection(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		transformer    any
 		isDataExpected bool
 		isNameExpected string
-	}{
-		{
-			name:           "data transformer",
-			transformer:    newRendererMockDataTransformer("data-test", 100, []string{FormatJSON}, "test data transformer"),
-			isDataExpected: true,
-			isNameExpected: "data-test",
-		},
-		{
-			name:           "byte transformer",
-			transformer:    newRendererMockByteTransformer("byte-test", 200, []string{FormatJSON}, " [byte-suffix]"),
-			isDataExpected: false,
-			isNameExpected: "byte-test",
-		},
-	}
+	}{"byte transformer": {
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+		transformer:    newRendererMockByteTransformer("byte-test", 200, []string{FormatJSON}, " [byte-suffix]"),
+		isDataExpected: false,
+		isNameExpected: "byte-test",
+	}, "data transformer": {
+
+		transformer:    newRendererMockDataTransformer("data-test", 100, []string{FormatJSON}, "test data transformer"),
+		isDataExpected: true,
+		isNameExpected: "data-test",
+	}}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
 			adapter := NewTransformerAdapter(test.transformer)
 
 			if adapter.IsDataTransformer() != test.isDataExpected {

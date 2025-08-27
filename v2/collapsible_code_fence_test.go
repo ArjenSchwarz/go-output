@@ -8,79 +8,74 @@ import (
 
 // TestCollapsibleValue_CodeFences tests the code fence wrapping functionality
 func TestCollapsibleValue_CodeFences(t *testing.T) {
-	tests := []struct {
-		name           string
+	tests := map[string]struct {
 		summary        string
 		details        any
 		options        []CollapsibleOption
 		expectCode     bool
 		expectedLang   string
 		expectedOutput string
-	}{
-		{
-			name:           "string details with JSON code fence",
-			summary:        "Configuration",
-			details:        `{"server": "localhost", "port": 8080}`,
-			options:        []CollapsibleOption{WithCodeFences("json")},
-			expectCode:     true,
-			expectedLang:   "json",
-			expectedOutput: `{"server": "localhost", "port": 8080}`,
-		},
-		{
-			name:    "array details with Go code fence",
-			summary: "Error Stack",
-			details: []string{
-				"func main() {",
-				"    fmt.Println(\"Hello\")",
-				"}",
-			},
-			options:        []CollapsibleOption{WithCodeFences("go")},
-			expectCode:     true,
-			expectedLang:   "go",
-			expectedOutput: "func main() {\n    fmt.Println(\"Hello\")\n}",
-		},
-		{
-			name:    "map details with YAML code fence",
-			summary: "Settings",
-			details: map[string]any{
-				"name":    "test-app",
-				"version": "1.0.0",
-				"debug":   true,
-			},
-			options:      []CollapsibleOption{WithCodeFences("yaml")},
-			expectCode:   true,
-			expectedLang: "yaml",
-			// Map order is not guaranteed, so we'll check individual parts
-		},
-		{
-			name:           "no code fence when not specified",
-			summary:        "Plain Text",
-			details:        "This is plain text without code fences",
-			options:        []CollapsibleOption{},
-			expectCode:     false,
-			expectedOutput: "This is plain text without code fences",
-		},
-		{
-			name:           "explicitly disable code fences",
-			summary:        "No Code",
-			details:        "func test() {}",
-			options:        []CollapsibleOption{WithoutCodeFences()},
-			expectCode:     false,
-			expectedOutput: "func test() {}",
-		},
-		{
-			name:           "code fence without language",
-			summary:        "Generic Code",
-			details:        "SELECT * FROM users;",
-			options:        []CollapsibleOption{WithCodeFences("")},
-			expectCode:     true,
-			expectedLang:   "",
-			expectedOutput: "SELECT * FROM users;",
-		},
-	}
+	}{"array details with Go code fence": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		summary: "Error Stack",
+		details: []string{
+			"func main() {",
+			"    fmt.Println(\"Hello\")",
+			"}",
+		},
+		options:        []CollapsibleOption{WithCodeFences("go")},
+		expectCode:     true,
+		expectedLang:   "go",
+		expectedOutput: "func main() {\n    fmt.Println(\"Hello\")\n}",
+	}, "code fence without language":
+
+	// Map order is not guaranteed, so we'll check individual parts
+
+	{
+
+		summary:        "Generic Code",
+		details:        "SELECT * FROM users;",
+		options:        []CollapsibleOption{WithCodeFences("")},
+		expectCode:     true,
+		expectedLang:   "",
+		expectedOutput: "SELECT * FROM users;",
+	}, "explicitly disable code fences": {
+
+		summary:        "No Code",
+		details:        "func test() {}",
+		options:        []CollapsibleOption{WithoutCodeFences()},
+		expectCode:     false,
+		expectedOutput: "func test() {}",
+	}, "map details with YAML code fence": {
+
+		summary: "Settings",
+		details: map[string]any{
+			"name":    "test-app",
+			"version": "1.0.0",
+			"debug":   true,
+		},
+		options:      []CollapsibleOption{WithCodeFences("yaml")},
+		expectCode:   true,
+		expectedLang: "yaml",
+	}, "no code fence when not specified": {
+
+		summary:        "Plain Text",
+		details:        "This is plain text without code fences",
+		options:        []CollapsibleOption{},
+		expectCode:     false,
+		expectedOutput: "This is plain text without code fences",
+	}, "string details with JSON code fence": {
+
+		summary:        "Configuration",
+		details:        `{"server": "localhost", "port": 8080}`,
+		options:        []CollapsibleOption{WithCodeFences("json")},
+		expectCode:     true,
+		expectedLang:   "json",
+		expectedOutput: `{"server": "localhost", "port": 8080}`,
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			cv := NewCollapsibleValue(tt.summary, tt.details, tt.options...)
 
 			// Test getter methods

@@ -7,35 +7,30 @@ import (
 
 // TestWithTextStyle verifies that WithTextStyle sets the complete style
 func TestWithTextStyle(t *testing.T) {
-	tests := []struct {
-		name  string
+	tests := map[string]struct {
 		style TextStyle
-	}{
-		{
-			name: "complete style",
-			style: TextStyle{
-				Bold:   true,
-				Italic: true,
-				Color:  "red",
-				Size:   16,
-				Header: true,
-			},
-		},
-		{
-			name:  "empty style",
-			style: TextStyle{},
-		},
-		{
-			name: "partial style",
-			style: TextStyle{
-				Bold:  true,
-				Color: "blue",
-			},
-		},
-	}
+	}{"complete style": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		style: TextStyle{
+			Bold:   true,
+			Italic: true,
+			Color:  "red",
+			Size:   16,
+			Header: true,
+		},
+	}, "empty style": {
+
+		style: TextStyle{},
+	}, "partial style": {
+
+		style: TextStyle{
+			Bold:  true,
+			Color: "blue",
+		},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			tc := &textConfig{}
 			opt := WithTextStyle(tt.style)
 			opt(tc)
@@ -201,87 +196,79 @@ func TestWithHeader(t *testing.T) {
 
 // TestApplyTextOptions verifies multiple options are applied correctly
 func TestApplyTextOptions(t *testing.T) {
-	tests := []struct {
-		name          string
+	tests := map[string]struct {
 		opts          []TextOption
 		expectedStyle TextStyle
-	}{
-		{
-			name:          "no options uses defaults",
-			opts:          []TextOption{},
-			expectedStyle: TextStyle{},
-		},
-		{
-			name: "single option",
-			opts: []TextOption{
-				WithBold(true),
-			},
-			expectedStyle: TextStyle{Bold: true},
-		},
-		{
-			name: "multiple options combined",
-			opts: []TextOption{
-				WithBold(true),
-				WithItalic(true),
-				WithColor("green"),
-				WithSize(14),
-				WithHeader(false),
-			},
-			expectedStyle: TextStyle{
-				Bold:   true,
-				Italic: true,
-				Color:  "green",
-				Size:   14,
-				Header: false,
-			},
-		},
-		{
-			name: "last option wins for same property",
-			opts: []TextOption{
-				WithColor("red"),
-				WithColor("blue"),
-				WithColor("green"),
-			},
-			expectedStyle: TextStyle{Color: "green"},
-		},
-		{
-			name: "WithTextStyle overrides individual settings",
-			opts: []TextOption{
-				WithBold(true),
-				WithColor("red"),
-				WithTextStyle(TextStyle{
-					Italic: true,
-					Size:   20,
-				}),
-			},
-			expectedStyle: TextStyle{
+	}{"WithTextStyle overrides individual settings": {
+
+		opts: []TextOption{
+			WithBold(true),
+			WithColor("red"),
+			WithTextStyle(TextStyle{
 				Italic: true,
 				Size:   20,
-			},
+			}),
 		},
-		{
-			name: "individual settings after WithTextStyle",
-			opts: []TextOption{
-				WithTextStyle(TextStyle{
-					Bold:   true,
-					Italic: true,
-					Color:  "red",
-					Size:   16,
-				}),
-				WithBold(false),
-				WithColor("blue"),
-			},
-			expectedStyle: TextStyle{
-				Bold:   false,
-				Italic: true,
-				Color:  "blue",
-				Size:   16,
-			},
+		expectedStyle: TextStyle{
+			Italic: true,
+			Size:   20,
 		},
-	}
+	}, "individual settings after WithTextStyle": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		opts: []TextOption{
+			WithTextStyle(TextStyle{
+				Bold:   true,
+				Italic: true,
+				Color:  "red",
+				Size:   16,
+			}),
+			WithBold(false),
+			WithColor("blue"),
+		},
+		expectedStyle: TextStyle{
+			Bold:   false,
+			Italic: true,
+			Color:  "blue",
+			Size:   16,
+		},
+	}, "last option wins for same property": {
+
+		opts: []TextOption{
+			WithColor("red"),
+			WithColor("blue"),
+			WithColor("green"),
+		},
+		expectedStyle: TextStyle{Color: "green"},
+	}, "multiple options combined": {
+
+		opts: []TextOption{
+			WithBold(true),
+			WithItalic(true),
+			WithColor("green"),
+			WithSize(14),
+			WithHeader(false),
+		},
+		expectedStyle: TextStyle{
+			Bold:   true,
+			Italic: true,
+			Color:  "green",
+			Size:   14,
+			Header: false,
+		},
+	}, "no options uses defaults": {
+
+		opts:          []TextOption{},
+		expectedStyle: TextStyle{},
+	}, "single option": {
+
+		opts: []TextOption{
+			WithBold(true),
+		},
+		expectedStyle: TextStyle{Bold: true},
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			tc := ApplyTextOptions(tt.opts...)
 
 			if !reflect.DeepEqual(tc.style, tt.expectedStyle) {

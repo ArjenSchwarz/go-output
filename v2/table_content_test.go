@@ -8,51 +8,46 @@ import (
 )
 
 func TestTableContent_KeyOrderPreservation(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		keys     []string
 		data     []map[string]any
-		expected []string // Expected column order in output
-	}{
-		{
-			name: "explicit key order Z-A-M",
-			keys: []string{"Z", "A", "M"},
-			data: []map[string]any{
-				{"A": 1, "M": 2, "Z": 3},
-				{"Z": 6, "M": 5, "A": 4},
-			},
-			expected: []string{"Z", "A", "M"},
-		},
-		{
-			name: "explicit key order Name-Age-Status",
+		expected []string
+	}{ // Expected column order in output
+		"explicit key order Name-Age-Status": {
+
 			keys: []string{"Name", "Age", "Status"},
 			data: []map[string]any{
 				{"Status": "Active", "Name": "Alice", "Age": 30},
 				{"Age": 25, "Status": "Inactive", "Name": "Bob"},
 			},
 			expected: []string{"Name", "Age", "Status"},
-		},
-		{
-			name: "single key",
+		}, "explicit key order Z-A-M": {
+
+			keys: []string{"Z", "A", "M"},
+			data: []map[string]any{
+				{"A": 1, "M": 2, "Z": 3},
+				{"Z": 6, "M": 5, "A": 4},
+			},
+			expected: []string{"Z", "A", "M"},
+		}, "reverse alphabetical": {
+
+			keys: []string{"Z", "Y", "X", "A"},
+			data: []map[string]any{
+				{"A": 1, "X": 2, "Y": 3, "Z": 4},
+			},
+			expected: []string{"Z", "Y", "X", "A"},
+		}, "single key": {
+
 			keys: []string{"ID"},
 			data: []map[string]any{
 				{"ID": 1},
 				{"ID": 2},
 			},
 			expected: []string{"ID"},
-		},
-		{
-			name: "reverse alphabetical",
-			keys: []string{"Z", "Y", "X", "A"},
-			data: []map[string]any{
-				{"A": 1, "X": 2, "Y": 3, "Z": 4},
-			},
-			expected: []string{"Z", "Y", "X", "A"},
-		},
-	}
+		}}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			table, err := NewTableContent("Test Table", tt.data, WithKeys(tt.keys...))
 			if err != nil {
 				t.Fatalf("NewTableContent failed: %v", err)
@@ -231,46 +226,39 @@ func TestTableContent_Implementation(t *testing.T) {
 }
 
 func TestTableContent_DataTypes(t *testing.T) {
-	tests := []struct {
-		name string
+	tests := map[string]struct {
 		data any
 		want error
-	}{
-		{
-			name: "slice of Record",
-			data: []Record{
-				{"A": 1, "B": 2},
-			},
-			want: nil,
-		},
-		{
-			name: "slice of map[string]any",
-			data: []map[string]any{
-				{"A": 1, "B": 2},
-			},
-			want: nil,
-		},
-		{
-			name: "single map[string]any",
-			data: map[string]any{"A": 1, "B": 2},
-			want: nil,
-		},
-		{
-			name: "slice of any with maps",
-			data: []any{
-				map[string]any{"A": 1, "B": 2},
-			},
-			want: nil,
-		},
-		{
-			name: "unsupported type",
-			data: "invalid",
-			want: fmt.Errorf("some error"), // convertToRecords will return an error
-		},
-	}
+	}{"single map[string]any": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		data: map[string]any{"A": 1, "B": 2},
+		want: nil,
+	}, "slice of Record": {
+
+		data: []Record{
+			{"A": 1, "B": 2},
+		},
+		want: nil,
+	}, "slice of any with maps": {
+
+		data: []any{
+			map[string]any{"A": 1, "B": 2},
+		},
+		want: nil,
+	}, "slice of map[string]any": {
+
+		data: []map[string]any{
+			{"A": 1, "B": 2},
+		},
+		want: nil,
+	}, "unsupported type": {
+
+		data: "invalid",
+		want: fmt.Errorf("some error"), // convertToRecords will return an error
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			_, err := NewTableContent("Test", tt.data)
 			if (err != nil) != (tt.want != nil) {
 				t.Errorf("NewTableContent() error = %v, want error = %v", err, tt.want != nil)

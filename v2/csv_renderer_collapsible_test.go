@@ -7,154 +7,152 @@ import (
 )
 
 func TestCSVRenderer_CollapsibleValue(t *testing.T) {
-	tests := []struct {
-		name            string
+	tests := map[string]struct {
 		data            []map[string]any
 		fields          []Field
 		expectedHeaders []string
 		expectedRows    [][]string
 		description     string
-	}{
-		{
-			name: "CollapsibleValue with ErrorListFormatter creates detail columns",
-			data: []map[string]any{
-				{
-					"file":   "main.go",
-					"errors": []string{"syntax error", "missing import"},
-				},
-				{
-					"file":   "utils.go",
-					"errors": []string{},
-				},
-			},
-			fields: []Field{
-				{Name: "file", Type: "string"},
-				{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
-			},
-			expectedHeaders: []string{"file", "errors", "errors_details"},
-			expectedRows: [][]string{
-				{"main.go", "2 errors (click to expand)", "syntax error; missing import"},
-				{"utils.go", "[]", ""}, // Empty array shows as "[]"
-			},
-			description: "Test Requirements 8.1, 8.2, 8.3: automatic detail column creation",
-		},
-		{
-			name: "CollapsibleValue with FilePathFormatter handles long paths",
-			data: []map[string]any{
-				{
-					"id":   1,
-					"path": "/very/long/path/to/some/deeply/nested/file/with/a/very/long/filename.txt",
-				},
-				{
-					"id":   2,
-					"path": "short.txt",
-				},
-			},
-			fields: []Field{
-				{Name: "id", Type: "int"},
-				{Name: "path", Type: "string", Formatter: FilePathFormatter(20)},
-			},
-			expectedHeaders: []string{"id", "path", "path_details"},
-			expectedRows: [][]string{
-				{"1", "...ry/long/filename.txt (show full path)", "/very/long/path/to/some/deeply/nested/file/with/a/very/long/filename.txt"},
-				{"2", "short.txt", ""}, // No collapsible for short paths
-			},
-			description: "Test Requirement 8.2: summary in original, details in new column",
-		},
-		{
-			name: "Multiple collapsible fields create adjacent detail columns",
-			data: []map[string]any{
-				{
-					"name":   "test",
-					"errors": []string{"error1", "error2"},
-					"config": map[string]any{"debug": true, "verbose": false},
-				},
-			},
-			fields: []Field{
-				{Name: "name", Type: "string"},
-				{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
-				{Name: "config", Type: "object", Formatter: JSONFormatter(100)}, // Large limit to prevent collapsible
-			},
-			expectedHeaders: []string{"name", "errors", "errors_details", "config"},
-			expectedRows: [][]string{
-				{"test", "2 errors (click to expand)", "error1; error2", `map[debug:true verbose:false]`}, // No collapsible for large limit
-			},
-			description: "Test Requirement 8.4: maintain original order, append detail columns adjacently",
-		},
-		{
-			name: "Complex detail structures are flattened for CSV",
-			data: []map[string]any{
-				{
-					"item": "test",
-					"metadata": map[string]any{
-						"nested": map[string]any{"level": 2},
-						"array":  []any{1, 2, 3},
-						"simple": "value",
-					},
-				},
-			},
-			fields: []Field{
-				{Name: "item", Type: "string"},
-				{Name: "metadata", Type: "object", Formatter: func(val any) any {
-					return NewCollapsibleValue("Complex metadata", val)
-				}},
-			},
-			expectedHeaders: []string{"item", "metadata", "metadata_details"},
-			expectedRows: [][]string{
-				{"test", "Complex metadata", ""}, // Will be checked separately due to map order
-			},
-			description: "Test Requirement 8.5: flatten complex structures for CSV compatibility",
-		},
-		{
-			name: "Non-collapsible fields remain unchanged",
-			data: []map[string]any{
-				{
-					"id":   1,
-					"name": "test",
-					"desc": "description",
-				},
-			},
-			fields: []Field{
-				{Name: "id", Type: "int"},
-				{Name: "name", Type: "string"},
-				{Name: "desc", Type: "string"},
-			},
-			expectedHeaders: []string{"id", "name", "desc"},
-			expectedRows: [][]string{
-				{"1", "test", "description"},
-			},
-			description: "Test baseline: tables without collapsible fields work normally",
-		},
-		{
-			name: "Mixed collapsible and non-collapsible fields",
-			data: []map[string]any{
-				{
-					"id":     1,
-					"errors": []string{"error1"},
-					"status": "failed",
-				},
-				{
-					"id":     2,
-					"errors": []string{}, // Will not be collapsible
-					"status": "success",
-				},
-			},
-			fields: []Field{
-				{Name: "id", Type: "int"},
-				{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
-				{Name: "status", Type: "string"},
-			},
-			expectedHeaders: []string{"id", "errors", "errors_details", "status"},
-			expectedRows: [][]string{
-				{"1", "1 errors (click to expand)", "error1", "failed"},
-				{"2", "[]", "", "success"}, // Empty array shows as "[]"
-			},
-			description: "Test Requirements 8.2, 8.3: mixed collapsible and regular processing",
-		},
-	}
+	}{"CollapsibleValue with ErrorListFormatter creates detail columns": {
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		data: []map[string]any{
+			{
+				"file":   "main.go",
+				"errors": []string{"syntax error", "missing import"},
+			},
+			{
+				"file":   "utils.go",
+				"errors": []string{},
+			},
+		},
+		fields: []Field{
+			{Name: "file", Type: "string"},
+			{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
+		},
+		expectedHeaders: []string{"file", "errors", "errors_details"},
+		expectedRows: [][]string{
+			{"main.go", "2 errors (click to expand)", "syntax error; missing import"},
+			{"utils.go", "[]", ""}, // Empty array shows as "[]"
+		},
+		description: "Test Requirements 8.1, 8.2, 8.3: automatic detail column creation",
+	}, "CollapsibleValue with FilePathFormatter handles long paths": {
+
+		data: []map[string]any{
+			{
+				"id":   1,
+				"path": "/very/long/path/to/some/deeply/nested/file/with/a/very/long/filename.txt",
+			},
+			{
+				"id":   2,
+				"path": "short.txt",
+			},
+		},
+		fields: []Field{
+			{Name: "id", Type: "int"},
+			{Name: "path", Type: "string", Formatter: FilePathFormatter(20)},
+		},
+		expectedHeaders: []string{"id", "path", "path_details"},
+		expectedRows: [][]string{
+			{"1", "...ry/long/filename.txt (show full path)", "/very/long/path/to/some/deeply/nested/file/with/a/very/long/filename.txt"},
+			{"2", "short.txt", ""}, // No collapsible for short paths
+		},
+		description: "Test Requirement 8.2: summary in original, details in new column",
+	}, "Complex detail structures are flattened for CSV":
+
+	// Large limit to prevent collapsible
+
+	// No collapsible for large limit
+
+	{
+
+		data: []map[string]any{
+			{
+				"item": "test",
+				"metadata": map[string]any{
+					"nested": map[string]any{"level": 2},
+					"array":  []any{1, 2, 3},
+					"simple": "value",
+				},
+			},
+		},
+		fields: []Field{
+			{Name: "item", Type: "string"},
+			{Name: "metadata", Type: "object", Formatter: func(val any) any {
+				return NewCollapsibleValue("Complex metadata", val)
+			}},
+		},
+		expectedHeaders: []string{"item", "metadata", "metadata_details"},
+		expectedRows: [][]string{
+			{"test", "Complex metadata", ""}, // Will be checked separately due to map order
+		},
+		description: "Test Requirement 8.5: flatten complex structures for CSV compatibility",
+	}, "Mixed collapsible and non-collapsible fields": {
+
+		data: []map[string]any{
+			{
+				"id":     1,
+				"errors": []string{"error1"},
+				"status": "failed",
+			},
+			{
+				"id":     2,
+				"errors": []string{}, // Will not be collapsible
+				"status": "success",
+			},
+		},
+		fields: []Field{
+			{Name: "id", Type: "int"},
+			{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
+			{Name: "status", Type: "string"},
+		},
+		expectedHeaders: []string{"id", "errors", "errors_details", "status"},
+		expectedRows: [][]string{
+			{"1", "1 errors (click to expand)", "error1", "failed"},
+			{"2", "[]", "", "success"}, // Empty array shows as "[]"
+		},
+		description: "Test Requirements 8.2, 8.3: mixed collapsible and regular processing",
+	}, "Multiple collapsible fields create adjacent detail columns": {
+
+		data: []map[string]any{
+			{
+				"name":   "test",
+				"errors": []string{"error1", "error2"},
+				"config": map[string]any{"debug": true, "verbose": false},
+			},
+		},
+		fields: []Field{
+			{Name: "name", Type: "string"},
+			{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
+			{Name: "config", Type: "object", Formatter: JSONFormatter(100)},
+		},
+		expectedHeaders: []string{"name", "errors", "errors_details", "config"},
+		expectedRows: [][]string{
+			{"test", "2 errors (click to expand)", "error1; error2", `map[debug:true verbose:false]`},
+		},
+		description: "Test Requirement 8.4: maintain original order, append detail columns adjacently",
+	}, "Non-collapsible fields remain unchanged": {
+
+		data: []map[string]any{
+			{
+				"id":   1,
+				"name": "test",
+				"desc": "description",
+			},
+		},
+		fields: []Field{
+			{Name: "id", Type: "int"},
+			{Name: "name", Type: "string"},
+			{Name: "desc", Type: "string"},
+		},
+		expectedHeaders: []string{"id", "name", "desc"},
+		expectedRows: [][]string{
+			{"1", "test", "description"},
+		},
+		description: "Test baseline: tables without collapsible fields work normally",
+	}}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			// Create table with schema
 			table, err := NewTableContent("Test Table", tt.data, WithSchema(tt.fields...))
 			if err != nil {
@@ -227,7 +225,7 @@ func TestCSVRenderer_CollapsibleValue(t *testing.T) {
 					actual := actualRow[colIdx]
 
 					// Special handling for complex structure test due to map iteration order
-					if tt.name == "Complex detail structures are flattened for CSV" && colIdx == 2 && expected == "" {
+					if name == "Complex detail structures are flattened for CSV" && colIdx == 2 && expected == "" {
 						// Check that the details contain expected key-value pairs
 						if !strings.Contains(actual, "array: [1 2 3]") ||
 							!strings.Contains(actual, "nested: map[level:2]") ||
@@ -243,69 +241,64 @@ func TestCSVRenderer_CollapsibleValue(t *testing.T) {
 				}
 			}
 
-			t.Logf("✓ %s: %s", tt.name, tt.description)
+			t.Logf("✓ %s: %s", name, tt.description)
 		})
 	}
 }
 
 func TestCSVRenderer_FlattenDetails(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		details  any
 		expected string
-	}{
-		{
-			name:     "String details remain unchanged",
-			details:  "simple string",
-			expected: "simple string",
-		},
-		{
-			name:     "String with newlines replaced",
-			details:  "line1\nline2\rline3\tline4",
-			expected: "line1 line2 line3 line4",
-		},
-		{
-			name:     "String array joined with semicolons",
-			details:  []string{"error1", "error2", "error3"},
-			expected: "error1; error2; error3",
-		},
-		{
-			name:     "Map converted to key-value pairs",
-			details:  map[string]any{"key1": "value1", "key2": 42},
-			expected: "", // Will be checked specially due to map order
-		},
-		{
-			name:     "Generic array joined",
-			details:  []any{1, "text", true},
-			expected: "1; text; true",
-		},
-		{
-			name:     "Complex nested structure",
-			details:  map[string]any{"nested": []any{1, 2}, "simple": "value"},
-			expected: "", // Will be checked specially due to map order
-		},
-		{
-			name:     "Nil details returns empty string",
-			details:  nil,
-			expected: "",
-		},
-	}
+	}{"Complex nested structure":
+
+	// Will be checked specially due to map order
+
+	{
+
+		details:  map[string]any{"nested": []any{1, 2}, "simple": "value"},
+		expected: "", // Will be checked specially due to map order
+	}, "Generic array joined": {
+
+		details:  []any{1, "text", true},
+		expected: "1; text; true",
+	}, "Map converted to key-value pairs": {
+
+		details:  map[string]any{"key1": "value1", "key2": 42},
+		expected: "",
+	}, "Nil details returns empty string": {
+
+		details:  nil,
+		expected: "",
+	}, "String array joined with semicolons": {
+
+		details:  []string{"error1", "error2", "error3"},
+		expected: "error1; error2; error3",
+	}, "String details remain unchanged": {
+
+		details:  "simple string",
+		expected: "simple string",
+	}, "String with newlines replaced": {
+
+		details:  "line1\nline2\rline3\tline4",
+		expected: "line1 line2 line3 line4",
+	}}
 
 	renderer := &csvRenderer{collapsibleConfig: DefaultRendererConfig}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			actual := renderer.flattenDetails(tt.details)
 
 			// Special handling for map-based tests due to iteration order
-			if tt.name == "Map converted to key-value pairs" && tt.expected == "" {
+			if name == "Map converted to key-value pairs" && tt.expected == "" {
 				if !strings.Contains(actual, "key1: value1") || !strings.Contains(actual, "key2: 42") {
 					t.Errorf("Expected map content not found in %q", actual)
 				}
 				return
 			}
 
-			if tt.name == "Complex nested structure" && tt.expected == "" {
+			if name == "Complex nested structure" && tt.expected == "" {
 				if !strings.Contains(actual, "nested: [1 2]") || !strings.Contains(actual, "simple: value") {
 					t.Errorf("Expected nested structure content not found in %q", actual)
 				}
@@ -320,51 +313,46 @@ func TestCSVRenderer_FlattenDetails(t *testing.T) {
 }
 
 func TestCSVRenderer_DetectCollapsibleFields(t *testing.T) {
-	tests := []struct {
-		name     string
+	tests := map[string]struct {
 		data     []map[string]any
 		fields   []Field
 		expected map[string]bool
-	}{
-		{
-			name: "Detect ErrorListFormatter field",
-			data: []map[string]any{
-				{"errors": []string{"error1", "error2"}},
-			},
-			fields: []Field{
-				{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
-			},
-			expected: map[string]bool{"errors": true},
+	}{"Detect ErrorListFormatter field": {
+
+		data: []map[string]any{
+			{"errors": []string{"error1", "error2"}},
 		},
-		{
-			name: "No collapsible fields detected",
-			data: []map[string]any{
-				{"name": "test", "value": 123},
-			},
-			fields: []Field{
-				{Name: "name", Type: "string"},
-				{Name: "value", Type: "int"},
-			},
-			expected: map[string]bool{},
+		fields: []Field{
+			{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
 		},
-		{
-			name: "Mixed collapsible and non-collapsible fields",
-			data: []map[string]any{
-				{"name": "test", "errors": []string{"error1"}, "count": 5},
-			},
-			fields: []Field{
-				{Name: "name", Type: "string"},
-				{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
-				{Name: "count", Type: "int"},
-			},
-			expected: map[string]bool{"errors": true},
+		expected: map[string]bool{"errors": true},
+	}, "Mixed collapsible and non-collapsible fields": {
+
+		data: []map[string]any{
+			{"name": "test", "errors": []string{"error1"}, "count": 5},
 		},
-	}
+		fields: []Field{
+			{Name: "name", Type: "string"},
+			{Name: "errors", Type: "array", Formatter: ErrorListFormatter()},
+			{Name: "count", Type: "int"},
+		},
+		expected: map[string]bool{"errors": true},
+	}, "No collapsible fields detected": {
+
+		data: []map[string]any{
+			{"name": "test", "value": 123},
+		},
+		fields: []Field{
+			{Name: "name", Type: "string"},
+			{Name: "value", Type: "int"},
+		},
+		expected: map[string]bool{},
+	}}
 
 	renderer := &csvRenderer{collapsibleConfig: DefaultRendererConfig}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
 			table, err := NewTableContent("Test", tt.data, WithSchema(tt.fields...))
 			if err != nil {
 				t.Fatalf("Failed to create table: %v", err)
