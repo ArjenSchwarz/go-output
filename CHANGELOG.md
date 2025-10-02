@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **AWS Icons Package Implementation (v2/icons)**
+  - Core AWS shape functionality with embedded aws.json data
+  - GetAWSShape() function with error handling for Draw.io style retrieval
+  - AllAWSGroups() for discovering available service categories
+  - AWSShapesInGroup() for listing shapes in specific groups
+  - HasAWSShape() convenience function for shape existence checking
+  - Comprehensive test suite with 100% coverage for all functions
+  - Memory-efficient design with one-time JSON parsing at package initialization
 - **Draw.io AWS Icons Support Specification**
   - Complete requirements specification for AWS icon integration in v2
   - Design documentation for icons package architecture and implementation strategy

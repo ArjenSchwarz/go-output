@@ -6,15 +6,15 @@ references:
 ---
 # Draw.io AWS Icons Implementation Tasks
 
-- [ ] 1. Core Package Setup
+- [x] 1. Core Package Setup
   - Set up the foundation for the v2/icons package and AWS shape support
-  - [ ] 1.1. Write unit tests for the icons package structure
+  - [x] 1.1. Write unit tests for the icons package structure
     - Create v2/icons/aws_test.go with test stubs for all planned functions
     - Add test cases for successful GetAWSShape lookups
     - Add test cases for missing group errors
     - Add test cases for missing shape errors
     - References: Requirements 6.1, 6.2, 6.3
-  - [ ] 1.2. Create the icons package and implement core AWS shape functionality
+  - [x] 1.2. Create the icons package and implement core AWS shape functionality
     - Create v2/icons directory structure
     - Copy drawio/shapes/aws.json from v1 to v2/icons/aws.json
     - Create v2/icons/aws.go with package declaration
