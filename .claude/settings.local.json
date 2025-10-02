@@ -55,7 +55,10 @@
       "Bash(INTEGRATION=1 go test -v -run \"TestIntegration\" ./...)",
       "Bash(./test-conversion:*)",
       "Bash(../test-conversion/test-conversion content_test.go)",
-      "Bash(.claude/scripts/copilot-pr-comments.sh:*)"
+      "Bash(.claude/scripts/copilot-pr-comments.sh:*)",
+      "mcp__serena__list_memories",
+      "mcp__devtools__codex-agent",
+      "Bash(rune:*)"
     ],
     "deny": []
   }

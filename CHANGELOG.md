@@ -1,3 +1,12 @@
+## [Unreleased]
+
+### Added
+- **Draw.io AWS Icons Support Specification**
+  - Complete requirements specification for AWS icon integration in v2
+  - Design documentation for icons package architecture and implementation strategy
+  - Task breakdown with implementation steps for AWS shapes functionality
+  - Decision log documenting design choices and rationale for icon support approach
+
 ## 2.2.0 / 2025-08-27
 
 ### Added
