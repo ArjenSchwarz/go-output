@@ -86,15 +86,15 @@ references:
     - Test that style strings are Draw.io-compatible
     - References: Requirements 3.2, Design: Migration Compatibility Test
 
-- [ ] 6. Documentation and Examples
+- [x] 6. Documentation and Examples
   - Create comprehensive documentation for the new icons package
-  - [ ] 6.1. Write package documentation
+  - [x] 6.1. Write package documentation
     - Create package-level documentation in aws.go with overview
     - Include usage example showing GetAWSShape with Draw.io
     - Reference helper functions for discovering groups
     - Add migration notes explaining change from drawio.GetAWSShape() to icons.GetAWSShape()
     - References: Requirements 7.1, 7.2, 7.3, 7.4
-  - [ ] 6.2. Create example code
+  - [x] 6.2. Create example code
     - Write example function showing basic GetAWSShape usage
     - Write example showing integration with DrawIOContent using placeholders
     - Write example showing how to discover available icons using helper functions

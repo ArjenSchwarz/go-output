@@ -464,3 +464,114 @@ func BenchmarkLargeScaleLookups(b *testing.B) {
 		}
 	}
 }
+
+// Example demonstrates basic usage of GetAWSShape
+func Example() {
+	// Get a specific AWS icon
+	style, err := GetAWSShape("Compute", "EC2")
+	if err != nil {
+		panic(err)
+	}
+
+	// The style can be used in Draw.io diagrams
+	_ = style
+
+	// Output:
+}
+
+// ExampleGetAWSShape demonstrates retrieving an AWS icon
+func ExampleGetAWSShape() {
+	style, err := GetAWSShape("Compute", "EC2")
+	if err != nil {
+		panic(err)
+	}
+
+	// Use the style in your Draw.io diagram
+	_ = style
+
+	// Output:
+}
+
+// ExampleGetAWSShape_errorHandling demonstrates proper error handling
+func ExampleGetAWSShape_errorHandling() {
+	style, err := GetAWSShape("Compute", "NonExistentService")
+	if err != nil {
+		// Handle the error - shape not found
+		_ = err.Error()
+		return
+	}
+
+	// Use the style
+	_ = style
+
+	// Output:
+}
+
+// ExampleAllAWSGroups demonstrates discovering available service groups
+func ExampleAllAWSGroups() {
+	groups := AllAWSGroups()
+
+	// Print first few groups (alphabetically sorted)
+	for i, group := range groups {
+		if i >= 3 {
+			break
+		}
+		_ = group
+	}
+
+	// Output:
+}
+
+// ExampleAWSShapesInGroup demonstrates discovering shapes within a group
+func ExampleAWSShapesInGroup() {
+	shapes, err := AWSShapesInGroup("Compute")
+	if err != nil {
+		panic(err)
+	}
+
+	// Print first few shapes (alphabetically sorted)
+	for i, shape := range shapes {
+		if i >= 3 {
+			break
+		}
+		_ = shape
+	}
+
+	// Output:
+}
+
+// ExampleHasAWSShape demonstrates checking if a shape exists
+func ExampleHasAWSShape() {
+	if HasAWSShape("Compute", "EC2") {
+		style, _ := GetAWSShape("Compute", "EC2")
+		_ = style
+	}
+
+	// Output:
+}
+
+// ExampleGetAWSShape_drawioIntegration demonstrates using AWS icons with Draw.io diagrams
+func ExampleGetAWSShape_drawioIntegration() {
+	// Prepare data with AWS service information
+	data := []map[string]any{
+		{"Name": "Web Server", "ServiceType": "EC2", "ServiceGroup": "Compute"},
+		{"Name": "Database", "ServiceType": "RDS", "ServiceGroup": "Database"},
+		{"Name": "File Storage", "ServiceType": "S3", "ServiceGroup": "Storage"},
+	}
+
+	// Add AWS icon styles to each record
+	for _, record := range data {
+		group := record["ServiceGroup"].(string)
+		serviceType := record["ServiceType"].(string)
+
+		if style, err := GetAWSShape(group, serviceType); err == nil {
+			record["AWSIcon"] = style
+		}
+	}
+
+	// The AWSIcon field can now be used in Draw.io diagrams with placeholders
+	// For example, in DrawIOHeader: Style: "%AWSIcon%"
+	_ = data
+
+	// Output:
+}

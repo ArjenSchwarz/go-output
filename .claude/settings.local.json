@@ -58,7 +58,8 @@
       "Bash(.claude/scripts/copilot-pr-comments.sh:*)",
       "mcp__serena__list_memories",
       "mcp__devtools__codex-agent",
-      "Bash(rune:*)"
+      "Bash(rune:*)",
+      "Bash(golangci-lint run:*)"
     ],
     "deny": []
   }

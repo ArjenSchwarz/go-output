@@ -25,6 +25,32 @@
 //	    // Use the shape
 //	}
 //
+// # Integration with Draw.io
+//
+// AWS icons can be used with Draw.io diagrams by assigning icon styles to records
+// and using placeholders in the DrawIOHeader.Style field:
+//
+//	// Prepare data with service information
+//	data := []map[string]any{
+//	    {"Name": "API Gateway", "Type": "APIGateway", "Group": "Networking"},
+//	    {"Name": "Lambda Function", "Type": "Lambda", "Group": "Compute"},
+//	    {"Name": "DynamoDB", "Type": "DynamoDB", "Group": "Database"},
+//	}
+//
+//	// Add AWS icon styles to each record
+//	for _, record := range data {
+//	    style, err := icons.GetAWSShape(record["Group"].(string), record["Type"].(string))
+//	    if err == nil {
+//	        record["IconStyle"] = style
+//	    }
+//	}
+//
+//	// Create Draw.io content with placeholder for dynamic icons
+//	header := DrawIOHeader{
+//	    Style: "%IconStyle%",  // Placeholder replaced per-record
+//	    Label: "%Name%",
+//	}
+//
 // # Migration from v1
 //
 // The API has changed from v1 to return errors explicitly:
