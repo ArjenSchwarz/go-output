@@ -2075,9 +2075,120 @@ The v2 API is designed for extensibility:
 | Mermaid | `output.Mermaid` | ✗ | Mermaid diagrams |
 | DrawIO | `output.DrawIO` | ✗ | Draw.io CSV format |
 
+### AWS Icons Package (v2/icons)
+
+The `v2/icons` package provides AWS service icons for Draw.io diagrams, enabling professional architecture diagrams with proper AWS branding.
+
+#### Basic Icon Retrieval
+
+```go
+import "github.com/ArjenSchwarz/go-output/v2/icons"
+
+// Get a specific AWS icon
+style, err := icons.GetAWSShape("Compute", "EC2")
+if err != nil {
+    log.Fatal(err)
+}
+
+// Check if a shape exists
+if icons.HasAWSShape("Compute", "Lambda") {
+    style, _ := icons.GetAWSShape("Compute", "Lambda")
+    // Use the style
+}
+```
+
+#### Discovering Available Icons
+
+```go
+// List all service groups
+groups := icons.AllAWSGroups()
+// Returns: ["Analytics", "Compute", "Database", "Networking", "Storage", ...]
+
+// List shapes in a specific group
+shapes, err := icons.AWSShapesInGroup("Compute")
+// Returns: ["EC2", "ECS", "EKS", "Lambda", ...]
+```
+
+#### Integration with Draw.io Diagrams
+
+```go
+// Prepare data with AWS service information
+data := []map[string]any{
+    {"Name": "API Gateway", "Type": "APIGateway", "Group": "Networking Content Delivery"},
+    {"Name": "Lambda Function", "Type": "Lambda", "Group": "Compute"},
+    {"Name": "DynamoDB Table", "Type": "DynamoDB", "Group": "Database"},
+}
+
+// Add AWS icon styles to each record
+for _, record := range data {
+    style, err := icons.GetAWSShape(record["Group"].(string), record["Type"].(string))
+    if err == nil {
+        record["IconStyle"] = style
+    }
+}
+
+// Create Draw.io diagram with dynamic icons using placeholders
+header := output.DrawIOHeader{
+    Style: "%IconStyle%",  // Placeholder replaced per-record
+    Label: "%Name%",
+    Width: 78,
+    Height: 78,
+}
+
+doc := output.New().
+    DrawIO("AWS Architecture", convertToRecords(data), header).
+    Build()
+
+out := output.NewOutput(
+    output.WithFormat(output.DrawIO),
+    output.WithWriter(output.NewFileWriter(".", "architecture.csv")),
+)
+
+err := out.Render(context.Background(), doc)
+```
+
+#### Migration from v1
+
+The v2 icons package replaces v1's `drawio.GetAWSShape()`:
+
+```go
+// v1
+import "github.com/ArjenSchwarz/go-output/drawio"
+style := drawio.GetAWSShape("Compute", "EC2") // returns empty string on error
+
+// v2
+import "github.com/ArjenSchwarz/go-output/v2/icons"
+style, err := icons.GetAWSShape("Compute", "EC2") // returns error
+if err != nil {
+    // handle error
+}
+```
+
+**Key Differences from v1:**
+- Explicit error handling with descriptive error messages
+- Same embedded aws.json dataset (600+ AWS services)
+- Same case-sensitive matching behavior
+- Thread-safe concurrent access
+
+#### Common AWS Service Groups
+
+| Group | Example Services |
+|-------|------------------|
+| Compute | EC2, ECS, EKS, Lambda, Batch |
+| Storage | S3, EBS, EFS, FSx, Backup |
+| Database | RDS, DynamoDB, ElastiCache, Neptune |
+| Networking Content Delivery | VPC, CloudFront, Route 53, API Gateway |
+| Security Identity Compliance | IAM, Cognito, Secrets Manager, KMS |
+| Analytics | Athena, EMR, Kinesis, Glue, QuickSight |
+| Management Governance | CloudWatch, CloudFormation, Systems Manager |
+| Machine Learning | SageMaker, Rekognition, Comprehend |
+
+Use `icons.AllAWSGroups()` for the complete list.
+
 ### Version History
 | Version | Key Features |
 |---------|--------------|
+| v2.2.0 | AWS Icons package for Draw.io diagram support |
 | v2.1.3 | Enhanced markdown table escaping for pipes, asterisks, underscores, backticks, brackets |
 | v2.1.1 | Code fence support for collapsible fields with syntax highlighting |
 | v2.1.0 | Complete collapsible content system with format-aware rendering |
