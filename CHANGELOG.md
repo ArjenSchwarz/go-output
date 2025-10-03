@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **AWS Icons Package Testing Suite (v2/icons)**
+  - Integration tests for Draw.io workflow compatibility with AWS icons
+  - Migration compatibility tests verifying v1/v2 consistency
+  - Concurrent access tests for thread safety validation (race detector enabled)
+  - Benchmark suite for performance validation (O(1) lookup verification)
+  - Test coverage for placeholder patterns and multi-icon diagrams
+  - Duplicate key handling tests ensuring last-value-wins behavior
+  - Case sensitivity tests verifying exact matching requirements
 - **AWS Icons Package Implementation (v2/icons)**
   - Core AWS shape functionality with embedded aws.json data
   - GetAWSShape() function with error handling for Draw.io style retrieval
