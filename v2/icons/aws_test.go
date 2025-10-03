@@ -166,6 +166,108 @@ func TestGetAWSShape_ThreadSafety(t *testing.T) {
 	wg.Wait()
 }
 
+// TestGetAWSShape_ConcurrentSameShape tests multiple goroutines accessing the same shape
+// This specifically tests for race conditions when accessing the same map entries
+func TestGetAWSShape_ConcurrentSameShape(t *testing.T) {
+	t.Parallel()
+
+	const numGoroutines = 1000
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// All goroutines access the same shape
+	for range numGoroutines {
+		go func() {
+			defer wg.Done()
+			shape, err := GetAWSShape("Compute", "EC2")
+			if err != nil {
+				t.Errorf("GetAWSShape failed: %v", err)
+			}
+			if shape == "" {
+				t.Error("GetAWSShape returned empty shape")
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+// TestGetAWSShape_ConcurrentDifferentShapes tests concurrent access to different shapes
+func TestGetAWSShape_ConcurrentDifferentShapes(t *testing.T) {
+	t.Parallel()
+
+	// Test shapes from different groups - using only known valid shapes
+	testCases := []struct {
+		group string
+		title string
+	}{
+		{"Compute", "EC2"},
+		{"Storage", "Elastic Block Store"},
+		{"Database", "DynamoDB"},
+		{"Analytics", "Kinesis"},
+	}
+
+	const numIterations = 100
+	var wg sync.WaitGroup
+	wg.Add(len(testCases) * numIterations)
+
+	for _, tc := range testCases {
+		tc := tc // Capture for goroutine
+		for range numIterations {
+			go func() {
+				defer wg.Done()
+				shape, err := GetAWSShape(tc.group, tc.title)
+				if err != nil {
+					t.Errorf("GetAWSShape(%q, %q) failed: %v", tc.group, tc.title, err)
+				}
+				if shape == "" {
+					t.Errorf("GetAWSShape(%q, %q) returned empty shape", tc.group, tc.title)
+				}
+			}()
+		}
+	}
+
+	wg.Wait()
+}
+
+// TestGetAWSShape_RaceDetector tests for race conditions using go test -race
+// This test is specifically designed to trigger race detector warnings if any exist
+func TestGetAWSShape_RaceDetector(t *testing.T) {
+	// Note: Run with `go test -race` to enable race detection
+	t.Parallel()
+
+	const numGoroutines = 50
+	done := make(chan bool)
+
+	// Start multiple readers
+	for range numGoroutines {
+		go func() {
+			for i := 0; i < 100; i++ {
+				_, _ = GetAWSShape("Compute", "EC2")
+				_, _ = GetAWSShape("Storage", "Elastic Block Store")
+			}
+			done <- true
+		}()
+	}
+
+	// Start helper function accessors
+	for range 10 {
+		go func() {
+			for i := 0; i < 100; i++ {
+				_ = AllAWSGroups()
+				_ = HasAWSShape("Compute", "EC2")
+				_, _ = AWSShapesInGroup("Storage")
+			}
+			done <- true
+		}()
+	}
+
+	// Wait for all goroutines
+	for range numGoroutines + 10 {
+		<-done
+	}
+}
+
 // TestAllAWSGroups tests the helper function for listing all groups
 func TestAllAWSGroups(t *testing.T) {
 	t.Parallel()
@@ -293,5 +395,72 @@ func TestHasAWSShape(t *testing.T) {
 				t.Errorf("HasAWSShape(%q, %q) = %v, want %v", tc.group, tc.title, got, tc.want)
 			}
 		})
+	}
+}
+
+// BenchmarkGetAWSShape tests single lookup performance
+func BenchmarkGetAWSShape(b *testing.B) {
+	for b.Loop() {
+		_, _ = GetAWSShape("Compute", "EC2")
+	}
+}
+
+// BenchmarkGetAWSShape_NotFound benchmarks the error path for missing shapes
+func BenchmarkGetAWSShape_NotFound(b *testing.B) {
+	for b.Loop() {
+		_, _ = GetAWSShape("NonExistent", "Service")
+	}
+}
+
+// BenchmarkConcurrentLookups tests parallel access performance
+func BenchmarkConcurrentLookups(b *testing.B) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, _ = GetAWSShape("Compute", "EC2")
+		}
+	})
+}
+
+// BenchmarkAllAWSGroups benchmarks the helper function performance
+func BenchmarkAllAWSGroups(b *testing.B) {
+	for b.Loop() {
+		_ = AllAWSGroups()
+	}
+}
+
+// BenchmarkAWSShapesInGroup benchmarks listing shapes in a group
+func BenchmarkAWSShapesInGroup(b *testing.B) {
+	for b.Loop() {
+		_, _ = AWSShapesInGroup("Compute")
+	}
+}
+
+// BenchmarkHasAWSShape benchmarks shape existence check
+func BenchmarkHasAWSShape(b *testing.B) {
+	for b.Loop() {
+		_ = HasAWSShape("Compute", "EC2")
+	}
+}
+
+// BenchmarkLargeScaleLookups verifies O(1) performance with many different lookups
+func BenchmarkLargeScaleLookups(b *testing.B) {
+	// Test with various services from different groups to verify O(1) behavior
+	// Using known valid shapes from TestGetAWSShape_Success
+	testCases := []struct {
+		group string
+		title string
+	}{
+		{"Compute", "EC2"},
+		{"Storage", "Elastic Block Store"},
+		{"Database", "DynamoDB"},
+		{"Analytics", "Kinesis"},
+	}
+
+	b.ResetTimer()
+	for b.Loop() {
+		// Access different shapes in rotation to test map performance
+		for _, tc := range testCases {
+			_, _ = GetAWSShape(tc.group, tc.title)
+		}
 	}
 }

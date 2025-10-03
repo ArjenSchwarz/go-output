@@ -23,16 +23,16 @@ references:
     - Create internal map structure map[string]map[string]string for shape storage
     - References: Requirements 1.1, 1.4, 2.3, 2.4, Design: init with panic, Memory Model
 
-- [ ] 2. Core API Implementation
+- [x] 2. Core API Implementation
   - Implement the main GetAWSShape function with proper error handling
-  - [ ] 2.1. Write unit tests for GetAWSShape function
+  - [x] 2.1. Write unit tests for GetAWSShape function
     - Test successful retrieval of known shapes like Compute/EC2
     - Test error for non-existent group
     - Test error for non-existent shape within valid group
     - Test case sensitivity for exact matching
     - Test with empty string parameters
     - References: Requirements 1.6, 1.7, 6.1, 6.2, 6.3
-  - [ ] 2.2. Implement GetAWSShape function
+  - [x] 2.2. Implement GetAWSShape function
     - Create GetAWSShape(group, title string) (string, error) function signature
     - Implement defensive nested map access pattern
     - Return fmt.Errorf("shape group %q not found", group) for missing groups
@@ -40,16 +40,16 @@ references:
     - Add comprehensive godoc comments
     - References: Requirements 1.2, 1.6, 2.2, 7.1, Design: Core API
 
-- [ ] 3. Helper Functions
+- [x] 3. Helper Functions
   - Implement utility functions for discovering available AWS shapes
-  - [ ] 3.1. Write unit tests for helper functions
+  - [x] 3.1. Write unit tests for helper functions
     - Test AllAWSGroups returns alphabetically sorted groups
     - Test AWSShapesInGroup returns alphabetically sorted shapes
     - Test AWSShapesInGroup error handling for invalid groups
     - Test HasAWSShape returns true for existing shapes
     - Test HasAWSShape returns false for non-existing shapes
     - References: Requirements 4.1, 4.2, 4.3, 6.4
-  - [ ] 3.2. Implement helper functions
+  - [x] 3.2. Implement helper functions
     - Implement AllAWSGroups() []string returning sorted group names
     - Implement AWSShapesInGroup(group string) ([]string, error) with sorting
     - Implement HasAWSShape(group, title string) bool for existence checks
@@ -57,30 +57,30 @@ references:
     - Add godoc comments for each function
     - References: Requirements 4.1, 4.2, 4.3, 4.4, 7.1
 
-- [ ] 4. Thread Safety and Performance
+- [x] 4. Thread Safety and Performance
   - Ensure the implementation is thread-safe and performant
-  - [ ] 4.1. Write concurrent access tests
+  - [x] 4.1. Write concurrent access tests
     - Create test with multiple goroutines calling GetAWSShape simultaneously
     - Create test with race detector enabled (go test -race)
     - Test concurrent access to different shapes
     - Test concurrent access to same shape
     - References: Requirements 2.5, 6.5
-  - [ ] 4.2. Write benchmark tests
+  - [x] 4.2. Write benchmark tests
     - Create BenchmarkGetAWSShape for single lookup performance
     - Create BenchmarkConcurrentLookups for parallel access performance
     - Use modern b.Loop() pattern from Go 1.24+
     - Verify O(1) lookup performance with 600+ services
     - References: Requirements 5.1, 5.2, 5.3, 5.4, Design: Benchmark Tests
 
-- [ ] 5. Draw.io Integration
+- [x] 5. Draw.io Integration
   - Test and document integration with the existing Draw.io functionality
-  - [ ] 5.1. Write integration tests with Draw.io
+  - [x] 5.1. Write integration tests with Draw.io
     - Create test showing AWS icons used with DrawIOHeader.Style field
     - Test with placeholder pattern like %AWSIcon% in Style field
     - Test multiple different icons assigned to different nodes
     - Verify style string format matches v1 exactly
     - References: Requirements 3.1, 3.2, 3.3, 3.4, 6.6, Design: Integration Tests
-  - [ ] 5.2. Create migration compatibility tests
+  - [x] 5.2. Create migration compatibility tests
     - Compare GetAWSShape output with v1 for same inputs
     - Verify duplicate key handling consistency (last value wins)
     - Test that style strings are Draw.io-compatible
