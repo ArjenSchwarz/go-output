@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **AWS Icons Package Performance Testing (v2/icons)**
+  - Memory usage test validating package data stays within expected ~750KB-1MB range
+  - Startup time test verifying fast data access (< 100ms)
+  - Performance validation tests confirming acceptable memory footprint for embedded JSON data
+- **Development Configuration**
+  - Added `coverage.out` and `mem.out` to .gitignore for cleaner repository
+
+### Added
 - **AWS Icons Package Documentation and Examples (v2/icons)**
   - Comprehensive package-level documentation with Draw.io integration examples
   - Example functions demonstrating GetAWSShape basic usage and error handling

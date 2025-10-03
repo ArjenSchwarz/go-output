@@ -1,2 +1,4 @@
 .serena/cache/go/document_symbols_cache_v23-06-25.pkl
 .claude/scripts
+coverage.out
+mem.out
