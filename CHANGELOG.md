@@ -1,6 +1,18 @@
 ## [Unreleased]
 
 ### Added
+- **AWS Icons Package Documentation and Examples (v2/icons)**
+  - Comprehensive package-level documentation with Draw.io integration examples
+  - Example functions demonstrating GetAWSShape basic usage and error handling
+  - Examples for discovering icons using AllAWSGroups and AWSShapesInGroup helpers
+  - Draw.io integration example showing placeholder-based dynamic icon assignment
+  - Usage examples with proper godoc formatting and testable output
+
+### Changed
+- **Development Configuration**
+  - Added golangci-lint to allowed Bash commands in Claude settings for automated code quality checks
+
+### Added
 - **AWS Icons Package Testing Suite (v2/icons)**
   - Integration tests for Draw.io workflow compatibility with AWS icons
   - Migration compatibility tests verifying v1/v2 consistency
