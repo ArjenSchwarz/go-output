@@ -417,6 +417,98 @@ doc := output.New().
 out := output.NewOutput(output.WithFormat(output.DrawIO))
 ```
 
+#### AWS Icons for Draw.io
+
+The AWS icon functionality has moved from `drawio` package to the new `icons` package with improved error handling:
+
+```go
+// v1
+import "github.com/ArjenSchwarz/go-output/drawio"
+
+style := drawio.GetAWSShape("Compute", "EC2")
+// Returns empty string if shape not found - no error indication
+
+// v2
+import "github.com/ArjenSchwarz/go-output/v2/icons"
+
+style, err := icons.GetAWSShape("Compute", "EC2")
+if err != nil {
+    // Explicit error: "shape group not found" or "shape not found in group"
+    log.Fatal(err)
+}
+```
+
+**Discovery helpers** (new in v2):
+
+```go
+// List all AWS service groups
+groups := icons.AllAWSGroups()
+
+// List all shapes in a group
+shapes, err := icons.AWSShapesInGroup("Compute")
+
+// Check if shape exists
+if icons.HasAWSShape("Compute", "Lambda") {
+    // Shape is available
+}
+```
+
+**Complete Draw.io + AWS Icons example:**
+
+```go
+// v1 approach
+import (
+    "github.com/ArjenSchwarz/go-output/drawio"
+    "github.com/ArjenSchwarz/go-output/format"
+)
+
+output := &format.OutputArray{}
+for _, item := range data {
+    // Get icon style (no error checking possible)
+    style := drawio.GetAWSShape(item.Group, item.Service)
+    output.AddRow(map[string]any{
+        "Name": item.Name,
+        "Icon": style,
+    })
+}
+drawio.SetHeaderValues(drawio.Header{Style: "%Icon%"})
+output.OutputFormat = "drawio"
+output.Write()
+
+// v2 approach
+import (
+    "github.com/ArjenSchwarz/go-output/v2"
+    "github.com/ArjenSchwarz/go-output/v2/icons"
+)
+
+records := []output.Record{}
+for _, item := range data {
+    // Get icon style with proper error handling
+    style, err := icons.GetAWSShape(item.Group, item.Service)
+    if err != nil {
+        log.Printf("Warning: icon not found for %s/%s: %v", item.Group, item.Service, err)
+        style = "" // Use default/fallback
+    }
+    records = append(records, output.Record{
+        "Name": item.Name,
+        "Icon": style,
+    })
+}
+
+doc := output.New().
+    DrawIO("AWS Architecture", records, output.DrawIOHeader{
+        Style: "%Icon%",
+        Label: "%Name%",
+    }).
+    Build()
+
+out := output.NewOutput(
+    output.WithFormat(output.DrawIO),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+out.Render(context.Background(), doc)
+```
+
 ## Feature-by-Feature Migration
 
 ### Sorting
