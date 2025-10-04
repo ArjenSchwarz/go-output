@@ -11,6 +11,86 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// marshalFunc is a function that marshals data to bytes
+type marshalFunc func(v any) ([]byte, error)
+
+// unmarshalFunc is a function that unmarshals bytes to data
+type unmarshalFunc func(data []byte, v any) error
+
+// renderDocumentGeneric is a shared implementation for rendering documents in different formats
+func renderDocumentGeneric(
+	ctx context.Context,
+	doc *Document,
+	renderContent func(Content) ([]byte, error),
+	unmarshal unmarshalFunc,
+	marshal marshalFunc,
+) ([]byte, error) {
+	if doc == nil {
+		return nil, fmt.Errorf("document cannot be nil")
+	}
+
+	contents := doc.GetContents()
+
+	// If single content, render it directly
+	if len(contents) == 1 {
+		return renderContent(contents[0])
+	}
+
+	// Multiple contents: create an array
+	var contentArray []any
+	for _, content := range contents {
+		// Check for context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		contentBytes, err := renderContent(content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
+		}
+
+		var contentData any
+		if err := unmarshal(contentBytes, &contentData); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal content: %w", err)
+		}
+		contentArray = append(contentArray, contentData)
+	}
+
+	return marshal(contentArray)
+}
+
+// buildTextContentData creates a generic representation of text content
+func buildTextContentData(text *TextContent) map[string]any {
+	result := map[string]any{
+		"type":    FormatText,
+		"content": text.Text(),
+	}
+
+	style := text.Style()
+	if style.Bold || style.Italic || style.Color != "" || style.Size > 0 || style.Header {
+		result["style"] = map[string]any{
+			"bold":   style.Bold,
+			"italic": style.Italic,
+			"color":  style.Color,
+			"size":   style.Size,
+			"header": style.Header,
+		}
+	}
+
+	return result
+}
+
+// buildRawContentData creates a generic representation of raw content
+func buildRawContentData(raw *RawContent) map[string]any {
+	return map[string]any{
+		"type":   "raw",
+		"format": raw.Format(),
+		"data":   string(raw.Data()),
+	}
+}
+
 // jsonRenderer implements JSON output format
 type jsonRenderer struct {
 	baseRenderer
@@ -39,40 +119,9 @@ func (j *jsonRenderer) SupportsStreaming() bool {
 
 // renderDocumentJSON renders entire document as a single JSON structure
 func (j *jsonRenderer) renderDocumentJSON(ctx context.Context, doc *Document) ([]byte, error) {
-	if doc == nil {
-		return nil, fmt.Errorf("document cannot be nil")
-	}
-
-	contents := doc.GetContents()
-
-	// If single content, render it directly
-	if len(contents) == 1 {
-		return j.renderContent(contents[0])
-	}
-
-	// Multiple contents: create a JSON array
-	var contentArray []any
-	for _, content := range contents {
-		// Check for context cancellation
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-
-		contentBytes, err := j.renderContent(content)
-		if err != nil {
-			return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
-		}
-
-		var contentData any
-		if err := json.Unmarshal(contentBytes, &contentData); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal content JSON: %w", err)
-		}
-		contentArray = append(contentArray, contentData)
-	}
-
-	return json.MarshalIndent(contentArray, "", "  ")
+	return renderDocumentGeneric(ctx, doc, j.renderContent, json.Unmarshal, func(v any) ([]byte, error) {
+		return json.MarshalIndent(v, "", "  ")
+	})
 }
 
 // renderContent renders content specifically for JSON format
@@ -200,33 +249,13 @@ func (j *jsonRenderer) formatValueForJSON(val any, field *Field) any {
 
 // renderTextContentJSON renders text content as JSON
 func (j *jsonRenderer) renderTextContentJSON(text *TextContent) ([]byte, error) {
-	result := map[string]any{
-		"type":    FormatText,
-		"content": text.Text(),
-	}
-
-	style := text.Style()
-	if style.Bold || style.Italic || style.Color != "" || style.Size > 0 || style.Header {
-		result["style"] = map[string]any{
-			"bold":   style.Bold,
-			"italic": style.Italic,
-			"color":  style.Color,
-			"size":   style.Size,
-			"header": style.Header,
-		}
-	}
-
+	result := buildTextContentData(text)
 	return json.MarshalIndent(result, "", "  ")
 }
 
 // renderRawContentJSON renders raw content as JSON
 func (j *jsonRenderer) renderRawContentJSON(raw *RawContent) ([]byte, error) {
-	result := map[string]any{
-		"type":   "raw",
-		"format": raw.Format(),
-		"data":   string(raw.Data()),
-	}
-
+	result := buildRawContentData(raw)
 	return json.MarshalIndent(result, "", "  ")
 }
 
@@ -564,40 +593,7 @@ func (y *yamlRenderer) SupportsStreaming() bool {
 
 // renderDocumentYAML renders entire document as a single YAML structure
 func (y *yamlRenderer) renderDocumentYAML(ctx context.Context, doc *Document) ([]byte, error) {
-	if doc == nil {
-		return nil, fmt.Errorf("document cannot be nil")
-	}
-
-	contents := doc.GetContents()
-
-	// If single content, render it directly
-	if len(contents) == 1 {
-		return y.renderContent(contents[0])
-	}
-
-	// Multiple contents: create a YAML array
-	var contentArray []any
-	for _, content := range contents {
-		// Check for context cancellation
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-
-		contentBytes, err := y.renderContent(content)
-		if err != nil {
-			return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
-		}
-
-		var contentData any
-		if err := yaml.Unmarshal(contentBytes, &contentData); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal content YAML: %w", err)
-		}
-		contentArray = append(contentArray, contentData)
-	}
-
-	return yaml.Marshal(contentArray)
+	return renderDocumentGeneric(ctx, doc, y.renderContent, yaml.Unmarshal, yaml.Marshal)
 }
 
 // renderContent renders content specifically for YAML format
@@ -747,33 +743,13 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 
 // renderTextContentYAML renders text content as YAML
 func (y *yamlRenderer) renderTextContentYAML(text *TextContent) ([]byte, error) {
-	result := map[string]any{
-		"type":    FormatText,
-		"content": text.Text(),
-	}
-
-	style := text.Style()
-	if style.Bold || style.Italic || style.Color != "" || style.Size > 0 || style.Header {
-		result["style"] = map[string]any{
-			"bold":   style.Bold,
-			"italic": style.Italic,
-			"color":  style.Color,
-			"size":   style.Size,
-			"header": style.Header,
-		}
-	}
-
+	result := buildTextContentData(text)
 	return yaml.Marshal(result)
 }
 
 // renderRawContentYAML renders raw content as YAML
 func (y *yamlRenderer) renderRawContentYAML(raw *RawContent) ([]byte, error) {
-	result := map[string]any{
-		"type":   "raw",
-		"format": raw.Format(),
-		"data":   string(raw.Data()),
-	}
-
+	result := buildRawContentData(raw)
 	return yaml.Marshal(result)
 }
 
