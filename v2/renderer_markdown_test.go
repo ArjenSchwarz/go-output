@@ -417,7 +417,7 @@ func TestMarkdownRenderer_CollapsibleValues(t *testing.T) {
 		collapsible: NewCollapsibleValue(
 			"System status",
 			"All systems operational",
-			WithExpanded(true),
+			WithCollapsibleExpanded(true),
 		),
 		expectedOutput: "<details open><summary>System status</summary><br/>All systems operational</details>",
 	}, "map details as key-value pairs": {
@@ -547,7 +547,7 @@ func TestMarkdownRenderer_GlobalExpansionOverride(t *testing.T) {
 	collapsible := NewCollapsibleValue(
 		"Summary text",
 		"Detail text",
-		WithExpanded(false), // Explicitly set to collapsed
+		WithCollapsibleExpanded(false), // Explicitly set to collapsed
 	)
 
 	tests := map[string]struct {

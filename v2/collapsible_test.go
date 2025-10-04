@@ -35,7 +35,7 @@ func TestNewCollapsibleValue(t *testing.T) {
 func TestNewCollapsibleValue_WithOptions(t *testing.T) {
 	formatHints := map[string]any{"class": "test-class"}
 	cv := NewCollapsibleValue("summary", "details",
-		WithExpanded(true),
+		WithCollapsibleExpanded(true),
 		WithMaxLength(10),
 		WithTruncateIndicator("..."),
 		WithFormatHint("html", formatHints),
@@ -206,7 +206,7 @@ func TestCollapsibleValue_IsExpanded(t *testing.T) {
 			if name == "Default collapsed" {
 				cv = NewCollapsibleValue("summary", "details")
 			} else {
-				cv = NewCollapsibleValue("summary", "details", WithExpanded(tt.expanded))
+				cv = NewCollapsibleValue("summary", "details", WithCollapsibleExpanded(tt.expanded))
 			}
 
 			if got := cv.IsExpanded(); got != tt.expanded {
@@ -288,7 +288,7 @@ func TestCollapsibleValue_String(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			cv := NewCollapsibleValue(tt.summary, "details", WithExpanded(tt.expanded))
+			cv := NewCollapsibleValue(tt.summary, "details", WithCollapsibleExpanded(tt.expanded))
 			if got := cv.String(); got != tt.expected {
 				t.Errorf("String() = %q, want %q", got, tt.expected)
 			}

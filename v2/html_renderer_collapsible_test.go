@@ -43,7 +43,7 @@ func TestHTMLRenderer_CollapsibleValue(t *testing.T) {
 		checkClasses:   true,
 	}, "expanded by default": {
 
-		collapsible:    NewCollapsibleValue("File path", "/very/long/path/to/file.txt", WithExpanded(true)),
+		collapsible:    NewCollapsibleValue("File path", "/very/long/path/to/file.txt", WithCollapsibleExpanded(true)),
 		config:         DefaultRendererConfig,
 		expectedOutput: `<details open class="collapsible-cell"><summary class="collapsible-summary">File path</summary><br/><div class="collapsible-details">/very/long/path/to/file.txt</div></details>`,
 		checkOpen:      true,

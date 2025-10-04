@@ -60,8 +60,8 @@ func TestCollapsibleIntegration_RealWorldScenarios(t *testing.T) {
 					WithSchema(
 						Field{Name: "endpoint", Type: "string"},
 						Field{Name: "requests", Type: "int"},
-						Field{Name: "errors", Type: "array", Formatter: ErrorListFormatter(WithExpanded(false))},
-						Field{Name: "performance", Type: "object", Formatter: JSONFormatter(100, WithExpanded(true))},
+						Field{Name: "errors", Type: "array", Formatter: ErrorListFormatter(WithCollapsibleExpanded(false))},
+						Field{Name: "performance", Type: "object", Formatter: JSONFormatter(100, WithCollapsibleExpanded(true))},
 					)).
 				Build()
 		},
@@ -362,7 +362,7 @@ func TestCollapsibleIntegration_GlobalExpansionControl(t *testing.T) {
 		Table("Expansion Test", testData,
 			WithSchema(
 				Field{Name: "item", Type: "string"},
-				Field{Name: "details", Type: "array", Formatter: ErrorListFormatter(WithExpanded(false))}, // Explicitly collapsed
+				Field{Name: "details", Type: "array", Formatter: ErrorListFormatter(WithCollapsibleExpanded(false))}, // Explicitly collapsed
 			)).
 		Build()
 

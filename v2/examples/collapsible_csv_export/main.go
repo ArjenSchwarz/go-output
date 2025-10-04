@@ -141,10 +141,10 @@ func generateProductCatalogCSV() {
 				output.Field{Name: "category", Type: "string"},
 				output.Field{Name: "price", Type: "float"},
 				output.Field{Name: "in_stock", Type: "bool"},
-				output.Field{Name: "specifications", Type: "object", Formatter: output.JSONFormatter(80, output.WithExpanded(false))},
-				output.Field{Name: "reviews", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
-				output.Field{Name: "variants", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
-				output.Field{Name: "supplier_info", Type: "object", Formatter: output.JSONFormatter(100, output.WithExpanded(false))},
+				output.Field{Name: "specifications", Type: "object", Formatter: output.JSONFormatter(80, output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "reviews", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "variants", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "supplier_info", Type: "object", Formatter: output.JSONFormatter(100, output.WithCollapsibleExpanded(false))},
 			)).
 		Build()
 
@@ -248,9 +248,9 @@ func generateCustomerAnalysisCSV() {
 				output.Field{Name: "total_orders", Type: "int"},
 				output.Field{Name: "lifetime_value", Type: "float"},
 				output.Field{Name: "segment", Type: "string"},
-				output.Field{Name: "purchase_history", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
-				output.Field{Name: "preferences", Type: "object", Formatter: output.JSONFormatter(120, output.WithExpanded(false))},
-				output.Field{Name: "support_tickets", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+				output.Field{Name: "purchase_history", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "preferences", Type: "object", Formatter: output.JSONFormatter(120, output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "support_tickets", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 			)).
 		Build()
 
@@ -355,9 +355,9 @@ func generateServerMetricsCSV() {
 				output.Field{Name: "memory_usage", Type: "float"},
 				output.Field{Name: "disk_usage", Type: "float"},
 				output.Field{Name: "network_io", Type: "string"},
-				output.Field{Name: "alerts", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
-				output.Field{Name: "performance_metrics", Type: "object", Formatter: output.JSONFormatter(150, output.WithExpanded(false))},
-				output.Field{Name: "configurations", Type: "object", Formatter: output.JSONFormatter(150, output.WithExpanded(false))},
+				output.Field{Name: "alerts", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "performance_metrics", Type: "object", Formatter: output.JSONFormatter(150, output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "configurations", Type: "object", Formatter: output.JSONFormatter(150, output.WithCollapsibleExpanded(false))},
 			)).
 		Build()
 

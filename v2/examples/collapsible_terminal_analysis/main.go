@@ -105,7 +105,7 @@ func generateSystemAnalysisReport() {
 			output.Field{Name: "severity", Type: "string"},
 			output.Field{Name: "component", Type: "string"},
 			output.Field{Name: "message", Type: "string"},
-			output.Field{Name: "details", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+			output.Field{Name: "details", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 		))
 
 	alertsSection := output.NewCollapsibleSection("System Alerts",
@@ -199,14 +199,14 @@ func generateCodeQualityReport() {
 			output.Field{Name: "value", Type: "string"},
 			output.Field{Name: "target", Type: "string"},
 			output.Field{Name: "status", Type: "string"},
-			output.Field{Name: "files", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+			output.Field{Name: "files", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 		))
 
 	depsTable, _ := output.NewTableContent("Dependency Analysis", depsData,
 		output.WithSchema(
 			output.Field{Name: "category", Type: "string"},
 			output.Field{Name: "count", Type: "int"},
-			output.Field{Name: "details", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+			output.Field{Name: "details", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 		))
 
 	// Create nested sections
@@ -301,7 +301,7 @@ func generateInfrastructureReport() {
 			output.Field{Name: "status", Type: "string"},
 			output.Field{Name: "uptime", Type: "string"},
 			output.Field{Name: "response_time", Type: "string"},
-			output.Field{Name: "errors", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+			output.Field{Name: "errors", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 		))
 
 	dbTable, _ := output.NewTableContent("Database Health", dbData,
@@ -310,7 +310,7 @@ func generateInfrastructureReport() {
 			output.Field{Name: "status", Type: "string"},
 			output.Field{Name: "connections", Type: "string"},
 			output.Field{Name: "replication_lag", Type: "string"},
-			output.Field{Name: "issues", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+			output.Field{Name: "issues", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 		))
 
 	// Build infrastructure health report

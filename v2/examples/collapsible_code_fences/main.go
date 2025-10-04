@@ -46,7 +46,7 @@ func generateCodeReviewReport() {
 	suggestionFormatter := func(val any) any {
 		if suggestions, ok := val.([]string); ok {
 			return output.NewCollapsibleValue(fmt.Sprintf("%d suggestions", len(suggestions)),
-				suggestions, output.WithExpanded(false))
+				suggestions, output.WithCollapsibleExpanded(false))
 		}
 		return val
 	}
@@ -107,7 +107,7 @@ func generateConfigurationReport() {
 		return func(val any) any {
 			if config, ok := val.(string); ok {
 				return output.NewCollapsibleValue("View Configuration", config,
-					output.WithCodeFences(format), output.WithExpanded(true))
+					output.WithCodeFences(format), output.WithCollapsibleExpanded(true))
 			}
 			return val
 		}
@@ -198,7 +198,7 @@ func generateAPIExamplesReport() {
 	responseFormatter := func(val any) any {
 		if resp, ok := val.(string); ok {
 			return output.NewCollapsibleValue("Response Example", resp,
-				output.WithCodeFences("json"), output.WithExpanded(false))
+				output.WithCodeFences("json"), output.WithCollapsibleExpanded(false))
 		}
 		return val
 	}

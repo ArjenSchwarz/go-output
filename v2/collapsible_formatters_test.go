@@ -323,7 +323,7 @@ func TestJSONFormatter(t *testing.T) {
 
 func TestFormatterWithOptions(t *testing.T) {
 	// Test formatters with CollapsibleOptions
-	formatter := ErrorListFormatter(WithExpanded(true), WithMaxLength(10))
+	formatter := ErrorListFormatter(WithCollapsibleExpanded(true), WithMaxLength(10))
 
 	input := []string{"very long error message that exceeds limit", "short"}
 	result := formatter(input)

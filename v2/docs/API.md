@@ -85,7 +85,7 @@ schema := output.WithSchema(
         Name: "errors",
         Type: "array",
         Formatter: output.ErrorListFormatter(
-            output.WithExpanded(false), // Collapsed by default
+            output.WithCollapsibleExpanded(false), // Collapsed by default
             output.WithCodeFences("text"), // v2.1.1+: Add code highlighting
         ),
     },
@@ -481,7 +481,7 @@ func WithoutCodeFences() CollapsibleOption
 configValue := output.NewCollapsibleValue(
     "Configuration",
     jsonConfig,
-    output.WithExpanded(false),
+    output.WithCollapsibleExpanded(false),
     output.WithCodeFences("json"), // Syntax highlight as JSON
 )
 
@@ -547,7 +547,7 @@ type DefaultCollapsibleValue struct {
 func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption) *DefaultCollapsibleValue
 
 // Configuration options
-func WithExpanded(expanded bool) CollapsibleOption
+func WithCollapsibleExpanded(expanded bool) CollapsibleOption
 func WithMaxLength(length int) CollapsibleOption
 func WithFormatHint(format string, hints map[string]any) CollapsibleOption
 ```
@@ -558,7 +558,7 @@ func WithFormatHint(format string, hints map[string]any) CollapsibleOption
 errorValue := output.NewCollapsibleValue(
     "3 errors found",
     []string{"Missing import", "Unused variable", "Type error"},
-    output.WithExpanded(false),
+    output.WithCollapsibleExpanded(false),
     output.WithMaxLength(200),
 )
 ```
@@ -587,7 +587,7 @@ schema := output.WithSchema(
     output.Field{
         Name: "errors",
         Type: "array",
-        Formatter: output.ErrorListFormatter(output.WithExpanded(false)),
+        Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false)),
     },
     output.Field{
         Name: "path",
@@ -750,12 +750,12 @@ func main() {
             output.Field{
                 Name: "errors", 
                 Type: "array",
-                Formatter: output.ErrorListFormatter(output.WithExpanded(false)),
+                Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false)),
             },
             output.Field{
                 Name: "config",
                 Type: "object",
-                Formatter: output.JSONFormatter(50, output.WithExpanded(false)),
+                Formatter: output.JSONFormatter(50, output.WithCollapsibleExpanded(false)),
             },
         ))
     
@@ -1734,12 +1734,12 @@ doc := output.New().
         output.Field{
             Name: "errors",
             Type: "array", 
-            Formatter: output.ErrorListFormatter(output.WithExpanded(false)),
+            Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false)),
         },
         output.Field{
             Name: "warnings",
             Type: "array",
-            Formatter: output.ErrorListFormatter(output.WithExpanded(true)),
+            Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(true)),
         },
     )).
     Build()
@@ -1762,7 +1762,7 @@ func configFormatter(val any) any {
             return output.NewCollapsibleValue(
                 fmt.Sprintf("Config (%d keys)", len(config)),
                 string(configJSON),
-                output.WithExpanded(false),
+                output.WithCollapsibleExpanded(false),
                 output.WithMaxLength(200),
             )
         }
@@ -1866,7 +1866,7 @@ table := output.NewTableContent("Issues", data, output.WithSchema(
     output.Field{
         Name: "errors",
         Type: "array",
-        Formatter: output.ErrorListFormatter(output.WithExpanded(false)),
+        Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false)),
     },
 ))
 
@@ -2028,7 +2028,7 @@ The v2 API is designed for extensibility:
 ### Collapsible Options (v2.1.0+)
 | Option | Purpose | Example |
 |--------|---------|---------|
-| `WithExpanded(bool)` | Set default state | `WithExpanded(false)` |
+| `WithCollapsibleExpanded(bool)` | Set default state | `WithCollapsibleExpanded(false)` |
 | `WithMaxLength(int)` | Limit detail length | `WithMaxLength(200)` |
 | `WithCodeFences(lang)` | Add syntax highlighting (v2.1.1+) | `WithCodeFences("json")` |
 | `WithoutCodeFences()` | Disable code fences | `WithoutCodeFences()` |
@@ -2037,7 +2037,7 @@ The v2 API is designed for extensibility:
 ### Built-in Formatters
 | Formatter | Purpose | Example |
 |-----------|---------|---------|
-| `ErrorListFormatter(opts)` | Format error arrays | `ErrorListFormatter(WithExpanded(false))` |
+| `ErrorListFormatter(opts)` | Format error arrays | `ErrorListFormatter(WithCollapsibleExpanded(false))` |
 | `FilePathFormatter(max, opts)` | Shorten long paths | `FilePathFormatter(30)` |
 | `JSONFormatter(max, opts)` | Format JSON objects | `JSONFormatter(100, WithCodeFences("json"))` |
 | `CollapsibleFormatter(tmpl, fn, opts)` | Custom collapsible | `CollapsibleFormatter("Summary", detailFunc)` |
