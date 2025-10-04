@@ -67,9 +67,9 @@ func generateCodeAnalysisComment() {
 			output.WithSchema(
 				output.Field{Name: "file", Type: "string", Formatter: output.FilePathFormatter(30)},
 				output.Field{Name: "lines", Type: "int"},
-				output.Field{Name: "errors", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
-				output.Field{Name: "warnings", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
-				output.Field{Name: "suggestions", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+				output.Field{Name: "errors", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "warnings", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
+				output.Field{Name: "suggestions", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 				output.Field{Name: "complexity", Type: "float"},
 			)).
 		Text("**Next Steps:**").
@@ -125,7 +125,7 @@ func generateTestResultsComment() {
 				output.Field{Name: "passed", Type: "int"},
 				output.Field{Name: "failed", Type: "int"},
 				output.Field{Name: "skipped", Type: "int"},
-				output.Field{Name: "failures", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+				output.Field{Name: "failures", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 				output.Field{Name: "duration", Type: "string"},
 			)).
 		Text("**Overall:** 65 passed, 3 failed, 4 skipped").
@@ -169,7 +169,7 @@ func generateSecurityScanComment() {
 				output.Field{Name: "category", Type: "string"},
 				output.Field{Name: "severity", Type: "string"},
 				output.Field{Name: "count", Type: "int"},
-				output.Field{Name: "issues", Type: "array", Formatter: output.ErrorListFormatter(output.WithExpanded(false))},
+				output.Field{Name: "issues", Type: "array", Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false))},
 				output.Field{Name: "remediation", Type: "string"},
 			)).
 		Text("**Priority Order:**").

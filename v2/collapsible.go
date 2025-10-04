@@ -72,8 +72,8 @@ func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption)
 	return cv
 }
 
-// WithExpanded sets whether the collapsible value should be expanded by default
-func WithExpanded(expanded bool) CollapsibleOption {
+// WithCollapsibleExpanded sets whether the collapsible value should be expanded by default
+func WithCollapsibleExpanded(expanded bool) CollapsibleOption {
 	return func(cv *DefaultCollapsibleValue) {
 		cv.defaultExpanded = expanded
 	}

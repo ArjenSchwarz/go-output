@@ -27,7 +27,7 @@ func TestTableRenderer_CollapsibleValue(t *testing.T) {
 
 		value: "test data",
 		formatter: func(val any) any {
-			return NewCollapsibleValue("Summary: test", "Detailed content here", WithExpanded(true))
+			return NewCollapsibleValue("Summary: test", "Detailed content here", WithCollapsibleExpanded(true))
 		},
 		config: DefaultRendererConfig,
 		expectedOutput: `Summary: test
@@ -49,7 +49,7 @@ func TestTableRenderer_CollapsibleValue(t *testing.T) {
 
 		value: "test data",
 		formatter: func(val any) any {
-			return NewCollapsibleValue("Summary", "Detail content", WithExpanded(false))
+			return NewCollapsibleValue("Summary", "Detail content", WithCollapsibleExpanded(false))
 		},
 		config: RendererConfig{
 			ForceExpansion: true,
@@ -62,7 +62,7 @@ func TestTableRenderer_CollapsibleValue(t *testing.T) {
 		value: []string{"error1", "error2", "error3"},
 		formatter: func(val any) any {
 			if arr, ok := val.([]string); ok {
-				return NewCollapsibleValue("3 errors", arr, WithExpanded(true))
+				return NewCollapsibleValue("3 errors", arr, WithCollapsibleExpanded(true))
 			}
 			return val
 		},
