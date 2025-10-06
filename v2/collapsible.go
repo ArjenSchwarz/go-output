@@ -72,11 +72,17 @@ func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption)
 	return cv
 }
 
-// WithExpanded sets whether the collapsible value should be expanded by default
-func WithExpanded(expanded bool) CollapsibleOption {
+// WithCollapsibleExpanded sets whether the collapsible value should be expanded by default
+func WithCollapsibleExpanded(expanded bool) CollapsibleOption {
 	return func(cv *DefaultCollapsibleValue) {
 		cv.defaultExpanded = expanded
 	}
+}
+
+// WithExpanded sets whether the collapsible value should be expanded by default
+// Deprecated: Use WithCollapsibleExpanded instead for consistency with section options
+func WithExpanded(expanded bool) CollapsibleOption {
+	return WithCollapsibleExpanded(expanded)
 }
 
 // WithMaxLength sets the maximum character length for details before truncation

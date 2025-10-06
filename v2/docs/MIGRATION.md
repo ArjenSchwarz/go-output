@@ -767,7 +767,7 @@ func errorListFormatter(val any) any {
         return output.NewCollapsibleValue(
             fmt.Sprintf("%d errors", len(errors)),  // Summary view
             errors,                                  // Detailed content
-            output.WithExpanded(false),             // Collapsed by default
+            output.WithCollapsibleExpanded(false),             // Collapsed by default
         )
     }
     return val  // Return unchanged for non-arrays
@@ -900,7 +900,7 @@ func newErrorFormatter(val any) any {
         return output.NewCollapsibleValue(
             fmt.Sprintf("%d errors", len(errors)),
             errors,
-            output.WithExpanded(false),
+            output.WithCollapsibleExpanded(false),
         )
     }
     return val

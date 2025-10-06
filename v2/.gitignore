@@ -1,0 +1,20 @@
+# Compiled binaries
+examples/*/basic_usage
+examples/*/charts
+examples/*/collapsible_code_fences
+examples/*/collapsible_csv_export
+examples/*/collapsible_github_pr
+examples/*/collapsible_terminal_analysis
+examples/*/concurrent_usage
+examples/*/error_handling
+examples/*/key_ordering
+examples/*/mixed_content
+examples/*/multiple_formats
+examples/*/pipeline_transformation
+examples/*/progress_tracking
+
+# Test binaries
+*.test
+
+# Coverage files
+*.out

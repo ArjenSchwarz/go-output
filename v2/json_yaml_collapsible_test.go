@@ -44,7 +44,7 @@ func TestJSONRenderer_CollapsibleValue(t *testing.T) {
 		collapsibleVal: NewCollapsibleValue(
 			"Config details",
 			map[string]any{"debug": true, "port": 8080},
-			WithExpanded(true),
+			WithCollapsibleExpanded(true),
 		),
 		expectedType:     "collapsible",
 		expectedSummary:  "Config details",
@@ -211,7 +211,7 @@ func TestYAMLRenderer_CollapsibleValue(t *testing.T) {
 		collapsibleVal: NewCollapsibleValue(
 			"Server config",
 			map[string]any{"host": "localhost", "port": 3000, "ssl": false},
-			WithExpanded(true),
+			WithCollapsibleExpanded(true),
 		),
 		expectedSummary:  "Server config",
 		expectedDetails:  map[string]any{"host": "localhost", "port": 3000, "ssl": false},

@@ -202,109 +202,21 @@ func (p *Pipeline) ExecuteWithFormatContext(ctx context.Context, format string) 
 		return nil, NewPipelineError("ExecuteWithFormat", -1, fmt.Errorf("invalid format: %s", format))
 	}
 
-	// Apply timeout if configured
-	if p.options.MaxExecutionTime > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, p.options.MaxExecutionTime)
-		defer cancel()
-	}
-
-	// Validate first
-	if err := p.Validate(); err != nil {
-		pipelineErr := NewPipelineError("ExecuteWithFormat", -1, err)
-		pipelineErr.AddPipelineContext("operation_count", len(p.operations))
-		pipelineErr.AddPipelineContext("max_operations", p.options.MaxOperations)
-		pipelineErr.AddPipelineContext("max_execution_time", p.options.MaxExecutionTime)
-		pipelineErr.AddPipelineContext("format", format)
-		return nil, pipelineErr
-	}
-
-	// Optimize operations before execution
-	p.optimize()
-
-	// Start tracking stats
-	stats := TransformStats{
-		InputRecords: 0,
-		Operations:   make([]OperationStat, 0, len(p.operations)),
-	}
-	startTime := time.Now()
-
-	// Process contents
-	newContents := make([]Content, 0, len(p.document.GetContents()))
-
-	for contentIndex, content := range p.document.GetContents() {
-		// Check context cancellation
-		select {
-		case <-ctx.Done():
-			pipelineErr := NewPipelineError("ExecuteWithFormat", contentIndex, ctx.Err())
-			pipelineErr.AddPipelineContext("cancelled_at_content", contentIndex)
-			pipelineErr.AddPipelineContext("total_contents", len(p.document.GetContents()))
-			pipelineErr.AddPipelineContext("format", format)
-			return nil, pipelineErr
-		default:
-		}
-
-		if content.Type() == ContentTypeTable {
-			// Count input records
-			if tableContent, ok := content.(*TableContent); ok {
-				stats.InputRecords += len(tableContent.records)
-			}
-
-			// Apply transformations to table content with format context
-			transformed, err := p.applyOperationsWithFormat(ctx, content, format, &stats)
-			if err != nil {
-				// Check if it's already a PipelineError, if so enhance it, otherwise wrap it
-				var pipelineErr *PipelineError
-				if AsError(err, &pipelineErr) {
-					// Already a pipeline error, add additional context
-					pipelineErr.AddPipelineContext("content_index", contentIndex)
-					pipelineErr.AddPipelineContext("content_type", content.Type().String())
-					pipelineErr.AddPipelineContext("content_id", content.ID())
-					pipelineErr.AddPipelineContext("format", format)
-					return nil, pipelineErr
-				} else {
-					// Wrap in new pipeline error
-					newPipelineErr := NewPipelineError("ContentTransformation", contentIndex, err)
-					newPipelineErr.AddPipelineContext("content_type", content.Type().String())
-					newPipelineErr.AddPipelineContext("content_id", content.ID())
-					newPipelineErr.AddPipelineContext("format", format)
-					return nil, newPipelineErr
-				}
-			}
-
-			// Count output records
-			if tableContent, ok := transformed.(*TableContent); ok {
-				stats.OutputRecords += len(tableContent.records)
-			}
-
-			newContents = append(newContents, transformed)
-		} else {
-			// Pass through non-table content unchanged
-			newContents = append(newContents, content)
-		}
-	}
-
-	// Calculate final stats
-	stats.Duration = time.Since(startTime)
-	stats.FilteredCount = stats.InputRecords - stats.OutputRecords
-
-	// Create new document with transformed contents and stats
-	originalMetadata := p.document.GetMetadata()
-	newMetadata := make(map[string]any, len(originalMetadata)+1)
-
-	// Copy original metadata
-	maps.Copy(newMetadata, originalMetadata)
-
-	// Add transformation stats
-	newMetadata["transform_stats"] = stats
-
-	newDoc := createDocumentWithContents(newContents, newMetadata)
-
-	return newDoc, nil
+	return p.executeWithOptionalFormat(ctx, format)
 }
 
 // ExecuteContext runs the pipeline with a context and returns a new transformed document
 func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
+	return p.executeWithOptionalFormat(ctx, "")
+}
+
+// executeWithOptionalFormat is the shared implementation for pipeline execution
+func (p *Pipeline) executeWithOptionalFormat(ctx context.Context, format string) (*Document, error) {
+	operationName := "Execute"
+	if format != "" {
+		operationName = "ExecuteWithFormat"
+	}
+
 	// Apply timeout if configured
 	if p.options.MaxExecutionTime > 0 {
 		var cancel context.CancelFunc
@@ -314,10 +226,13 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 
 	// Validate first
 	if err := p.Validate(); err != nil {
-		pipelineErr := NewPipelineError("Execute", -1, err)
+		pipelineErr := NewPipelineError(operationName, -1, err)
 		pipelineErr.AddPipelineContext("operation_count", len(p.operations))
 		pipelineErr.AddPipelineContext("max_operations", p.options.MaxOperations)
 		pipelineErr.AddPipelineContext("max_execution_time", p.options.MaxExecutionTime)
+		if format != "" {
+			pipelineErr.AddPipelineContext("format", format)
+		}
 		return nil, pipelineErr
 	}
 
@@ -338,9 +253,12 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			pipelineErr := NewPipelineError("Execute", contentIndex, ctx.Err())
+			pipelineErr := NewPipelineError(operationName, contentIndex, ctx.Err())
 			pipelineErr.AddPipelineContext("cancelled_at_content", contentIndex)
 			pipelineErr.AddPipelineContext("total_contents", len(p.document.GetContents()))
+			if format != "" {
+				pipelineErr.AddPipelineContext("format", format)
+			}
 			return nil, pipelineErr
 		default:
 		}
@@ -352,7 +270,13 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 			}
 
 			// Apply transformations to table content
-			transformed, err := p.applyOperations(ctx, content, &stats)
+			var transformed Content
+			var err error
+			if format != "" {
+				transformed, err = p.applyOperationsWithFormat(ctx, content, format, &stats)
+			} else {
+				transformed, err = p.applyOperations(ctx, content, &stats)
+			}
 			if err != nil {
 				// Check if it's already a PipelineError, if so enhance it, otherwise wrap it
 				var pipelineErr *PipelineError
@@ -361,12 +285,18 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 					pipelineErr.AddPipelineContext("content_index", contentIndex)
 					pipelineErr.AddPipelineContext("content_type", content.Type().String())
 					pipelineErr.AddPipelineContext("content_id", content.ID())
+					if format != "" {
+						pipelineErr.AddPipelineContext("format", format)
+					}
 					return nil, pipelineErr
 				} else {
 					// Wrap in new pipeline error
 					newPipelineErr := NewPipelineError("ContentTransformation", contentIndex, err)
 					newPipelineErr.AddPipelineContext("content_type", content.Type().String())
 					newPipelineErr.AddPipelineContext("content_id", content.ID())
+					if format != "" {
+						newPipelineErr.AddPipelineContext("format", format)
+					}
 					return nil, newPipelineErr
 				}
 			}
@@ -404,63 +334,10 @@ func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 
 // applyOperations applies all pipeline operations to the content
 func (p *Pipeline) applyOperations(ctx context.Context, content Content, stats *TransformStats) (Content, error) {
-	// Start with a clone to preserve immutability
-	current := content
-	if transformable, ok := content.(TransformableContent); ok {
-		current = transformable.Clone()
-	}
-
-	// Apply each operation in sequence
-	for i, op := range p.operations {
-		// Check context cancellation
-		select {
-		case <-ctx.Done():
-			pipelineErr := NewPipelineError("Execute", i, ctx.Err())
-			pipelineErr.AddContext("operation_name", op.Name())
-			pipelineErr.AddContext("operation_index", i)
-			return nil, pipelineErr
-		default:
-		}
-
-		opStart := time.Now()
-
-		// Apply the operation
-		result, err := op.Apply(ctx, current)
-		if err != nil {
-			// Create detailed pipeline error with context
-			pipelineErr := NewPipelineError(op.Name(), i, err)
-			pipelineErr.AddContext("operation_type", fmt.Sprintf("%T", op))
-			pipelineErr.AddContext("content_type", current.Type().String())
-
-			// Add input sample for debugging (limit size to avoid huge errors)
-			if tableContent, ok := current.(*TableContent); ok {
-				if len(tableContent.records) > 0 {
-					// Include just the first record as a sample
-					pipelineErr.Input = tableContent.records[0]
-				}
-				pipelineErr.AddContext("input_record_count", len(tableContent.records))
-			}
-
-			return nil, pipelineErr
-		}
-
-		// Track operation stats
-		opStat := OperationStat{
-			Name:     op.Name(),
-			Duration: time.Since(opStart),
-		}
-		if tableContent, ok := result.(*TableContent); ok {
-			opStat.RecordsProcessed = len(tableContent.records)
-		}
-		stats.Operations = append(stats.Operations, opStat)
-
-		current = result
-	}
-
-	return current, nil
+	return p.applyOperationsWithFormat(ctx, content, "", stats)
 }
 
-// applyOperationsWithFormat applies operations with format context
+// applyOperationsWithFormat applies operations with optional format context
 func (p *Pipeline) applyOperationsWithFormat(ctx context.Context, content Content, format string, stats *TransformStats) (Content, error) {
 	// Start with a clone to preserve immutability
 	current := content
@@ -468,24 +345,33 @@ func (p *Pipeline) applyOperationsWithFormat(ctx context.Context, content Conten
 		current = transformable.Clone()
 	}
 
+	operationName := "Execute"
+	if format != "" {
+		operationName = "ExecuteWithFormat"
+	}
+
 	// Apply each operation in sequence
 	for i, op := range p.operations {
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			pipelineErr := NewPipelineError("ExecuteWithFormat", i, ctx.Err())
+			pipelineErr := NewPipelineError(operationName, i, ctx.Err())
 			pipelineErr.AddContext("operation_name", op.Name())
 			pipelineErr.AddContext("operation_index", i)
-			pipelineErr.AddContext("format", format)
+			if format != "" {
+				pipelineErr.AddContext("format", format)
+			}
 			return nil, pipelineErr
 		default:
 		}
 
 		// Check if operation supports format awareness and applies to this format
-		if formatAwareOp, ok := op.(FormatAwareOperation); ok {
-			if !formatAwareOp.CanTransform(current, format) {
-				// Skip this operation for this format
-				continue
+		if format != "" {
+			if formatAwareOp, ok := op.(FormatAwareOperation); ok {
+				if !formatAwareOp.CanTransform(current, format) {
+					// Skip this operation for this format
+					continue
+				}
 			}
 		}
 
@@ -494,11 +380,16 @@ func (p *Pipeline) applyOperationsWithFormat(ctx context.Context, content Conten
 		var result Content
 		var err error
 
-		// Use format-aware operation if available
-		if formatAwareOp, ok := op.(FormatAwareOperation); ok {
-			result, err = formatAwareOp.ApplyWithFormat(ctx, current, format)
+		// Use format-aware operation if available and format is specified
+		if format != "" {
+			if formatAwareOp, ok := op.(FormatAwareOperation); ok {
+				result, err = formatAwareOp.ApplyWithFormat(ctx, current, format)
+			} else {
+				// Fall back to regular Apply method for backward compatibility
+				result, err = op.Apply(ctx, current)
+			}
 		} else {
-			// Fall back to regular Apply method for backward compatibility
+			// No format specified, use regular Apply
 			result, err = op.Apply(ctx, current)
 		}
 
@@ -507,7 +398,9 @@ func (p *Pipeline) applyOperationsWithFormat(ctx context.Context, content Conten
 			pipelineErr := NewPipelineError(op.Name(), i, err)
 			pipelineErr.AddContext("operation_type", fmt.Sprintf("%T", op))
 			pipelineErr.AddContext("content_type", current.Type().String())
-			pipelineErr.AddContext("format", format)
+			if format != "" {
+				pipelineErr.AddContext("format", format)
+			}
 
 			// Add input sample for debugging (limit size to avoid huge errors)
 			if tableContent, ok := current.(*TableContent); ok {
