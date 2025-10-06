@@ -332,8 +332,6 @@ func (p *Pipeline) executeWithOptionalFormat(ctx context.Context, format string)
 	return newDoc, nil
 }
 
-
-
 // applyOperations applies all pipeline operations to the content
 func (p *Pipeline) applyOperations(ctx context.Context, content Content, stats *TransformStats) (Content, error) {
 	return p.applyOperationsWithFormat(ctx, content, "", stats)

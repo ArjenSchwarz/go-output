@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+### Changed
+- **API Naming Consistency (v2)**
+  - Renamed `WithExpanded()` to `WithCollapsibleExpanded()` for consistency with section options
+  - Old `WithExpanded()` remains available as deprecated wrapper for backward compatibility
+  - Affects collapsible value formatters and table field configuration
+
+### Improved
+- **Code Quality & Maintenance (v2)**
+  - Eliminated ~400 lines of duplicated logic in JSON/YAML renderers through shared helper extraction
+  - Merged pipeline execution methods (`ExecuteContext`/`ExecuteWithFormatContext`) into unified implementation
+  - Reduced codebase by 129 net lines while improving maintainability
+  - Added `.gitignore` to prevent binary file commits in examples
+
 ### Added
 - **AWS Icons Package Performance Testing (v2/icons)**
   - Memory usage test validating package data stays within expected ~750KB-1MB range

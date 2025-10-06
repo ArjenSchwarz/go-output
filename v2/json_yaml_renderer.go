@@ -21,6 +21,7 @@ type unmarshalFunc func(data []byte, v any) error
 func renderDocumentGeneric(
 	ctx context.Context,
 	doc *Document,
+	format string,
 	renderContent func(Content) ([]byte, error),
 	unmarshal unmarshalFunc,
 	marshal marshalFunc,
@@ -53,7 +54,7 @@ func renderDocumentGeneric(
 
 		var contentData any
 		if err := unmarshal(contentBytes, &contentData); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal content: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal %s content: %w", format, err)
 		}
 		contentArray = append(contentArray, contentData)
 	}
@@ -119,7 +120,7 @@ func (j *jsonRenderer) SupportsStreaming() bool {
 
 // renderDocumentJSON renders entire document as a single JSON structure
 func (j *jsonRenderer) renderDocumentJSON(ctx context.Context, doc *Document) ([]byte, error) {
-	return renderDocumentGeneric(ctx, doc, j.renderContent, json.Unmarshal, func(v any) ([]byte, error) {
+	return renderDocumentGeneric(ctx, doc, "JSON", j.renderContent, json.Unmarshal, func(v any) ([]byte, error) {
 		return json.MarshalIndent(v, "", "  ")
 	})
 }
@@ -593,7 +594,7 @@ func (y *yamlRenderer) SupportsStreaming() bool {
 
 // renderDocumentYAML renders entire document as a single YAML structure
 func (y *yamlRenderer) renderDocumentYAML(ctx context.Context, doc *Document) ([]byte, error) {
-	return renderDocumentGeneric(ctx, doc, y.renderContent, yaml.Unmarshal, yaml.Marshal)
+	return renderDocumentGeneric(ctx, doc, "YAML", y.renderContent, yaml.Unmarshal, yaml.Marshal)
 }
 
 // renderContent renders content specifically for YAML format
