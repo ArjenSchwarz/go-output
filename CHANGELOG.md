@@ -1,6 +1,16 @@
 ## 2.3.0 / 2025-10-17
 
 ### Added
+- **AWS Icons Package (v2/icons)**
+  - Core AWS shape functionality with embedded aws.json data for 600+ AWS services
+  - `GetAWSShape()` function with proper error handling for Draw.io style retrieval
+  - `AllAWSGroups()` for discovering available AWS service categories
+  - `AWSShapesInGroup()` for listing shapes in specific groups
+  - `HasAWSShape()` convenience function for shape existence checking
+  - Thread-safe concurrent access with O(1) lookup performance
+  - Migration compatibility with v1 drawio.GetAWSShape() function
+  - Package-level documentation with Draw.io integration examples
+  - Performance testing validating acceptable memory footprint (~750KB-1MB)
 - **Inline Styling Functions**
   - Stateless inline styling functions for ANSI terminal colors: `StyleWarning()`, `StylePositive()`, `StyleNegative()`, `StyleInfo()`, `StyleBold()`
   - Conditional styling variants with `*If` suffix for conditional formatting
