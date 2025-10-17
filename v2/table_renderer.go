@@ -15,6 +15,7 @@ import (
 type tableRenderer struct {
 	styleName         string
 	collapsibleConfig RendererConfig
+	maxColumnWidth    int // Maximum width for table columns (0 = no limit)
 }
 
 func (t *tableRenderer) Format() string {
@@ -164,6 +165,18 @@ func (t *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 		return tw // Return empty table
 	}
 
+	// Configure column widths if maxColumnWidth is set
+	if t.maxColumnWidth > 0 {
+		columnConfigs := make([]table.ColumnConfig, len(keyOrder))
+		for i := range keyOrder {
+			columnConfigs[i] = table.ColumnConfig{
+				Number:   i + 1, // Column numbers are 1-indexed
+				WidthMax: t.maxColumnWidth,
+			}
+		}
+		tw.SetColumnConfigs(columnConfigs)
+	}
+
 	// Set headers with proper order
 	headerRow := make(table.Row, len(keyOrder))
 	for i, key := range keyOrder {
@@ -205,6 +218,24 @@ func (t *tableRenderer) formatCellValue(val any, field *Field) string {
 	// Check if result is CollapsibleValue (Requirement 6.1)
 	if cv, ok := processed.(CollapsibleValue); ok {
 		return t.renderCollapsibleValueSafe(cv)
+	}
+
+	// Handle array values by joining with newlines for better table readability
+	switch v := processed.(type) {
+	case []string:
+		if len(v) == 0 {
+			return ""
+		}
+		return strings.Join(v, "\n")
+	case []any:
+		if len(v) == 0 {
+			return ""
+		}
+		strs := make([]string, len(v))
+		for i, item := range v {
+			strs[i] = fmt.Sprint(item)
+		}
+		return strings.Join(strs, "\n")
 	}
 
 	// Handle regular values (maintain backward compatibility)
@@ -406,6 +437,14 @@ func (t *tableRenderer) getTableStyle() table.Style {
 func NewTableRendererWithStyle(styleName string) Renderer {
 	return &tableRenderer{
 		styleName: styleName,
+	}
+}
+
+// NewTableRendererWithStyleAndWidth creates a table renderer with specific style and max column width
+func NewTableRendererWithStyleAndWidth(styleName string, maxColumnWidth int) Renderer {
+	return &tableRenderer{
+		styleName:      styleName,
+		maxColumnWidth: maxColumnWidth,
 	}
 }
 

@@ -4,7 +4,7 @@
 
 Go-Output v2 is a complete redesign of the library providing thread-safe document generation with preserved key ordering and multiple output formats. This API documentation covers all public interfaces and methods.
 
-**Version**: v2.1.3
+**Version**: v2.2.1
 **Go Version**: 1.24+
 **Import Path**: `github.com/ArjenSchwarz/go-output/v2`
 
@@ -887,6 +887,12 @@ var (
 // TableWithStyle creates a table format with specified style
 func TableWithStyle(styleName string) Format
 
+// TableWithMaxColumnWidth creates a table format with max column width limit
+func TableWithMaxColumnWidth(maxColumnWidth int) Format
+
+// TableWithStyleAndMaxColumnWidth creates a table format with both style and max column width
+func TableWithStyleAndMaxColumnWidth(styleName string, maxColumnWidth int) Format
+
 // MarkdownWithToC creates markdown with table of contents
 func MarkdownWithToC(enabled bool) Format
 
@@ -896,6 +902,61 @@ func MarkdownWithFrontMatter(frontMatter map[string]string) Format
 // MarkdownWithOptions creates markdown with ToC and front matter
 func MarkdownWithOptions(includeToC bool, frontMatter map[string]string) Format
 ```
+
+**Table Max Column Width**:
+
+Control the maximum width of table columns to prevent excessively wide output. When content exceeds the specified width, the go-pretty library will automatically wrap text within cells.
+
+```go
+// Basic max width configuration
+format := output.TableWithMaxColumnWidth(50)
+out := output.NewOutput(
+    output.WithFormat(format),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+// Combine custom style with max width
+format := output.TableWithStyleAndMaxColumnWidth("Bold", 40)
+
+// Create directly with renderer constructors
+renderer := output.NewTableRendererWithStyleAndWidth("Default", 60)
+```
+
+**Usage Example**:
+
+```go
+data := []map[string]any{
+    {
+        "Name": "Alice",
+        "Description": "This is a very long description that would normally make the table extremely wide and difficult to read in terminal output",
+    },
+    {
+        "Name": "Bob",
+        "Description": "Another long description with lots of text that needs to be wrapped",
+    },
+}
+
+doc := output.New().
+    Table("Users", data, output.WithKeys("Name", "Description")).
+    Build()
+
+// Limit column width to 30 characters
+format := output.TableWithMaxColumnWidth(30)
+out := output.NewOutput(
+    output.WithFormat(format),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+err := out.Render(context.Background(), doc)
+// Output will wrap long descriptions within 30-character column width
+```
+
+**Notes**:
+- Uses go-pretty's `SetColumnConfigs()` with `WidthMax` setting
+- Text wrapping is handled automatically by the table renderer
+- Does not truncate text - content wraps to multiple lines within the cell
+- Works with all table styles
+- Particularly useful for terminal output where horizontal space is limited
 
 ### Renderer Interface
 
@@ -1577,6 +1638,175 @@ func ValidateSliceNonEmpty(name string, slice any) error
 func FailFast(validators ...error) error
 ```
 
+#### Inline Styling Functions
+
+The v2 library provides stateless inline styling functions for adding ANSI color codes to text. These functions enable consistent terminal coloring without global state, making them safe for concurrent use.
+
+```go
+// Basic styling functions
+func StyleWarning(text string) string   // Red bold text
+func StylePositive(text string) string  // Green bold text
+func StyleNegative(text string) string  // Red text
+func StyleInfo(text string) string      // Blue text
+func StyleBold(text string) string      // Bold text
+
+// Conditional styling functions (apply styling only if condition is true)
+func StyleWarningIf(condition bool, text string) string
+func StylePositiveIf(condition bool, text string) string
+func StyleNegativeIf(condition bool, text string) string
+func StyleInfoIf(condition bool, text string) string
+func StyleBoldIf(condition bool, text string) string
+```
+
+**Usage Examples**:
+
+```go
+// Simple inline styling in table data
+data := []map[string]any{
+    {
+        "Name":   "Server 1",
+        "Status": output.StylePositive("Running"),
+        "CPU":    output.StyleWarningIf(cpuUsage > 80, fmt.Sprintf("%d%%", cpuUsage)),
+    },
+    {
+        "Name":   "Server 2",
+        "Status": output.StyleNegative("Down"),
+        "CPU":    fmt.Sprintf("%d%%", cpuUsage),
+    },
+}
+
+doc := output.New().
+    Table("Server Status", data, output.WithKeys("Name", "Status", "CPU")).
+    Build()
+
+// Text content styling
+doc := output.New().
+    Text(output.StyleBold("Important Notice:")).
+    Text(output.StyleInfo("System maintenance scheduled for tonight")).
+    Build()
+
+// Conditional styling based on values
+errorCount := 5
+message := fmt.Sprintf("Found %d errors", errorCount)
+styledMessage := output.StyleWarningIf(errorCount > 0, message)
+
+doc := output.New().
+    Text(styledMessage).
+    Build()
+```
+
+**Notes**:
+- Colors use the `fatih/color` library for ANSI terminal codes
+- Colors are automatically enabled even in non-TTY environments
+- Functions are stateless and thread-safe
+- Works with all output formats (ANSI codes pass through to terminal formats)
+- For non-terminal formats (HTML, Markdown), use ColorTransformer to strip ANSI codes
+
+## Format-Specific Behavior
+
+### Array Handling in Output Formats
+
+The v2 library automatically handles arrays (slices) in table data with format-appropriate rendering:
+
+#### Table Format Array Handling
+
+Arrays are rendered as newline-separated values within table cells:
+
+```go
+data := []map[string]any{
+    {
+        "Name": "Alice",
+        "Tags": []string{"admin", "developer", "reviewer"},
+        "Roles": []string{"Owner", "Maintainer"},
+    },
+    {
+        "Name": "Bob",
+        "Tags": []string{"user"},
+        "Roles": []string{"Contributor"},
+    },
+}
+
+doc := output.New().
+    Table("Users", data, output.WithKeys("Name", "Tags", "Roles")).
+    Build()
+
+out := output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+err := out.Render(context.Background(), doc)
+
+// Output (in table format):
+// ┌───────┬───────────┬──────────────┐
+// │ NAME  │ TAGS      │ ROLES        │
+// ├───────┼───────────┼──────────────┤
+// │ Alice │ admin     │ Owner        │
+// │       │ developer │ Maintainer   │
+// │       │ reviewer  │              │
+// ├───────┼───────────┼──────────────┤
+// │ Bob   │ user      │ Contributor  │
+// └───────┴───────────┴──────────────┘
+```
+
+#### Markdown Format Array Handling
+
+Arrays are rendered as `<br/>`-separated values in markdown table cells:
+
+```go
+// Same data as above
+out := output.NewOutput(
+    output.WithFormat(output.Markdown),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+err := out.Render(context.Background(), doc)
+
+// Output (in markdown):
+// | Name  | Tags                              | Roles                  |
+// |-------|-----------------------------------|------------------------|
+// | Alice | admin<br/>developer<br/>reviewer  | Owner<br/>Maintainer   |
+// | Bob   | user                              | Contributor            |
+```
+
+The `<br/>` tags render correctly in GitHub, GitLab, and other markdown viewers while maintaining table cell integrity.
+
+#### JSON/YAML Format Array Handling
+
+Arrays are preserved natively in structured formats:
+
+```go
+// Same data
+out := output.NewOutput(
+    output.WithFormat(output.JSON),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+// Output preserves arrays as JSON arrays:
+// [
+//   {
+//     "Name": "Alice",
+//     "Tags": ["admin", "developer", "reviewer"],
+//     "Roles": ["Owner", "Maintainer"]
+//   },
+//   ...
+// ]
+```
+
+#### Supported Array Types
+
+The array handling supports:
+- `[]string` - Most common case for string slices
+- `[]any` - Generic slices with any element type
+- Empty arrays render as empty strings in table/markdown formats
+
+**Notes**:
+- Array elements are automatically escaped in markdown format
+- Table format uses newlines for vertical layout
+- Markdown format uses HTML `<br/>` for compatibility
+- JSON/YAML preserve native array structure
+- CSV format joins arrays with semicolons (`;`) by default
+
 ## Common Usage Patterns
 
 ### Basic Table Output
@@ -2188,6 +2418,7 @@ Use `icons.AllAWSGroups()` for the complete list.
 ### Version History
 | Version | Key Features |
 |---------|--------------|
+| v2.2.1 | Inline styling functions, table max column width, format-aware array handling |
 | v2.2.0 | AWS Icons package for Draw.io diagram support |
 | v2.1.3 | Enhanced markdown table escaping for pipes, asterisks, underscores, backticks, brackets |
 | v2.1.1 | Code fence support for collapsible fields with syntax highlighting |

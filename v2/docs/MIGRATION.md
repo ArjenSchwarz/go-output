@@ -560,6 +560,174 @@ output.WithFrontMatter(map[string]string{
 })
 ```
 
+### Inline Color and Styling (v2.2.1+)
+
+v1 used global styling methods that relied on package-level state. v2 provides stateless inline styling functions that are thread-safe and can be used directly in data:
+
+```go
+// v1
+import "github.com/ArjenSchwarz/go-output/format"
+
+// Global styling methods
+format.StyleRed("Error occurred")
+format.StyleGreen("Success")
+format.StyleBold("Important")
+
+// v2
+import output "github.com/ArjenSchwarz/go-output/v2"
+
+// Stateless inline styling functions
+output.StyleWarning("Error occurred")    // Red bold
+output.StylePositive("Success")          // Green bold
+output.StyleNegative("Failed")           // Red
+output.StyleInfo("Information")          // Blue
+output.StyleBold("Important")            // Bold
+
+// Conditional styling (new in v2)
+output.StyleWarningIf(hasErrors, "Status: Error")
+output.StylePositiveIf(isSuccess, "Status: Success")
+
+// Use directly in table data
+data := []map[string]any{
+    {
+        "Server": "web-01",
+        "Status": output.StylePositive("Running"),
+        "CPU":    output.StyleWarningIf(cpu > 80, fmt.Sprintf("%d%%", cpu)),
+    },
+}
+```
+
+**Key Differences**:
+- v2 functions are stateless and thread-safe
+- Conditional styling variants (`*If` suffix) are new in v2
+- v2 automatically enables colors even in non-TTY environments
+- Use `RemoveColorsTransformer` to strip ANSI codes for non-terminal formats
+
+### Table Max Column Width (v2.2.1+)
+
+v1 supported table column width configuration through settings. v2 provides this through format constructors and renderer options:
+
+```go
+// v1
+settings := format.NewOutputSettings()
+settings.TableMaxColumnWidth = 40
+
+output := &format.OutputArray{
+    Settings: settings,
+}
+
+// v2 - Using format constructor
+format := output.TableWithMaxColumnWidth(40)
+out := output.NewOutput(
+    output.WithFormat(format),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+// v2 - Using format constructor with style
+format := output.TableWithStyleAndMaxColumnWidth("Bold", 40)
+
+// v2 - Using renderer directly
+renderer := output.NewTableRendererWithStyleAndWidth("Default", 40)
+```
+
+**Usage Example**:
+```go
+// Long descriptions that need wrapping
+data := []map[string]any{
+    {
+        "Name": "Alice",
+        "Description": "This is a very long description that would normally make the table extremely wide",
+    },
+}
+
+doc := output.New().
+    Table("Users", data, output.WithKeys("Name", "Description")).
+    Build()
+
+// Limit column width to 30 characters (text wraps automatically)
+out := output.NewOutput(
+    output.WithFormat(output.TableWithMaxColumnWidth(30)),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+
+err := out.Render(context.Background(), doc)
+```
+
+**Notes**:
+- Text wraps within cells (does not truncate)
+- Uses go-pretty's `WidthMax` configuration
+- Works with all table styles
+- Particularly useful for terminal output with limited horizontal space
+
+### Array/Slice Handling (v2.2.1+)
+
+v2 automatically handles arrays in table data with format-appropriate rendering:
+
+```go
+// v1 - Arrays required manual formatting
+data := []map[string]any{
+    {
+        "Name": "Alice",
+        "Tags": strings.Join([]string{"admin", "developer"}, ", "),
+    },
+}
+
+// v2 - Arrays handled automatically
+data := []map[string]any{
+    {
+        "Name": "Alice",
+        "Tags": []string{"admin", "developer", "reviewer"},
+        "Roles": []string{"Owner", "Maintainer"},
+    },
+}
+
+doc := output.New().
+    Table("Users", data, output.WithKeys("Name", "Tags", "Roles")).
+    Build()
+
+// Table format: Renders arrays as newline-separated values
+out := output.NewOutput(
+    output.WithFormat(output.Table),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+// Output:
+// ┌───────┬───────────┬──────────────┐
+// │ NAME  │ TAGS      │ ROLES        │
+// ├───────┼───────────┼──────────────┤
+// │ Alice │ admin     │ Owner        │
+// │       │ developer │ Maintainer   │
+// │       │ reviewer  │              │
+// └───────┴───────────┴──────────────┘
+
+// Markdown format: Renders arrays as <br/>-separated values
+out = output.NewOutput(
+    output.WithFormat(output.Markdown),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+// Output:
+// | Name  | Tags                              | Roles                  |
+// |-------|-----------------------------------|------------------------|
+// | Alice | admin<br/>developer<br/>reviewer  | Owner<br/>Maintainer   |
+
+// JSON/YAML: Arrays preserved natively
+out = output.NewOutput(
+    output.WithFormat(output.JSON),
+    output.WithWriter(output.NewStdoutWriter()),
+)
+// Output: {"Name": "Alice", "Tags": ["admin", "developer", "reviewer"], ...}
+```
+
+**Supported Array Types**:
+- `[]string` - String slices
+- `[]any` - Generic slices with any element type
+- Empty arrays render as empty strings in table/markdown
+
+**Format-Specific Behavior**:
+- **Table**: Newline-separated for vertical layout
+- **Markdown**: `<br/>` tags for GitHub/GitLab compatibility
+- **JSON/YAML**: Native array structure
+- **CSV**: Semicolon-separated by default
+
 ## Common Issues
 
 ### 1. Context Required

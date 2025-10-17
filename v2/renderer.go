@@ -71,6 +71,22 @@ func TableWithStyle(styleName string) Format {
 	}
 }
 
+// TableWithMaxColumnWidth creates a table format with maximum column width
+func TableWithMaxColumnWidth(maxColumnWidth int) Format {
+	return Format{
+		Name:     FormatTable,
+		Renderer: NewTableRendererWithStyleAndWidth("Default", maxColumnWidth),
+	}
+}
+
+// TableWithStyleAndMaxColumnWidth creates a table format with specified style and maximum column width
+func TableWithStyleAndMaxColumnWidth(styleName string, maxColumnWidth int) Format {
+	return Format{
+		Name:     FormatTable,
+		Renderer: NewTableRendererWithStyleAndWidth(styleName, maxColumnWidth),
+	}
+}
+
 // MarkdownWithToC creates a markdown format with table of contents for v1 compatibility
 func MarkdownWithToC(enabled bool) Format {
 	return Format{

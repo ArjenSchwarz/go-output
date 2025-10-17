@@ -450,6 +450,30 @@ func (m *markdownRenderer) formatCellValue(val any, field *Field) string {
 		return m.renderCollapsibleValue(cv)
 	}
 
+	// Handle array values by joining with <br/> for markdown table cells
+	switch v := processed.(type) {
+	case []string:
+		if len(v) == 0 {
+			return ""
+		}
+		// Escape each item and join with <br/> for proper rendering in markdown tables
+		escaped := make([]string, len(v))
+		for i, item := range v {
+			escaped[i] = m.escapeMarkdown(item)
+		}
+		return strings.Join(escaped, "<br/>")
+	case []any:
+		if len(v) == 0 {
+			return ""
+		}
+		// Convert to strings, escape, and join
+		strs := make([]string, len(v))
+		for i, item := range v {
+			strs[i] = m.escapeMarkdown(fmt.Sprint(item))
+		}
+		return strings.Join(strs, "<br/>")
+	}
+
 	// Handle regular values (maintain backward compatibility)
 	return fmt.Sprint(processed)
 }

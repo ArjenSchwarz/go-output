@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+### Added
+- **Inline Styling Functions (v2.2.1)**
+  - Stateless inline styling functions for ANSI terminal colors: `StyleWarning()`, `StylePositive()`, `StyleNegative()`, `StyleInfo()`, `StyleBold()`
+  - Conditional styling variants with `*If` suffix: `StyleWarningIf()`, `StylePositiveIf()`, etc.
+  - Thread-safe functions using fatih/color library with automatic color enablement
+  - Can be used directly in table data and text content
+  - Comprehensive test coverage with ANSI code validation
+- **Table Max Column Width Support (v2.2.1)**
+  - `TableWithMaxColumnWidth(width int)` format constructor for limiting column widths
+  - `TableWithStyleAndMaxColumnWidth(style, width)` combining style and width configuration
+  - `NewTableRendererWithStyleAndWidth()` renderer constructor
+  - Automatic text wrapping within cells using go-pretty's `WidthMax` configuration
+  - Particularly useful for terminal output with limited horizontal space
+  - Comprehensive test suite validating width configuration and key order preservation
+- **Format-Aware Array Handling (v2.2.1)**
+  - Automatic array rendering in table cells as newline-separated values
+  - Markdown format renders arrays with `<br/>` tags for GitHub/GitLab compatibility
+  - JSON/YAML preserve native array structure
+  - Support for `[]string` and `[]any` slice types
+  - Empty arrays render as empty strings in table/markdown formats
+  - Automatic markdown escaping for array elements
+
+### Improved
+- **Documentation (v2.2.1)**
+  - Added inline styling functions section to API.md with usage examples and notes
+  - Added table max column width documentation with format constructors and configuration
+  - Added format-specific behavior section documenting array handling across formats
+  - Updated MIGRATION.md with migration examples for inline styling, max column width, and array handling
+  - Updated version to v2.2.1 in API documentation
+  - Added comprehensive migration guidance showing v1 vs v2 approaches
+
 ### Changed
 - **API Naming Consistency (v2)**
   - Renamed `WithExpanded()` to `WithCollapsibleExpanded()` for consistency with section options
