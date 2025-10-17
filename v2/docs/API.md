@@ -4,7 +4,7 @@
 
 Go-Output v2 is a complete redesign of the library providing thread-safe document generation with preserved key ordering and multiple output formats. This API documentation covers all public interfaces and methods.
 
-**Version**: v2.2.1
+**Version**: v2.3.0
 **Go Version**: 1.24+
 **Import Path**: `github.com/ArjenSchwarz/go-output/v2`
 
@@ -2418,6 +2418,7 @@ Use `icons.AllAWSGroups()` for the complete list.
 ### Version History
 | Version | Key Features |
 |---------|--------------|
+| v2.3.0 | Code quality improvements through refactoring |
 | v2.2.1 | Inline styling functions, table max column width, format-aware array handling |
 | v2.2.0 | AWS Icons package for Draw.io diagram support |
 | v2.1.3 | Enhanced markdown table escaping for pipes, asterisks, underscores, backticks, brackets |

@@ -1,91 +1,24 @@
-## [Unreleased]
+## 2.3.0 / 2025-10-17
 
 ### Added
-- **Inline Styling Functions (v2.2.1)**
+- **Inline Styling Functions**
   - Stateless inline styling functions for ANSI terminal colors: `StyleWarning()`, `StylePositive()`, `StyleNegative()`, `StyleInfo()`, `StyleBold()`
-  - Conditional styling variants with `*If` suffix: `StyleWarningIf()`, `StylePositiveIf()`, etc.
+  - Conditional styling variants with `*If` suffix for conditional formatting
   - Thread-safe functions using fatih/color library with automatic color enablement
-  - Can be used directly in table data and text content
-  - Comprehensive test coverage with ANSI code validation
-- **Table Max Column Width Support (v2.2.1)**
-  - `TableWithMaxColumnWidth(width int)` format constructor for limiting column widths
-  - `TableWithStyleAndMaxColumnWidth(style, width)` combining style and width configuration
-  - `NewTableRendererWithStyleAndWidth()` renderer constructor
-  - Automatic text wrapping within cells using go-pretty's `WidthMax` configuration
-  - Particularly useful for terminal output with limited horizontal space
-  - Comprehensive test suite validating width configuration and key order preservation
-- **Format-Aware Array Handling (v2.2.1)**
+- **Table Max Column Width Support**
+  - `TableWithMaxColumnWidth()` and `TableWithStyleAndMaxColumnWidth()` format constructors
+  - Automatic text wrapping within cells for terminal output with limited horizontal space
+- **Format-Aware Array Handling**
   - Automatic array rendering in table cells as newline-separated values
   - Markdown format renders arrays with `<br/>` tags for GitHub/GitLab compatibility
   - JSON/YAML preserve native array structure
-  - Support for `[]string` and `[]any` slice types
-  - Empty arrays render as empty strings in table/markdown formats
-  - Automatic markdown escaping for array elements
-
-### Improved
-- **Documentation (v2.2.1)**
-  - Added inline styling functions section to API.md with usage examples and notes
-  - Added table max column width documentation with format constructors and configuration
-  - Added format-specific behavior section documenting array handling across formats
-  - Updated MIGRATION.md with migration examples for inline styling, max column width, and array handling
-  - Updated version to v2.2.1 in API documentation
-  - Added comprehensive migration guidance showing v1 vs v2 approaches
 
 ### Changed
-- **API Naming Consistency (v2)**
-  - Renamed `WithExpanded()` to `WithCollapsibleExpanded()` for consistency with section options
-  - Old `WithExpanded()` remains available as deprecated wrapper for backward compatibility
-  - Affects collapsible value formatters and table field configuration
-
-### Improved
-- **Code Quality & Maintenance (v2)**
+- **API Naming Consistency**
+  - Renamed `WithExpanded()` to `WithCollapsibleExpanded()` for consistency (backward compatible via deprecated wrapper)
+- **Code Quality Improvements**
   - Eliminated ~400 lines of duplicated logic in JSON/YAML renderers through shared helper extraction
-  - Merged pipeline execution methods (`ExecuteContext`/`ExecuteWithFormatContext`) into unified implementation
-  - Reduced codebase by 129 net lines while improving maintainability
-  - Added `.gitignore` to prevent binary file commits in examples
-
-### Added
-- **AWS Icons Package Performance Testing (v2/icons)**
-  - Memory usage test validating package data stays within expected ~750KB-1MB range
-  - Startup time test verifying fast data access (< 100ms)
-  - Performance validation tests confirming acceptable memory footprint for embedded JSON data
-- **Development Configuration**
-  - Added `coverage.out` and `mem.out` to .gitignore for cleaner repository
-
-### Added
-- **AWS Icons Package Documentation and Examples (v2/icons)**
-  - Comprehensive package-level documentation with Draw.io integration examples
-  - Example functions demonstrating GetAWSShape basic usage and error handling
-  - Examples for discovering icons using AllAWSGroups and AWSShapesInGroup helpers
-  - Draw.io integration example showing placeholder-based dynamic icon assignment
-  - Usage examples with proper godoc formatting and testable output
-
-### Changed
-- **Development Configuration**
-  - Added golangci-lint to allowed Bash commands in Claude settings for automated code quality checks
-
-### Added
-- **AWS Icons Package Testing Suite (v2/icons)**
-  - Integration tests for Draw.io workflow compatibility with AWS icons
-  - Migration compatibility tests verifying v1/v2 consistency
-  - Concurrent access tests for thread safety validation (race detector enabled)
-  - Benchmark suite for performance validation (O(1) lookup verification)
-  - Test coverage for placeholder patterns and multi-icon diagrams
-  - Duplicate key handling tests ensuring last-value-wins behavior
-  - Case sensitivity tests verifying exact matching requirements
-- **AWS Icons Package Implementation (v2/icons)**
-  - Core AWS shape functionality with embedded aws.json data
-  - GetAWSShape() function with error handling for Draw.io style retrieval
-  - AllAWSGroups() for discovering available service categories
-  - AWSShapesInGroup() for listing shapes in specific groups
-  - HasAWSShape() convenience function for shape existence checking
-  - Comprehensive test suite with 100% coverage for all functions
-  - Memory-efficient design with one-time JSON parsing at package initialization
-- **Draw.io AWS Icons Support Specification**
-  - Complete requirements specification for AWS icon integration in v2
-  - Design documentation for icons package architecture and implementation strategy
-  - Task breakdown with implementation steps for AWS shapes functionality
-  - Decision log documenting design choices and rationale for icon support approach
+  - Merged pipeline execution methods into unified implementation, reducing codebase by 129 lines
 
 ## 2.2.0 / 2025-08-27
 

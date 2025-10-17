@@ -560,7 +560,7 @@ output.WithFrontMatter(map[string]string{
 })
 ```
 
-### Inline Color and Styling (v2.2.1+)
+### Inline Color and Styling (v2.3.0+)
 
 v1 used global styling methods that relied on package-level state. v2 provides stateless inline styling functions that are thread-safe and can be used directly in data:
 
@@ -603,7 +603,7 @@ data := []map[string]any{
 - v2 automatically enables colors even in non-TTY environments
 - Use `RemoveColorsTransformer` to strip ANSI codes for non-terminal formats
 
-### Table Max Column Width (v2.2.1+)
+### Table Max Column Width (v2.3.0+)
 
 v1 supported table column width configuration through settings. v2 provides this through format constructors and renderer options:
 
@@ -659,7 +659,7 @@ err := out.Render(context.Background(), doc)
 - Works with all table styles
 - Particularly useful for terminal output with limited horizontal space
 
-### Array/Slice Handling (v2.2.1+)
+### Array/Slice Handling (v2.3.0+)
 
 v2 automatically handles arrays in table data with format-appropriate rendering:
 
