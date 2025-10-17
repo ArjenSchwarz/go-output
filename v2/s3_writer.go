@@ -45,7 +45,7 @@ type PutObjectOutput struct {
 
 // PutObjectOptions represents additional options for PutObject.
 // This type is compatible with the AWS SDK v2 functional options pattern.
-type PutObjectOptions struct {}
+type PutObjectOptions struct{}
 
 // S3Writer writes rendered output to S3
 type S3Writer struct {

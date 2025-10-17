@@ -1,14 +1,7 @@
-## Unreleased
+## 2.3.1 / 2025-10-17
 
 ### Fixed
-- **S3Writer AWS SDK v2 Compatibility**
-  - Updated S3Writer to work directly with AWS SDK v2 `*s3.Client` without requiring adapters
-  - Renamed `S3Client` interface to `S3PutObjectAPI` for clarity and SDK alignment
-  - Modified all type signatures to use pointer fields (`*string`, `*PutObjectInput`, etc.) matching AWS SDK v2 patterns
-  - Updated `PutObject` method to accept variadic functional options (`...func(*PutObjectOptions)`)
-  - Enhanced mock S3 client in tests with improved call capturing for easier verification
-  - Updated documentation in MIGRATION.md and API.md with correct AWS SDK v2 usage examples and imports
-  - All existing tests pass without modification, maintaining full backward compatibility for test patterns
+- **S3Writer AWS SDK v2 Compatibility** - S3Writer now works directly with AWS SDK v2's `*s3.Client` without requiring adapter code. The interface has been updated to match AWS SDK v2's type signatures (pointer fields and functional options), eliminating integration friction for users of the standard AWS SDK.
 
 ## 2.3.0 / 2025-10-17
 
