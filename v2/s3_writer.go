@@ -4,48 +4,35 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"maps"
 	"path"
 	"strings"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // S3PutObjectAPI defines the minimal interface for S3 PutObject operations.
-// This interface is compatible with the AWS SDK v2 s3.Client.
-// It allows for easy mocking in tests and works directly with:
+// This interface uses actual AWS SDK v2 types, making it directly compatible
+// with *s3.Client without requiring any adapter or type conversion.
+//
+// The interface is satisfied by:
 //   - github.com/aws/aws-sdk-go-v2/service/s3 (*s3.Client)
-//   - Mock implementations for testing
+//   - Mock implementations for testing (using the same AWS SDK types)
 //
 // Example usage with AWS SDK v2:
 //
-//	import "github.com/aws/aws-sdk-go-v2/service/s3"
+//	import (
+//	    "github.com/aws/aws-sdk-go-v2/config"
+//	    "github.com/aws/aws-sdk-go-v2/service/s3"
+//	    "github.com/ArjenSchwarz/go-output/v2"
+//	)
 //
 //	cfg, _ := config.LoadDefaultConfig(context.TODO())
 //	s3Client := s3.NewFromConfig(cfg)
 //	writer := output.NewS3Writer(s3Client, "my-bucket", "path/to/file.json")
 type S3PutObjectAPI interface {
-	PutObject(ctx context.Context, params *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error)
+	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 }
-
-// PutObjectInput represents the input parameters for S3 PutObject operation.
-// This type is compatible with s3.PutObjectInput from AWS SDK v2.
-type PutObjectInput struct {
-	Bucket      *string
-	Key         *string
-	Body        io.Reader
-	ContentType *string
-}
-
-// PutObjectOutput represents the output from S3 PutObject operation.
-// This type is compatible with s3.PutObjectOutput from AWS SDK v2.
-type PutObjectOutput struct {
-	ETag      *string
-	VersionId *string
-}
-
-// PutObjectOptions represents additional options for PutObject.
-// This type is compatible with the AWS SDK v2 functional options pattern.
-type PutObjectOptions struct{}
 
 // S3Writer writes rendered output to S3
 type S3Writer struct {
@@ -116,8 +103,8 @@ func (sw *S3Writer) Write(ctx context.Context, format string, data []byte) error
 	// Determine content type
 	contentType := sw.getContentType(format)
 
-	// Create input for S3 PutObject (using pointers as required by AWS SDK v2)
-	input := &PutObjectInput{
+	// Create input using actual AWS SDK v2 types
+	input := &s3.PutObjectInput{
 		Bucket:      &sw.bucket,
 		Key:         &key,
 		Body:        bytes.NewReader(data),

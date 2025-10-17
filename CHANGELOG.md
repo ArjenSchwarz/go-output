@@ -1,7 +1,7 @@
 ## 2.3.1 / 2025-10-17
 
 ### Fixed
-- **S3Writer AWS SDK v2 Compatibility** - S3Writer now works directly with AWS SDK v2's `*s3.Client` without requiring adapter code. The interface has been updated to match AWS SDK v2's type signatures (pointer fields and functional options), eliminating integration friction for users of the standard AWS SDK.
+- **S3Writer AWS SDK v2 True Compatibility** - S3Writer now achieves true type compatibility with AWS SDK v2 by directly importing and using actual AWS SDK types (`s3.PutObjectInput`, `s3.PutObjectOutput`, `s3.Options`) instead of defining custom mirror types. This eliminates the need for any adapter code or type conversion when passing an `*s3.Client` to `NewS3Writer()`. Previously, despite structural similarity, custom types required adapter code for type conversion.
 
 ## 2.3.0 / 2025-10-17
 

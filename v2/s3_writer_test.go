@@ -7,12 +7,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // mockS3Client is a mock implementation of S3PutObjectAPI for testing.
-// It implements the same interface signature as AWS SDK v2 s3.Client.
+// It uses actual AWS SDK v2 types, ensuring full type compatibility.
 type mockS3Client struct {
-	putObjectFunc func(ctx context.Context, input *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error)
+	putObjectFunc func(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 	calls         []capturedCall
 	mu            sync.Mutex
 }
@@ -25,7 +27,7 @@ type capturedCall struct {
 	ContentType string
 }
 
-func (m *mockS3Client) PutObject(ctx context.Context, input *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error) {
+func (m *mockS3Client) PutObject(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -53,7 +55,7 @@ func (m *mockS3Client) PutObject(ctx context.Context, input *PutObjectInput, opt
 
 	etag := "mock-etag"
 	versionId := "mock-version"
-	return &PutObjectOutput{
+	return &s3.PutObjectOutput{
 		ETag:      &etag,
 		VersionId: &versionId,
 	}, nil
@@ -127,7 +129,7 @@ func TestS3WriterWrite(t *testing.T) {
 		bucket:     "test-bucket",
 		keyPattern: "data/{format}.{ext}",
 		client: &mockS3Client{
-			putObjectFunc: func(ctx context.Context, input *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error) {
+			putObjectFunc: func(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 				return nil, errors.New("S3 error")
 			},
 		},
@@ -324,11 +326,11 @@ func TestS3WriterConcurrency(t *testing.T) {
 	var callCount int
 
 	client := &mockS3Client{
-		putObjectFunc: func(ctx context.Context, input *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error) {
+		putObjectFunc: func(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 			mu.Lock()
 			callCount++
 			mu.Unlock()
-			return &PutObjectOutput{}, nil
+			return &s3.PutObjectOutput{}, nil
 		},
 	}
 
