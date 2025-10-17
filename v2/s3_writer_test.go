@@ -9,39 +9,60 @@ import (
 	"testing"
 )
 
-// mockS3Client is a mock implementation of S3Client for testing
+// mockS3Client is a mock implementation of S3PutObjectAPI for testing.
+// It implements the same interface signature as AWS SDK v2 s3.Client.
 type mockS3Client struct {
-	putObjectFunc func(ctx context.Context, input *S3PutObjectInput) (*S3PutObjectOutput, error)
-	calls         []S3PutObjectInput
+	putObjectFunc func(ctx context.Context, input *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error)
+	calls         []capturedCall
 	mu            sync.Mutex
 }
 
-func (m *mockS3Client) PutObject(ctx context.Context, input *S3PutObjectInput) (*S3PutObjectOutput, error) {
+// capturedCall stores a single PutObject call for verification
+type capturedCall struct {
+	Bucket      string
+	Key         string
+	Body        string // Captured as string for easier comparison
+	ContentType string
+}
+
+func (m *mockS3Client) PutObject(ctx context.Context, input *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Read the body to capture it
+	// Capture the call details
+	call := capturedCall{}
+	if input.Bucket != nil {
+		call.Bucket = *input.Bucket
+	}
+	if input.Key != nil {
+		call.Key = *input.Key
+	}
+	if input.ContentType != nil {
+		call.ContentType = *input.ContentType
+	}
 	if input.Body != nil {
 		data, _ := io.ReadAll(input.Body)
-		input.Body = strings.NewReader(string(data))
+		call.Body = string(data)
 	}
 
-	m.calls = append(m.calls, *input)
+	m.calls = append(m.calls, call)
 
 	if m.putObjectFunc != nil {
-		return m.putObjectFunc(ctx, input)
+		return m.putObjectFunc(ctx, input, optFns...)
 	}
 
-	return &S3PutObjectOutput{
-		ETag:      "mock-etag",
-		VersionID: "mock-version",
+	etag := "mock-etag"
+	versionId := "mock-version"
+	return &PutObjectOutput{
+		ETag:      &etag,
+		VersionId: &versionId,
 	}, nil
 }
 
-func (m *mockS3Client) getCalls() []S3PutObjectInput {
+func (m *mockS3Client) getCalls() []capturedCall {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return append([]S3PutObjectInput{}, m.calls...)
+	return append([]capturedCall{}, m.calls...)
 }
 
 func TestNewS3Writer(t *testing.T) {
@@ -106,7 +127,7 @@ func TestS3WriterWrite(t *testing.T) {
 		bucket:     "test-bucket",
 		keyPattern: "data/{format}.{ext}",
 		client: &mockS3Client{
-			putObjectFunc: func(ctx context.Context, input *S3PutObjectInput) (*S3PutObjectOutput, error) {
+			putObjectFunc: func(ctx context.Context, input *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error) {
 				return nil, errors.New("S3 error")
 			},
 		},
@@ -223,11 +244,8 @@ func TestS3WriterWrite(t *testing.T) {
 				}
 
 				// Verify body content
-				if call.Body != nil {
-					bodyData, _ := io.ReadAll(call.Body)
-					if string(bodyData) != string(tt.data) {
-						t.Errorf("S3 body = %q, want %q", bodyData, tt.data)
-					}
+				if call.Body != string(tt.data) {
+					t.Errorf("S3 body = %q, want %q", call.Body, string(tt.data))
 				}
 			}
 		})
@@ -306,11 +324,11 @@ func TestS3WriterConcurrency(t *testing.T) {
 	var callCount int
 
 	client := &mockS3Client{
-		putObjectFunc: func(ctx context.Context, input *S3PutObjectInput) (*S3PutObjectOutput, error) {
+		putObjectFunc: func(ctx context.Context, input *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error) {
 			mu.Lock()
 			callCount++
 			mu.Unlock()
-			return &S3PutObjectOutput{}, nil
+			return &PutObjectOutput{}, nil
 		},
 	}
 

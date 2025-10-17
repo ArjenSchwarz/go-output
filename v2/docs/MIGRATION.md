@@ -343,19 +343,45 @@ out := output.NewOutput(
 
 ### S3 Output
 
+v2 S3Writer is fully compatible with AWS SDK v2 and requires no adapter:
+
 ```go
 // v1
 settings := format.NewOutputSettings()
 settings.OutputS3Bucket = "my-bucket"
 settings.OutputS3Key = "reports/output.json"
 
-// v2
+// v2 - Works directly with AWS SDK v2
+import (
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/s3"
+    "github.com/ArjenSchwarz/go-output/v2"
+)
+
+// Load AWS config
+cfg, err := config.LoadDefaultConfig(context.TODO())
+if err != nil {
+    log.Fatal(err)
+}
+
+// Create S3 client from AWS SDK v2
 s3Client := s3.NewFromConfig(cfg)
+
+// Use S3 client directly with go-output
 out := output.NewOutput(
     output.WithFormat(output.JSON),
     output.WithWriter(output.NewS3Writer(s3Client, "my-bucket", "reports/output.json")),
 )
+
+// Render to S3
+err = out.Render(context.Background(), doc)
 ```
+
+**Key Points:**
+- No adapter needed - S3Writer accepts AWS SDK v2 `*s3.Client` directly
+- The S3Writer interface is compatible with `s3.Client.PutObject`
+- Easy to mock for testing using the `S3PutObjectAPI` interface
+- Supports key patterns like `"reports/{format}.{ext}"` for dynamic naming
 
 ### Chart and Diagram Output
 

@@ -1000,8 +1000,8 @@ func NewStdoutWriter() Writer
 // FileWriter writes to files with pattern support
 func NewFileWriter(rootDir, pattern string) (Writer, error)
 
-// S3Writer writes to AWS S3
-func NewS3Writer(region, bucket, keyPattern string) (Writer, error)
+// S3Writer writes to AWS S3 (compatible with AWS SDK v2)
+func NewS3Writer(client S3PutObjectAPI, bucket, keyPattern string) *S3Writer
 
 // MultiWriter writes to multiple destinations
 func NewMultiWriter(writers ...Writer) Writer
@@ -2289,7 +2289,7 @@ The v2 API is designed for extensibility:
 |-------------|---------|---------|
 | `NewStdoutWriter()` | Write to console | `NewStdoutWriter()` |
 | `NewFileWriter(dir, pattern)` | Write to files | `NewFileWriter("./out", "report.{format}")` |
-| `NewS3Writer(region, bucket, key)` | Write to S3 | `NewS3Writer("us-east-1", "bucket", "key.{format}")` |
+| `NewS3Writer(client, bucket, key)` | Write to S3 (AWS SDK v2) | `NewS3Writer(s3Client, "bucket", "key.{format}")` |
 | `NewMultiWriter(writers...)` | Multiple outputs | `NewMultiWriter(stdout, file)` |
 
 ### Built-in Formats

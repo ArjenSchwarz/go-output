@@ -10,37 +10,67 @@ import (
 	"strings"
 )
 
-// S3Client defines the interface for S3 operations
-// This allows for easy mocking in tests
-type S3Client interface {
-	PutObject(ctx context.Context, input *S3PutObjectInput) (*S3PutObjectOutput, error)
+// S3PutObjectAPI defines the minimal interface for S3 PutObject operations.
+// This interface is compatible with the AWS SDK v2 s3.Client.
+// It allows for easy mocking in tests and works directly with:
+//   - github.com/aws/aws-sdk-go-v2/service/s3 (*s3.Client)
+//   - Mock implementations for testing
+//
+// Example usage with AWS SDK v2:
+//
+//	import "github.com/aws/aws-sdk-go-v2/service/s3"
+//
+//	cfg, _ := config.LoadDefaultConfig(context.TODO())
+//	s3Client := s3.NewFromConfig(cfg)
+//	writer := output.NewS3Writer(s3Client, "my-bucket", "path/to/file.json")
+type S3PutObjectAPI interface {
+	PutObject(ctx context.Context, params *PutObjectInput, optFns ...func(*PutObjectOptions)) (*PutObjectOutput, error)
 }
 
-// S3PutObjectInput represents the input for S3 PutObject operation
-type S3PutObjectInput struct {
-	Bucket      string
-	Key         string
+// PutObjectInput represents the input parameters for S3 PutObject operation.
+// This type is compatible with s3.PutObjectInput from AWS SDK v2.
+type PutObjectInput struct {
+	Bucket      *string
+	Key         *string
 	Body        io.Reader
-	ContentType string
+	ContentType *string
 }
 
-// S3PutObjectOutput represents the output from S3 PutObject operation
-type S3PutObjectOutput struct {
-	ETag      string
-	VersionID string
+// PutObjectOutput represents the output from S3 PutObject operation.
+// This type is compatible with s3.PutObjectOutput from AWS SDK v2.
+type PutObjectOutput struct {
+	ETag      *string
+	VersionId *string
 }
+
+// PutObjectOptions represents additional options for PutObject.
+// This type is compatible with the AWS SDK v2 functional options pattern.
+type PutObjectOptions struct {}
 
 // S3Writer writes rendered output to S3
 type S3Writer struct {
 	baseWriter
-	client       S3Client
+	client       S3PutObjectAPI
 	bucket       string
 	keyPattern   string            // e.g., "reports/{format}/output.{ext}"
 	contentTypes map[string]string // format to content-type mapping
 }
 
-// NewS3Writer creates a new S3Writer
-func NewS3Writer(client S3Client, bucket, keyPattern string) *S3Writer {
+// NewS3Writer creates a new S3Writer that works with AWS SDK v2 s3.Client.
+// The client parameter should be an *s3.Client from github.com/aws/aws-sdk-go-v2/service/s3.
+//
+// Example:
+//
+//	import (
+//	    "github.com/aws/aws-sdk-go-v2/config"
+//	    "github.com/aws/aws-sdk-go-v2/service/s3"
+//	    "github.com/ArjenSchwarz/go-output/v2"
+//	)
+//
+//	cfg, _ := config.LoadDefaultConfig(context.TODO())
+//	s3Client := s3.NewFromConfig(cfg)
+//	writer := output.NewS3Writer(s3Client, "my-bucket", "reports/{format}.{ext}")
+func NewS3Writer(client S3PutObjectAPI, bucket, keyPattern string) *S3Writer {
 	if keyPattern == "" {
 		keyPattern = "output-{format}.{ext}"
 	}
@@ -86,12 +116,12 @@ func (sw *S3Writer) Write(ctx context.Context, format string, data []byte) error
 	// Determine content type
 	contentType := sw.getContentType(format)
 
-	// Create input for S3 PutObject
-	input := &S3PutObjectInput{
-		Bucket:      sw.bucket,
-		Key:         key,
+	// Create input for S3 PutObject (using pointers as required by AWS SDK v2)
+	input := &PutObjectInput{
+		Bucket:      &sw.bucket,
+		Key:         &key,
 		Body:        bytes.NewReader(data),
-		ContentType: contentType,
+		ContentType: &contentType,
 	}
 
 	// Upload to S3
@@ -168,7 +198,7 @@ func WithContentTypes(contentTypes map[string]string) S3WriterOption {
 }
 
 // NewS3WriterWithOptions creates an S3Writer with options
-func NewS3WriterWithOptions(client S3Client, bucket, keyPattern string, opts ...S3WriterOption) *S3Writer {
+func NewS3WriterWithOptions(client S3PutObjectAPI, bucket, keyPattern string, opts ...S3WriterOption) *S3Writer {
 	sw := NewS3Writer(client, bucket, keyPattern)
 
 	for _, opt := range opts {
