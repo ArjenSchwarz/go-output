@@ -147,6 +147,8 @@ func (m *markdownRenderer) renderContent(content Content) ([]byte, error) {
 		return m.renderSectionContentMarkdown(c)
 	case *DefaultCollapsibleSection:
 		return m.renderCollapsibleSection(c)
+	case *ChartContent:
+		return m.renderChartContentMarkdown(c)
 	default:
 		// Fallback to basic rendering with markdown escaping
 		data, err := m.baseRenderer.renderContent(content)
@@ -301,6 +303,35 @@ func (m *markdownRenderer) renderSectionContentMarkdownWithDepth(section *Sectio
 		}
 		result.Write(contentMD)
 	}
+
+	return []byte(result.String()), nil
+}
+
+// renderChartContentMarkdown renders chart content as Markdown with mermaid code fence
+func (m *markdownRenderer) renderChartContentMarkdown(chart *ChartContent) ([]byte, error) {
+	// Use mermaid renderer to generate the chart syntax
+	mermaidRenderer := &mermaidRenderer{}
+
+	// Create a temporary document with just this chart
+	tempDoc := &Document{
+		contents: []Content{chart},
+	}
+
+	mermaidData, err := mermaidRenderer.Render(context.Background(), tempDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render chart as mermaid: %w", err)
+	}
+
+	// Wrap in ```mermaid code fence
+	var result strings.Builder
+	result.WriteString("```mermaid\n")
+	result.Write(mermaidData)
+	// Ensure there's no trailing newline before closing fence
+	mermaidStr := strings.TrimRight(string(mermaidData), "\n")
+	result.Reset()
+	result.WriteString("```mermaid\n")
+	result.WriteString(mermaidStr)
+	result.WriteString("\n```\n")
 
 	return []byte(result.String()), nil
 }

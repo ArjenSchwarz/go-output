@@ -24,7 +24,19 @@ func (h *htmlRenderer) Format() string {
 }
 
 func (h *htmlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
-	return h.renderDocumentWithFormat(ctx, doc, h.renderContent, FormatHTML)
+	// Render the document
+	result, err := h.renderDocumentWithFormat(ctx, doc, h.renderContent, FormatHTML)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if document contains any ChartContent that would need mermaid.js
+	if h.documentContainsMermaidCharts(doc) {
+		// Inject mermaid.js script
+		result = h.injectMermaidScript(result)
+	}
+
+	return result, nil
 }
 
 func (h *htmlRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
@@ -48,6 +60,8 @@ func (h *htmlRenderer) renderContent(content Content) ([]byte, error) {
 		return h.renderSectionContentHTML(c)
 	case *DefaultCollapsibleSection:
 		return h.renderCollapsibleSection(c)
+	case *ChartContent:
+		return h.renderChartContentHTML(c)
 	default:
 		// Fallback to basic rendering with HTML escaping
 		data, err := h.baseRenderer.renderContent(content)
@@ -211,6 +225,75 @@ func (h *htmlRenderer) renderSectionContentHTML(section *SectionContent) ([]byte
 	result.WriteString("</section>\n")
 
 	return []byte(result.String()), nil
+}
+
+// renderChartContentHTML renders chart content as HTML with mermaid class
+func (h *htmlRenderer) renderChartContentHTML(chart *ChartContent) ([]byte, error) {
+	// Use mermaid renderer to generate the chart syntax
+	mermaidRenderer := &mermaidRenderer{}
+
+	// Create a temporary document with just this chart
+	tempDoc := &Document{
+		contents: []Content{chart},
+	}
+
+	mermaidData, err := mermaidRenderer.Render(context.Background(), tempDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render chart as mermaid: %w", err)
+	}
+
+	// Wrap in <pre class="mermaid">
+	var result strings.Builder
+	result.WriteString("<pre class=\"mermaid\">\n")
+	result.Write(mermaidData)
+	result.WriteString("</pre>\n")
+
+	return []byte(result.String()), nil
+}
+
+// documentContainsMermaidCharts checks if a document contains any ChartContent
+func (h *htmlRenderer) documentContainsMermaidCharts(doc *Document) bool {
+	for _, content := range doc.GetContents() {
+		if _, ok := content.(*ChartContent); ok {
+			return true
+		}
+		// Check nested content in sections
+		if section, ok := content.(*SectionContent); ok {
+			if h.sectionContainsMermaidCharts(section) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// sectionContainsMermaidCharts recursively checks if a section contains ChartContent
+func (h *htmlRenderer) sectionContainsMermaidCharts(section *SectionContent) bool {
+	for _, content := range section.Contents() {
+		if _, ok := content.(*ChartContent); ok {
+			return true
+		}
+		if nestedSection, ok := content.(*SectionContent); ok {
+			if h.sectionContainsMermaidCharts(nestedSection) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// injectMermaidScript adds the mermaid.js script to the HTML output
+func (h *htmlRenderer) injectMermaidScript(html []byte) []byte {
+	const mermaidScript = `<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+  </script>
+`
+	// Append the script at the end of the HTML
+	var result strings.Builder
+	result.Write(html)
+	result.WriteString(mermaidScript)
+	return []byte(result.String())
 }
 
 // formatCellValue processes field values and handles CollapsibleValue interface
