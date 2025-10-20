@@ -1,10 +1,9 @@
 ## Unreleased
 
+## 2.3.3 / 2025-10-20
+
 ### Added
-- **Mermaid Chart Rendering in HTML Format** - HTML renderer now automatically detects ChartContent and renders it with proper `<pre class="mermaid">` tags, with automatic injection of mermaid.js CDN script
-- **Mermaid Chart Rendering in Markdown Format** - Markdown renderer now supports ChartContent using mermaid code fences (` ```mermaid `) for GitHub/GitLab compatibility
-- **Integration Tests for Mermaid Charts** - Added integration tests verifying Gantt and Pie charts render correctly in HTML and Markdown formats
-- **Unit Tests for Chart Rendering** - Added unit tests for HTML and Markdown renderers' ChartContent handling with various chart types
+- **Mermaid Chart Rendering** - HTML and Markdown renderers now support ChartContent with proper format-specific rendering (HTML uses `<pre class="mermaid">` with CDN injection, Markdown uses code fences for GitHub/GitLab compatibility)
 
 ## 2.3.2 / 2025-10-17
 
