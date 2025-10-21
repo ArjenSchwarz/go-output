@@ -1,5 +1,13 @@
 ## Unreleased
 
+### Added
+- **HTML Template System Specification** - Created comprehensive specification documents for full HTML document generation with responsive CSS templates
+  - Requirements documentation outlining template structure, responsive design system, and operational modes
+  - Design documentation detailing architecture, component layers, template wrapping, and CSS theming
+  - Task breakdown for implementation planning and progress tracking
+  - Decision log documenting key architectural decisions including string-based templates, embedded CSS, mobile-first design, and CSS custom properties
+  - Initial idea document outlining the feature concept and motivation
+
 ## 2.3.3 / 2025-10-20
 
 ### Added
