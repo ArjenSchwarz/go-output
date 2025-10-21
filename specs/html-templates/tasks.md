@@ -180,7 +180,7 @@ references:
   - Run tests (should pass since implementation is complete)
   - Requirements: [13.7](requirements.md#13.7), [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.3](requirements.md#1.3), [1.4](requirements.md#1.4)
 
-- [ ] 15. Write integration tests for Mermaid chart handling
+- [x] 15. Write integration tests for Mermaid chart handling
   - Add tests to v2/html_integration_test.go
   - Write test verifying Mermaid chart with template includes script at end of body
   - Write test verifying Mermaid chart in fragment mode includes script
@@ -189,7 +189,7 @@ references:
   - Run tests (should pass)
   - Requirements: [13.8](requirements.md#13.8), [5.6](requirements.md#5.6), [7.7](requirements.md#7.7)
 
-- [ ] 16. Write integration tests for template customization
+- [x] 16. Write integration tests for template customization
   - Add tests to v2/html_integration_test.go
   - Write test verifying custom title appears in output
   - Write test verifying custom CSS overrides defaults
@@ -202,7 +202,7 @@ references:
   - Run tests (should pass)
   - Requirements: [13.4](requirements.md#13.4), [1.7](requirements.md#1.7)
 
-- [ ] 17. Write tests for edge cases
+- [x] 17. Write tests for edge cases
   - Write test for empty document producing valid HTML structure
   - Write test for empty CSS field producing template without style tags
   - Write test for empty ExternalCSS slice producing template without link tags
@@ -210,7 +210,7 @@ references:
   - Run tests (should pass)
   - Requirements: [13.9](requirements.md#13.9), [11.1](requirements.md#11.1), [11.5](requirements.md#11.5), [11.6](requirements.md#11.6)
 
-- [ ] 18. Write thread safety tests
+- [x] 18. Write thread safety tests
   - Write test for multiple goroutines rendering same template concurrently
   - Write test for template instance reuse across renders
   - Write test verifying no shared mutable state in rendering path
@@ -220,7 +220,7 @@ references:
 
 ## Phase 7: Final Validation
 
-- [ ] 19. Final code quality validation
+- [x] 19. Final code quality validation
   - Run golangci-lint on all new code and fix any issues
   - Run go fmt on all files
   - Run modernize tool validation and apply fixes
