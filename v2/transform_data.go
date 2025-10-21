@@ -3,7 +3,6 @@ package output
 import (
 	"context"
 	"fmt"
-	"maps"
 	"time"
 )
 
@@ -97,37 +96,6 @@ type TransformFunc func(data any) (any, error)
 
 // Ensure TableContent implements TransformableContent
 var _ TransformableContent = (*TableContent)(nil)
-
-// Clone creates a deep copy of the TableContent
-func (tc *TableContent) Clone() Content {
-	// Deep copy records
-	newRecords := make([]Record, len(tc.records))
-	for i, record := range tc.records {
-		newRecord := make(Record)
-		maps.Copy(newRecord, record)
-		newRecords[i] = newRecord
-	}
-
-	// Deep copy schema
-	var newSchema *Schema
-	if tc.schema != nil {
-		newFields := make([]Field, len(tc.schema.Fields))
-		copy(newFields, tc.schema.Fields)
-
-		newKeyOrder := make([]string, len(tc.schema.keyOrder))
-		copy(newKeyOrder, tc.schema.keyOrder)
-
-		newSchema = &Schema{
-			Fields:   newFields,
-			keyOrder: newKeyOrder,
-		}
-	}
-
-	return &TableContent{
-		records: newRecords,
-		schema:  newSchema,
-	}
-}
 
 // Transform applies a transformation function to the table's records
 func (tc *TableContent) Transform(fn TransformFunc) error {

@@ -2,6 +2,11 @@
 
 ### Added
 - **Per-Content Transformations Specification** - Complete requirements, design, and implementation specification for attaching transformations directly to individual content items (tables, text, sections) at creation time, enabling different operations to be applied to different content in the same document.
+- **Content Interface Transformation Support** - Extended Content interface with `Clone()` and `GetTransformations()` methods to enable per-content transformation capabilities across all content types (TableContent, TextContent, RawContent, SectionContent, DefaultCollapsibleSection, GraphContent, ChartContent, DrawIOContent)
+
+### Changed
+- **Clone Implementation Consolidation** - Moved TableContent.Clone() from transform_data.go to content.go with complete field coverage (id, title, records, schema) fixing incomplete implementation that was missing id and title fields
+- **Code Modernization** - Updated map copying to use maps.Copy() instead of manual loops per Go 1.24+ best practices
 
 ### Added
 - **HTML Template System Integration Testing (Phase 6)** - Complete integration test suite for HTML document rendering and thread safety validation

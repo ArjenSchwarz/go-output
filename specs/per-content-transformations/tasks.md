@@ -8,7 +8,7 @@ references:
 
 ## Phase 1: Core Infrastructure Setup
 
-- [ ] 1. Extend Content interface with transformation support
+- [x] 1. Extend Content interface with transformation support
   - Add Clone() method to Content interface signature
   - Add GetTransformations() []Operation method to Content interface signature
   - Ensure interface compiles (implementation comes in next tasks)

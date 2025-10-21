@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 )
 
@@ -134,6 +135,24 @@ func (g *GraphContent) GetNodes() []string {
 		nodes = append(nodes, node)
 	}
 	return nodes
+}
+
+// Clone creates a deep copy of the GraphContent
+func (g *GraphContent) Clone() Content {
+	// Deep copy edges
+	newEdges := make([]Edge, len(g.edges))
+	copy(newEdges, g.edges)
+
+	return &GraphContent{
+		id:    g.id,
+		title: g.title,
+		edges: newEdges,
+	}
+}
+
+// GetTransformations returns the transformations attached to this graph
+func (g *GraphContent) GetTransformations() []Operation {
+	return nil // Implementation will be added in future tasks
 }
 
 // ChartContent represents specialized chart data for Gantt, pie charts, etc.
@@ -282,6 +301,21 @@ func (c *ChartContent) AppendBinary(b []byte) ([]byte, error) {
 	return c.AppendText(b)
 }
 
+// Clone creates a deep copy of the ChartContent
+func (c *ChartContent) Clone() Content {
+	return &ChartContent{
+		id:        c.id,
+		title:     c.title,
+		chartType: c.chartType,
+		data:      c.data, // Shallow copy of data - deep copy would require type-specific logic
+	}
+}
+
+// GetTransformations returns the transformations attached to this chart
+func (c *ChartContent) GetTransformations() []Operation {
+	return nil // Implementation will be added in future tasks
+}
+
 // DrawIOContent represents Draw.io diagram data for CSV export
 type DrawIOContent struct {
 	id      string
@@ -391,6 +425,36 @@ func (d *DrawIOContent) AppendText(b []byte) ([]byte, error) {
 func (d *DrawIOContent) AppendBinary(b []byte) ([]byte, error) {
 	// For now, just use text representation
 	return d.AppendText(b)
+}
+
+// Clone creates a deep copy of the DrawIOContent
+func (d *DrawIOContent) Clone() Content {
+	// Deep copy records
+	newRecords := make([]Record, len(d.records))
+	for i, record := range d.records {
+		newRecord := make(Record)
+		maps.Copy(newRecord, record)
+		newRecords[i] = newRecord
+	}
+
+	// Deep copy connections
+	newConnections := make([]DrawIOConnection, len(d.header.Connections))
+	copy(newConnections, d.header.Connections)
+
+	newHeader := d.header
+	newHeader.Connections = newConnections
+
+	return &DrawIOContent{
+		id:      d.id,
+		title:   d.title,
+		header:  newHeader,
+		records: newRecords,
+	}
+}
+
+// GetTransformations returns the transformations attached to this Draw.io content
+func (d *DrawIOContent) GetTransformations() []Operation {
+	return nil // Implementation will be added in future tasks
 }
 
 // DefaultDrawIOHeader returns a header with default Draw.io settings

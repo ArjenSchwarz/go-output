@@ -50,6 +50,12 @@ type Content interface {
 	// ID returns a unique identifier for this content
 	ID() string
 
+	// Clone creates a deep copy of this content
+	Clone() Content
+
+	// GetTransformations returns the transformations attached to this content
+	GetTransformations() []Operation
+
 	// Encoding interfaces for efficient serialization
 	encoding.TextAppender
 	encoding.BinaryAppender
@@ -141,6 +147,44 @@ func (t *TableContent) Records() []Record {
 		records[i] = newRecord
 	}
 	return records
+}
+
+// Clone creates a deep copy of the TableContent
+func (t *TableContent) Clone() Content {
+	// Deep copy records
+	newRecords := make([]Record, len(t.records))
+	for i, record := range t.records {
+		newRecord := make(Record)
+		maps.Copy(newRecord, record)
+		newRecords[i] = newRecord
+	}
+
+	// Deep copy schema
+	var newSchema *Schema
+	if t.schema != nil {
+		newFields := make([]Field, len(t.schema.Fields))
+		copy(newFields, t.schema.Fields)
+
+		newKeyOrder := make([]string, len(t.schema.keyOrder))
+		copy(newKeyOrder, t.schema.keyOrder)
+
+		newSchema = &Schema{
+			Fields:   newFields,
+			keyOrder: newKeyOrder,
+		}
+	}
+
+	return &TableContent{
+		id:      t.id,
+		title:   t.title,
+		records: newRecords,
+		schema:  newSchema,
+	}
+}
+
+// GetTransformations returns the transformations attached to this table
+func (t *TableContent) GetTransformations() []Operation {
+	return nil // Implementation will be added in future tasks
 }
 
 // AppendText implements encoding.TextAppender preserving key order
@@ -273,6 +317,20 @@ func (t *TextContent) Style() TextStyle {
 	return t.style
 }
 
+// Clone creates a deep copy of the TextContent
+func (t *TextContent) Clone() Content {
+	return &TextContent{
+		id:    t.id,
+		text:  t.text,
+		style: t.style,
+	}
+}
+
+// GetTransformations returns the transformations attached to this text
+func (t *TextContent) GetTransformations() []Operation {
+	return nil // Implementation will be added in future tasks
+}
+
 // AppendText implements encoding.TextAppender
 func (t *TextContent) AppendText(b []byte) ([]byte, error) {
 	// For text content, we simply append the text
@@ -340,6 +398,22 @@ func (r *RawContent) Data() []byte {
 	dataCopy := make([]byte, len(r.data))
 	copy(dataCopy, r.data)
 	return dataCopy
+}
+
+// Clone creates a deep copy of the RawContent
+func (r *RawContent) Clone() Content {
+	dataCopy := make([]byte, len(r.data))
+	copy(dataCopy, r.data)
+	return &RawContent{
+		id:     r.id,
+		format: r.format,
+		data:   dataCopy,
+	}
+}
+
+// GetTransformations returns the transformations attached to this raw content
+func (r *RawContent) GetTransformations() []Operation {
+	return nil // Implementation will be added in future tasks
 }
 
 // AppendText implements encoding.TextAppender
@@ -429,6 +503,27 @@ func (s *SectionContent) Contents() []Content {
 // AddContent adds content to this section
 func (s *SectionContent) AddContent(content Content) {
 	s.contents = append(s.contents, content)
+}
+
+// Clone creates a deep copy of the SectionContent
+func (s *SectionContent) Clone() Content {
+	// Deep copy the nested contents
+	newContents := make([]Content, len(s.contents))
+	for i, content := range s.contents {
+		newContents[i] = content.Clone()
+	}
+
+	return &SectionContent{
+		id:       s.id,
+		title:    s.title,
+		level:    s.level,
+		contents: newContents,
+	}
+}
+
+// GetTransformations returns the transformations attached to this section
+func (s *SectionContent) GetTransformations() []Operation {
+	return nil // Implementation will be added in future tasks
 }
 
 // AppendText implements encoding.TextAppender with hierarchical rendering
