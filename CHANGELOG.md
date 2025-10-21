@@ -11,6 +11,27 @@
   - Comprehensive test suite covering single/multiple/zero transformations, order preservation, cloning behavior, and operation instance sharing
   - Updated tableConfig struct to include transformations field for functional options pattern
   - Modified NewTableContent to apply transformations from configuration
+- **TextContent Transformation Storage (TDD)** - Implemented per-content transformations for TextContent following Test-Driven Development:
+  - Added `transformations []Operation` field to TextContent struct
+  - Created `WithTextTransformations(ops ...Operation)` TextOption function (type-specific naming required due to Go's no-overloading constraint)
+  - Updated `GetTransformations()` to return transformations slice (returns empty slice when no transformations)
+  - Enhanced `Clone()` method to preserve transformations with shallow copy of operation instances
+  - Comprehensive test suite with 13 subtests covering transformation storage, retrieval, cloning, and order preservation
+  - Updated textConfig struct to include transformations field
+- **RawContent Transformation Storage (TDD)** - Implemented per-content transformations for RawContent following Test-Driven Development:
+  - Added `transformations []Operation` field to RawContent struct
+  - Created `WithRawTransformations(ops ...Operation)` RawOption function
+  - Updated `GetTransformations()` to return transformations slice
+  - Enhanced `Clone()` method to preserve transformations with shallow copy
+  - Comprehensive test suite with 9 subtests covering all transformation scenarios
+  - Updated rawConfig struct to include transformations field
+- **SectionContent Transformation Storage (TDD)** - Implemented per-content transformations for SectionContent following Test-Driven Development:
+  - Added `transformations []Operation` field to SectionContent struct
+  - Created `WithSectionTransformations(ops ...Operation)` SectionOption function
+  - Updated `GetTransformations()` to return transformations slice
+  - Enhanced `Clone()` method to preserve transformations AND correctly handle nested content deep cloning
+  - Comprehensive test suite with 13 subtests including nested content cloning verification
+  - Updated sectionConfig struct to include transformations field
 
 ### Changed
 - **Clone Implementation Consolidation** - Moved TableContent.Clone() from transform_data.go to content.go with complete field coverage (id, title, records, schema) fixing incomplete implementation that was missing id and title fields

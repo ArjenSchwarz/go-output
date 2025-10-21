@@ -1,6 +1,7 @@
 package output
 
 import (
+	"context"
 	"testing"
 )
 
@@ -319,5 +320,252 @@ func TestTextOptions_OverrideOrder(t *testing.T) {
 
 	if style.Color != "blue" {
 		t.Errorf("Expected color 'blue' (overridden), got %q", style.Color)
+	}
+}
+
+// Mock operation for testing transformation storage
+type mockOperation struct {
+	name string
+}
+
+func (m *mockOperation) Name() string {
+	return m.name
+}
+
+func (m *mockOperation) Apply(ctx context.Context, content Content) (Content, error) {
+	return content, nil
+}
+
+func (m *mockOperation) CanOptimize(with Operation) bool {
+	return false
+}
+
+func (m *mockOperation) Validate() error {
+	return nil
+}
+
+func TestTextContent_WithTransformations(t *testing.T) {
+	tests := map[string]struct {
+		text            string
+		transformations []Operation
+		wantCount       int
+	}{
+		"no transformations": {
+			text:            "Test text",
+			transformations: nil,
+			wantCount:       0,
+		},
+		"single transformation": {
+			text: "Test text",
+			transformations: []Operation{
+				&mockOperation{name: "transform1"},
+			},
+			wantCount: 1,
+		},
+		"multiple transformations": {
+			text: "Test text",
+			transformations: []Operation{
+				&mockOperation{name: "transform1"},
+				&mockOperation{name: "transform2"},
+				&mockOperation{name: "transform3"},
+			},
+			wantCount: 3,
+		},
+		"empty transformations slice": {
+			text:            "Test text",
+			transformations: []Operation{},
+			wantCount:       0,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var content *TextContent
+			if tc.transformations != nil {
+				content = NewTextContent(tc.text, WithTextTransformations(tc.transformations...))
+			} else {
+				content = NewTextContent(tc.text)
+			}
+
+			got := content.GetTransformations()
+			if len(got) != tc.wantCount {
+				t.Errorf("Expected %d transformations, got %d", tc.wantCount, len(got))
+			}
+		})
+	}
+}
+
+func TestTextContent_GetTransformations(t *testing.T) {
+	tests := map[string]struct {
+		text            string
+		transformations []Operation
+		wantNames       []string
+	}{
+		"returns empty slice when no transformations": {
+			text:            "Test",
+			transformations: nil,
+			wantNames:       []string{},
+		},
+		"returns all transformations in order": {
+			text: "Test",
+			transformations: []Operation{
+				&mockOperation{name: "filter"},
+				&mockOperation{name: "sort"},
+				&mockOperation{name: "limit"},
+			},
+			wantNames: []string{"filter", "sort", "limit"},
+		},
+		"returns single transformation": {
+			text: "Test",
+			transformations: []Operation{
+				&mockOperation{name: "transform"},
+			},
+			wantNames: []string{"transform"},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var content *TextContent
+			if tc.transformations != nil {
+				content = NewTextContent(tc.text, WithTextTransformations(tc.transformations...))
+			} else {
+				content = NewTextContent(tc.text)
+			}
+
+			got := content.GetTransformations()
+			if len(got) != len(tc.wantNames) {
+				t.Errorf("Expected %d transformations, got %d", len(tc.wantNames), len(got))
+			}
+
+			for i, op := range got {
+				if op.Name() != tc.wantNames[i] {
+					t.Errorf("Transformation %d: expected name %q, got %q", i, tc.wantNames[i], op.Name())
+				}
+			}
+		})
+	}
+}
+
+func TestTextContent_Clone_PreservesTransformations(t *testing.T) {
+	tests := map[string]struct {
+		text            string
+		transformations []Operation
+		wantCount       int
+	}{
+		"clone with no transformations": {
+			text:            "Test",
+			transformations: nil,
+			wantCount:       0,
+		},
+		"clone with single transformation": {
+			text: "Test",
+			transformations: []Operation{
+				&mockOperation{name: "transform1"},
+			},
+			wantCount: 1,
+		},
+		"clone with multiple transformations": {
+			text: "Test",
+			transformations: []Operation{
+				&mockOperation{name: "transform1"},
+				&mockOperation{name: "transform2"},
+				&mockOperation{name: "transform3"},
+			},
+			wantCount: 3,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var original *TextContent
+			if tc.transformations != nil {
+				original = NewTextContent(tc.text, WithTextTransformations(tc.transformations...))
+			} else {
+				original = NewTextContent(tc.text)
+			}
+
+			cloned := original.Clone()
+
+			// Verify cloned content has transformations
+			clonedTransformations := cloned.GetTransformations()
+			if len(clonedTransformations) != tc.wantCount {
+				t.Errorf("Cloned content: expected %d transformations, got %d", tc.wantCount, len(clonedTransformations))
+			}
+
+			// Verify original still has transformations
+			originalTransformations := original.GetTransformations()
+			if len(originalTransformations) != tc.wantCount {
+				t.Errorf("Original content: expected %d transformations, got %d", tc.wantCount, len(originalTransformations))
+			}
+
+			// Verify they reference the same operation instances (shallow copy)
+			if tc.wantCount > 0 {
+				for i := range originalTransformations {
+					if originalTransformations[i] != clonedTransformations[i] {
+						t.Errorf("Transformation %d: expected same instance after clone", i)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestTextContent_TransformationOrderPreservation(t *testing.T) {
+	tests := map[string]struct {
+		text      string
+		ops       []Operation
+		wantOrder []string
+	}{
+		"preserves order of two operations": {
+			text: "Test",
+			ops: []Operation{
+				&mockOperation{name: "first"},
+				&mockOperation{name: "second"},
+			},
+			wantOrder: []string{"first", "second"},
+		},
+		"preserves order of multiple operations": {
+			text: "Test",
+			ops: []Operation{
+				&mockOperation{name: "alpha"},
+				&mockOperation{name: "beta"},
+				&mockOperation{name: "gamma"},
+				&mockOperation{name: "delta"},
+			},
+			wantOrder: []string{"alpha", "beta", "gamma", "delta"},
+		},
+		"preserves order through clone": {
+			text: "Test",
+			ops: []Operation{
+				&mockOperation{name: "op1"},
+				&mockOperation{name: "op2"},
+				&mockOperation{name: "op3"},
+			},
+			wantOrder: []string{"op1", "op2", "op3"},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			content := NewTextContent(tc.text, WithTextTransformations(tc.ops...))
+
+			// Verify order in original
+			got := content.GetTransformations()
+			for i, op := range got {
+				if op.Name() != tc.wantOrder[i] {
+					t.Errorf("Original: position %d expected %q, got %q", i, tc.wantOrder[i], op.Name())
+				}
+			}
+
+			// Verify order is preserved after clone
+			cloned := content.Clone()
+			clonedOps := cloned.GetTransformations()
+			for i, op := range clonedOps {
+				if op.Name() != tc.wantOrder[i] {
+					t.Errorf("Cloned: position %d expected %q, got %q", i, tc.wantOrder[i], op.Name())
+				}
+			}
+		})
 	}
 }

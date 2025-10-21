@@ -296,9 +296,10 @@ type TextStyle struct {
 
 // TextContent represents unstructured text with styling options
 type TextContent struct {
-	id    string
-	text  string
-	style TextStyle
+	id              string
+	text            string
+	style           TextStyle
+	transformations []Operation
 }
 
 // NewTextContent creates a new text content with the given text and options
@@ -306,9 +307,10 @@ func NewTextContent(text string, opts ...TextOption) *TextContent {
 	tc := ApplyTextOptions(opts...)
 
 	return &TextContent{
-		id:    GenerateID(),
-		text:  text,
-		style: tc.style,
+		id:              GenerateID(),
+		text:            text,
+		style:           tc.style,
+		transformations: tc.transformations,
 	}
 }
 
@@ -334,16 +336,27 @@ func (t *TextContent) Style() TextStyle {
 
 // Clone creates a deep copy of the TextContent
 func (t *TextContent) Clone() Content {
+	// Shallow copy transformations (share same operation instances)
+	var newTransformations []Operation
+	if len(t.transformations) > 0 {
+		newTransformations = make([]Operation, len(t.transformations))
+		copy(newTransformations, t.transformations)
+	}
+
 	return &TextContent{
-		id:    t.id,
-		text:  t.text,
-		style: t.style,
+		id:              t.id,
+		text:            t.text,
+		style:           t.style,
+		transformations: newTransformations,
 	}
 }
 
 // GetTransformations returns the transformations attached to this text
 func (t *TextContent) GetTransformations() []Operation {
-	return nil // Implementation will be added in future tasks
+	if t.transformations == nil {
+		return []Operation{}
+	}
+	return t.transformations
 }
 
 // AppendText implements encoding.TextAppender
@@ -368,9 +381,10 @@ func (t *TextContent) AppendBinary(b []byte) ([]byte, error) {
 
 // RawContent represents format-specific content
 type RawContent struct {
-	id     string
-	format string
-	data   []byte
+	id              string
+	format          string
+	data            []byte
+	transformations []Operation
 }
 
 // NewRawContent creates a new raw content with the given format and data
@@ -387,9 +401,10 @@ func NewRawContent(format string, data []byte, opts ...RawOption) (*RawContent, 
 	copy(dataCopy, data)
 
 	return &RawContent{
-		id:     GenerateID(),
-		format: format,
-		data:   dataCopy,
+		id:              GenerateID(),
+		format:          format,
+		data:            dataCopy,
+		transformations: rc.transformations,
 	}, nil
 }
 
@@ -419,16 +434,28 @@ func (r *RawContent) Data() []byte {
 func (r *RawContent) Clone() Content {
 	dataCopy := make([]byte, len(r.data))
 	copy(dataCopy, r.data)
+
+	// Shallow copy transformations (share same operation instances)
+	var newTransformations []Operation
+	if len(r.transformations) > 0 {
+		newTransformations = make([]Operation, len(r.transformations))
+		copy(newTransformations, r.transformations)
+	}
+
 	return &RawContent{
-		id:     r.id,
-		format: r.format,
-		data:   dataCopy,
+		id:              r.id,
+		format:          r.format,
+		data:            dataCopy,
+		transformations: newTransformations,
 	}
 }
 
 // GetTransformations returns the transformations attached to this raw content
 func (r *RawContent) GetTransformations() []Operation {
-	return nil // Implementation will be added in future tasks
+	if r.transformations == nil {
+		return []Operation{}
+	}
+	return r.transformations
 }
 
 // AppendText implements encoding.TextAppender
@@ -470,10 +497,11 @@ func isValidFormat(format string) bool {
 
 // SectionContent represents grouped content with a hierarchical structure
 type SectionContent struct {
-	id       string
-	title    string
-	level    int
-	contents []Content
+	id              string
+	title           string
+	level           int
+	contents        []Content
+	transformations []Operation
 }
 
 // NewSectionContent creates a new section content with the given title and options
@@ -481,10 +509,11 @@ func NewSectionContent(title string, opts ...SectionOption) *SectionContent {
 	sc := ApplySectionOptions(opts...)
 
 	return &SectionContent{
-		id:       GenerateID(),
-		title:    title,
-		level:    sc.level,
-		contents: make([]Content, 0),
+		id:              GenerateID(),
+		title:           title,
+		level:           sc.level,
+		contents:        make([]Content, 0),
+		transformations: sc.transformations,
 	}
 }
 
@@ -528,17 +557,28 @@ func (s *SectionContent) Clone() Content {
 		newContents[i] = content.Clone()
 	}
 
+	// Shallow copy transformations (share same operation instances)
+	var newTransformations []Operation
+	if len(s.transformations) > 0 {
+		newTransformations = make([]Operation, len(s.transformations))
+		copy(newTransformations, s.transformations)
+	}
+
 	return &SectionContent{
-		id:       s.id,
-		title:    s.title,
-		level:    s.level,
-		contents: newContents,
+		id:              s.id,
+		title:           s.title,
+		level:           s.level,
+		contents:        newContents,
+		transformations: newTransformations,
 	}
 }
 
 // GetTransformations returns the transformations attached to this section
 func (s *SectionContent) GetTransformations() []Operation {
-	return nil // Implementation will be added in future tasks
+	if s.transformations == nil {
+		return []Operation{}
+	}
+	return s.transformations
 }
 
 // AppendText implements encoding.TextAppender with hierarchical rendering

@@ -41,7 +41,7 @@ references:
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5), [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [6.3](requirements.md#6.3), [9.1](requirements.md#9.1), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4), [9.5](requirements.md#9.5)
   - References: v2/table_content.go
 
-- [ ] 4. Write tests for TextContent transformation storage
+- [x] 4. Write tests for TextContent transformation storage
   - Write tests for WithTransformations() option storing operations
   - Write tests for GetTransformations() returning stored operations
   - Write tests for Clone() preserving transformations
@@ -50,7 +50,7 @@ references:
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5), [1.6](requirements.md#1.6), [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [9.1](requirements.md#9.1), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4)
   - References: v2/text_content_test.go
 
-- [ ] 5. Implement TextContent transformations support
+- [x] 5. Implement TextContent transformations support
   - Add transformations []Operation field to TextContent struct
   - Implement GetTransformations() to return the transformations slice
   - Create WithTransformations(ops ...Operation) TextOption function
@@ -60,7 +60,7 @@ references:
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5), [1.6](requirements.md#1.6), [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [9.1](requirements.md#9.1), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4)
   - References: v2/text_content.go
 
-- [ ] 6. Write tests for RawContent transformation storage
+- [x] 6. Write tests for RawContent transformation storage
   - Write tests for WithTransformations() option storing operations
   - Write tests for GetTransformations() returning stored operations
   - Write tests for Clone() preserving transformations
@@ -68,7 +68,7 @@ references:
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5), [1.6](requirements.md#1.6), [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [9.1](requirements.md#9.1), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4)
   - References: v2/raw_content_test.go
 
-- [ ] 7. Implement RawContent transformations support
+- [x] 7. Implement RawContent transformations support
   - Add transformations []Operation field to RawContent struct
   - Implement GetTransformations() to return the transformations slice
   - Create WithTransformations(ops ...Operation) RawOption function
@@ -78,7 +78,7 @@ references:
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5), [1.6](requirements.md#1.6), [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [9.1](requirements.md#9.1), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4)
   - References: v2/raw_content.go
 
-- [ ] 8. Write tests for SectionContent transformation storage
+- [x] 8. Write tests for SectionContent transformation storage
   - Write tests for WithTransformations() option storing operations
   - Write tests for GetTransformations() returning stored operations
   - Write tests for Clone() preserving transformations
@@ -87,7 +87,7 @@ references:
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5), [1.6](requirements.md#1.6), [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [9.1](requirements.md#9.1), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4)
   - References: v2/section_content_test.go
 
-- [ ] 9. Implement SectionContent transformations support
+- [x] 9. Implement SectionContent transformations support
   - Add transformations []Operation field to SectionContent struct
   - Implement GetTransformations() to return the transformations slice
   - Create WithTransformations(ops ...Operation) SectionOption function

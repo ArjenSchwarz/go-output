@@ -2,7 +2,8 @@ package output
 
 // sectionConfig holds configuration for section creation
 type sectionConfig struct {
-	level int
+	level           int
+	transformations []Operation
 }
 
 // SectionOption configures section creation
@@ -14,6 +15,13 @@ func WithLevel(level int) SectionOption {
 		if level >= 0 {
 			sc.level = level
 		}
+	}
+}
+
+// WithSectionTransformations sets transformations for the section content
+func WithSectionTransformations(ops ...Operation) SectionOption {
+	return func(sc *sectionConfig) {
+		sc.transformations = ops
 	}
 }
 

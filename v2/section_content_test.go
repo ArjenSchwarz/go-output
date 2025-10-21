@@ -1,6 +1,7 @@
 package output
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -494,6 +495,279 @@ func TestIndentContent(t *testing.T) {
 			result := indentContent(tt.content, tt.level)
 			if string(result) != tt.expected {
 				t.Errorf("Expected %q, got %q", tt.expected, string(result))
+			}
+		})
+	}
+}
+
+// Mock operation for testing transformation storage
+type mockSectionOperation struct {
+	name string
+}
+
+func (m *mockSectionOperation) Name() string {
+	return m.name
+}
+
+func (m *mockSectionOperation) Apply(ctx context.Context, content Content) (Content, error) {
+	return content, nil
+}
+
+func (m *mockSectionOperation) CanOptimize(with Operation) bool {
+	return false
+}
+
+func (m *mockSectionOperation) Validate() error {
+	return nil
+}
+
+func TestSectionContent_WithTransformations(t *testing.T) {
+	tests := map[string]struct {
+		title           string
+		transformations []Operation
+		wantCount       int
+	}{
+		"no transformations": {
+			title:           "Test Section",
+			transformations: nil,
+			wantCount:       0,
+		},
+		"single transformation": {
+			title: "Test Section",
+			transformations: []Operation{
+				&mockSectionOperation{name: "transform1"},
+			},
+			wantCount: 1,
+		},
+		"multiple transformations": {
+			title: "Test Section",
+			transformations: []Operation{
+				&mockSectionOperation{name: "transform1"},
+				&mockSectionOperation{name: "transform2"},
+				&mockSectionOperation{name: "transform3"},
+			},
+			wantCount: 3,
+		},
+		"empty transformations slice": {
+			title:           "Test Section",
+			transformations: []Operation{},
+			wantCount:       0,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var content *SectionContent
+			if tc.transformations != nil {
+				content = NewSectionContent(tc.title, WithSectionTransformations(tc.transformations...))
+			} else {
+				content = NewSectionContent(tc.title)
+			}
+
+			got := content.GetTransformations()
+			if len(got) != tc.wantCount {
+				t.Errorf("Expected %d transformations, got %d", tc.wantCount, len(got))
+			}
+		})
+	}
+}
+
+func TestSectionContent_GetTransformations(t *testing.T) {
+	tests := map[string]struct {
+		title           string
+		transformations []Operation
+		wantNames       []string
+	}{
+		"returns empty slice when no transformations": {
+			title:           "Test Section",
+			transformations: nil,
+			wantNames:       []string{},
+		},
+		"returns all transformations in order": {
+			title: "Test Section",
+			transformations: []Operation{
+				&mockSectionOperation{name: "filter"},
+				&mockSectionOperation{name: "sort"},
+				&mockSectionOperation{name: "limit"},
+			},
+			wantNames: []string{"filter", "sort", "limit"},
+		},
+		"returns single transformation": {
+			title: "Test Section",
+			transformations: []Operation{
+				&mockSectionOperation{name: "transform"},
+			},
+			wantNames: []string{"transform"},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var content *SectionContent
+			if tc.transformations != nil {
+				content = NewSectionContent(tc.title, WithSectionTransformations(tc.transformations...))
+			} else {
+				content = NewSectionContent(tc.title)
+			}
+
+			got := content.GetTransformations()
+			if len(got) != len(tc.wantNames) {
+				t.Errorf("Expected %d transformations, got %d", len(tc.wantNames), len(got))
+			}
+
+			for i, op := range got {
+				if op.Name() != tc.wantNames[i] {
+					t.Errorf("Transformation %d: expected name %q, got %q", i, tc.wantNames[i], op.Name())
+				}
+			}
+		})
+	}
+}
+
+func TestSectionContent_Clone_PreservesTransformations(t *testing.T) {
+	tests := map[string]struct {
+		title           string
+		transformations []Operation
+		wantCount       int
+	}{
+		"clone with no transformations": {
+			title:           "Test Section",
+			transformations: nil,
+			wantCount:       0,
+		},
+		"clone with single transformation": {
+			title: "Test Section",
+			transformations: []Operation{
+				&mockSectionOperation{name: "transform1"},
+			},
+			wantCount: 1,
+		},
+		"clone with multiple transformations": {
+			title: "Test Section",
+			transformations: []Operation{
+				&mockSectionOperation{name: "transform1"},
+				&mockSectionOperation{name: "transform2"},
+				&mockSectionOperation{name: "transform3"},
+			},
+			wantCount: 3,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var original *SectionContent
+			if tc.transformations != nil {
+				original = NewSectionContent(tc.title, WithSectionTransformations(tc.transformations...))
+			} else {
+				original = NewSectionContent(tc.title)
+			}
+
+			cloned := original.Clone()
+
+			// Verify cloned content has transformations
+			clonedTransformations := cloned.GetTransformations()
+			if len(clonedTransformations) != tc.wantCount {
+				t.Errorf("Cloned content: expected %d transformations, got %d", tc.wantCount, len(clonedTransformations))
+			}
+
+			// Verify original still has transformations
+			originalTransformations := original.GetTransformations()
+			if len(originalTransformations) != tc.wantCount {
+				t.Errorf("Original content: expected %d transformations, got %d", tc.wantCount, len(originalTransformations))
+			}
+
+			// Verify they reference the same operation instances (shallow copy)
+			if tc.wantCount > 0 {
+				for i := range originalTransformations {
+					if originalTransformations[i] != clonedTransformations[i] {
+						t.Errorf("Transformation %d: expected same instance after clone", i)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestSectionContent_Clone_NestedContent(t *testing.T) {
+	tests := map[string]struct {
+		setupSection    func() *SectionContent
+		transformations []Operation
+		wantCount       int
+	}{
+		"clone nested content with transformations": {
+			setupSection: func() *SectionContent {
+				section := NewSectionContent("Parent Section")
+				// Add nested content
+				section.AddContent(NewTextContent("Child text"))
+				tableContent, _ := NewTableContent("Child table", []map[string]any{{"key": "value"}})
+				section.AddContent(tableContent)
+				return section
+			},
+			transformations: []Operation{
+				&mockSectionOperation{name: "transform1"},
+			},
+			wantCount: 1,
+		},
+		"clone deeply nested sections": {
+			setupSection: func() *SectionContent {
+				parent := NewSectionContent("Parent")
+				child := NewSectionContent("Child", WithLevel(1))
+				grandchild := NewSectionContent("Grandchild", WithLevel(2))
+				grandchild.AddContent(NewTextContent("Deep content"))
+				child.AddContent(grandchild)
+				parent.AddContent(child)
+				return parent
+			},
+			transformations: []Operation{
+				&mockSectionOperation{name: "transform1"},
+				&mockSectionOperation{name: "transform2"},
+			},
+			wantCount: 2,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			original := tc.setupSection()
+			if tc.transformations != nil {
+				// Create a new section with transformations
+				newSection := NewSectionContent(original.Title(), WithSectionTransformations(tc.transformations...))
+				// Copy nested content
+				for _, content := range original.Contents() {
+					newSection.AddContent(content)
+				}
+				original = newSection
+			}
+
+			cloned := original.Clone()
+
+			// Verify transformations are preserved
+			clonedTransformations := cloned.GetTransformations()
+			if len(clonedTransformations) != tc.wantCount {
+				t.Errorf("Cloned content: expected %d transformations, got %d", tc.wantCount, len(clonedTransformations))
+			}
+
+			// Verify nested content is also cloned (not same references)
+			clonedSection, ok := cloned.(*SectionContent)
+			if !ok {
+				t.Fatal("Cloned content is not SectionContent")
+			}
+
+			originalContents := original.Contents()
+			clonedContents := clonedSection.Contents()
+
+			if len(clonedContents) != len(originalContents) {
+				t.Errorf("Expected %d cloned contents, got %d", len(originalContents), len(clonedContents))
+			}
+
+			// Verify nested content is deeply cloned
+			for i := range originalContents {
+				if i < len(clonedContents) {
+					// Verify they have the same IDs (content cloned with same ID)
+					if originalContents[i].ID() != clonedContents[i].ID() {
+						t.Errorf("Content %d: expected same ID after clone", i)
+					}
+				}
 			}
 		})
 	}

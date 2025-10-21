@@ -2,8 +2,9 @@ package output
 
 // rawConfig holds configuration for raw content creation
 type rawConfig struct {
-	validateFormat bool
-	preserveData   bool
+	validateFormat  bool
+	preserveData    bool
+	transformations []Operation
 }
 
 // RawOption configures raw content creation
@@ -20,6 +21,13 @@ func WithFormatValidation(validate bool) RawOption {
 func WithDataPreservation(preserve bool) RawOption {
 	return func(rc *rawConfig) {
 		rc.preserveData = preserve
+	}
+}
+
+// WithRawTransformations sets transformations for the raw content
+func WithRawTransformations(ops ...Operation) RawOption {
+	return func(rc *rawConfig) {
+		rc.transformations = ops
 	}
 }
 
