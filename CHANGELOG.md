@@ -3,6 +3,14 @@
 ### Added
 - **Per-Content Transformations Specification** - Complete requirements, design, and implementation specification for attaching transformations directly to individual content items (tables, text, sections) at creation time, enabling different operations to be applied to different content in the same document.
 - **Content Interface Transformation Support** - Extended Content interface with `Clone()` and `GetTransformations()` methods to enable per-content transformation capabilities across all content types (TableContent, TextContent, RawContent, SectionContent, DefaultCollapsibleSection, GraphContent, ChartContent, DrawIOContent)
+- **TableContent Transformation Storage (TDD)** - Implemented per-content transformations for TableContent following Test-Driven Development:
+  - Added `transformations []Operation` field to TableContent struct for storing operation references
+  - Created `WithTransformations(ops ...Operation)` TableOption function supporting variadic arguments and method chaining
+  - Updated `GetTransformations()` to return transformations slice (empty slice instead of nil when no transformations exist)
+  - Enhanced `Clone()` method to preserve transformations with shallow copy of operation references (operations are shared, not cloned)
+  - Comprehensive test suite covering single/multiple/zero transformations, order preservation, cloning behavior, and operation instance sharing
+  - Updated tableConfig struct to include transformations field for functional options pattern
+  - Modified NewTableContent to apply transformations from configuration
 
 ### Changed
 - **Clone Implementation Consolidation** - Moved TableContent.Clone() from transform_data.go to content.go with complete field coverage (id, title, records, schema) fixing incomplete implementation that was missing id and title fields

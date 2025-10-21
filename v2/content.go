@@ -77,10 +77,11 @@ type Record map[string]any
 
 // TableContent represents tabular data with preserved key ordering
 type TableContent struct {
-	id      string
-	title   string
-	schema  *Schema
-	records []Record
+	id              string
+	title           string
+	schema          *Schema
+	records         []Record
+	transformations []Operation
 }
 
 // NewTableContent creates a new table content with the given data and options
@@ -113,6 +114,9 @@ func NewTableContent(title string, data any, opts ...TableOption) (*TableContent
 		return nil, fmt.Errorf("failed to convert data to records: %w", err)
 	}
 	table.records = records
+
+	// Store transformations from config
+	table.transformations = tc.transformations
 
 	return table, nil
 }
@@ -174,17 +178,28 @@ func (t *TableContent) Clone() Content {
 		}
 	}
 
+	// Shallow copy transformations (share same operation instances)
+	var newTransformations []Operation
+	if len(t.transformations) > 0 {
+		newTransformations = make([]Operation, len(t.transformations))
+		copy(newTransformations, t.transformations)
+	}
+
 	return &TableContent{
-		id:      t.id,
-		title:   t.title,
-		records: newRecords,
-		schema:  newSchema,
+		id:              t.id,
+		title:           t.title,
+		records:         newRecords,
+		schema:          newSchema,
+		transformations: newTransformations,
 	}
 }
 
 // GetTransformations returns the transformations attached to this table
 func (t *TableContent) GetTransformations() []Operation {
-	return nil // Implementation will be added in future tasks
+	if t.transformations == nil {
+		return []Operation{}
+	}
+	return t.transformations
 }
 
 // AppendText implements encoding.TextAppender preserving key order

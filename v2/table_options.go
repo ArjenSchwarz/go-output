@@ -4,10 +4,11 @@ import "sort"
 
 // tableConfig holds configuration for table creation
 type tableConfig struct {
-	schema      *Schema
-	keys        []string
-	autoSchema  bool
-	detectOrder bool
+	schema          *Schema
+	keys            []string
+	autoSchema      bool
+	detectOrder     bool
+	transformations []Operation
 }
 
 // TableOption configures table creation
@@ -47,6 +48,14 @@ func WithAutoSchemaOrdered(keys ...string) TableOption {
 		tc.autoSchema = true
 		tc.keys = keys
 		tc.detectOrder = false
+	}
+}
+
+// WithTransformations attaches transformations to be applied to this table content
+// Operations are stored as references (not cloned) and will be applied during rendering
+func WithTransformations(ops ...Operation) TableOption {
+	return func(tc *tableConfig) {
+		tc.transformations = ops
 	}
 }
 

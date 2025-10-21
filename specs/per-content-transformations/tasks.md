@@ -17,7 +17,7 @@ references:
 
 ## Phase 2: TableContent with Transformations (TDD)
 
-- [ ] 2. Write tests for TableContent transformation storage
+- [x] 2. Write tests for TableContent transformation storage
   - Write tests for WithTransformations() option storing operations
   - Write tests for GetTransformations() returning stored operations
   - Write tests for Clone() preserving transformations
@@ -28,7 +28,7 @@ references:
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5), [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [6.3](requirements.md#6.3), [9.1](requirements.md#9.1), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4), [9.5](requirements.md#9.5)
   - References: v2/table_content_test.go
 
-- [ ] 3. Implement TableContent transformations support
+- [x] 3. Implement TableContent transformations support
   - Add transformations []Operation field to TableContent struct
   - Implement GetTransformations() to return the transformations slice
   - Create WithTransformations(ops ...Operation) TableOption function
