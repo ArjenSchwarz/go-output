@@ -212,7 +212,7 @@ func TestGetAWSShape_ConcurrentDifferentShapes(t *testing.T) {
 	wg.Add(len(testCases) * numIterations)
 
 	for _, tc := range testCases {
-		tc := tc // Capture for goroutine
+		// Capture for goroutine
 		for range numIterations {
 			go func() {
 				defer wg.Done()
@@ -242,7 +242,7 @@ func TestGetAWSShape_RaceDetector(t *testing.T) {
 	// Start multiple readers
 	for range numGoroutines {
 		go func() {
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				_, _ = GetAWSShape("Compute", "EC2")
 				_, _ = GetAWSShape("Storage", "Elastic Block Store")
 			}
@@ -253,7 +253,7 @@ func TestGetAWSShape_RaceDetector(t *testing.T) {
 	// Start helper function accessors
 	for range 10 {
 		go func() {
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				_ = AllAWSGroups()
 				_ = HasAWSShape("Compute", "EC2")
 				_, _ = AWSShapesInGroup("Storage")

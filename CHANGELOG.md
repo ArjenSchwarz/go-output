@@ -1,6 +1,13 @@
 ## Unreleased
 
 ### Added
+- **HTML Template System Core Implementation (Phase 1)** - Implemented foundation for full HTML document generation with responsive CSS templates
+  - `HTMLTemplate` struct with 14 fields for metadata, styling, and customization
+  - Three built-in template variants: `DefaultHTMLTemplate` (modern responsive), `MinimalHTMLTemplate` (no styling), `MermaidHTMLTemplate` (diagram-optimized)
+  - Comprehensive godoc documentation with security warnings for unescaped content fields (CSS, HeadExtra, BodyExtra)
+  - Package-level template variables for zero-allocation usage
+  - Full test coverage with map-based table-driven tests for field defaults and custom overrides
+  - CSS custom property support via `ThemeOverrides` field for easy theme customization
 - **HTML Template System Specification** - Created comprehensive specification documents for full HTML document generation with responsive CSS templates
   - Requirements documentation outlining template structure, responsive design system, and operational modes
   - Design documentation detailing architecture, component layers, template wrapping, and CSS theming

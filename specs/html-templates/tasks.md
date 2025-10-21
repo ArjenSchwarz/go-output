@@ -8,12 +8,12 @@ references:
 
 ## Phase 1: HTMLTemplate Core (TDD)
 
-- [ ] 1. Create HTMLTemplate struct (stub)
+- [x] 1. Create HTMLTemplate struct (stub)
   - Create v2/html_template.go file
   - Define empty HTMLTemplate struct
   - Define package-level variables for DefaultHTMLTemplate, MinimalHTMLTemplate, MermaidHTMLTemplate (initialized with empty structs for now)
 
-- [ ] 2. Write tests for HTMLTemplate struct fields and defaults
+- [x] 2. Write tests for HTMLTemplate struct fields and defaults
   - Create v2/html_template_test.go file
   - Write test for default Title field value (should be "Output Report")
   - Write test for default Charset field value (should be "UTF-8")
@@ -24,7 +24,7 @@ references:
   - Run tests (should fail)
   - Requirements: [2.1](requirements.md#2.1), [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4), [2.5](requirements.md#2.5), [2.6](requirements.md#2.6), [2.7](requirements.md#2.7), [11.2](requirements.md#11.2), [11.3](requirements.md#11.3), [11.4](requirements.md#11.4), [13.1](requirements.md#13.1)
 
-- [ ] 3. Implement HTMLTemplate struct fields
+- [x] 3. Implement HTMLTemplate struct fields
   - Add all fields to HTMLTemplate struct (Title, Language, Charset, Viewport, Description, Author, MetaTags, CSS, ExternalCSS, ThemeOverrides, HeadExtra, BodyClass, BodyAttrs, BodyExtra)
   - Add godoc comments to struct and all fields
   - Add security warnings to CSS, HeadExtra, BodyExtra, ExternalCSS, BodyAttrs fields
