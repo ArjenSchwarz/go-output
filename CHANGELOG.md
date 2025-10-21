@@ -1,6 +1,23 @@
 ## Unreleased
 
 ### Added
+- **HTML Template System Testing (Phase 3)** - Comprehensive test suite for HTML template wrapping functionality
+  - `wrapInTemplate()` function implementation in `html_renderer.go` for generating complete HTML5 documents
+  - Added `useTemplate` and `template` fields to `htmlRenderer` struct for template configuration
+  - Integrated template wrapping into rendering pipeline after mermaid script injection
+  - 20 comprehensive test functions covering all template features:
+    - DOCTYPE declaration and HTML element structure
+    - Meta tags (charset, viewport, description, author, custom)
+    - CSS styling (embedded, external, theme overrides)
+    - Body customization (class, attributes, extra content)
+    - Head content injection
+    - Fragment content injection and placement
+    - Nil template fallback to DefaultHTMLTemplate
+    - Edge cases with empty fields and HTML structure ordering
+  - Full HTML escaping validation for XSS prevention in metadata fields
+  - Proper element ordering verification (DOCTYPE → html → head → body)
+  - All tests pass with proper use of map-based table-driven test patterns
+  - Code passes golangci-lint, go fmt, and modernize validation
 - **HTML Template System Responsive CSS (Phase 2)** - Implemented modern responsive CSS styling system for HTML document templates
   - `html_css.go` with two CSS constant variables: `defaultResponsiveCSS` and `mermaidOptimizedCSS`
   - Mobile-first responsive CSS using CSS custom properties for theming (colors, spacing, typography, layout)

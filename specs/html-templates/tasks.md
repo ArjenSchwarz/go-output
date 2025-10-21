@@ -68,7 +68,7 @@ references:
 
 ## Phase 3: Template Wrapping (TDD)
 
-- [ ] 7. Write tests for template wrapping function
+- [x] 7. Write tests for template wrapping function
   - Create test file or add to existing html_template_test.go
   - Write test for DOCTYPE declaration in output
   - Write test for html element with lang attribute

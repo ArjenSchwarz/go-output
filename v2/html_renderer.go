@@ -17,6 +17,8 @@ const (
 type htmlRenderer struct {
 	baseRenderer
 	collapsibleConfig RendererConfig
+	useTemplate       bool          // Enable/disable template wrapping
+	template          *HTMLTemplate // Template configuration (nil = use default)
 }
 
 func (h *htmlRenderer) Format() string {
@@ -34,6 +36,11 @@ func (h *htmlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error
 	if h.documentContainsMermaidCharts(doc) {
 		// Inject mermaid.js script
 		result = h.injectMermaidScript(result)
+	}
+
+	// Wrap in template if enabled
+	if h.useTemplate {
+		result = h.wrapInTemplate(result, h.template)
 	}
 
 	return result, nil
@@ -466,4 +473,105 @@ func (h *htmlRenderer) renderCollapsibleSection(section *DefaultCollapsibleSecti
 	result.WriteString(`</section>`)
 
 	return []byte(result.String()), nil
+}
+
+// wrapInTemplate wraps rendered HTML fragment in a complete HTML5 document using the provided template.
+// All user-controlled fields are HTML-escaped to prevent XSS injection.
+// CSS and extra content fields (CSS, HeadExtra, BodyExtra) are included as-is (user responsibility for safety).
+func (h *htmlRenderer) wrapInTemplate(fragmentHTML []byte, tmpl *HTMLTemplate) []byte {
+	// Use default template if none provided
+	if tmpl == nil {
+		tmpl = DefaultHTMLTemplate
+	}
+
+	var buf strings.Builder
+
+	// DOCTYPE
+	buf.WriteString("<!DOCTYPE html>\n")
+
+	// HTML element with lang attribute
+	buf.WriteString(fmt.Sprintf("<html lang=\"%s\">\n", html.EscapeString(tmpl.Language)))
+
+	// Head section
+	buf.WriteString("<head>\n")
+	buf.WriteString(fmt.Sprintf("  <meta charset=\"%s\">\n", html.EscapeString(tmpl.Charset)))
+
+	if tmpl.Viewport != "" {
+		buf.WriteString(fmt.Sprintf("  <meta name=\"viewport\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Viewport)))
+	}
+
+	buf.WriteString(fmt.Sprintf("  <title>%s</title>\n", html.EscapeString(tmpl.Title)))
+
+	// Additional meta tags (after title)
+	if tmpl.Description != "" {
+		buf.WriteString(fmt.Sprintf("  <meta name=\"description\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Description)))
+	}
+	if tmpl.Author != "" {
+		buf.WriteString(fmt.Sprintf("  <meta name=\"author\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Author)))
+	}
+
+	// Custom meta tags
+	for name, content := range tmpl.MetaTags {
+		buf.WriteString(fmt.Sprintf("  <meta name=\"%s\" content=\"%s\">\n",
+			html.EscapeString(name), html.EscapeString(content)))
+	}
+
+	// External stylesheets
+	for _, href := range tmpl.ExternalCSS {
+		buf.WriteString(fmt.Sprintf("  <link rel=\"stylesheet\" href=\"%s\">\n",
+			html.EscapeString(href)))
+	}
+
+	// Embedded CSS
+	if tmpl.CSS != "" {
+		buf.WriteString("  <style>\n")
+		buf.WriteString(tmpl.CSS) // CSS is NOT escaped (assumed safe)
+		buf.WriteString("\n  </style>\n")
+	}
+
+	// Theme overrides (CSS custom property overrides)
+	if len(tmpl.ThemeOverrides) > 0 {
+		buf.WriteString("  <style>\n")
+		buf.WriteString("    :root {\n")
+		for prop, value := range tmpl.ThemeOverrides {
+			buf.WriteString(fmt.Sprintf("      %s: %s;\n",
+				html.EscapeString(prop), html.EscapeString(value)))
+		}
+		buf.WriteString("    }\n")
+		buf.WriteString("  </style>\n")
+	}
+
+	// Additional head content
+	if tmpl.HeadExtra != "" {
+		buf.WriteString(tmpl.HeadExtra) // NOT escaped (assumed safe, user responsibility)
+	}
+
+	buf.WriteString("</head>\n")
+
+	// Body section
+	bodyTag := "<body"
+	if tmpl.BodyClass != "" {
+		bodyTag += fmt.Sprintf(" class=\"%s\"", html.EscapeString(tmpl.BodyClass))
+	}
+	for attr, value := range tmpl.BodyAttrs {
+		bodyTag += fmt.Sprintf(" %s=\"%s\"",
+			html.EscapeString(attr), html.EscapeString(value))
+	}
+	bodyTag += ">\n"
+	buf.WriteString(bodyTag)
+
+	// Content (already HTML-escaped by fragment rendering)
+	buf.Write(fragmentHTML)
+
+	// Additional body content
+	if tmpl.BodyExtra != "" {
+		buf.WriteString(tmpl.BodyExtra) // NOT escaped (scripts, etc.)
+	}
+
+	buf.WriteString("\n</body>\n</html>\n")
+
+	return []byte(buf.String())
 }
