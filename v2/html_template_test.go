@@ -1,6 +1,7 @@
 package output
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -249,6 +250,145 @@ func TestEmptyHTMLTemplateFieldHandling(t *testing.T) {
 
 			if !tc.check() {
 				t.Errorf("expected empty field %q", tc.field)
+			}
+		})
+	}
+}
+
+func TestDefaultResponsiveCSSContainsCSSCustomProperties(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		pattern string
+	}{
+		":root selector exists": {
+			pattern: ":root",
+		},
+		"--color- variables exist": {
+			pattern: "--color-",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if !strings.Contains(defaultResponsiveCSS, tc.pattern) {
+				t.Errorf("defaultResponsiveCSS missing pattern %q", tc.pattern)
+			}
+		})
+	}
+}
+
+func TestDefaultResponsiveCSSmobileBreakpoint(t *testing.T) {
+	t.Parallel()
+
+	if !strings.Contains(defaultResponsiveCSS, "@media (max-width: 480px)") && !strings.Contains(defaultResponsiveCSS, "@media (max-width:480px)") {
+		t.Error("defaultResponsiveCSS missing mobile breakpoint @media (max-width: 480px)")
+	}
+}
+
+func TestDefaultResponsiveCSSTableStacking(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		pattern string
+	}{
+		".data-table exists": {
+			pattern: ".data-table",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if !strings.Contains(defaultResponsiveCSS, tc.pattern) {
+				t.Errorf("defaultResponsiveCSS missing pattern %q", tc.pattern)
+			}
+		})
+	}
+}
+
+func TestDefaultResponsiveCSSSystemFontStack(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		pattern string
+	}{
+		"system font stack 1": {
+			pattern: "-apple-system",
+		},
+		"system font stack 2": {
+			pattern: "BlinkMacSystemFont",
+		},
+		"system font stack 3": {
+			pattern: "Segoe UI",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if !strings.Contains(defaultResponsiveCSS, tc.pattern) {
+				t.Errorf("defaultResponsiveCSS missing system font pattern %q", tc.pattern)
+			}
+		})
+	}
+}
+
+func TestDefaultResponsiveCSSWCAGColorContrast(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		pattern string
+		name    string
+	}{
+		"primary color": {
+			pattern: "--color-primary:",
+			name:    "primary color variable",
+		},
+		"background color": {
+			pattern: "--color-background:",
+			name:    "background color variable",
+		},
+		"text color": {
+			pattern: "--color-text:",
+			name:    "text color variable",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if !strings.Contains(defaultResponsiveCSS, tc.pattern) {
+				t.Errorf("defaultResponsiveCSS missing %s with pattern %q", tc.name, tc.pattern)
+			}
+		})
+	}
+}
+
+func TestMermaidOptimizedCSSContainsMermaidStyles(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		pattern string
+		name    string
+	}{
+		"mermaid class": {
+			pattern: ".mermaid",
+			name:    "mermaid class selector",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if !strings.Contains(mermaidOptimizedCSS, tc.pattern) {
+				t.Errorf("mermaidOptimizedCSS missing %s with pattern %q", tc.name, tc.pattern)
 			}
 		})
 	}

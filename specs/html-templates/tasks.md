@@ -37,11 +37,11 @@ references:
 
 ## Phase 2: Responsive CSS (TDD)
 
-- [ ] 4. Create CSS constants file (stub)
+- [x] 4. Create CSS constants file (stub)
   - Create v2/html_css.go file
   - Define empty string constants for defaultResponsiveCSS and mermaidOptimizedCSS
 
-- [ ] 5. Write tests for CSS structure and requirements
+- [x] 5. Write tests for CSS structure and requirements
   - Add tests to v2/html_template_test.go or create new test file
   - Write test verifying defaultResponsiveCSS contains CSS custom properties (check for ":root" and "--color-" variables)
   - Write test verifying mobile breakpoint exists (@media max-width: 480px)
@@ -52,7 +52,7 @@ references:
   - Run tests (should fail)
   - Requirements: [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [6.3](requirements.md#6.3), [6.4](requirements.md#6.4), [6.9](requirements.md#6.9), [6.10](requirements.md#6.10)
 
-- [ ] 6. Implement responsive CSS constants
+- [x] 6. Implement responsive CSS constants
   - Implement defaultResponsiveCSS constant with CSS custom properties in :root
   - Include mobile-first responsive design with 480px breakpoint
   - Implement table stacking pattern for mobile devices

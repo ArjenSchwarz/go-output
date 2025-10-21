@@ -1,6 +1,16 @@
 ## Unreleased
 
 ### Added
+- **HTML Template System Responsive CSS (Phase 2)** - Implemented modern responsive CSS styling system for HTML document templates
+  - `html_css.go` with two CSS constant variables: `defaultResponsiveCSS` and `mermaidOptimizedCSS`
+  - Mobile-first responsive CSS using CSS custom properties for theming (colors, spacing, typography, layout)
+  - WCAG AA compliant color contrast values for accessibility
+  - System font stack (-apple-system, BlinkMacSystemFont, Segoe UI, Roboto) for optimal performance
+  - Responsive table styling with mobile stacking pattern (`@media max-width: 480px`)
+  - Desktop table layout with hover effects (`@media min-width: 481px`)
+  - Support for all content types: tables, sections, details/summary collapsibles, text content, mermaid diagrams
+  - Comprehensive tests verifying CSS structure: custom properties, breakpoints, table stacking, font stack, color contrast, mermaid styles
+  - All code passes golangci-lint, go fmt, and full test suite
 - **HTML Template System Core Implementation (Phase 1)** - Implemented foundation for full HTML document generation with responsive CSS templates
   - `HTMLTemplate` struct with 14 fields for metadata, styling, and customization
   - Three built-in template variants: `DefaultHTMLTemplate` (modern responsive), `MinimalHTMLTemplate` (no styling), `MermaidHTMLTemplate` (diagram-optimized)
