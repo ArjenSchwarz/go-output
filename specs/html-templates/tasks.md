@@ -90,7 +90,7 @@ references:
   - Run tests (should fail)
   - Requirements: [1.2](requirements.md#1.2), [1.5](requirements.md#1.5), [1.6](requirements.md#1.6), [1.7](requirements.md#1.7), [1.8](requirements.md#1.8), [2.8](requirements.md#2.8), [7.1](requirements.md#7.1), [7.2](requirements.md#7.2), [7.3](requirements.md#7.3), [7.4](requirements.md#7.4), [7.5](requirements.md#7.5), [7.6](requirements.md#7.6), [11.1](requirements.md#11.1), [11.5](requirements.md#11.5), [11.6](requirements.md#11.6)
 
-- [ ] 8. Write tests for HTML escaping in template fields
+- [x] 8. Write tests for HTML escaping in template fields
   - Write test for XSS prevention in Title field (include <script> tag in input)
   - Write test for XSS prevention in Description and Author fields
   - Write test for XSS prevention in MetaTags names and values
@@ -104,7 +104,7 @@ references:
   - Run tests (should fail)
   - Requirements: [2.8](requirements.md#2.8), [11.7](requirements.md#11.7), [13.2](requirements.md#13.2)
 
-- [ ] 9. Implement wrapInTemplate function
+- [x] 9. Implement wrapInTemplate function
   - Add wrapInTemplate() function to v2/html_renderer.go
   - Use strings.Builder for efficient string concatenation
   - Implement DOCTYPE and html element with escaped lang attribute
@@ -124,7 +124,7 @@ references:
 
 ## Phase 4: Renderer Integration (TDD)
 
-- [ ] 10. Write tests for htmlRenderer template fields and integration
+- [x] 10. Write tests for htmlRenderer template fields and integration
   - Write test for htmlRenderer with useTemplate=true calling wrapInTemplate
   - Write test for htmlRenderer with useTemplate=false skipping template wrapping
   - Write test verifying Mermaid script injection happens before template wrapping
@@ -133,7 +133,7 @@ references:
   - Run tests (should fail)
   - Requirements: [1.1](requirements.md#1.1), [7.7](requirements.md#7.7), [8.5](requirements.md#8.5), [8.6](requirements.md#8.6)
 
-- [ ] 11. Add template fields to htmlRenderer and integrate wrapping
+- [x] 11. Add template fields to htmlRenderer and integrate wrapping
   - Add useTemplate bool field to htmlRenderer struct
   - Add template *HTMLTemplate field to htmlRenderer struct
   - Update htmlRenderer.Render() to call wrapInTemplate() when useTemplate is true
@@ -146,7 +146,7 @@ references:
 
 ## Phase 5: Format API (TDD)
 
-- [ ] 12. Write tests for format constants and constructors
+- [x] 12. Write tests for format constants and constructors
   - Write test verifying HTML format uses template by default (check useTemplate=true)
   - Write test verifying HTMLFragment format skips template wrapping (check useTemplate=false)
   - Write test for HTMLWithTemplate(nil) enabling fragment mode
@@ -155,7 +155,7 @@ references:
   - Run tests (should fail)
   - Requirements: [1.1](requirements.md#1.1), [4.1](requirements.md#4.1), [4.2](requirements.md#4.2), [4.3](requirements.md#4.3), [5.1](requirements.md#5.1), [5.2](requirements.md#5.2), [5.3](requirements.md#5.3), [13.4](requirements.md#13.4), [13.5](requirements.md#13.5), [13.6](requirements.md#13.6)
 
-- [ ] 13. Implement format constants and constructors
+- [x] 13. Implement format constants and constructors
   - Update HTML format constant in v2/renderer.go to use htmlRenderer with useTemplate=true and template=DefaultHTMLTemplate
   - Create HTMLFragment format constant with useTemplate=false
   - Implement HTMLWithTemplate(template *HTMLTemplate) constructor function
@@ -168,7 +168,7 @@ references:
 
 ## Phase 6: Integration Testing
 
-- [ ] 14. Write integration tests for full document generation
+- [x] 14. Write integration tests for full document generation
   - Create v2/html_integration_test.go file
   - Write test for document with table content producing valid HTML5 structure
   - Write test for document with multiple content types (tables, text, sections)

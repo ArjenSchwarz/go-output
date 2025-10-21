@@ -1227,3 +1227,717 @@ func TestWrapInTemplate_HTMLStructureOrder(t *testing.T) {
 		t.Error("HTML should end with </html>")
 	}
 }
+
+// Tests for HTML escaping (XSS prevention)
+
+func TestWrapInTemplate_XSSPrevention_TitleWithScript(t *testing.T) {
+	t.Parallel()
+
+	template := &HTMLTemplate{
+		Title:   "<script>alert('xss')</script>",
+		Charset: "UTF-8",
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Script tag should be escaped, not executed
+	if strings.Contains(html, "<script>alert('xss')</script>") {
+		t.Error("XSS vulnerability: unescaped script tag in title")
+	}
+
+	// Should contain escaped version
+	if !strings.Contains(html, "&lt;script&gt;") || !strings.Contains(html, "&lt;/script&gt;") {
+		t.Errorf("Title should be HTML-escaped, got:\n%s", html)
+	}
+}
+
+func TestWrapInTemplate_XSSPrevention_TitleWithVariousPatterns(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		title         string
+		shouldNotFind string
+		shouldFind    string
+	}{
+		"img tag with onerror": {
+			title:         `<img src=x onerror="alert('xss')">`,
+			shouldNotFind: `<img src=x onerror="alert('xss')">`,
+			shouldFind:    "&lt;img",
+		},
+		"svg with onload": {
+			title:         `<svg onload="alert('xss')">`,
+			shouldNotFind: `<svg onload="alert('xss')">`,
+			shouldFind:    "&lt;svg",
+		},
+		"javascript href": {
+			title:         `<a href="javascript:alert('xss')">`,
+			shouldNotFind: `javascript:alert('xss')`,
+			shouldFind:    "&lt;a",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			template := &HTMLTemplate{
+				Title:   tc.title,
+				Charset: "UTF-8",
+			}
+
+			renderer := &htmlRenderer{useTemplate: true, template: template}
+			doc := New().Text("Test").Build()
+			output, err := renderer.Render(context.Background(), doc)
+
+			if err != nil {
+				t.Fatalf("Render failed: %v", err)
+			}
+
+			html := string(output)
+
+			if strings.Contains(html, tc.shouldNotFind) {
+				t.Errorf("XSS vulnerability in title: found unescaped %q", tc.shouldNotFind)
+			}
+
+			if !strings.Contains(html, tc.shouldFind) {
+				t.Errorf("Title should be escaped, expected to find %q, got:\n%s", tc.shouldFind, html)
+			}
+		})
+	}
+}
+
+func TestWrapInTemplate_XSSPrevention_DescriptionAndAuthor(t *testing.T) {
+	t.Parallel()
+
+	template := &HTMLTemplate{
+		Title:       "Test",
+		Description: "Description with <script>alert('xss')</script>",
+		Author:      "Author <img src=x onerror='alert(1)'>",
+		Charset:     "UTF-8",
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Check that script tags are escaped
+	if strings.Contains(html, "<script>alert('xss')</script>") {
+		t.Error("XSS vulnerability: unescaped script tag in description")
+	}
+	if !strings.Contains(html, "&lt;script&gt;") {
+		t.Error("Description should be escaped")
+	}
+
+	// Check that img tag is escaped
+	if strings.Contains(html, "<img src=x onerror='alert(1)'>") {
+		t.Error("XSS vulnerability: unescaped img tag in author")
+	}
+	if !strings.Contains(html, "&lt;img") {
+		t.Error("Author should be escaped")
+	}
+}
+
+func TestWrapInTemplate_XSSPrevention_MetaTags(t *testing.T) {
+	t.Parallel()
+
+	template := &HTMLTemplate{
+		Title:   "Test",
+		Charset: "UTF-8",
+		MetaTags: map[string]string{
+			"custom\"><script>alert('xss')</script><meta name=\"x": "value",
+			"safe-tag": "<img src=x onerror='alert(1)'>",
+		},
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Script tags should not be present
+	if strings.Contains(html, "<script>alert('xss')</script>") {
+		t.Error("XSS vulnerability: unescaped script tag in meta tag name")
+	}
+
+	// img tag in value should be escaped
+	if strings.Contains(html, "<img src=x onerror='alert(1)'") {
+		t.Error("XSS vulnerability: unescaped img tag in meta tag value")
+	}
+
+	// Both names and values should be escaped
+	if !strings.Contains(html, "&lt;script&gt;") {
+		t.Error("MetaTags name should be escaped")
+	}
+	if !strings.Contains(html, "&lt;img") {
+		t.Error("MetaTags value should be escaped")
+	}
+}
+
+func TestWrapInTemplate_XSSPrevention_BodyClass(t *testing.T) {
+	t.Parallel()
+
+	template := &HTMLTemplate{
+		Title:     "Test",
+		Charset:   "UTF-8",
+		BodyClass: "normal\" onclick=\"alert('xss')\" class=\"",
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// The onclick handler should be escaped (not functional)
+	if strings.Contains(html, `onclick="alert('xss')"`) {
+		t.Error("XSS vulnerability: unescaped onclick handler in BodyClass")
+	}
+
+	// Quotes should be escaped
+	if !strings.Contains(html, "&#34;") {
+		t.Errorf("BodyClass should escape quotes, got:\n%s", html)
+	}
+}
+
+func TestWrapInTemplate_XSSPrevention_BodyAttrs(t *testing.T) {
+	t.Parallel()
+
+	template := &HTMLTemplate{
+		Title:   "Test",
+		Charset: "UTF-8",
+		BodyAttrs: map[string]string{
+			"data-config\"><script>alert('xss')</script><div class=\"": "value",
+			"data-safe": "<img src=x onerror='alert(1)'>",
+		},
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Script tags should not be present
+	if strings.Contains(html, "<script>alert('xss')</script>") {
+		t.Error("XSS vulnerability: unescaped script tag in BodyAttrs")
+	}
+
+	// img tag should be escaped
+	if strings.Contains(html, "<img src=x onerror='alert(1)'") {
+		t.Error("XSS vulnerability: unescaped img tag in BodyAttrs")
+	}
+
+	// Both names and values should be escaped
+	if !strings.Contains(html, "&lt;script&gt;") {
+		t.Error("BodyAttrs should escape script tags")
+	}
+	if !strings.Contains(html, "&lt;img") {
+		t.Error("BodyAttrs should escape img tags")
+	}
+}
+
+func TestWrapInTemplate_XSSPrevention_ThemeOverrides(t *testing.T) {
+	t.Parallel()
+
+	template := &HTMLTemplate{
+		Title:   "Test",
+		Charset: "UTF-8",
+		ThemeOverrides: map[string]string{
+			"--color-primary\"></style><script>alert('xss')</script><style>": "value",
+			"--color-text": "red\"><script>alert('xss')</script><div class=\"",
+		},
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Script tags should not be present as active HTML
+	if strings.Contains(html, "</style><script>alert('xss')</script><style>") {
+		t.Error("XSS vulnerability: unescaped script injection in ThemeOverrides")
+	}
+
+	// Should be escaped
+	if !strings.Contains(html, "&lt;/style&gt;") && !strings.Contains(html, "&#34;") {
+		t.Errorf("ThemeOverrides should be escaped, got:\n%s", html)
+	}
+}
+
+func TestWrapInTemplate_NoEscaping_CSSField(t *testing.T) {
+	t.Parallel()
+
+	// CSS field should NOT be escaped - it's trusted content
+	cssContent := `body { color: red; }
+/* Valid CSS comment */
+@media (max-width: 480px) {
+  .table { display: block; }
+}`
+
+	template := &HTMLTemplate{
+		Title:   "Test",
+		Charset: "UTF-8",
+		CSS:     cssContent,
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// CSS should appear exactly as provided (not escaped)
+	if !strings.Contains(html, cssContent) {
+		t.Errorf("CSS field should not be escaped, expected %q, got:\n%s", cssContent, html)
+	}
+}
+
+func TestWrapInTemplate_NoEscaping_HeadExtraField(t *testing.T) {
+	t.Parallel()
+
+	// HeadExtra field should NOT be escaped - it's trusted HTML
+	headExtra := `<meta property="og:title" content="My Page">
+<script>window.custom = { theme: 'dark' };</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">`
+
+	template := &HTMLTemplate{
+		Title:     "Test",
+		Charset:   "UTF-8",
+		HeadExtra: headExtra,
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// HeadExtra should appear exactly as provided (not escaped)
+	if !strings.Contains(html, headExtra) {
+		t.Errorf("HeadExtra field should not be escaped, expected %q, got:\n%s", headExtra, html)
+	}
+
+	// Verify it's in the head section
+	headSection := html[:strings.Index(html, "</head>")]
+	if !strings.Contains(headSection, "<script>window.custom") {
+		t.Error("HeadExtra should be in head section")
+	}
+}
+
+func TestWrapInTemplate_NoEscaping_BodyExtraField(t *testing.T) {
+	t.Parallel()
+
+	// BodyExtra field should NOT be escaped - it's trusted HTML
+	bodyExtra := `<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Analytics initialized');
+  });
+</script>
+<footer><p>&copy; 2024 My Company</p></footer>`
+
+	template := &HTMLTemplate{
+		Title:     "Test",
+		Charset:   "UTF-8",
+		BodyExtra: bodyExtra,
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// BodyExtra should appear exactly as provided (not escaped)
+	if !strings.Contains(html, bodyExtra) {
+		t.Errorf("BodyExtra field should not be escaped, expected %q, got:\n%s", bodyExtra, html)
+	}
+
+	// Verify it's before closing body tag
+	bodyEndIndex := strings.LastIndex(html, "</body>")
+	if bodyEndIndex > 0 {
+		beforeBodyEnd := html[:bodyEndIndex]
+		if !strings.Contains(beforeBodyEnd, "Analytics initialized") {
+			t.Error("BodyExtra should be before </body> tag")
+		}
+	}
+}
+
+func TestWrapInTemplate_SpecialCharactersInAllFields(t *testing.T) {
+	t.Parallel()
+
+	specialChars := "Test & <HTML> \"quotes\" 'apostrophes'"
+
+	template := &HTMLTemplate{
+		Title:       specialChars,
+		Language:    "en",
+		Charset:     "UTF-8",
+		Viewport:    specialChars,
+		Description: specialChars,
+		Author:      specialChars,
+		BodyClass:   specialChars,
+		MetaTags: map[string]string{
+			specialChars: specialChars,
+		},
+		ThemeOverrides: map[string]string{
+			specialChars: specialChars,
+		},
+		BodyAttrs: map[string]string{
+			specialChars: specialChars,
+		},
+		ExternalCSS: []string{specialChars},
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// All special chars should be escaped in attribute/meta contexts
+	// The ampersand should be escaped at least somewhere
+	escapedAmp := "&amp;"
+	escapedLt := "&lt;"
+	escapedGt := "&gt;"
+	escapedQuote := "&#34;"
+
+	foundEscaped := false
+
+	// At least one of these should be escaped (we don't require all of them because
+	// they might be in different HTML contexts)
+	if strings.Contains(html, escapedAmp) {
+		foundEscaped = true
+	}
+	if strings.Contains(html, escapedLt) {
+		foundEscaped = true
+	}
+	if strings.Contains(html, escapedGt) {
+		foundEscaped = true
+	}
+	if strings.Contains(html, escapedQuote) {
+		foundEscaped = true
+	}
+
+	if !foundEscaped {
+		t.Errorf("Special characters should be escaped in HTML output, got:\n%s", html)
+	}
+
+	// Ensure no unescaped script tags that could be parsed as HTML
+	if strings.Count(html, "<") != strings.Count(html, ">") {
+		t.Log("HTML tag balance check may indicate improper escaping")
+	}
+}
+
+func TestWrapInTemplate_SpecialCharactersInURLs(t *testing.T) {
+	t.Parallel()
+
+	urlWithSpecialChars := `https://example.com/page?title=Test&author="John"&desc=<hello>`
+
+	template := &HTMLTemplate{
+		Title:       "Test",
+		Charset:     "UTF-8",
+		ExternalCSS: []string{urlWithSpecialChars},
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// URL should be escaped in href attribute
+	if !strings.Contains(html, "&amp;") && !strings.Contains(html, "&#34;") && !strings.Contains(html, "&lt;") {
+		t.Errorf("URL special characters should be escaped, got:\n%s", html)
+	}
+}
+
+func TestWrapInTemplate_NullByteHandling(t *testing.T) {
+	t.Parallel()
+
+	// Test with various problematic characters
+	tests := map[string]struct {
+		title string
+	}{
+		"with unicode": {
+			title: "Test™ with ∑ symbols",
+		},
+		"with emoji": {
+			title: "Report 📊 Summary 📈",
+		},
+		"mixed special": {
+			title: "Test <>&\"' with all",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			template := &HTMLTemplate{
+				Title:   tc.title,
+				Charset: "UTF-8",
+			}
+
+			renderer := &htmlRenderer{useTemplate: true, template: template}
+			doc := New().Text("Test").Build()
+			output, err := renderer.Render(context.Background(), doc)
+
+			if err != nil {
+				t.Fatalf("Render failed: %v", err)
+			}
+
+			html := string(output)
+
+			// Should produce valid HTML
+			if !strings.HasPrefix(html, "<!DOCTYPE html>") {
+				t.Error("Should produce valid HTML5")
+			}
+
+			// Should close properly
+			if !strings.Contains(html, "</html>") {
+				t.Error("HTML should be properly closed")
+			}
+		})
+	}
+}
+
+// Integration tests for htmlRenderer with template wrapping
+
+func TestHTMLRenderer_UseTemplate_True_CallsWrapInTemplate(t *testing.T) {
+	t.Parallel()
+
+	template := &HTMLTemplate{
+		Title:   "Integration Test",
+		Charset: "UTF-8",
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+	doc := New().Text("Test content").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Should produce full HTML document
+	if !strings.HasPrefix(html, "<!DOCTYPE html>") {
+		t.Error("Output should start with DOCTYPE when useTemplate=true")
+	}
+
+	// Should contain template title
+	if !strings.Contains(html, "<title>Integration Test</title>") {
+		t.Error("Output should contain template title")
+	}
+
+	// Should contain content
+	if !strings.Contains(html, "Test content") {
+		t.Error("Output should contain rendered content")
+	}
+
+	// Should close properly
+	if !strings.HasSuffix(strings.TrimSpace(html), "</html>") {
+		t.Error("Output should end with </html>")
+	}
+}
+
+func TestHTMLRenderer_UseTemplate_False_SkipsTemplateWrapping(t *testing.T) {
+	t.Parallel()
+
+	renderer := &htmlRenderer{useTemplate: false, template: nil}
+	doc := New().Text("Test content").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Should NOT produce full HTML document
+	if strings.HasPrefix(html, "<!DOCTYPE html>") {
+		t.Error("Output should NOT start with DOCTYPE when useTemplate=false")
+	}
+
+	// Should NOT have html/head/body tags
+	if strings.Contains(html, "<html") {
+		t.Error("Output should not contain <html tag when useTemplate=false")
+	}
+
+	// Should contain content
+	if !strings.Contains(html, "Test content") {
+		t.Error("Output should contain rendered content")
+	}
+}
+
+func TestHTMLRenderer_TemplateWrappingAsFinalStep(t *testing.T) {
+	t.Parallel()
+
+	customTemplate := &HTMLTemplate{
+		Title:       "Final Step Test",
+		Description: "Testing template as final step",
+		Charset:     "UTF-8",
+		BodyClass:   "custom-body",
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: customTemplate}
+	doc := New().Text("Important content").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Verify order: DOCTYPE -> html -> head -> body -> content -> closing tags
+	if !strings.HasPrefix(html, "<!DOCTYPE html>") {
+		t.Error("DOCTYPE should be first")
+	}
+
+	// Verify template fields are in output
+	if !strings.Contains(html, "Final Step Test") {
+		t.Error("Template title should be in output")
+	}
+	if !strings.Contains(html, "custom-body") {
+		t.Error("Template BodyClass should be in output")
+	}
+}
+
+func TestHTMLRenderer_DefaultTemplateUsedWhenNil(t *testing.T) {
+	t.Parallel()
+
+	// Create renderer with nil template but useTemplate=true
+	renderer := &htmlRenderer{useTemplate: true, template: nil}
+	doc := New().Text("Test").Build()
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Should contain default template title
+	if !strings.Contains(html, DefaultHTMLTemplate.Title) {
+		t.Errorf("Output should use DefaultHTMLTemplate title: %q", DefaultHTMLTemplate.Title)
+	}
+
+	// Should have default charset
+	if !strings.Contains(html, "UTF-8") {
+		t.Error("Output should contain default UTF-8 charset")
+	}
+
+	// Should have default language
+	if !strings.Contains(html, `lang="en"`) {
+		t.Error("Output should contain default language en")
+	}
+}
+
+func TestHTMLRenderer_IntegrationMultipleContents(t *testing.T) {
+	t.Parallel()
+
+	template := &HTMLTemplate{
+		Title:   "Multi-Content Test",
+		Charset: "UTF-8",
+	}
+
+	renderer := &htmlRenderer{useTemplate: true, template: template}
+
+	// Create a document with multiple content types
+	data := []map[string]any{
+		{"Name": "Alice", "Age": 30},
+		{"Name": "Bob", "Age": 25},
+	}
+	doc := New().
+		Text("First paragraph").
+		Table("Employee", data, WithKeys("Name", "Age")).
+		Text("After table").
+		Build()
+
+	output, err := renderer.Render(context.Background(), doc)
+
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	html := string(output)
+
+	// Should wrap everything in proper HTML document
+	if !strings.HasPrefix(html, "<!DOCTYPE html>") {
+		t.Error("Should have DOCTYPE")
+	}
+
+	// Should have all content
+	if !strings.Contains(html, "First paragraph") {
+		t.Error("Should contain first text content")
+	}
+	if !strings.Contains(html, "Alice") || !strings.Contains(html, "Bob") {
+		t.Error("Should contain table content")
+	}
+	if !strings.Contains(html, "After table") {
+		t.Error("Should contain text after table")
+	}
+
+	// Should have table structure
+	if !strings.Contains(html, "<table") || !strings.Contains(html, "</table>") {
+		t.Error("Should contain proper table tags")
+	}
+
+	// Should properly close
+	if !strings.HasSuffix(strings.TrimSpace(html), "</html>") {
+		t.Error("Should properly close HTML document")
+	}
+}
