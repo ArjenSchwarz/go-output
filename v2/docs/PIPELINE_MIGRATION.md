@@ -1,10 +1,10 @@
 # Migration Guide: Pipeline API to Per-Content Transformations
 
-This guide helps you migrate from the deprecated document-level Pipeline API to the new per-content transformations approach.
+This guide helps you migrate from the removed document-level Pipeline API to per-content transformations.
 
 ## Overview
 
-The document-level Pipeline API (`Document.Pipeline()`, `Filter()`, `Sort()`, etc.) is deprecated and will be removed in v3.0.0. Per-content transformations provide a more flexible model where each table can have its own unique transformation logic.
+The document-level Pipeline API (`Document.Pipeline()`, `Filter()`, `Sort()`, etc.) has been **removed in v2.4.0**. Per-content transformations provide a more flexible model where each table can have its own unique transformation logic.
 
 **Key Benefits:**
 - Different transformations for different tables in the same document
@@ -14,14 +14,14 @@ The document-level Pipeline API (`Document.Pipeline()`, `Filter()`, `Sort()`, et
 
 ## Migration Timeline
 
-- **v2.x**: Pipeline API is deprecated but fully functional
-- **v3.0.0**: Pipeline API will be removed
+- **v2.0-v2.3**: Pipeline API was available but deprecated
+- **v2.4.0+**: Pipeline API removed - use per-content transformations instead
 
 ## Basic Migration Examples
 
 ### Example 1: Simple Filter and Sort
 
-**Before (Pipeline API - deprecated):**
+**Before (Pipeline API - REMOVED):**
 ```go
 builder := output.New()
 builder.Table("users", users, output.WithKeys("name", "email", "age"))
@@ -58,7 +58,7 @@ doc := builder.Build()
 
 ### Example 2: Multiple Tables with Different Transformations
 
-**Before (Pipeline API - deprecated):**
+**Before (Pipeline API - REMOVED):**
 ```go
 // Problem: Pipeline applies to ALL tables in the document
 builder := output.New()

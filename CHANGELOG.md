@@ -1,5 +1,22 @@
 ## Unreleased
 
+### Removed
+- **Pipeline API Complete Removal (Phase 9)** - Removed document-level Pipeline API in favor of per-content transformations:
+  - Removed Pipeline struct and all methods (Pipeline(), Filter(), Sort(), SortBy(), SortWith(), Limit(), GroupBy(), AddColumn(), AddColumnAt(), Execute(), ExecuteContext(), ExecuteWithFormat(), Validate(), WithOptions()) from v2/pipeline.go
+  - Removed createDocumentWithContents() helper function and GetTransformStats() method
+  - Kept Operation and FormatAwareOperation interfaces (required for per-content transformations)
+  - Removed 8 pipeline test files totaling 3,264 lines (pipeline_advanced_test.go, pipeline_benchmark_test.go, pipeline_core_test.go, pipeline_filter_test.go, pipeline_integration_test.go, pipeline_limit_test.go, pipeline_sort_test.go, errors_pipeline_test.go)
+  - Removed Pipeline-related tests from requirements_validation_test.go (305 lines)
+  - Updated v2/docs/PIPELINE_MIGRATION.md to clarify Pipeline API was removed in v2.4.0 (not just deprecated)
+  - Updated v2/docs/MIGRATION.md Per-Content Transformations section to indicate Pipeline API was removed
+  - Updated v2/doc.go from "Deprecated Pipeline API" to "Pipeline API Removal" with clear removal messaging
+  - Converted v2/examples/pipeline_transformation/ example to demonstrate per-content transformations:
+    - Renamed functions to reflect per-content approach (basicTransformationExample, multipleTablesExample)
+    - Converted all 5 examples to use WithTransformations() instead of doc.Pipeline()
+    - Added new example demonstrating multiple tables with different transformations (key benefit over Pipeline API)
+    - Updated README.md with migration guidance and benefits of per-content transformations
+  - Total reduction: 4,498 lines removed, 353 lines added
+
 ### Added
 - **Pipeline API Deprecation & Documentation (Phase 8)** - Complete documentation and migration guidance for transitioning from Pipeline API to per-content transformations:
   - Added deprecation notices to all Pipeline API methods in v2/pipeline.go (Pipeline(), Filter(), Sort(), SortBy(), SortWith(), Limit(), GroupBy(), AddColumn(), AddColumnAt(), Execute(), ExecuteContext(), ExecuteWithFormat()) with clear guidance to use WithTransformations() instead and reference to migration guide

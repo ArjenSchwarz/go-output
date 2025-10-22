@@ -352,7 +352,7 @@ references:
 
 ## Phase 9: Pipeline API Removal
 
-- [ ] 35. Remove Pipeline API implementation
+- [x] 35. Remove Pipeline API implementation
   - Remove Pipeline struct and all its methods from v2/pipeline.go
   - Remove Document.Pipeline() method from v2/document.go
   - Remove createDocumentWithContents() helper function (used only by pipeline)
@@ -361,7 +361,7 @@ references:
   - Requirements: [3.1](requirements.md#3.1), [3.2](requirements.md#3.2)
   - References: v2/pipeline.go, v2/document.go
 
-- [ ] 36. Remove Pipeline tests
+- [x] 36. Remove Pipeline tests
   - Remove all pipeline-specific tests from test files
   - Keep operation tests (filter, sort, limit, etc.) as operations are still used
   - Remove pipeline error tests
@@ -369,7 +369,7 @@ references:
   - Requirements: [3.2](requirements.md#3.2)
   - References: v2/*_test.go files with Pipeline tests
 
-- [ ] 37. Update documentation to remove Pipeline references
+- [x] 37. Update documentation to remove Pipeline references
   - Update v2/docs/MIGRATION.md to remove Pipeline API examples
   - Update v2/docs/PIPELINE_MIGRATION.md to clarify Pipeline API was removed (not just deprecated)
   - Update v2/doc.go to remove deprecated Pipeline API section
@@ -377,7 +377,7 @@ references:
   - Requirements: [3.4](requirements.md#3.4)
   - References: v2/docs/*.md, v2/doc.go
 
-- [ ] 38. Update examples to use per-content transformations
+- [x] 38. Update examples to use per-content transformations
   - Update v2/examples/pipeline_transformation/ to use WithTransformations()
   - Update v2/examples/transformations/ to use WithTransformations()
   - Update any other examples using Pipeline API

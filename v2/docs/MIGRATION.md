@@ -1671,20 +1671,21 @@ out := output.NewOutput(
 
 ## Per-Content Transformations (New in v2.4+)
 
-v2.4 introduces **per-content transformations**, a more flexible approach than the document-level Pipeline API. This allows attaching transformations directly to individual tables at creation time.
+v2.4 introduces **per-content transformations** and removes the document-level Pipeline API. This allows attaching transformations directly to individual tables at creation time.
 
 ### Why Per-Content Transformations?
 
-The Pipeline API applies transformations globally to all tables in a document. Per-content transformations solve this limitation by allowing each table to have its own transformation logic.
+The Pipeline API (removed in v2.4) applied transformations globally to all tables in a document. Per-content transformations solve this limitation by allowing each table to have its own transformation logic.
 
 ### Basic Migration Pattern
 
-**Pipeline API (still supported but deprecated)**:
+**Pipeline API (REMOVED in v2.4)**:
 ```go
 doc := output.New().
     Table("users", users, output.WithKeys("name", "age")).
     Build()
 
+// This API has been REMOVED
 transformed, _ := doc.Pipeline().
     Filter(func(r output.Record) bool {
         return r["age"].(int) >= 18
@@ -1693,7 +1694,7 @@ transformed, _ := doc.Pipeline().
     Execute()
 ```
 
-**Per-Content Transformations (recommended)**:
+**Per-Content Transformations (use instead)**:
 ```go
 doc := output.New().
     Table("users", users,

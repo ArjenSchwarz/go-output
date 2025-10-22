@@ -216,12 +216,12 @@ The library supports multiple content types:
 
 All content types support transformations through the WithTransformations() option.
 
-# Deprecated Pipeline API
+# Pipeline API Removal
 
-The document-level Pipeline API is deprecated and will be removed in v3.0.0:
+The document-level Pipeline API has been removed in v2.4.0. Use per-content transformations instead:
 
-	// Deprecated:
-	doc.Pipeline().Filter(predicate).Sort(keys...).Execute()
+	// REMOVED in v2.4.0:
+	// doc.Pipeline().Filter(predicate).Sort(keys...).Execute()
 
 	// Use instead:
 	builder.Table("data", records,
@@ -231,7 +231,7 @@ The document-level Pipeline API is deprecated and will be removed in v3.0.0:
 	    ),
 	)
 
-See the migration guide (v2/MIGRATION.md) for detailed migration examples.
+See the migration guide (v2/docs/PIPELINE_MIGRATION.md) for detailed migration examples.
 
 # Best Practices
 
