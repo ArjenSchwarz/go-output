@@ -1,6 +1,15 @@
 ## Unreleased
 
 ### Added
+- **Thread Safety & Performance Testing Suite (TDD)** - Complete testing infrastructure for concurrent operations and performance validation of per-content transformations:
+  - Thread safety tests covering concurrent rendering of same document with multiple goroutines, concurrent rendering of different content with shared operations, cloned content independence verification, operation safety during concurrent execution, and concurrent cloning operations
+  - All tests pass with `-race` detector enabled confirming zero data races
+  - `ValidateStatelessOperation()` testing utility for detecting non-deterministic operations by applying operations twice to cloned content and comparing results with `reflect.DeepEqual()`
+  - Comprehensive test suite for statelessness validation covering detection of stateful operations (call counters, mutable state), verification of deterministic operations (filter, sort, limit), and usage examples
+  - Performance benchmarks establishing baseline metrics for 100 content items with 10 transformations each (~21ms per iteration), 1000-record tables with transformations (~1.3ms), transformation storage memory overhead (~348ns, 56B, 3 allocs), transformation execution time breakdown, cloning overhead (~19.7μs per 100-record table), and multiple clones in transformation chains
+  - Memory allocation tracking with `b.ReportAllocs()` for identifying optimization opportunities
+  - All benchmarks meet performance target: system handles 100 items × 10 transformations without degradation
+  - Test files total 1,196 lines covering concurrent operations, stateless validation, and performance characteristics
 - **Advanced Error Handling Tests (TDD)** - Comprehensive test suite for validation and context cancellation error handling in per-content transformations:
   - Validation error tests covering configuration errors (nil predicates, negative limits, empty column names, invalid groupby operations)
   - Data-dependent validation error tests for missing columns and empty operations
