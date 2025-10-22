@@ -37,17 +37,19 @@ Per-content transformations execute during document rendering, applying the spec
 6. <a name="2.6"></a>The system SHALL use the existing `CanTransform()` method to determine if an operation applies to a content type
 7. <a name="2.7"></a>The system SHALL skip non-applicable operations without error (e.g., SortOp on TextContent)
 
-### 3. Pipeline API Deprecation
+### 3. Pipeline API Removal
 
 **User Story:** As a developer, I want a clear migration path from document-level pipelines to per-content transformations, so that I can update my code with minimal disruption.
 
+**Rationale:** The document-level Pipeline API was added recently but is too limiting (applies globally to all tables). Since it's not yet widely adopted, it should be removed entirely in favor of the more flexible per-content transformations approach.
+
 **Acceptance Criteria:**
 
-1. <a name="3.1"></a>The system SHALL deprecate the document-level Pipeline API (Document.Pipeline(), Filter(), Sort(), etc.)
-2. <a name="3.2"></a>The system SHALL mark deprecated methods with clear deprecation notices in documentation
+1. <a name="3.1"></a>The system SHALL remove the document-level Pipeline API (Document.Pipeline(), Filter(), Sort(), etc.)
+2. <a name="3.2"></a>The system SHALL remove all pipeline-related code (Pipeline struct, pipeline methods, pipeline tests)
 3. <a name="3.3"></a>The system SHALL provide migration examples showing how to convert pipeline code to per-content transformations
-4. <a name="3.4"></a>The system SHALL maintain backward compatibility with existing Pipeline API during the deprecation period
-5. <a name="3.5"></a>The system SHALL document a timeline for Pipeline API removal in a future major version
+4. <a name="3.4"></a>The system SHALL update all documentation to reference only per-content transformations
+5. <a name="3.5"></a>The system SHALL update all examples that use the Pipeline API to use per-content transformations instead
 
 ### 4. Transformation Validation
 

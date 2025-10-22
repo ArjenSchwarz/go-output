@@ -1,6 +1,25 @@
 ## Unreleased
 
 ### Added
+- **Pipeline API Deprecation & Documentation (Phase 8)** - Complete documentation and migration guidance for transitioning from Pipeline API to per-content transformations:
+  - Added deprecation notices to all Pipeline API methods in v2/pipeline.go (Pipeline(), Filter(), Sort(), SortBy(), SortWith(), Limit(), GroupBy(), AddColumn(), AddColumnAt(), Execute(), ExecuteContext(), ExecuteWithFormat()) with clear guidance to use WithTransformations() instead and reference to migration guide
+  - Created comprehensive package documentation in v2/doc.go covering all library features (content types, output formats, basic usage, per-content transformations, thread safety, performance characteristics, context cancellation, error handling, key order preservation) with complete working example
+  - Created v2/docs/PIPELINE_MIGRATION.md with detailed migration patterns for all Pipeline API operations including basic filter/sort/limit examples, multiple tables with different transformations, GroupBy operations, AddColumn operations, custom comparators, dynamic transformation construction, context-aware rendering, operation reference table, and common pitfalls with solutions
+  - Created runnable migration example in v2/examples/migration_example/ demonstrating old Pipeline API vs new per-content transformations, multiple tables with different transformations, and dynamic transformation construction
+  - Created v2/docs/BEST_PRACTICES.md with guidance on thread safety (stateless operations, safe vs unsafe patterns, testing), closure safety (loop variable capture problems, factory function pattern), performance optimization (transformation chain length, memory efficiency, context cancellation), error handling (fail-fast philosophy, validation), testing (unit tests, integration tests, concurrent operations), and common pitfalls (operation reuse, missing timeouts, complex predicates, column name typos, unsafe type assertions)
+  - Enhanced v2/table_options.go WithTransformations() documentation with thread safety requirements, usage examples, and references to best practices
+  - Updated v2/docs/MIGRATION.md with new section on per-content transformations including basic migration pattern, multiple tables example, and operation reference table
+  - All documentation follows keepachangelog.com format with clear examples and practical guidance
+  - Migration example compiles cleanly and demonstrates all key migration scenarios
+
+### Changed
+- **Pipeline API Marked for Removal** - Updated requirements to remove Pipeline API entirely instead of deprecation:
+  - Modified specs/per-content-transformations/requirements.md section 3 from "Pipeline API Deprecation" to "Pipeline API Removal" with rationale explaining the API is too limiting and not yet widely adopted
+  - Updated acceptance criteria to specify complete removal of Pipeline struct, methods, and tests while keeping Operation interface and implementations used by per-content transformations
+  - Added Phase 9 tasks to specs/per-content-transformations/tasks.md for Pipeline API removal including implementation removal (task 35), test removal (task 36), documentation updates (task 37), and example updates (task 38)
+  - Renumbered final validation to Phase 10 (task 39)
+
+### Added
 - **Integration Tests & Examples for Per-Content Transformations (Phase 7)** - Complete integration testing and example code for per-content transformations feature:
   - Added 7 integration tests in v2/integration_test.go covering transformation workflows with JSON/YAML rendering, multiple tables with different transformations, mixed content (text + transformed tables), complex transformation chains (filter → sort → limit), and original data preservation verification
   - Created comprehensive example application in v2/examples/transformations/ demonstrating:

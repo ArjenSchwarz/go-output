@@ -8,6 +8,24 @@ import (
 )
 
 // Pipeline provides fluent API for data transformations
+//
+// Deprecated: The document-level Pipeline API is deprecated and will be removed in a future major version.
+// Use WithTransformations() option when creating content instead to attach transformations directly to
+// individual content items. See the migration guide in v2/MIGRATION.md for examples.
+//
+// Migration example:
+//
+//	// Old (deprecated):
+//	doc.Pipeline().Filter(predicate).Sort(keys...).Execute()
+//
+//	// New (recommended):
+//	builder.Table("data", records,
+//	    WithKeys("name", "age"),
+//	    WithTransformations(
+//	        NewFilterOp(predicate),
+//	        NewSortOp(keys...),
+//	    ),
+//	)
 type Pipeline struct {
 	document   *Document
 	operations []Operation
@@ -48,6 +66,11 @@ func DefaultPipelineOptions() PipelineOptions {
 }
 
 // Pipeline creates a new pipeline for transforming this document
+//
+// Deprecated: Use WithTransformations() option when creating content instead.
+// The document-level Pipeline API will be removed in a future major version (v3.0.0).
+// Per-content transformations provide better flexibility and allow different transformations
+// for each table in a document. See v2/MIGRATION.md for migration examples.
 func (d *Document) Pipeline() *Pipeline {
 	return &Pipeline{
 		document:   d,
@@ -64,6 +87,9 @@ func (p *Pipeline) WithOptions(opts PipelineOptions) *Pipeline {
 
 // Filter adds a filter operation to the pipeline
 // The predicate function should return true for records to keep
+//
+// Deprecated: Use WithTransformations(NewFilterOp(predicate)) when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) Filter(predicate func(Record) bool) *Pipeline {
 	filterOp := NewFilterOp(predicate)
 	p.operations = append(p.operations, filterOp)
@@ -72,6 +98,9 @@ func (p *Pipeline) Filter(predicate func(Record) bool) *Pipeline {
 
 // Sort adds a sort operation to the pipeline
 // Accepts one or more sort keys with column names and directions
+//
+// Deprecated: Use WithTransformations(NewSortOp(keys...)) when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) Sort(keys ...SortKey) *Pipeline {
 	sortOp := NewSortOp(keys...)
 	p.operations = append(p.operations, sortOp)
@@ -80,12 +109,18 @@ func (p *Pipeline) Sort(keys ...SortKey) *Pipeline {
 
 // SortBy adds a sort operation to the pipeline with a single column
 // This is a convenience method for sorting by one column
+//
+// Deprecated: Use WithTransformations(NewSortOp(SortKey{Column: column, Direction: direction})) when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) SortBy(column string, direction SortDirection) *Pipeline {
 	return p.Sort(SortKey{Column: column, Direction: direction})
 }
 
 // SortWith adds a sort operation using a custom comparator function
 // The comparator should return -1 if a < b, 0 if a == b, 1 if a > b
+//
+// Deprecated: Use WithTransformations(NewSortOpWithComparator(comparator)) when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) SortWith(comparator func(a, b Record) int) *Pipeline {
 	sortOp := NewSortOpWithComparator(comparator)
 	p.operations = append(p.operations, sortOp)
@@ -94,6 +129,9 @@ func (p *Pipeline) SortWith(comparator func(a, b Record) int) *Pipeline {
 
 // Limit adds a limit operation to the pipeline
 // Returns the first N records from the data
+//
+// Deprecated: Use WithTransformations(NewLimitOp(count)) when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) Limit(count int) *Pipeline {
 	limitOp := NewLimitOp(count)
 	p.operations = append(p.operations, limitOp)
@@ -102,6 +140,9 @@ func (p *Pipeline) Limit(count int) *Pipeline {
 
 // GroupBy adds a groupBy operation to the pipeline
 // Groups records by the specified columns and applies aggregate functions
+//
+// Deprecated: Use WithTransformations(NewGroupByOp(columns, aggregates)) when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) GroupBy(columns []string, aggregates map[string]AggregateFunc) *Pipeline {
 	groupByOp := NewGroupByOp(columns, aggregates)
 	p.operations = append(p.operations, groupByOp)
@@ -110,6 +151,9 @@ func (p *Pipeline) GroupBy(columns []string, aggregates map[string]AggregateFunc
 
 // AddColumn adds a calculated field to the table
 // The calculation function receives the full record and should return the calculated value
+//
+// Deprecated: Use WithTransformations(NewAddColumnOp(name, fn, nil)) when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) AddColumn(name string, fn func(Record) any) *Pipeline {
 	addColumnOp := NewAddColumnOp(name, fn, nil) // nil position = append to end
 	p.operations = append(p.operations, addColumnOp)
@@ -119,6 +163,9 @@ func (p *Pipeline) AddColumn(name string, fn func(Record) any) *Pipeline {
 // AddColumnAt adds a calculated field at a specific position in the table
 // The calculation function receives the full record and should return the calculated value
 // Position 0 inserts at the beginning, position >= field count appends to end
+//
+// Deprecated: Use WithTransformations(NewAddColumnOp(name, fn, &position)) when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) AddColumnAt(name string, fn func(Record) any, position int) *Pipeline {
 	addColumnOp := NewAddColumnOp(name, fn, &position)
 	p.operations = append(p.operations, addColumnOp)
@@ -182,11 +229,17 @@ func (p *Pipeline) Validate() error {
 }
 
 // Execute runs the pipeline and returns a new transformed document
+//
+// Deprecated: Use WithTransformations() option when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) Execute() (*Document, error) {
 	return p.ExecuteContext(context.Background())
 }
 
 // ExecuteWithFormat executes the pipeline transformations with format context
+//
+// Deprecated: Use WithTransformations() option when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) ExecuteWithFormat(ctx context.Context, format string) (*Document, error) {
 	return p.ExecuteWithFormatContext(ctx, format)
 }
@@ -206,6 +259,9 @@ func (p *Pipeline) ExecuteWithFormatContext(ctx context.Context, format string) 
 }
 
 // ExecuteContext runs the pipeline with a context and returns a new transformed document
+//
+// Deprecated: Use WithTransformations() option when creating content instead.
+// This method will be removed in v3.0.0. See v2/MIGRATION.md for migration examples.
 func (p *Pipeline) ExecuteContext(ctx context.Context) (*Document, error) {
 	return p.executeWithOptionalFormat(ctx, "")
 }

@@ -310,7 +310,7 @@ references:
 
 ## Phase 8: Pipeline Deprecation & Documentation
 
-- [ ] 31. Mark Pipeline API as deprecated
+- [x] 31. Mark Pipeline API as deprecated
   - Add deprecation comments to Document.Pipeline() method
   - Add deprecation comments to all pipeline operations (Filter, Sort, Limit, etc.)
   - Include clear guidance to use WithTransformations() instead
@@ -319,7 +319,7 @@ references:
   - Requirements: [3.1](requirements.md#3.1), [3.2](requirements.md#3.2), [3.4](requirements.md#3.4), [3.5](requirements.md#3.5)
   - References: v2/pipeline.go, v2/document.go
 
-- [ ] 32. Create migration examples from Pipeline API
+- [x] 32. Create migration examples from Pipeline API
   - Document before/after examples showing pipeline conversion
   - Show how to migrate global transformations to per-content
   - Show how to migrate dynamic transformation construction
@@ -329,7 +329,7 @@ references:
   - Requirements: [3.3](requirements.md#3.3)
   - References: v2/MIGRATION.md, v2/examples/migration_example.go
 
-- [ ] 33. Update package documentation
+- [x] 33. Update package documentation
   - Update package-level godoc to describe per-content transformations
   - Document WithTransformations() option for all content types
   - Document thread-safety requirements for operations (stateless, no mutable state)
@@ -340,7 +340,7 @@ references:
   - Requirements: [7.4](requirements.md#7.4), [7.5](requirements.md#7.5), [7.6](requirements.md#7.6), [7.7](requirements.md#7.7), [8.1](requirements.md#8.1), [8.5](requirements.md#8.5), [8.6](requirements.md#8.6), [9.2](requirements.md#9.2), [9.6](requirements.md#9.6)
   - References: v2/doc.go, v2/table_content.go, v2/operations.go
 
-- [ ] 34. Create best practices guide
+- [x] 34. Create best practices guide
   - Document safe vs unsafe operation patterns with examples
   - Provide examples of closure capture best practices
   - Document transformation complexity limits
@@ -350,9 +350,44 @@ references:
   - Requirements: [7.5](requirements.md#7.5), [7.7](requirements.md#7.7), [8.5](requirements.md#8.5)
   - References: v2/BEST_PRACTICES.md
 
-## Phase 9: Final Validation
+## Phase 9: Pipeline API Removal
 
-- [ ] 35. Run final validation
+- [ ] 35. Remove Pipeline API implementation
+  - Remove Pipeline struct and all its methods from v2/pipeline.go
+  - Remove Document.Pipeline() method from v2/document.go
+  - Remove createDocumentWithContents() helper function (used only by pipeline)
+  - Keep Operation interface and operation implementations (FilterOp, SortOp, etc.) as they're used by per-content transformations
+  - Keep FormatAwareOperation interface and related pipeline infrastructure used by operations
+  - Requirements: [3.1](requirements.md#3.1), [3.2](requirements.md#3.2)
+  - References: v2/pipeline.go, v2/document.go
+
+- [ ] 36. Remove Pipeline tests
+  - Remove all pipeline-specific tests from test files
+  - Keep operation tests (filter, sort, limit, etc.) as operations are still used
+  - Remove pipeline error tests
+  - Remove pipeline integration tests
+  - Requirements: [3.2](requirements.md#3.2)
+  - References: v2/*_test.go files with Pipeline tests
+
+- [ ] 37. Update documentation to remove Pipeline references
+  - Update v2/docs/MIGRATION.md to remove Pipeline API examples
+  - Update v2/docs/PIPELINE_MIGRATION.md to clarify Pipeline API was removed (not just deprecated)
+  - Update v2/doc.go to remove deprecated Pipeline API section
+  - Update any other documentation referencing Pipeline API
+  - Requirements: [3.4](requirements.md#3.4)
+  - References: v2/docs/*.md, v2/doc.go
+
+- [ ] 38. Update examples to use per-content transformations
+  - Update v2/examples/pipeline_transformation/ to use WithTransformations()
+  - Update v2/examples/transformations/ to use WithTransformations()
+  - Update any other examples using Pipeline API
+  - Ensure all examples compile and run successfully
+  - Requirements: [3.5](requirements.md#3.5)
+  - References: v2/examples/*/main.go
+
+## Phase 10: Final Validation
+
+- [ ] 39. Run final validation
   - Run all tests (unit + integration) with coverage: make test-coverage
   - Run tests with -race flag: make test-race
   - Run golangci-lint: make lint
