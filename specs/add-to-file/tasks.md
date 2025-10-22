@@ -8,26 +8,26 @@ references:
 
 ## Phase 1: Core Infrastructure
 
-- [ ] 1. FileWriter Core Append Infrastructure
+- [x] 1. FileWriter Core Append Infrastructure
   - Add appendMode field to FileWriter struct
   - Implement WithAppendMode() functional option
   - Add mutex field for thread safety
   - Implement basic appendByteLevel() method for simple formats
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.3](requirements.md#1.3), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5)
   - References: v2/file_writer.go
-  - [ ] 1.1. Write unit tests for FileWriter append mode configuration
+  - [x] 1.1. Write unit tests for FileWriter append mode configuration
     - Test WithAppendMode() option sets appendMode correctly
     - Test default behavior (replace mode) when append not enabled
     - Test immutability of append mode after FileWriter creation
     - Use map-based table-driven tests following Go 2025 patterns
     - Requirements: [1.1](requirements.md#1.1), [1.3](requirements.md#1.3), [1.4](requirements.md#1.4), [9.1](requirements.md#9.1)
-  - [ ] 1.2. Implement appendByteLevel() for simple text formats
+  - [x] 1.2. Implement appendByteLevel() for simple text formats
     - Implement basic file append using os.O_APPEND flag
     - Handle file creation when target doesn't exist
     - Add error wrapping with WriteError
     - Support formats: JSON, YAML, Markdown, Table, Text
     - Requirements: [1.2](requirements.md#1.2), [2.1](requirements.md#2.1), [3.1](requirements.md#3.1), [6.1](requirements.md#6.1)
-  - [ ] 1.3. Write unit tests for appendByteLevel()
+  - [x] 1.3. Write unit tests for appendByteLevel()
     - Test appending to existing files
     - Test creating new files when target doesn't exist
     - Test byte-level concatenation for JSON (NDJSON use case)
@@ -35,38 +35,38 @@ references:
     - Verify file permissions (0644 default)
     - Requirements: [2.1](requirements.md#2.1), [3.1](requirements.md#3.1), [9.1](requirements.md#9.1), [9.2](requirements.md#9.2)
 
-- [ ] 2. File Validation and Safety
+- [x] 2. File Validation and Safety
   - Implement file extension validation logic
   - Map formats to expected file extensions
   - Add validation checks before append operations
   - Requirements: [3.2](requirements.md#3.2), [3.3](requirements.md#3.3), [3.4](requirements.md#3.4), [3.6](requirements.md#3.6)
   - References: v2/file_writer.go
-  - [ ] 2.1. Write unit tests for file validation
+  - [x] 2.1. Write unit tests for file validation
     - Test format/extension mismatch detection
     - Test files with no extension (should skip validation)
     - Test that validation occurs before any file modifications
     - Verify clear error messages with expected vs actual extension
     - Requirements: [3.3](requirements.md#3.3), [3.4](requirements.md#3.4), [3.6](requirements.md#3.6), [6.2](requirements.md#6.2), [9.3](requirements.md#9.3)
-  - [ ] 2.2. Implement format validation in Write() method
+  - [x] 2.2. Implement format validation in Write() method
     - Call validation before append operations
     - Return format mismatch errors with context
     - Skip validation for files without extensions
     - Integration with existing error handling
     - Requirements: [3.2](requirements.md#3.2), [3.3](requirements.md#3.3), [3.4](requirements.md#3.4), [3.5](requirements.md#3.5)
 
-- [ ] 3. Thread Safety Implementation
+- [x] 3. Thread Safety Implementation
   - Add sync.Mutex to FileWriter struct
   - Protect all write operations with mutex locks
   - Document thread-safety guarantees and limitations
   - Requirements: [1.5](requirements.md#1.5), [6.5](requirements.md#6.5), [6.6](requirements.md#6.6)
   - References: v2/file_writer.go
-  - [ ] 3.1. Write thread safety tests
+  - [x] 3.1. Write thread safety tests
     - Test concurrent appends from multiple goroutines using same FileWriter
     - Verify no data corruption with race detector enabled
     - Verify all appends complete successfully
     - Test with different formats (JSON, CSV, text)
     - Requirements: [1.5](requirements.md#1.5), [9.5](requirements.md#9.5)
-  - [ ] 3.2. Implement mutex protection in Write() method
+  - [x] 3.2. Implement mutex protection in Write() method
     - Add Lock()/Unlock() around write operations
     - Ensure proper unlock with defer
     - Document that protection is per-FileWriter instance only

@@ -13,11 +13,14 @@ import (
 // FileWriter writes rendered output to files using a pattern
 type FileWriter struct {
 	baseWriter
-	dir           string            // Base directory for files
-	pattern       string            // e.g., "report-{format}.{ext}"
-	extensions    map[string]string // format to extension mapping
-	allowAbsolute bool              // Allow absolute paths in filenames
-	mu            sync.Mutex        // For concurrent access protection
+	dir                  string            // Base directory for files
+	pattern              string            // e.g., "report-{format}.{ext}"
+	extensions           map[string]string // format to extension mapping
+	allowAbsolute        bool              // Allow absolute paths in filenames
+	mu                   sync.Mutex        // For concurrent access protection
+	appendMode           bool              // Enable append mode instead of replace
+	permissions          os.FileMode       // File permissions (default 0644)
+	disallowUnsafeAppend bool              // Prevent appending to JSON/YAML
 }
 
 // NewFileWriter creates a new FileWriter with the specified directory and pattern
@@ -53,6 +56,7 @@ func NewFileWriter(dir, pattern string) (*FileWriter, error) {
 		pattern:       pattern,
 		extensions:    defaultExtensions(),
 		allowAbsolute: false,
+		permissions:   0644,
 	}, nil
 }
 
@@ -104,8 +108,16 @@ func (fw *FileWriter) Write(ctx context.Context, format string, data []byte) (re
 		}
 	}
 
+	// Check if file exists
+	fileExists := fw.fileExists(fullPath)
+
+	// Handle append mode
+	if fw.appendMode && fileExists {
+		return fw.appendToFile(ctx, format, fullPath, data)
+	}
+
 	// Use OpenFile with CREATE and TRUNCATE to overwrite existing files
-	file, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fw.permissions)
 	if err != nil {
 		return fw.wrapError(format, fmt.Errorf("failed to create file %q: %w", fullPath, err))
 	}
@@ -219,6 +231,88 @@ func defaultExtensions() map[string]string {
 	}
 }
 
+// fileExists checks if a file exists and is readable
+func (fw *FileWriter) fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// appendToFile handles appending data to an existing file
+func (fw *FileWriter) appendToFile(ctx context.Context, format string, fullPath string, data []byte) error {
+	// Validate format extension if file exists
+	if err := fw.validateFormatMatch(format, fullPath); err != nil {
+		return fw.wrapError(format, err)
+	}
+
+	// Check if append is disabled for unsafe formats
+	if fw.disallowUnsafeAppend && (format == FormatJSON || format == FormatYAML) {
+		return fw.wrapError(format, fmt.Errorf("append to %s files is not allowed (unsafe format)", format))
+	}
+
+	// For now, use simple byte-level append for all formats
+	// Future: format-specific handling (CSV, HTML) will be added
+	return fw.appendByteLevel(ctx, fullPath, data)
+}
+
+// appendByteLevel performs byte-level appending to a file
+func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data []byte) error {
+	// Check context cancellation
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("operation cancelled: %w", ctx.Err())
+	default:
+	}
+
+	file, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, fw.permissions)
+	if err != nil {
+		return fmt.Errorf("failed to open file for append %q: %w", fullPath, err)
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			// Note: error already has context, don't wrap again
+		}
+	}()
+
+	_, err = file.Write(data)
+	if err != nil {
+		return fmt.Errorf("failed to append data: %w", err)
+	}
+
+	// Ensure data is flushed to disk
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("failed to sync file: %w", err)
+	}
+
+	return nil
+}
+
+// validateFormatMatch validates that the file extension matches the expected format
+func (fw *FileWriter) validateFormatMatch(format string, fullPath string) error {
+	// Get the file extension
+	fileExt := filepath.Ext(fullPath)
+
+	// If no extension, skip validation
+	if fileExt == "" {
+		return nil
+	}
+
+	// Remove leading dot from extension
+	fileExt = fileExt[1:]
+
+	// Get expected extension for format
+	expectedExt, ok := fw.extensions[format]
+	if !ok {
+		expectedExt = format
+	}
+
+	// Check if they match
+	if fileExt != expectedExt {
+		return fmt.Errorf("file extension mismatch: expected %q but file has %q", expectedExt, fileExt)
+	}
+
+	return nil
+}
+
 // FileWriterOption configures a FileWriter
 type FileWriterOption func(*FileWriter)
 
@@ -233,6 +327,27 @@ func WithExtensions(extensions map[string]string) FileWriterOption {
 func WithAbsolutePaths() FileWriterOption {
 	return func(fw *FileWriter) {
 		fw.allowAbsolute = true
+	}
+}
+
+// WithAppendMode enables append mode for the FileWriter
+func WithAppendMode() FileWriterOption {
+	return func(fw *FileWriter) {
+		fw.appendMode = true
+	}
+}
+
+// WithPermissions sets custom file permissions (default 0644)
+func WithPermissions(perm os.FileMode) FileWriterOption {
+	return func(fw *FileWriter) {
+		fw.permissions = perm
+	}
+}
+
+// WithDisallowUnsafeAppend prevents appending to JSON/YAML files
+func WithDisallowUnsafeAppend() FileWriterOption {
+	return func(fw *FileWriter) {
+		fw.disallowUnsafeAppend = true
 	}
 }
 
