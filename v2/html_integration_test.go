@@ -1597,3 +1597,155 @@ func TestIntegration_ThreadSafety_ConcurrentWithMermaidCharts(t *testing.T) {
 		t.Errorf("Concurrent Mermaid rendering failed: %d errors", errorCount)
 	}
 }
+
+func TestIntegration_RenderToWithTemplate_ProducesCompleteHTMLDocument(t *testing.T) {
+	t.Parallel()
+
+	data := []map[string]any{
+		{"Name": "Alice", "Score": 95},
+		{"Name": "Bob", "Score": 87},
+	}
+
+	doc := New().
+		Text("Test Results").
+		Table("scores", data, WithKeys("Name", "Score")).
+		Build()
+
+	var buf strings.Builder
+	err := HTML.Renderer.RenderTo(context.Background(), doc, &buf)
+	if err != nil {
+		t.Fatalf("RenderTo failed: %v", err)
+	}
+
+	html := buf.String()
+
+	// Verify HTML5 structure is present (from template wrapping)
+	if !strings.HasPrefix(html, "<!DOCTYPE html>") {
+		t.Error("RenderTo: Missing DOCTYPE declaration")
+	}
+
+	if !strings.Contains(html, "<html") || !strings.Contains(html, "</html>") {
+		t.Error("RenderTo: Missing html tags")
+	}
+
+	if !strings.Contains(html, "<head>") || !strings.Contains(html, "</head>") {
+		t.Error("RenderTo: Missing head tags")
+	}
+
+	if !strings.Contains(html, "<body>") || !strings.Contains(html, "</body>") {
+		t.Error("RenderTo: Missing body tags")
+	}
+
+	// Verify content is included
+	if !strings.Contains(html, "Test Results") {
+		t.Error("RenderTo: Missing title text")
+	}
+
+	if !strings.Contains(html, "Alice") || !strings.Contains(html, "Bob") {
+		t.Error("RenderTo: Missing table data")
+	}
+
+	// Verify CSS is embedded
+	if !strings.Contains(html, "<style>") || !strings.Contains(html, "</style>") {
+		t.Error("RenderTo: Missing CSS styles")
+	}
+
+	// Verify both Render and RenderTo produce similar structure
+	// (exact bytes may differ but structure should be the same)
+	renderOutput, _ := HTML.Renderer.Render(context.Background(), doc)
+	renderStr := string(renderOutput)
+
+	// Both should have DOCTYPE and closing tags
+	if strings.HasPrefix(renderStr, "<!DOCTYPE html>") != strings.HasPrefix(html, "<!DOCTYPE html>") {
+		t.Error("RenderTo and Render should both include DOCTYPE")
+	}
+
+	if strings.Contains(renderStr, "</html>") != strings.Contains(html, "</html>") {
+		t.Error("RenderTo and Render should both be complete HTML documents")
+	}
+}
+
+func TestIntegration_RenderToWithMermaidCharts_InjectsMermaidScript(t *testing.T) {
+	t.Parallel()
+
+	doc := New().
+		Text("Diagram Test").
+		Chart("Diagram", "stateDiagram-v2", map[string]any{
+			"content": "[*] --> State1\nState1 --> [*]",
+		}).
+		Build()
+
+	var buf strings.Builder
+	err := HTML.Renderer.RenderTo(context.Background(), doc, &buf)
+	if err != nil {
+		t.Fatalf("RenderTo failed: %v", err)
+	}
+
+	html := buf.String()
+
+	// Verify template wrapper exists
+	if !strings.HasPrefix(html, "<!DOCTYPE html>") {
+		t.Error("RenderTo: Missing DOCTYPE")
+	}
+
+	// Verify chart is included
+	if !strings.Contains(html, `<pre class="mermaid">`) {
+		t.Error("RenderTo: Missing mermaid chart")
+	}
+
+	// Verify mermaid script is injected (before body close for streaming)
+	if !strings.Contains(html, "import mermaid from") {
+		t.Error("RenderTo: Missing mermaid script injection")
+	}
+
+	// Verify script is before closing body tag
+	bodyEnd := strings.LastIndex(html, "</body>")
+	scriptIdx := strings.Index(html, "import mermaid from")
+	if scriptIdx >= bodyEnd {
+		t.Error("RenderTo: Mermaid script should be before </body>")
+	}
+}
+
+func TestIntegration_RenderToWithoutTemplate_StreamsFragmentsOnly(t *testing.T) {
+	t.Parallel()
+
+	data := []map[string]any{
+		{"Item": "A", "Value": 1},
+	}
+
+	doc := New().
+		Text("Fragment Test").
+		Table("items", data, WithKeys("Item", "Value")).
+		Build()
+
+	// Use HTMLFragment which has useTemplate=false
+	var buf strings.Builder
+	err := HTMLFragment.Renderer.RenderTo(context.Background(), doc, &buf)
+	if err != nil {
+		t.Fatalf("RenderTo failed: %v", err)
+	}
+
+	html := buf.String()
+
+	// Verify no HTML5 wrapper
+	if strings.HasPrefix(html, "<!DOCTYPE html>") {
+		t.Error("HTMLFragment RenderTo: Should not include DOCTYPE")
+	}
+
+	if strings.Contains(html, "<html") {
+		t.Error("HTMLFragment RenderTo: Should not include html tags")
+	}
+
+	if strings.Contains(html, "<head>") {
+		t.Error("HTMLFragment RenderTo: Should not include head tags")
+	}
+
+	// But content should still be there
+	if !strings.Contains(html, "Fragment Test") {
+		t.Error("HTMLFragment RenderTo: Missing content")
+	}
+
+	if !strings.Contains(html, "Item") {
+		t.Error("HTMLFragment RenderTo: Missing table content")
+	}
+}
