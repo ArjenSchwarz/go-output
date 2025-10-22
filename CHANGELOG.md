@@ -181,6 +181,14 @@
 - **Code Modernization** - Updated map copying to use maps.Copy() instead of manual loops per Go 1.24+ best practices
 
 ### Added
+- **Add-to-File Feature Specification** - Complete requirements, design, and implementation plan for v2 append mode functionality
+  - Requirements documentation with 78 acceptance criteria across 11 sections covering FileWriter append mode, format-specific behavior, HTML comment marker system, S3Writer append support, thread safety, and error handling
+  - Design documentation with detailed implementation guidance for atomic file operations, CSV header handling, HTML fragment rendering, and S3 download-modify-upload pattern
+  - Decision log documenting 15 key design decisions including HTML comment marker (`<!-- go-output-append -->` replacing v1's div), byte-level JSON/YAML append for NDJSON logging, CSV header skipping, S3 append with ETag-based conflict detection, and atomic write patterns
+  - Implementation task list with 48 tasks organized into 5 phases: Core Infrastructure (FileWriter append, validation, thread safety), HTML Format Support (marker system, atomic append, fragment rendering), CSV Format Support (header skipping with CRLF normalization), S3 Append Support (download-modify-upload, ETag conflicts), and Polish/Documentation
+  - Security improvements: TOCTOU protection via `os.CreateTemp()`, fsync for durability, same-filesystem atomic renames, temp file cleanup guarantees
+  - Test strategy covering unit tests, integration tests, thread safety tests, cross-platform compatibility, and crash safety validation
+  - Migration guide requirements for v1 to v2 transition documenting breaking changes (HTML marker format change from div to comment)
 - **HTML Template System Integration Testing (Phase 6)** - Complete integration test suite for HTML document rendering and thread safety validation
   - 30 comprehensive integration tests covering full document generation workflow
   - Mermaid chart integration tests (4): script injection order, fragment mode, multiple charts, XSS prevention

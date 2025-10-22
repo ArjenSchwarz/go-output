@@ -1,0 +1,365 @@
+---
+references:
+    - specs/add-to-file/requirements.md
+    - specs/add-to-file/design.md
+    - specs/add-to-file/decision_log.md
+---
+# Add-to-File Feature Implementation Tasks
+
+## Phase 1: Core Infrastructure
+
+- [ ] 1. FileWriter Core Append Infrastructure
+  - Add appendMode field to FileWriter struct
+  - Implement WithAppendMode() functional option
+  - Add mutex field for thread safety
+  - Implement basic appendByteLevel() method for simple formats
+  - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.3](requirements.md#1.3), [1.4](requirements.md#1.4), [1.5](requirements.md#1.5)
+  - References: v2/file_writer.go
+  - [ ] 1.1. Write unit tests for FileWriter append mode configuration
+    - Test WithAppendMode() option sets appendMode correctly
+    - Test default behavior (replace mode) when append not enabled
+    - Test immutability of append mode after FileWriter creation
+    - Use map-based table-driven tests following Go 2025 patterns
+    - Requirements: [1.1](requirements.md#1.1), [1.3](requirements.md#1.3), [1.4](requirements.md#1.4), [9.1](requirements.md#9.1)
+  - [ ] 1.2. Implement appendByteLevel() for simple text formats
+    - Implement basic file append using os.O_APPEND flag
+    - Handle file creation when target doesn't exist
+    - Add error wrapping with WriteError
+    - Support formats: JSON, YAML, Markdown, Table, Text
+    - Requirements: [1.2](requirements.md#1.2), [2.1](requirements.md#2.1), [3.1](requirements.md#3.1), [6.1](requirements.md#6.1)
+  - [ ] 1.3. Write unit tests for appendByteLevel()
+    - Test appending to existing files
+    - Test creating new files when target doesn't exist
+    - Test byte-level concatenation for JSON (NDJSON use case)
+    - Test multiple sequential appends
+    - Verify file permissions (0644 default)
+    - Requirements: [2.1](requirements.md#2.1), [3.1](requirements.md#3.1), [9.1](requirements.md#9.1), [9.2](requirements.md#9.2)
+
+- [ ] 2. File Validation and Safety
+  - Implement file extension validation logic
+  - Map formats to expected file extensions
+  - Add validation checks before append operations
+  - Requirements: [3.2](requirements.md#3.2), [3.3](requirements.md#3.3), [3.4](requirements.md#3.4), [3.6](requirements.md#3.6)
+  - References: v2/file_writer.go
+  - [ ] 2.1. Write unit tests for file validation
+    - Test format/extension mismatch detection
+    - Test files with no extension (should skip validation)
+    - Test that validation occurs before any file modifications
+    - Verify clear error messages with expected vs actual extension
+    - Requirements: [3.3](requirements.md#3.3), [3.4](requirements.md#3.4), [3.6](requirements.md#3.6), [6.2](requirements.md#6.2), [9.3](requirements.md#9.3)
+  - [ ] 2.2. Implement format validation in Write() method
+    - Call validation before append operations
+    - Return format mismatch errors with context
+    - Skip validation for files without extensions
+    - Integration with existing error handling
+    - Requirements: [3.2](requirements.md#3.2), [3.3](requirements.md#3.3), [3.4](requirements.md#3.4), [3.5](requirements.md#3.5)
+
+- [ ] 3. Thread Safety Implementation
+  - Add sync.Mutex to FileWriter struct
+  - Protect all write operations with mutex locks
+  - Document thread-safety guarantees and limitations
+  - Requirements: [1.5](requirements.md#1.5), [6.5](requirements.md#6.5), [6.6](requirements.md#6.6)
+  - References: v2/file_writer.go
+  - [ ] 3.1. Write thread safety tests
+    - Test concurrent appends from multiple goroutines using same FileWriter
+    - Verify no data corruption with race detector enabled
+    - Verify all appends complete successfully
+    - Test with different formats (JSON, CSV, text)
+    - Requirements: [1.5](requirements.md#1.5), [9.5](requirements.md#9.5)
+  - [ ] 3.2. Implement mutex protection in Write() method
+    - Add Lock()/Unlock() around write operations
+    - Ensure proper unlock with defer
+    - Document that protection is per-FileWriter instance only
+    - Requirements: [1.5](requirements.md#1.5), [6.5](requirements.md#6.5), [6.6](requirements.md#6.6)
+
+## Phase 2: HTML Format Support
+
+- [ ] 4. HTML Append Marker System
+  - Update HTML renderer to include <!-- go-output-append --> marker
+  - Ensure marker is placed before closing body/html tags
+  - HTMLFragment format should not include marker
+  - Requirements: [4.2](requirements.md#4.2), [4.3](requirements.md#4.3)
+  - References: v2/html_renderer.go
+  - [ ] 4.1. Write unit tests for HTML marker in renderer
+    - Test full HTML page includes marker
+    - Test HTMLFragment does not include marker
+    - Test marker placement (before closing tags)
+    - Verify marker format matches constant
+    - Requirements: [4.2](requirements.md#4.2), [4.3](requirements.md#4.3), [9.4](requirements.md#9.4)
+  - [ ] 4.2. Implement HTML marker insertion in htmlRenderer.Render()
+    - Add HTMLAppendMarker constant
+    - Insert marker in full page template before </body>
+    - Ensure fragment mode doesn't include marker
+    - Update DefaultHTMLTemplate if needed
+    - Requirements: [4.1](requirements.md#4.1), [4.2](requirements.md#4.2), [4.3](requirements.md#4.3)
+
+- [ ] 5. HTML Atomic Append Implementation
+  - Implement appendHTMLWithMarker() using write-to-temp-and-rename pattern
+  - Use os.CreateTemp() for secure temp file creation
+  - Add Sync() call for durability
+  - Implement atomic rename with error cleanup
+  - Requirements: [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [4.6](requirements.md#4.6), [4.7](requirements.md#4.7), [4.8](requirements.md#4.8), [6.7](requirements.md#6.7), [6.8](requirements.md#6.8), [6.9](requirements.md#6.9), [6.10](requirements.md#6.10)
+  - References: v2/file_writer.go
+  - [ ] 5.1. Write unit tests for HTML atomic append
+    - Test marker detection and content insertion
+    - Test error when marker is missing
+    - Test content inserted before marker
+    - Test marker is preserved after insertion
+    - Verify temp files created in same directory
+    - Verify cryptographically random temp file suffix
+    - Requirements: [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [4.7](requirements.md#4.7), [4.8](requirements.md#4.8), [9.4](requirements.md#9.4), [9.9](requirements.md#9.9)
+  - [ ] 5.2. Implement appendHTMLWithMarker() with security fixes
+    - Read existing file content
+    - Find marker using bytes.Index()
+    - Create temp file with os.CreateTemp(filepath.Dir(fullPath), ".go-output-*.tmp")
+    - Build combined content: [before marker] + [new data] + [marker] + [after marker]
+    - Write to temp file
+    - Call tempFile.Sync() before rename
+    - Atomic rename with os.Rename()
+    - Cleanup temp file on error with defer os.Remove()
+    - Requirements: [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [4.6](requirements.md#4.6), [4.7](requirements.md#4.7), [4.8](requirements.md#4.8), [6.7](requirements.md#6.7), [6.8](requirements.md#6.8), [6.9](requirements.md#6.9), [6.10](requirements.md#6.10)
+  - [ ] 5.3. Write crash safety tests for HTML append
+    - Simulate failure after temp file write but before rename
+    - Verify original file remains unchanged
+    - Verify temp file is cleaned up
+    - Test disk full scenarios if possible
+    - Requirements: [6.10](requirements.md#6.10), [9.9](requirements.md#9.9)
+
+- [ ] 6. HTML Fragment Rendering Mode
+  - Update FileWriter to detect existing files
+  - Request full HTML page for new files
+  - Request HTML fragment for existing files
+  - Wire HTML rendering mode selection into Write() method
+  - Requirements: [4.1](requirements.md#4.1), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5)
+  - References: v2/file_writer.go, v2/renderer.go
+  - [ ] 6.1. Write unit tests for HTML rendering mode selection
+    - Test new file gets full HTML page with marker
+    - Test existing file gets HTML fragment without marker
+    - Test fragment content is inserted correctly
+    - Verify no duplicate html/head/body tags when appending
+    - Requirements: [4.3](requirements.md#4.3), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5), [9.4](requirements.md#9.4)
+  - [ ] 6.2. Implement rendering mode detection in Write()
+    - Check if file exists using os.Stat()
+    - Use HTML format for new files
+    - Use HTMLFragment format for existing files in append mode
+    - Update render call to use selected format
+    - Requirements: [4.1](requirements.md#4.1), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5)
+
+## Phase 3: CSV Format Support
+
+- [ ] 7. CSV Header Skipping
+  - Implement appendCSVWithoutHeaders() using simple line splitting
+  - Normalize CRLF to LF before splitting
+  - Handle edge cases (empty files, header-only files)
+  - Requirements: [2.7](requirements.md#2.7), [3.1](requirements.md#3.1)
+  - References: v2/file_writer.go
+  - [ ] 7.1. Write unit tests for CSV header skipping
+    - Test header is stripped when appending
+    - Test Unix LF line endings
+    - Test Windows CRLF line endings
+    - Test mixed line endings
+    - Test header-only CSV (should append nothing)
+    - Test empty CSV data
+    - Requirements: [2.7](requirements.md#2.7), [9.8](requirements.md#9.8)
+  - [ ] 7.2. Implement appendCSVWithoutHeaders()
+    - Normalize line endings: bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+    - Split on first newline: bytes.SplitN(data, []byte("\n"), 2)
+    - Return early if only header line exists
+    - Append data without header using appendByteLevel()
+    - Add comments explaining CRLF normalization
+    - Requirements: [2.7](requirements.md#2.7)
+
+- [ ] 8. Multi-Section Document Support
+  - Verify multi-section documents work with append mode
+  - Ensure all sections are appended in order
+  - Test section boundaries are preserved
+  - Requirements: [7.1](requirements.md#7.1), [7.2](requirements.md#7.2), [7.3](requirements.md#7.3), [7.4](requirements.md#7.4), [7.5](requirements.md#7.5)
+  - References: v2/file_writer.go
+  - [ ] 8.1. Write integration tests for multi-section appending
+    - Test appending document with multiple table sections
+    - Test appending document with mixed content types
+    - Test HTML multi-section append (all before marker)
+    - Test CSV multi-section append (only first section has headers stripped)
+    - Verify sections maintain order and separation
+    - Requirements: [7.1](requirements.md#7.1), [7.2](requirements.md#7.2), [7.3](requirements.md#7.3), [7.4](requirements.md#7.4), [7.5](requirements.md#7.5), [9.7](requirements.md#9.7)
+  - [ ] 8.2. Update Write() to handle multi-section documents
+    - Iterate through all sections in document
+    - Append each section using appropriate method
+    - Preserve section boundaries (format-specific separators)
+    - Test with builder pattern creating multiple sections
+    - Requirements: [7.1](requirements.md#7.1), [7.2](requirements.md#7.2), [7.5](requirements.md#7.5)
+
+## Phase 4: S3 Append Support
+
+- [ ] 9. S3Writer Core Infrastructure
+  - Add S3GetObjectAPI interface
+  - Update S3ClientAPI to include GetObject
+  - Add appendMode field to S3Writer
+  - Add maxAppendSize field with 100MB default
+  - Requirements: [10.1](requirements.md#10.1), [10.2](requirements.md#10.2), [10.6](requirements.md#10.6), [10.7](requirements.md#10.7)
+  - References: v2/s3_writer.go
+  - [ ] 9.1. Update S3Writer struct and interfaces
+    - Define S3GetObjectAPI interface with GetObject method
+    - Update S3ClientAPI to embed both Put and Get interfaces
+    - Add appendMode bool field
+    - Add maxAppendSize int64 field (default 104857600 = 100MB)
+    - Maintain backward compatibility with existing S3PutObjectAPI clients
+    - Requirements: [10.1](requirements.md#10.1), [10.6](requirements.md#10.6)
+  - [ ] 9.2. Implement S3 append mode functional options
+    - Create WithS3AppendMode() S3WriterOption
+    - Create WithMaxAppendSize(int64) S3WriterOption
+    - Add validation that maxAppendSize > 0
+    - Document default value in godoc
+    - Requirements: [10.1](requirements.md#10.1), [10.7](requirements.md#10.7)
+
+- [ ] 10. S3 Append Logic Implementation
+  - Implement appendToS3Object() using download-modify-upload pattern
+  - Use GetObject to download existing content
+  - Implement ETag-based conflict detection
+  - Add size validation before append
+  - Requirements: [10.1](requirements.md#10.1), [10.3](requirements.md#10.3), [10.4](requirements.md#10.4), [10.5](requirements.md#10.5), [10.6](requirements.md#10.6)
+  - References: v2/s3_writer.go
+  - [ ] 10.1. Write unit tests for S3 append configuration
+    - Test WithS3AppendMode() sets appendMode correctly
+    - Test WithMaxAppendSize() sets size limit
+    - Test default maxAppendSize is 100MB
+    - Mock S3 client for testing
+    - Requirements: [10.1](requirements.md#10.1), [10.7](requirements.md#10.7), [9.11](requirements.md#9.11)
+  - [ ] 10.2. Implement appendToS3Object() core logic
+    - Call GetObject to download existing content (no HeadObject)
+    - Handle NoSuchKey error (create new object)
+    - Validate ContentLength against maxAppendSize
+    - Read object body with io.ReadAll()
+    - Combine data using combineData() method
+    - Add comprehensive error handling and context
+    - Requirements: [10.1](requirements.md#10.1), [10.2](requirements.md#10.2), [10.3](requirements.md#10.3), [10.6](requirements.md#10.6)
+  - [ ] 10.3. Implement ETag-based conflict detection
+    - Store ETag from GetObject response
+    - Use IfMatch parameter in PutObject request
+    - Detect PreconditionFailed error type
+    - Return clear error message about concurrent modification
+    - Suggest retry in error message
+    - Requirements: [10.4](requirements.md#10.4), [10.5](requirements.md#10.5)
+  - [ ] 10.4. Implement S3 combineData() method
+    - Switch on format type
+    - For HTML: call combineHTMLData() (reuse logic from FileWriter)
+    - For CSV: call combineCSVData() (strip headers from new data)
+    - For other formats: simple byte concatenation
+    - Return combined byte slice
+    - Requirements: [10.3](requirements.md#10.3)
+
+- [ ] 11. S3 Integration Tests
+  - Write integration tests using mock S3 or localstack
+  - Test complete append workflow
+  - Test ETag conflict detection
+  - Test size validation
+  - Requirements: [9.11](requirements.md#9.11), [9.12](requirements.md#9.12), [9.13](requirements.md#9.13)
+  - References: v2/s3_writer_test.go
+  - [ ] 11.1. Write S3 append integration tests
+    - Test appending to non-existent object (creates new)
+    - Test appending to existing object (download-modify-upload)
+    - Test concurrent modification detection (ETag mismatch)
+    - Test size limit validation (reject oversized objects)
+    - Use INTEGRATION environment variable to skip by default
+    - Mock S3 client or use localstack/MinIO
+    - Requirements: [9.11](requirements.md#9.11), [9.12](requirements.md#9.12), [9.13](requirements.md#9.13), [10.1](requirements.md#10.1), [10.2](requirements.md#10.2), [10.3](requirements.md#10.3), [10.4](requirements.md#10.4), [10.5](requirements.md#10.5), [10.6](requirements.md#10.6)
+
+## Phase 5: Polish and Documentation
+
+- [ ] 12. Error Handling and Messages
+  - Enhance WriteError with append-specific context
+  - Add clear error messages for all failure scenarios
+  - Ensure all errors are properly wrapped
+  - Requirements: [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [6.3](requirements.md#6.3), [6.4](requirements.md#6.4)
+  - References: v2/file_writer.go, v2/s3_writer.go
+  - [ ] 12.1. Write error handling tests
+    - Test format mismatch error includes expected and actual extensions
+    - Test HTML marker missing error includes file path
+    - Test file I/O errors include operation and path
+    - Test S3 size limit error includes current and max size
+    - Test S3 ETag mismatch error message clarity
+    - Verify all errors wrapped with WriteError
+    - Requirements: [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [6.3](requirements.md#6.3), [6.4](requirements.md#6.4), [9.6](requirements.md#9.6)
+  - [ ] 12.2. Implement comprehensive error messages
+    - Format mismatch: include expected extension, actual extension, file path
+    - HTML marker missing: include file path and marker format
+    - I/O errors: include file path and operation (read/write/rename)
+    - S3 size exceeded: include current size, max size
+    - S3 concurrent modification: include suggestion to retry
+    - Use fmt.Errorf with %w for error wrapping
+    - Requirements: [6.1](requirements.md#6.1), [6.2](requirements.md#6.2), [6.3](requirements.md#6.3), [6.4](requirements.md#6.4)
+
+- [ ] 13. Cross-Platform Testing
+  - Verify tests pass on Linux, macOS, and Windows
+  - Test file permission handling across platforms
+  - Test path separator handling
+  - Test CRLF vs LF line endings
+  - Requirements: [9.10](requirements.md#9.10)
+  - References: v2/file_writer_test.go
+  - [ ] 13.1. Write cross-platform compatibility tests
+    - Test file creation permissions on Unix vs Windows
+    - Test CSV CRLF handling (Windows line endings)
+    - Test path handling with filepath package
+    - Run tests on CI with multiple OS targets
+    - Document any platform-specific behaviors
+    - Requirements: [9.10](requirements.md#9.10)
+
+- [ ] 14. Documentation and Examples
+  - Add godoc comments for all public APIs
+  - Create code examples for common use cases
+  - Document append mode behavior for each format
+  - Explain limitations and caveats
+  - Requirements: [8.1](requirements.md#8.1), [8.2](requirements.md#8.2), [8.3](requirements.md#8.3), [8.4](requirements.md#8.4), [8.5](requirements.md#8.5), [8.6](requirements.md#8.6)
+  - References: v2/file_writer.go, v2/s3_writer.go, v2/examples/
+  - [ ] 14.1. Write godoc documentation
+    - Document WithAppendMode() option with usage examples
+    - Document WithS3AppendMode() and WithMaxAppendSize()
+    - Explain HTML comment marker system
+    - Document JSON/YAML byte-level appending (NDJSON use case)
+    - Document CSV header skipping behavior
+    - Document thread-safety guarantees and limitations
+    - Document S3 append non-atomicity and ETag conflict detection
+    - Document UTF-8 encoding requirement
+    - Requirements: [8.1](requirements.md#8.1), [8.2](requirements.md#8.2), [8.3](requirements.md#8.3), [8.4](requirements.md#8.4), [8.6](requirements.md#8.6)
+  - [ ] 14.2. Create example code for append mode
+    - Example: Appending JSON logs (NDJSON pattern)
+    - Example: Appending HTML reports with marker
+    - Example: Appending CSV data (headers skipped)
+    - Example: S3 append mode with ETag conflict handling
+    - Example: Multi-section document appending
+    - Include error handling in all examples
+    - Add examples to v2/examples/ directory or example_test.go
+    - Requirements: [8.1](requirements.md#8.1), [8.5](requirements.md#8.5)
+
+- [ ] 15. Migration Guide
+  - Create migration guide from v1 to v2 append mode
+  - Document breaking changes (HTML marker change)
+  - Provide side-by-side code examples
+  - Requirements: [11.1](requirements.md#11.1), [11.2](requirements.md#11.2), [11.3](requirements.md#11.3), [11.4](requirements.md#11.4), [11.5](requirements.md#11.5), [11.6](requirements.md#11.6), [11.7](requirements.md#11.7)
+  - References: docs/migration.md
+  - [ ] 15.1. Write v1 to v2 migration documentation
+    - Document v1's ShouldAppend → v2's WithAppendMode() mapping
+    - Explain Writer-level vs Settings-level configuration change
+    - Document HTML marker breaking change (div → comment)
+    - Explain OutputFileFormat removal (format from renderer now)
+    - Show v1 and v2 code side-by-side for common patterns
+    - Document new S3 append mode capability
+    - Provide migration checklist
+    - Requirements: [11.1](requirements.md#11.1), [11.2](requirements.md#11.2), [11.3](requirements.md#11.3), [11.4](requirements.md#11.4), [11.5](requirements.md#11.5), [11.6](requirements.md#11.6), [11.7](requirements.md#11.7)
+
+- [ ] 16. Final Integration and Testing
+  - Run full test suite (unit + integration)
+  - Run with race detector enabled
+  - Generate coverage report and verify targets met
+  - Run linters and modernize tool
+  - Requirements: [9.1](requirements.md#9.1), [9.2](requirements.md#9.2), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4), [9.5](requirements.md#9.5), [9.6](requirements.md#9.6), [9.7](requirements.md#9.7), [9.8](requirements.md#9.8), [9.9](requirements.md#9.9), [9.10](requirements.md#9.10), [9.11](requirements.md#9.11), [9.12](requirements.md#9.12), [9.13](requirements.md#9.13)
+  - [ ] 16.1. Run comprehensive test validation
+    - Execute: make test-all (unit + integration)
+    - Execute: go test -race ./... (detect race conditions)
+    - Execute: make test-coverage (verify 70-80% coverage)
+    - Execute: make lint (golangci-lint validation)
+    - Execute: make modernize (apply Go 1.24+ patterns)
+    - Execute: make fmt (format all code)
+    - Fix any issues found
+    - Verify all 78 acceptance criteria are covered
+    - Requirements: [9.1](requirements.md#9.1), [9.2](requirements.md#9.2), [9.3](requirements.md#9.3), [9.4](requirements.md#9.4), [9.5](requirements.md#9.5), [9.6](requirements.md#9.6), [9.7](requirements.md#9.7), [9.8](requirements.md#9.8), [9.9](requirements.md#9.9), [9.10](requirements.md#9.10), [9.11](requirements.md#9.11), [9.12](requirements.md#9.12), [9.13](requirements.md#9.13)
