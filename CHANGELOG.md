@@ -1,6 +1,17 @@
 ## Unreleased
 
 ### Added
+- **Integration Tests & Examples for Per-Content Transformations (Phase 7)** - Complete integration testing and example code for per-content transformations feature:
+  - Added 7 integration tests in v2/integration_test.go covering transformation workflows with JSON/YAML rendering, multiple tables with different transformations, mixed content (text + transformed tables), complex transformation chains (filter → sort → limit), and original data preservation verification
+  - Created comprehensive example application in v2/examples/transformations/ demonstrating:
+    - Basic filter + sort transformations on employee data
+    - Multiple tables with different transformation strategies (top N by revenue, active customers sorted by value)
+    - Dynamic transformation construction based on runtime conditions (user preferences, filters, sorting)
+    - Error handling patterns for invalid operations and validation failures
+  - All integration tests verify correctness of filtered records, sorted data, limited results, and immutability of original document data
+  - Example includes detailed README.md with overview, feature explanations, key concepts, and running instructions
+  - Example compiles cleanly, runs successfully, and demonstrates all key transformation features
+  - All tests pass with `make test-integration` and example passes linting with `make lint`
 - **Thread Safety & Performance Testing Suite (TDD)** - Complete testing infrastructure for concurrent operations and performance validation of per-content transformations:
   - Thread safety tests covering concurrent rendering of same document with multiple goroutines, concurrent rendering of different content with shared operations, cloned content independence verification, operation safety during concurrent execution, and concurrent cloning operations
   - All tests pass with `-race` detector enabled confirming zero data races
