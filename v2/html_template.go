@@ -89,34 +89,19 @@ type HTMLTemplate struct {
 // DefaultHTMLTemplate provides modern responsive styling with sensible defaults.
 // It includes embedded CSS with mobile-first responsive design, modern CSS features
 // (flexbox, grid), and accessibility support. The CSS uses custom properties for theming.
-var DefaultHTMLTemplate = &HTMLTemplate{
-	Title:    "Output Report",
-	Language: "en",
-	Charset:  "UTF-8",
-	Viewport: "width=device-width, initial-scale=1.0",
-	CSS:      defaultResponsiveCSS,
-}
+// This is initialized in html_css.go's init() function to ensure CSS constants are set.
+var DefaultHTMLTemplate *HTMLTemplate
 
 // MinimalHTMLTemplate provides basic HTML structure with no styling.
 // Use this template when you want to apply your own CSS or embed in pages with
 // existing styling.
-var MinimalHTMLTemplate = &HTMLTemplate{
-	Title:    "Output Report",
-	Language: "en",
-	Charset:  "UTF-8",
-	Viewport: "width=device-width, initial-scale=1.0",
-	CSS:      "",
-}
+// This is initialized in html_css.go's init() function.
+var MinimalHTMLTemplate *HTMLTemplate
 
 // MermaidHTMLTemplate is optimized for diagram rendering with Mermaid.js integration.
 // It includes CSS optimizations for mermaid diagram display and all features of DefaultHTMLTemplate.
-var MermaidHTMLTemplate = &HTMLTemplate{
-	Title:    "Diagram Output",
-	Language: "en",
-	Charset:  "UTF-8",
-	Viewport: "width=device-width, initial-scale=1.0",
-	CSS:      mermaidOptimizedCSS,
-}
+// This is initialized in html_css.go's init() function to ensure CSS constants are set.
+var MermaidHTMLTemplate *HTMLTemplate
 
 // CSS constants will be defined in html_css.go
 // These are referenced here and will be populated by that file.

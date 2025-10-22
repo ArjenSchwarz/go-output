@@ -212,7 +212,6 @@ func TestGetAWSShape_ConcurrentDifferentShapes(t *testing.T) {
 	wg.Add(len(testCases) * numIterations)
 
 	for _, tc := range testCases {
-		// Capture for goroutine
 		for range numIterations {
 			go func() {
 				defer wg.Done()

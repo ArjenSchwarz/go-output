@@ -318,4 +318,29 @@ details[open] > *:not(summary) {
   }
 }
 `
+
+	// Initialize default templates now that CSS constants are set
+	DefaultHTMLTemplate = &HTMLTemplate{
+		Title:    "Output Report",
+		Language: "en",
+		Charset:  "UTF-8",
+		Viewport: "width=device-width, initial-scale=1.0",
+		CSS:      defaultResponsiveCSS,
+	}
+
+	MinimalHTMLTemplate = &HTMLTemplate{
+		Title:    "Output Report",
+		Language: "en",
+		Charset:  "UTF-8",
+		Viewport: "width=device-width, initial-scale=1.0",
+		CSS:      "",
+	}
+
+	MermaidHTMLTemplate = &HTMLTemplate{
+		Title:    "Diagram Output",
+		Language: "en",
+		Charset:  "UTF-8",
+		Viewport: "width=device-width, initial-scale=1.0",
+		CSS:      mermaidOptimizedCSS,
+	}
 }
