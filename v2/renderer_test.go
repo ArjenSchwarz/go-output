@@ -601,3 +601,576 @@ func stringContains(s, substr string) bool {
 	}
 	return false
 }
+
+// TestApplyContentTransformations_ValidationErrors tests validation error handling (Task 18)
+func TestApplyContentTransformations_ValidationErrors(t *testing.T) {
+	tests := map[string]struct {
+		setupOp          func() Operation
+		contentID        string
+		expectedInError  []string
+		expectValidation bool
+	}{
+		"nil predicate in filter operation": {
+			setupOp: func() Operation {
+				return NewFilterOp(nil)
+			},
+			contentID: "test-content-1",
+			expectedInError: []string{
+				"test-content-1",
+				"0", // operation index
+				"invalid",
+			},
+			expectValidation: true,
+		},
+		"negative limit in limit operation": {
+			setupOp: func() Operation {
+				return NewLimitOp(-5)
+			},
+			contentID: "test-content-2",
+			expectedInError: []string{
+				"test-content-2",
+				"0",
+				"invalid",
+			},
+			expectValidation: true,
+		},
+		"empty column name in sort operation": {
+			setupOp: func() Operation {
+				return NewSortOp()
+			},
+			contentID: "test-content-3",
+			expectedInError: []string{
+				"test-content-3",
+				"0",
+				"invalid",
+			},
+			expectValidation: true,
+		},
+		"invalid groupby operation with no columns": {
+			setupOp: func() Operation {
+				return NewGroupByOp(nil, nil)
+			},
+			contentID: "test-content-4",
+			expectedInError: []string{
+				"test-content-4",
+				"0",
+				"invalid",
+			},
+			expectValidation: true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			op := tc.setupOp()
+
+			content := &TableContent{
+				id:              tc.contentID,
+				title:           "Test Table",
+				records:         []Record{{"name": "Alice", "age": 30}},
+				transformations: []Operation{op},
+			}
+
+			ctx := context.Background()
+			result, err := applyContentTransformations(ctx, content)
+
+			if tc.expectValidation {
+				if err == nil {
+					t.Error("Expected validation error, got nil")
+					return
+				}
+
+				errorMsg := err.Error()
+				for _, expected := range tc.expectedInError {
+					if !containsString(errorMsg, expected) {
+						t.Errorf("Expected error message to contain %q, got: %v", expected, errorMsg)
+					}
+				}
+
+				if result != nil {
+					t.Error("Expected nil result when validation fails")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error, got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestApplyContentTransformations_DataDependentValidationErrors tests data-dependent validation errors (Task 18)
+func TestApplyContentTransformations_DataDependentValidationErrors(t *testing.T) {
+	tests := map[string]struct {
+		data            []Record
+		operation       Operation
+		contentID       string
+		expectedInError []string
+	}{
+		"missing column in sort operation": {
+			data: []Record{
+				{"name": "Alice", "age": 30},
+				{"name": "Bob", "age": 25},
+			},
+			operation: NewSortOp(SortKey{Column: "salary", Direction: Ascending}),
+			contentID: "test-content-missing-col",
+			expectedInError: []string{
+				"test-content-missing-col",
+				"0",
+				"salary",
+			},
+		},
+		"empty groupby columns": {
+			data: []Record{
+				{"name": "Alice", "age": 30},
+				{"name": "Bob", "age": 25},
+			},
+			operation: NewGroupByOp([]string{}, map[string]AggregateFunc{
+				"count": CountAggregate(),
+			}),
+			contentID: "test-content-empty-groupby",
+			expectedInError: []string{
+				"test-content-empty-groupby",
+				"0",
+			},
+		},
+		"invalid add column with empty name": {
+			data: []Record{
+				{"name": "Alice", "age": 30},
+			},
+			operation: NewAddColumnOp("", func(r Record) any {
+				return r["age"].(int) * 2
+			}, nil),
+			contentID: "test-content-empty-col-name",
+			expectedInError: []string{
+				"test-content-empty-col-name",
+				"0",
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			content := &TableContent{
+				id:              tc.contentID,
+				title:           "Test Table",
+				records:         tc.data,
+				transformations: []Operation{tc.operation},
+			}
+
+			ctx := context.Background()
+			_, err := applyContentTransformations(ctx, content)
+
+			if err == nil {
+				t.Error("Expected data-dependent validation or execution error, got nil")
+				return
+			}
+
+			errorMsg := err.Error()
+			for _, expected := range tc.expectedInError {
+				if !containsString(errorMsg, expected) {
+					t.Errorf("Expected error message to contain %q, got: %v", expected, errorMsg)
+				}
+			}
+		})
+	}
+}
+
+// TestApplyContentTransformations_ValidationErrorContext tests error messages include proper context (Task 18)
+func TestApplyContentTransformations_ValidationErrorContext(t *testing.T) {
+	tests := map[string]struct {
+		operations      []Operation
+		contentID       string
+		failingOpIndex  int
+		expectedInError []string
+	}{
+		"first operation fails validation": {
+			operations: []Operation{
+				NewFilterOp(nil), // Invalid
+				NewSortOp(SortKey{Column: "name", Direction: Ascending}),
+			},
+			contentID:      "content-1",
+			failingOpIndex: 0,
+			expectedInError: []string{
+				"content-1",
+				"0",
+				"filter",
+			},
+		},
+		"second operation fails validation": {
+			operations: []Operation{
+				NewLimitOp(10), // Valid
+				NewSortOp(),    // Invalid - no sort keys
+			},
+			contentID:      "content-2",
+			failingOpIndex: 1,
+			expectedInError: []string{
+				"content-2",
+				"1",
+				"sort",
+			},
+		},
+		"third operation fails validation": {
+			operations: []Operation{
+				NewLimitOp(10), // Valid
+				NewFilterOp(func(r Record) bool { return true }),     // Valid
+				NewSortOp(SortKey{Column: "", Direction: Ascending}), // Invalid - empty column
+			},
+			contentID:      "content-3",
+			failingOpIndex: 2,
+			expectedInError: []string{
+				"content-3",
+				"2",
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			content := &TableContent{
+				id:              tc.contentID,
+				title:           "Test Table",
+				records:         []Record{{"name": "Alice", "age": 30}},
+				transformations: tc.operations,
+			}
+
+			ctx := context.Background()
+			_, err := applyContentTransformations(ctx, content)
+
+			if err == nil {
+				t.Error("Expected validation error, got nil")
+				return
+			}
+
+			errorMsg := err.Error()
+			for _, expected := range tc.expectedInError {
+				if !containsString(errorMsg, expected) {
+					t.Errorf("Expected error message to contain %q, got: %v", expected, errorMsg)
+				}
+			}
+		})
+	}
+}
+
+// TestApplyContentTransformations_ValidationStopsImmediately tests fail-fast behavior for validation errors (Task 18)
+func TestApplyContentTransformations_ValidationStopsImmediately(t *testing.T) {
+	executed := []string{}
+
+	op1 := &mockTransformOperation{
+		name: "op1",
+		applyFunc: func(ctx context.Context, content Content) (Content, error) {
+			executed = append(executed, "op1")
+			return content, nil
+		},
+	}
+
+	op2 := &mockTransformOperation{
+		name:        "op2",
+		validateErr: errors.New("validation failed"),
+		applyFunc: func(ctx context.Context, content Content) (Content, error) {
+			executed = append(executed, "op2")
+			return content, nil
+		},
+	}
+
+	op3 := &mockTransformOperation{
+		name: "op3",
+		applyFunc: func(ctx context.Context, content Content) (Content, error) {
+			executed = append(executed, "op3")
+			return content, nil
+		},
+	}
+
+	content := &TableContent{
+		id:              "test-content",
+		title:           "Test Table",
+		records:         []Record{{"name": "Alice"}},
+		transformations: []Operation{op1, op2, op3},
+	}
+
+	ctx := context.Background()
+	_, err := applyContentTransformations(ctx, content)
+
+	if err == nil {
+		t.Error("Expected validation error, got nil")
+		return
+	}
+
+	// Verify op1 executed successfully
+	if len(executed) != 1 || executed[0] != "op1" {
+		t.Errorf("Expected only op1 to execute, got: %v", executed)
+	}
+
+	// Verify op2 validation was called but Apply was not
+	if op2.validateCalls != 1 {
+		t.Errorf("Expected op2.Validate() called once, got %d", op2.validateCalls)
+	}
+	if op2.applyCalls != 0 {
+		t.Errorf("Expected op2.Apply() not called after validation failure, got %d calls", op2.applyCalls)
+	}
+
+	// Verify op3 was never called (fail-fast)
+	if op3.validateCalls > 0 || op3.applyCalls > 0 {
+		t.Error("Expected op3 not to be called after op2 validation failed (fail-fast)")
+	}
+}
+
+// TestApplyContentTransformations_ContextCancellationBeforeOperations tests context cancellation detected before operations (Task 20)
+func TestApplyContentTransformations_ContextCancellationBeforeOperations(t *testing.T) {
+	tests := map[string]struct {
+		setupContext func() context.Context
+		expectError  bool
+		errorType    string
+	}{
+		"context already cancelled before first operation": {
+			setupContext: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				return ctx
+			},
+			expectError: true,
+			errorType:   "canceled",
+		},
+		"context with deadline exceeded": {
+			setupContext: func() context.Context {
+				ctx, cancel := context.WithTimeout(context.Background(), -1)
+				defer cancel()
+				return ctx
+			},
+			expectError: true,
+			errorType:   "deadline",
+		},
+		"valid context not cancelled": {
+			setupContext: func() context.Context {
+				return context.Background()
+			},
+			expectError: false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			op := &mockTransformOperation{
+				name: "test-op",
+			}
+
+			content := &TableContent{
+				id:              "test-content",
+				title:           "Test Table",
+				records:         []Record{{"name": "Alice"}},
+				transformations: []Operation{op},
+			}
+
+			ctx := tc.setupContext()
+			_, err := applyContentTransformations(ctx, content)
+
+			if tc.expectError {
+				if err == nil {
+					t.Error("Expected context cancellation error, got nil")
+					return
+				}
+
+				errorMsg := err.Error()
+				if !containsString(errorMsg, tc.errorType) {
+					t.Errorf("Expected error to contain %q, got: %v", tc.errorType, errorMsg)
+				}
+
+				// Verify operation was not executed when context was already cancelled
+				if op.validateCalls > 0 || op.applyCalls > 0 {
+					t.Error("Expected operations not to run when context is already cancelled")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error with valid context, got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestApplyContentTransformations_ContextPropagation tests context.Canceled and context.DeadlineExceeded propagation (Task 20)
+func TestApplyContentTransformations_ContextPropagation(t *testing.T) {
+	tests := map[string]struct {
+		setupContext    func() context.Context
+		expectedErrType error
+		expectedInError []string
+	}{
+		"context.Canceled propagated": {
+			setupContext: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				return ctx
+			},
+			expectedErrType: context.Canceled,
+			expectedInError: []string{
+				"test-content",
+				"transformation cancelled",
+			},
+		},
+		"context.DeadlineExceeded propagated": {
+			setupContext: func() context.Context {
+				ctx, cancel := context.WithTimeout(context.Background(), -1)
+				defer cancel()
+				return ctx
+			},
+			expectedErrType: context.DeadlineExceeded,
+			expectedInError: []string{
+				"test-content",
+				"transformation cancelled",
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			op := &mockTransformOperation{
+				name: "test-op",
+			}
+
+			content := &TableContent{
+				id:              "test-content",
+				title:           "Test Table",
+				records:         []Record{{"name": "Alice"}},
+				transformations: []Operation{op},
+			}
+
+			ctx := tc.setupContext()
+			_, err := applyContentTransformations(ctx, content)
+
+			if err == nil {
+				t.Error("Expected context error, got nil")
+				return
+			}
+
+			// Verify the error wraps the context error
+			if !errors.Is(err, tc.expectedErrType) {
+				t.Errorf("Expected error to wrap %v, got: %v", tc.expectedErrType, err)
+			}
+
+			// Verify error message includes content context
+			errorMsg := err.Error()
+			for _, expected := range tc.expectedInError {
+				if !containsString(errorMsg, expected) {
+					t.Errorf("Expected error message to contain %q, got: %v", expected, errorMsg)
+				}
+			}
+		})
+	}
+}
+
+// TestApplyContentTransformations_ContextCancellationErrorMessages tests cancellation error messages with context (Task 20)
+func TestApplyContentTransformations_ContextCancellationErrorMessages(t *testing.T) {
+	tests := map[string]struct {
+		contentID       string
+		expectedInError []string
+	}{
+		"error includes content ID": {
+			contentID: "user-table-123",
+			expectedInError: []string{
+				"user-table-123",
+				"transformation cancelled",
+			},
+		},
+		"error includes transformation context": {
+			contentID: "products",
+			expectedInError: []string{
+				"products",
+				"transformation cancelled",
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			op := &mockTransformOperation{
+				name: "test-op",
+			}
+
+			content := &TableContent{
+				id:              tc.contentID,
+				title:           "Test Table",
+				records:         []Record{{"name": "Alice"}},
+				transformations: []Operation{op},
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel() // Cancel immediately
+
+			_, err := applyContentTransformations(ctx, content)
+
+			if err == nil {
+				t.Error("Expected cancellation error, got nil")
+				return
+			}
+
+			errorMsg := err.Error()
+			for _, expected := range tc.expectedInError {
+				if !containsString(errorMsg, expected) {
+					t.Errorf("Expected error message to contain %q, got: %v", expected, errorMsg)
+				}
+			}
+		})
+	}
+}
+
+// TestApplyContentTransformations_RenderingStopsOnCancellation tests rendering stops when context is cancelled (Task 20)
+func TestApplyContentTransformations_RenderingStopsOnCancellation(t *testing.T) {
+	executed := []string{}
+
+	op1 := &mockTransformOperation{
+		name: "op1",
+		applyFunc: func(ctx context.Context, content Content) (Content, error) {
+			executed = append(executed, "op1")
+			return content, nil
+		},
+	}
+
+	// This operation won't be reached due to context cancellation
+	op2 := &mockTransformOperation{
+		name: "op2",
+		applyFunc: func(ctx context.Context, content Content) (Content, error) {
+			executed = append(executed, "op2")
+			return content, nil
+		},
+	}
+
+	op3 := &mockTransformOperation{
+		name: "op3",
+		applyFunc: func(ctx context.Context, content Content) (Content, error) {
+			executed = append(executed, "op3")
+			return content, nil
+		},
+	}
+
+	content := &TableContent{
+		id:              "test-content",
+		title:           "Test Table",
+		records:         []Record{{"name": "Alice"}},
+		transformations: []Operation{op1, op2, op3},
+	}
+
+	// Create a context and cancel it after first operation would complete
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// For testing, we need to simulate cancellation between operations
+	// Since applyContentTransformations checks ctx.Err() before each operation,
+	// we'll test with a pre-cancelled context
+	cancel()
+
+	_, err := applyContentTransformations(ctx, content)
+
+	if err == nil {
+		t.Error("Expected context cancellation error, got nil")
+		return
+	}
+
+	// Verify no operations executed when context was already cancelled
+	if len(executed) > 0 {
+		t.Errorf("Expected no operations to execute with cancelled context, got: %v", executed)
+	}
+
+	// Verify the error is a cancellation error
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("Expected context.Canceled error, got: %v", err)
+	}
+}

@@ -1,6 +1,16 @@
 ## Unreleased
 
 ### Added
+- **Advanced Error Handling Tests (TDD)** - Comprehensive test suite for validation and context cancellation error handling in per-content transformations:
+  - Validation error tests covering configuration errors (nil predicates, negative limits, empty column names, invalid groupby operations)
+  - Data-dependent validation error tests for missing columns and empty operations
+  - Error message context tests verifying content ID and operation index inclusion in all error messages
+  - Fail-fast behavior tests confirming rendering stops immediately on validation errors
+  - Context cancellation detection tests for pre-cancelled contexts and deadline exceeded scenarios
+  - Context propagation tests verifying context.Canceled and context.DeadlineExceeded proper wrapping
+  - Context cancellation error message tests ensuring proper error context with content ID
+  - Rendering stop tests confirming no operations execute when context is cancelled
+  - All tests follow TDD red-green pattern with proper test organization using map-based table tests
 - **Renderer Integration for Per-Content Transformations (TDD)** - Integrated transformation execution across all renderers following Test-Driven Development:
   - Updated JSONRenderer and YAMLRenderer via shared `renderDocumentGeneric()` function to call `applyContentTransformations()` before rendering each content item
   - Updated HTMLRenderer via `baseRenderer.renderTransformedDocument()` to apply transformations in the base rendering pipeline

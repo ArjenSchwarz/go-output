@@ -185,7 +185,7 @@ references:
 
 ## Phase 5: Advanced Testing (TDD)
 
-- [ ] 18. Write tests for validation error handling
+- [x] 18. Write tests for validation error handling
   - Write tests for configuration errors (nil predicates, negative limits)
   - Write tests for data-dependent errors (missing columns, type mismatches)
   - Write tests for error messages with content ID and operation index
@@ -194,7 +194,7 @@ references:
   - Requirements: [4.1](requirements.md#4.1), [4.2](requirements.md#4.2), [4.3](requirements.md#4.3), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5), [4.6](requirements.md#4.6), [5.1](requirements.md#5.1), [5.2](requirements.md#5.2), [5.3](requirements.md#5.3)
   - References: v2/renderer_test.go
 
-- [ ] 19. Implement validation error handling
+- [x] 19. Implement validation error handling
   - Ensure Validate() is called before Apply() in applyContentTransformations()
   - Ensure validation errors include content ID and operation index
   - Ensure validation errors stop rendering immediately (fail-fast)
@@ -203,7 +203,7 @@ references:
   - Requirements: [4.1](requirements.md#4.1), [4.2](requirements.md#4.2), [4.3](requirements.md#4.3), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5), [4.6](requirements.md#4.6), [5.1](requirements.md#5.1), [5.2](requirements.md#5.2), [5.3](requirements.md#5.3)
   - References: v2/renderer.go
 
-- [ ] 20. Write tests for context cancellation handling
+- [x] 20. Write tests for context cancellation handling
   - Write tests for context cancellation detected before operations
   - Write tests for rendering stopping when context is cancelled
   - Write tests for context.Canceled and context.DeadlineExceeded propagation
@@ -212,7 +212,7 @@ references:
   - Requirements: [5.4](requirements.md#5.4), [8.4](requirements.md#8.4)
   - References: v2/renderer_test.go
 
-- [ ] 21. Implement context cancellation handling
+- [x] 21. Implement context cancellation handling
   - Ensure ctx.Err() is checked before each operation in applyContentTransformations()
   - Ensure context cancellation stops rendering immediately
   - Ensure context errors are properly wrapped with content context
