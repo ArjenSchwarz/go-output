@@ -43,15 +43,16 @@ type Format struct {
 
 // Built-in format constants for common output formats
 var (
-	JSON     = Format{Name: FormatJSON, Renderer: &jsonRenderer{}}
-	YAML     = Format{Name: FormatYAML, Renderer: &yamlRenderer{}}
-	CSV      = Format{Name: FormatCSV, Renderer: &csvRenderer{}}
-	HTML     = Format{Name: FormatHTML, Renderer: &htmlRenderer{}}
-	Table    = Format{Name: FormatTable, Renderer: &tableRenderer{}}
-	Markdown = Format{Name: FormatMarkdown, Renderer: &markdownRenderer{headingLevel: 1}}
-	DOT      = Format{Name: FormatDOT, Renderer: &dotRenderer{}}
-	Mermaid  = Format{Name: FormatMermaid, Renderer: &mermaidRenderer{}}
-	DrawIO   = Format{Name: FormatDrawIO, Renderer: &drawioRenderer{}}
+	JSON         = Format{Name: FormatJSON, Renderer: &jsonRenderer{}}
+	YAML         = Format{Name: FormatYAML, Renderer: &yamlRenderer{}}
+	CSV          = Format{Name: FormatCSV, Renderer: &csvRenderer{}}
+	HTML         = Format{Name: FormatHTML, Renderer: &htmlRenderer{useTemplate: true, template: DefaultHTMLTemplate}}
+	HTMLFragment = Format{Name: FormatHTML, Renderer: &htmlRenderer{useTemplate: false}}
+	Table        = Format{Name: FormatTable, Renderer: &tableRenderer{}}
+	Markdown     = Format{Name: FormatMarkdown, Renderer: &markdownRenderer{headingLevel: 1}}
+	DOT          = Format{Name: FormatDOT, Renderer: &dotRenderer{}}
+	Mermaid      = Format{Name: FormatMermaid, Renderer: &mermaidRenderer{}}
+	DrawIO       = Format{Name: FormatDrawIO, Renderer: &drawioRenderer{}}
 )
 
 // Table style format constants for v1 compatibility
@@ -108,5 +109,15 @@ func MarkdownWithOptions(includeToC bool, frontMatter map[string]string) Format 
 	return Format{
 		Name:     FormatMarkdown,
 		Renderer: NewMarkdownRendererWithOptions(includeToC, frontMatter),
+	}
+}
+
+// HTMLWithTemplate creates an HTML format with a custom template
+// If template is nil, produces fragment output (no template wrapping)
+// If template is provided, produces complete HTML document with the template
+func HTMLWithTemplate(template *HTMLTemplate) Format {
+	return Format{
+		Name:     FormatHTML,
+		Renderer: &htmlRenderer{useTemplate: template != nil, template: template},
 	}
 }

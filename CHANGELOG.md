@@ -1,5 +1,57 @@
 ## Unreleased
 
+### Added
+- **HTML Template System Integration Testing (Phase 6)** - Complete integration test suite for HTML document rendering and thread safety validation
+  - 30 comprehensive integration tests covering full document generation workflow
+  - Mermaid chart integration tests (4): script injection order, fragment mode, multiple charts, XSS prevention
+  - Template customization tests (9): custom title, CSS overrides, external stylesheets, meta tags, head/body injection, theme overrides, body class/attributes, combined customizations
+  - Edge case tests (9): empty document, empty CSS, empty external stylesheets, missing optional fields, nil template, empty collections, all empty fields
+  - Thread safety tests (4): concurrent rendering same template, template instance reuse, no shared mutable state, concurrent Mermaid chart rendering
+  - All tests pass with `-race` flag verifying zero data races
+  - Code modernized to Go 1.24+ `range` syntax for all for loops
+  - Full test coverage of HTML rendering pipeline with 72.1% overall statement coverage
+  - All code passes golangci-lint, go fmt, and modernize validation
+- **HTML Template System Testing (Phase 3)** - Comprehensive test suite for HTML template wrapping functionality
+  - `wrapInTemplate()` function implementation in `html_renderer.go` for generating complete HTML5 documents
+  - Added `useTemplate` and `template` fields to `htmlRenderer` struct for template configuration
+  - Integrated template wrapping into rendering pipeline after mermaid script injection
+  - 20 comprehensive test functions covering all template features:
+    - DOCTYPE declaration and HTML element structure
+    - Meta tags (charset, viewport, description, author, custom)
+    - CSS styling (embedded, external, theme overrides)
+    - Body customization (class, attributes, extra content)
+    - Head content injection
+    - Fragment content injection and placement
+    - Nil template fallback to DefaultHTMLTemplate
+    - Edge cases with empty fields and HTML structure ordering
+  - Full HTML escaping validation for XSS prevention in metadata fields
+  - Proper element ordering verification (DOCTYPE → html → head → body)
+  - All tests pass with proper use of map-based table-driven test patterns
+  - Code passes golangci-lint, go fmt, and modernize validation
+- **HTML Template System Responsive CSS (Phase 2)** - Implemented modern responsive CSS styling system for HTML document templates
+  - `html_css.go` with two CSS constant variables: `defaultResponsiveCSS` and `mermaidOptimizedCSS`
+  - Mobile-first responsive CSS using CSS custom properties for theming (colors, spacing, typography, layout)
+  - WCAG AA compliant color contrast values for accessibility
+  - System font stack (-apple-system, BlinkMacSystemFont, Segoe UI, Roboto) for optimal performance
+  - Responsive table styling with mobile stacking pattern (`@media max-width: 480px`)
+  - Desktop table layout with hover effects (`@media min-width: 481px`)
+  - Support for all content types: tables, sections, details/summary collapsibles, text content, mermaid diagrams
+  - Comprehensive tests verifying CSS structure: custom properties, breakpoints, table stacking, font stack, color contrast, mermaid styles
+  - All code passes golangci-lint, go fmt, and full test suite
+- **HTML Template System Core Implementation (Phase 1)** - Implemented foundation for full HTML document generation with responsive CSS templates
+  - `HTMLTemplate` struct with 14 fields for metadata, styling, and customization
+  - Three built-in template variants: `DefaultHTMLTemplate` (modern responsive), `MinimalHTMLTemplate` (no styling), `MermaidHTMLTemplate` (diagram-optimized)
+  - Comprehensive godoc documentation with security warnings for unescaped content fields (CSS, HeadExtra, BodyExtra)
+  - Package-level template variables for zero-allocation usage
+  - Full test coverage with map-based table-driven tests for field defaults and custom overrides
+  - CSS custom property support via `ThemeOverrides` field for easy theme customization
+- **HTML Template System Specification** - Created comprehensive specification documents for full HTML document generation with responsive CSS templates
+  - Requirements documentation outlining template structure, responsive design system, and operational modes
+  - Design documentation detailing architecture, component layers, template wrapping, and CSS theming
+  - Task breakdown for implementation planning and progress tracking
+  - Decision log documenting key architectural decisions including string-based templates, embedded CSS, mobile-first design, and CSS custom properties
+  - Initial idea document outlining the feature concept and motivation
+
 ## 2.3.3 / 2025-10-20
 
 ### Added

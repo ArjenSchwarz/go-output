@@ -17,6 +17,8 @@ const (
 type htmlRenderer struct {
 	baseRenderer
 	collapsibleConfig RendererConfig
+	useTemplate       bool          // Enable/disable template wrapping
+	template          *HTMLTemplate // Template configuration (nil = use default)
 }
 
 func (h *htmlRenderer) Format() string {
@@ -36,11 +38,52 @@ func (h *htmlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error
 		result = h.injectMermaidScript(result)
 	}
 
+	// Wrap in template if enabled
+	if h.useTemplate {
+		result = h.wrapInTemplate(result, h.template)
+	}
+
 	return result, nil
 }
 
 func (h *htmlRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
-	return h.renderDocumentTo(ctx, doc, w, h.renderContentTo)
+	// Write template header if needed
+	if h.useTemplate {
+		tmpl := h.template
+		if tmpl == nil {
+			tmpl = DefaultHTMLTemplate
+		}
+		header := h.getTemplateHeader(tmpl)
+		if _, err := w.Write(header); err != nil {
+			return err
+		}
+	}
+
+	// Render document content
+	if err := h.renderDocumentTo(ctx, doc, w, h.renderContentTo); err != nil {
+		return err
+	}
+
+	// Check if document contains any ChartContent that would need mermaid.js
+	if h.documentContainsMermaidCharts(doc) {
+		if _, err := w.Write([]byte(h.getMermaidScript())); err != nil {
+			return err
+		}
+	}
+
+	// Write template footer if needed
+	if h.useTemplate {
+		tmpl := h.template
+		if tmpl == nil {
+			tmpl = DefaultHTMLTemplate
+		}
+		footer := h.getTemplateFooter(tmpl)
+		if _, err := w.Write(footer); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (h *htmlRenderer) SupportsStreaming() bool {
@@ -282,17 +325,21 @@ func (h *htmlRenderer) sectionContainsMermaidCharts(section *SectionContent) boo
 	return false
 }
 
-// injectMermaidScript adds the mermaid.js script to the HTML output
-func (h *htmlRenderer) injectMermaidScript(html []byte) []byte {
-	const mermaidScript = `<script type="module">
+// getMermaidScript returns the mermaid.js script as a string
+func (h *htmlRenderer) getMermaidScript() string {
+	return `<script type="module">
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
     mermaid.initialize({ startOnLoad: true });
   </script>
 `
+}
+
+// injectMermaidScript adds the mermaid.js script to the HTML output
+func (h *htmlRenderer) injectMermaidScript(html []byte) []byte {
 	// Append the script at the end of the HTML
 	var result strings.Builder
 	result.Write(html)
-	result.WriteString(mermaidScript)
+	result.WriteString(h.getMermaidScript())
 	return []byte(result.String())
 }
 
@@ -466,4 +513,126 @@ func (h *htmlRenderer) renderCollapsibleSection(section *DefaultCollapsibleSecti
 	result.WriteString(`</section>`)
 
 	return []byte(result.String()), nil
+}
+
+// getTemplateHeader returns the HTML header portion of the template (up to <body>)
+// This is used for streaming output where the header is written before content.
+func (h *htmlRenderer) getTemplateHeader(tmpl *HTMLTemplate) []byte {
+	if tmpl == nil {
+		tmpl = DefaultHTMLTemplate
+	}
+
+	var buf strings.Builder
+
+	// DOCTYPE
+	buf.WriteString("<!DOCTYPE html>\n")
+
+	// HTML element with lang attribute
+	buf.WriteString(fmt.Sprintf("<html lang=\"%s\">\n", html.EscapeString(tmpl.Language)))
+
+	// Head section
+	buf.WriteString("<head>\n")
+	buf.WriteString(fmt.Sprintf("  <meta charset=\"%s\">\n", html.EscapeString(tmpl.Charset)))
+
+	if tmpl.Viewport != "" {
+		buf.WriteString(fmt.Sprintf("  <meta name=\"viewport\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Viewport)))
+	}
+
+	buf.WriteString(fmt.Sprintf("  <title>%s</title>\n", html.EscapeString(tmpl.Title)))
+
+	// Additional meta tags (after title)
+	if tmpl.Description != "" {
+		buf.WriteString(fmt.Sprintf("  <meta name=\"description\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Description)))
+	}
+	if tmpl.Author != "" {
+		buf.WriteString(fmt.Sprintf("  <meta name=\"author\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Author)))
+	}
+
+	// Custom meta tags
+	for name, content := range tmpl.MetaTags {
+		buf.WriteString(fmt.Sprintf("  <meta name=\"%s\" content=\"%s\">\n",
+			html.EscapeString(name), html.EscapeString(content)))
+	}
+
+	// External stylesheets
+	for _, href := range tmpl.ExternalCSS {
+		buf.WriteString(fmt.Sprintf("  <link rel=\"stylesheet\" href=\"%s\">\n",
+			html.EscapeString(href)))
+	}
+
+	// Embedded CSS
+	if tmpl.CSS != "" {
+		buf.WriteString("  <style>\n")
+		buf.WriteString(tmpl.CSS) // CSS is NOT escaped (assumed safe)
+		buf.WriteString("\n  </style>\n")
+	}
+
+	// Theme overrides (CSS custom property overrides)
+	if len(tmpl.ThemeOverrides) > 0 {
+		buf.WriteString("  <style>\n")
+		buf.WriteString("    :root {\n")
+		for prop, value := range tmpl.ThemeOverrides {
+			buf.WriteString(fmt.Sprintf("      %s: %s;\n",
+				html.EscapeString(prop), html.EscapeString(value)))
+		}
+		buf.WriteString("    }\n")
+		buf.WriteString("  </style>\n")
+	}
+
+	// Additional head content
+	if tmpl.HeadExtra != "" {
+		buf.WriteString(tmpl.HeadExtra) // NOT escaped (assumed safe, user responsibility)
+	}
+
+	buf.WriteString("</head>\n")
+
+	// Body section
+	bodyTag := "<body"
+	if tmpl.BodyClass != "" {
+		bodyTag += fmt.Sprintf(" class=\"%s\"", html.EscapeString(tmpl.BodyClass))
+	}
+	for attr, value := range tmpl.BodyAttrs {
+		bodyTag += fmt.Sprintf(" %s=\"%s\"",
+			html.EscapeString(attr), html.EscapeString(value))
+	}
+	bodyTag += ">\n"
+	buf.WriteString(bodyTag)
+
+	return []byte(buf.String())
+}
+
+// getTemplateFooter returns the HTML footer portion of the template (from </body> to end)
+// This is used for streaming output where the footer is written after content.
+func (h *htmlRenderer) getTemplateFooter(tmpl *HTMLTemplate) []byte {
+	if tmpl == nil {
+		tmpl = DefaultHTMLTemplate
+	}
+
+	var buf strings.Builder
+
+	// Additional body content
+	if tmpl.BodyExtra != "" {
+		buf.WriteString(tmpl.BodyExtra) // NOT escaped (scripts, etc.)
+	}
+
+	buf.WriteString("\n</body>\n</html>\n")
+
+	return []byte(buf.String())
+}
+
+// wrapInTemplate wraps rendered HTML fragment in a complete HTML5 document using the provided template.
+// All user-controlled fields are HTML-escaped to prevent XSS injection.
+// CSS and extra content fields (CSS, HeadExtra, BodyExtra) are included as-is (user responsibility for safety).
+func (h *htmlRenderer) wrapInTemplate(fragmentHTML []byte, tmpl *HTMLTemplate) []byte {
+	var result strings.Builder
+
+	// Use header and footer helpers
+	result.Write(h.getTemplateHeader(tmpl))
+	result.Write(fragmentHTML)
+	result.Write(h.getTemplateFooter(tmpl))
+
+	return []byte(result.String())
 }
