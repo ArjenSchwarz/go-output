@@ -102,7 +102,13 @@ func (b *baseRenderer) renderTransformedDocument(ctx context.Context, doc *Docum
 		default:
 		}
 
-		contentBytes, err := renderFunc(content)
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentBytes, err := renderFunc(transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
 		}

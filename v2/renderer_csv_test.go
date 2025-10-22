@@ -246,3 +246,41 @@ func TestCSVRenderer_StreamingVsBuffered(t *testing.T) {
 		}
 	}
 }
+
+// TestCSVRenderer_TransformationIntegration tests that CSVRenderer applies transformations
+func TestCSVRenderer_TransformationIntegration(t *testing.T) {
+	data := []Record{
+		{"name": "Alice", "age": 30},
+		{"name": "Bob", "age": 25},
+		{"name": "Charlie", "age": 35},
+	}
+
+	doc := New().
+		Table("test", data,
+			WithKeys("name", "age"),
+			WithTransformations(
+				NewFilterOp(func(r Record) bool {
+					return r["age"].(int) >= 30
+				}),
+			),
+		).
+		Build()
+
+	renderer := &csvRenderer{}
+	result, err := renderer.Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	// Parse CSV to verify filtering worked
+	csvReader := csv.NewReader(strings.NewReader(string(result)))
+	records, err := csvReader.ReadAll()
+	if err != nil {
+		t.Fatalf("Failed to parse CSV: %v", err)
+	}
+
+	// Should have header + 2 filtered records
+	if len(records) != 3 {
+		t.Errorf("Expected 3 rows (header + 2 data), got %d", len(records))
+	}
+}

@@ -74,7 +74,13 @@ func (m *markdownRenderer) renderDocumentMarkdown(ctx context.Context, doc *Docu
 			result.WriteString("\n")
 		}
 
-		contentMD, err := m.renderContent(content)
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentMD, err := m.renderContent(transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
 		}

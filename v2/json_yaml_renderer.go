@@ -32,9 +32,13 @@ func renderDocumentGeneric(
 
 	contents := doc.GetContents()
 
-	// If single content, render it directly
+	// If single content, apply transformations and render it directly
 	if len(contents) == 1 {
-		return renderContent(contents[0])
+		transformed, err := applyContentTransformations(ctx, contents[0])
+		if err != nil {
+			return nil, err
+		}
+		return renderContent(transformed)
 	}
 
 	// Multiple contents: create an array
@@ -47,7 +51,13 @@ func renderDocumentGeneric(
 		default:
 		}
 
-		contentBytes, err := renderContent(content)
+		// Apply transformations before rendering
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentBytes, err := renderContent(transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
 		}

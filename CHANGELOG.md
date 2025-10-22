@@ -1,6 +1,19 @@
 ## Unreleased
 
 ### Added
+- **Renderer Integration for Per-Content Transformations (TDD)** - Integrated transformation execution across all renderers following Test-Driven Development:
+  - Updated JSONRenderer and YAMLRenderer via shared `renderDocumentGeneric()` function to call `applyContentTransformations()` before rendering each content item
+  - Updated HTMLRenderer via `baseRenderer.renderTransformedDocument()` to apply transformations in the base rendering pipeline
+  - Updated CSVRenderer, TableRenderer, and MarkdownRenderer with direct transformation calls in their custom rendering loops
+  - All renderers properly preserve document immutability by cloning content before applying transformations
+  - Fail-fast error handling propagates transformation errors immediately with detailed context
+  - Context cancellation properly flows through all renderer implementations for responsive cancellation
+  - Comprehensive test suite with 850+ lines of tests covering all renderers:
+    - JSONRenderer: 5 test functions covering transformation integration, fail-fast errors, context cancellation, immutability, and mixed content scenarios
+    - YAMLRenderer: 4 test functions covering filter operations, sort/limit chains, fail-fast behavior, and context handling
+    - CSVRenderer, TableRenderer, MarkdownRenderer, HTMLRenderer: Integration tests verifying transformation application
+  - All tests verify transformed output correctness (filtered records, sorted data, limited results)
+  - All renderers support mixing transformed and non-transformed content in the same document
 - **Per-Content Transformations Specification** - Complete requirements, design, and implementation specification for attaching transformations directly to individual content items (tables, text, sections) at creation time, enabling different operations to be applied to different content in the same document.
 - **Content Interface Transformation Support** - Extended Content interface with `Clone()` and `GetTransformations()` methods to enable per-content transformation capabilities across all content types (TableContent, TextContent, RawContent, SectionContent, DefaultCollapsibleSection, GraphContent, ChartContent, DrawIOContent)
 - **Transformation Execution Helper (TDD)** - Implemented core transformation execution logic following Test-Driven Development:

@@ -71,8 +71,14 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 		default:
 		}
 
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return err
+		}
+
 		// Handle different content types for CSV output
-		switch content := content.(type) {
+		switch content := transformed.(type) {
 		case *TableContent:
 			// Add a blank line between tables (except for the first table)
 			if i > 0 && hasWrittenHeaders {

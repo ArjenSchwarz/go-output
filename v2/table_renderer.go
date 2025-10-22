@@ -61,7 +61,13 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 		default:
 		}
 
-		switch c := content.(type) {
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		switch c := transformed.(type) {
 		case *TableContent:
 			if i > 0 {
 				result.WriteString("\n")
