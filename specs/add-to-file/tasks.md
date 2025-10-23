@@ -191,41 +191,41 @@ references:
 
 ## Phase 4: S3 Append Support
 
-- [ ] 9. S3Writer Core Infrastructure
+- [x] 9. S3Writer Core Infrastructure
   - Add S3GetObjectAPI interface
   - Update S3ClientAPI to include GetObject
   - Add appendMode field to S3Writer
   - Add maxAppendSize field with 100MB default
   - Requirements: [10.1](requirements.md#10.1), [10.2](requirements.md#10.2), [10.6](requirements.md#10.6), [10.7](requirements.md#10.7)
   - References: v2/s3_writer.go
-  - [ ] 9.1. Update S3Writer struct and interfaces
+  - [x] 9.1. Update S3Writer struct and interfaces
     - Define S3GetObjectAPI interface with GetObject method
     - Update S3ClientAPI to embed both Put and Get interfaces
     - Add appendMode bool field
     - Add maxAppendSize int64 field (default 104857600 = 100MB)
     - Maintain backward compatibility with existing S3PutObjectAPI clients
     - Requirements: [10.1](requirements.md#10.1), [10.6](requirements.md#10.6)
-  - [ ] 9.2. Implement S3 append mode functional options
+  - [x] 9.2. Implement S3 append mode functional options
     - Create WithS3AppendMode() S3WriterOption
     - Create WithMaxAppendSize(int64) S3WriterOption
     - Add validation that maxAppendSize > 0
     - Document default value in godoc
     - Requirements: [10.1](requirements.md#10.1), [10.7](requirements.md#10.7)
 
-- [ ] 10. S3 Append Logic Implementation
+- [x] 10. S3 Append Logic Implementation
   - Implement appendToS3Object() using download-modify-upload pattern
   - Use GetObject to download existing content
   - Implement ETag-based conflict detection
   - Add size validation before append
   - Requirements: [10.1](requirements.md#10.1), [10.3](requirements.md#10.3), [10.4](requirements.md#10.4), [10.5](requirements.md#10.5), [10.6](requirements.md#10.6)
   - References: v2/s3_writer.go
-  - [ ] 10.1. Write unit tests for S3 append configuration
+  - [x] 10.1. Write unit tests for S3 append configuration
     - Test WithS3AppendMode() sets appendMode correctly
     - Test WithMaxAppendSize() sets size limit
     - Test default maxAppendSize is 100MB
     - Mock S3 client for testing
     - Requirements: [10.1](requirements.md#10.1), [10.7](requirements.md#10.7), [9.11](requirements.md#9.11)
-  - [ ] 10.2. Implement appendToS3Object() core logic
+  - [x] 10.2. Implement appendToS3Object() core logic
     - Call GetObject to download existing content (no HeadObject)
     - Handle NoSuchKey error (create new object)
     - Validate ContentLength against maxAppendSize
@@ -233,14 +233,14 @@ references:
     - Combine data using combineData() method
     - Add comprehensive error handling and context
     - Requirements: [10.1](requirements.md#10.1), [10.2](requirements.md#10.2), [10.3](requirements.md#10.3), [10.6](requirements.md#10.6)
-  - [ ] 10.3. Implement ETag-based conflict detection
+  - [x] 10.3. Implement ETag-based conflict detection
     - Store ETag from GetObject response
     - Use IfMatch parameter in PutObject request
     - Detect PreconditionFailed error type
     - Return clear error message about concurrent modification
     - Suggest retry in error message
     - Requirements: [10.4](requirements.md#10.4), [10.5](requirements.md#10.5)
-  - [ ] 10.4. Implement S3 combineData() method
+  - [x] 10.4. Implement S3 combineData() method
     - Switch on format type
     - For HTML: call combineHTMLData() (reuse logic from FileWriter)
     - For CSV: call combineCSVData() (strip headers from new data)
@@ -248,14 +248,14 @@ references:
     - Return combined byte slice
     - Requirements: [10.3](requirements.md#10.3)
 
-- [ ] 11. S3 Integration Tests
+- [x] 11. S3 Integration Tests
   - Write integration tests using mock S3 or localstack
   - Test complete append workflow
   - Test ETag conflict detection
   - Test size validation
   - Requirements: [9.11](requirements.md#9.11), [9.12](requirements.md#9.12), [9.13](requirements.md#9.13)
   - References: v2/s3_writer_test.go
-  - [ ] 11.1. Write S3 append integration tests
+  - [x] 11.1. Write S3 append integration tests
     - Test appending to non-existent object (creates new)
     - Test appending to existing object (download-modify-upload)
     - Test concurrent modification detection (ETag mismatch)

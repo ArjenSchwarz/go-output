@@ -181,6 +181,39 @@
 - **Code Modernization** - Updated map copying to use maps.Copy() instead of manual loops per Go 1.24+ best practices
 
 ### Added
+- **Add-to-File Feature Phase 4: S3 Append Support** - Complete S3Writer append mode implementation with ETag-based conflict detection and format-aware data combining
+  - S3Writer append mode using download-modify-upload pattern for infrequent logging scenarios
+  - `WithS3AppendMode()` functional option to enable S3 append operations
+  - `WithMaxAppendSize(int64)` functional option to configure maximum object size for append (default 100MB)
+  - Enhanced S3 interfaces: `S3GetObjectAPI` for GetObject operations, `S3ClientAPI` combining Get and Put operations
+  - `appendToS3Object()` method implementing download-modify-upload with single GetObject API call (no HeadObject needed)
+  - Size validation preventing append operations on objects exceeding configured maximum
+  - ETag-based optimistic locking for concurrent modification detection using `IfMatch` parameter in PutObject
+  - Format-specific data combining via `combineData()` method:
+    - HTML: Inserts new content before `<!-- go-output-append -->` marker
+    - CSV: Strips headers from new data using CRLF/LF normalization before appending
+    - Other formats: Simple byte concatenation for NDJSON-style logging
+  - `combineHTMLData()` method for marker-based HTML content insertion (reuses FileWriter logic)
+  - `combineCSVData()` method for header-aware CSV appending with line ending normalization
+  - **Configuration Tests (104 lines)**:
+    - `TestS3WriterAppendModeConfiguration`: 6 test cases covering append mode enable/disable, max size configuration, combined options, and edge cases (zero/negative values)
+  - **Integration Tests (249 lines)**:
+    - `TestS3WriterAppend_CreateNewObject`: Verifies new object creation when object doesn't exist (NoSuchKey error handling)
+    - `TestS3WriterAppend_ExistingObject`: Tests download-modify-upload workflow with combined data verification
+    - `TestS3WriterAppend_SizeExceedsLimit`: Validates size limit enforcement rejecting 200MB object with 100MB limit
+    - `TestS3WriterAppend_ConcurrentModification`: Tests ETag mismatch detection with clear error message suggesting retry
+    - `TestS3WriterAppend_HTMLFormat`: Verifies HTML marker preservation and content insertion ordering
+    - `TestS3WriterAppend_CSVFormat`: Tests CSV header stripping producing single-header combined output
+  - Error handling improvements:
+    - PreconditionFailed detection by checking error message for "PreconditionFailed", "pre-condition", or "412" status code
+    - Clear error messages for concurrent modifications with retry suggestions
+    - Size limit errors include current size and maximum allowed size
+    - GetObject failures wrapped with descriptive context
+  - Mock S3 client enhanced with GetObject support for append mode testing
+  - All code passes golangci-lint, go fmt, and test suite validation
+  - Total: 353 lines of test code covering 7 test scenarios with mock S3 client
+  - Full integration with existing S3Writer architecture maintaining backward compatibility
+
 - **Add-to-File Feature Phase 3: CSV Format Support and Multi-Section Document Handling** - CSV header stripping and multi-section append functionality with cross-platform line ending support
   - CSV header skipping implementation in existing `appendCSVWithoutHeaders()` method with CRLF/LF normalization
   - Multi-section document append support verified for HTML, CSV, and JSON formats
