@@ -98,6 +98,52 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 
 			hasWrittenHeaders = true
 
+		case *SectionContent:
+			// Extract and render tables from sections
+			// CSV is a flat format, so we flatten the section hierarchy
+			for _, nestedContent := range content.Contents() {
+				// Apply transformations to nested content
+				nestedTransformed, err := applyContentTransformations(ctx, nestedContent)
+				if err != nil {
+					return err
+				}
+
+				if nestedTable, ok := nestedTransformed.(*TableContent); ok {
+					// Add separator between tables
+					if hasWrittenHeaders {
+						if err := csvWriter.Write([]string{}); err != nil {
+							return fmt.Errorf("failed to write separator row: %w", err)
+						}
+					}
+
+					writeHeaders := !hasWrittenHeaders
+					if err := c.renderTableContentCSV(nestedTable, csvWriter, writeHeaders); err != nil {
+						return fmt.Errorf("failed to render table %s: %w", nestedTable.ID(), err)
+					}
+					hasWrittenHeaders = true
+				} else if nestedSection, ok := nestedTransformed.(*SectionContent); ok {
+					// Recursively handle nested sections
+					for _, deepContent := range nestedSection.Contents() {
+						deepTransformed, err := applyContentTransformations(ctx, deepContent)
+						if err != nil {
+							return err
+						}
+						if deepTable, ok := deepTransformed.(*TableContent); ok {
+							if hasWrittenHeaders {
+								if err := csvWriter.Write([]string{}); err != nil {
+									return fmt.Errorf("failed to write separator row: %w", err)
+								}
+							}
+							writeHeaders := !hasWrittenHeaders
+							if err := c.renderTableContentCSV(deepTable, csvWriter, writeHeaders); err != nil {
+								return fmt.Errorf("failed to render table %s: %w", deepTable.ID(), err)
+							}
+							hasWrittenHeaders = true
+						}
+					}
+				}
+			}
+
 		case *DefaultCollapsibleSection:
 			// Handle CollapsibleSection with metadata comments (Requirement 15.8)
 			if err := c.renderCollapsibleSectionCSV(content, csvWriter, &hasWrittenHeaders); err != nil {

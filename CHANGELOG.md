@@ -14,6 +14,14 @@
   - Updated `markdownRenderer.renderCollapsibleSection()` to apply transformations for collapsible sections (v2/markdown_renderer.go)
   - Added comprehensive tests for nested content at multiple depths (v2/renderer_nested_test.go)
 
+- **Critical: JSON/YAML Streaming Nested Content Bugs** - Fixed additional streaming render bugs discovered during design review:
+  - Fixed `jsonRenderer.renderSectionContentJSONStream()` to apply transformations to nested content (v2/json_yaml_renderer.go)
+  - Fixed `yamlRenderer.renderSectionContentYAMLStream()` to apply transformations to nested content (v2/json_yaml_renderer.go)
+  - Fixed `csvRenderer` to handle sections and extract nested tables with transformations (v2/csv_renderer.go)
+  - Fixed `tableRenderer` to apply transformations to nested section content (v2/table_renderer.go)
+  - Added specific tests for JSON and YAML `RenderTo()` with nested sections (v2/renderer_integration_streaming_test.go)
+  - Expanded integration tests to cover all 6 renderers (Markdown, HTML, JSON, YAML, CSV, Table)
+
 ### Added
 - **Test Coverage for Critical Fixes** - Added integration tests verifying combined streaming and nested transformation behavior:
   - Tests for streaming render with nested sections containing transformations

@@ -78,6 +78,62 @@ func TestStreamingRenderWithNestedSectionsAndTransformations(t *testing.T) {
 				}
 			},
 		},
+		"JSON": {
+			renderer: &jsonRenderer{},
+			validate: func(t *testing.T, output string) {
+				if strings.Contains(output, "Bob") {
+					t.Error("Bob should be filtered out but appears in output")
+				}
+				if !strings.Contains(output, "Alice") || !strings.Contains(output, "David") {
+					t.Error("Expected Alice and David in output")
+				}
+				if strings.Contains(output, "Charlie") {
+					t.Error("Charlie should be limited out but appears in output")
+				}
+			},
+		},
+		"YAML": {
+			renderer: &yamlRenderer{},
+			validate: func(t *testing.T, output string) {
+				if strings.Contains(output, "Bob") {
+					t.Error("Bob should be filtered out but appears in output")
+				}
+				if !strings.Contains(output, "Alice") || !strings.Contains(output, "David") {
+					t.Error("Expected Alice and David in output")
+				}
+				if strings.Contains(output, "Charlie") {
+					t.Error("Charlie should be limited out but appears in output")
+				}
+			},
+		},
+		"CSV": {
+			renderer: &csvRenderer{},
+			validate: func(t *testing.T, output string) {
+				if strings.Contains(output, "Bob") {
+					t.Error("Bob should be filtered out but appears in output")
+				}
+				if !strings.Contains(output, "Alice") || !strings.Contains(output, "David") {
+					t.Error("Expected Alice and David in output")
+				}
+				if strings.Contains(output, "Charlie") {
+					t.Error("Charlie should be limited out but appears in output")
+				}
+			},
+		},
+		"Table": {
+			renderer: &tableRenderer{},
+			validate: func(t *testing.T, output string) {
+				if strings.Contains(output, "Bob") {
+					t.Error("Bob should be filtered out but appears in output")
+				}
+				if !strings.Contains(output, "Alice") || !strings.Contains(output, "David") {
+					t.Error("Expected Alice and David in output")
+				}
+				if strings.Contains(output, "Charlie") {
+					t.Error("Charlie should be limited out but appears in output")
+				}
+			},
+		},
 	}
 
 	for name, tc := range tests {
@@ -340,5 +396,128 @@ func TestErrorHandlingAcrossStreamingAndNestedPaths(t *testing.T) {
 				t.Error("Expected error for invalid transformation, got none")
 			}
 		})
+	}
+}
+
+// TestJSONRenderer_RenderTo_WithNestedSectionsAndTransformations verifies that
+// JSON streaming render applies transformations to content nested within sections
+func TestJSONRenderer_RenderTo_WithNestedSectionsAndTransformations(t *testing.T) {
+	data := []Record{
+		{"name": "Alice", "age": 30, "active": true},
+		{"name": "Bob", "age": 25, "active": false},
+		{"name": "Charlie", "age": 35, "active": true},
+	}
+
+	// Create table with filter transformation
+	table, err := NewTableContent("employees", data,
+		WithKeys("name", "age", "active"),
+		WithTransformations(NewFilterOp(func(r Record) bool {
+			active, ok := r["active"].(bool)
+			return ok && active
+		})),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	// Create nested section structure
+	section := NewSectionContent("Active Employees")
+	section.AddContent(table)
+
+	doc := New().AddContent(section).Build()
+
+	renderer := &jsonRenderer{}
+
+	// Test Render()
+	renderOutput, err := renderer.Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	// Test RenderTo()
+	var renderToBuffer bytes.Buffer
+	if err := renderer.RenderTo(context.Background(), doc, &renderToBuffer); err != nil {
+		t.Fatalf("RenderTo failed: %v", err)
+	}
+
+	// Outputs should be identical
+	if !bytes.Equal(renderOutput, renderToBuffer.Bytes()) {
+		t.Errorf("Render() and RenderTo() produced different output\nRender():\n%s\n\nRenderTo():\n%s",
+			string(renderOutput), renderToBuffer.String())
+	}
+
+	// Verify transformation was applied - Bob should be filtered out
+	output := string(renderOutput)
+	if strings.Contains(output, "Bob") {
+		t.Error("Transformation not applied: Bob should be filtered out but appears in output")
+	}
+	if !strings.Contains(output, "Alice") || !strings.Contains(output, "Charlie") {
+		t.Error("Expected Alice and Charlie in output after filter")
+	}
+}
+
+// TestYAMLRenderer_RenderTo_WithNestedSectionsAndTransformations verifies that
+// YAML streaming render applies transformations to content nested within sections
+func TestYAMLRenderer_RenderTo_WithNestedSectionsAndTransformations(t *testing.T) {
+	data := []Record{
+		{"name": "Alice", "age": 30},
+		{"name": "Bob", "age": 25},
+		{"name": "Charlie", "age": 35},
+	}
+
+	// Create table with sort and limit transformations
+	table, err := NewTableContent("employees", data,
+		WithKeys("name", "age"),
+		WithTransformations(
+			NewSortOp(SortKey{Column: "age", Direction: Ascending}),
+			NewLimitOp(2),
+		),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	// Create nested section structure
+	section := NewSectionContent("Youngest Employees")
+	section.AddContent(table)
+
+	doc := New().AddContent(section).Build()
+
+	renderer := &yamlRenderer{}
+
+	// Test Render()
+	renderOutput, err := renderer.Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	// Test RenderTo()
+	var renderToBuffer bytes.Buffer
+	if err := renderer.RenderTo(context.Background(), doc, &renderToBuffer); err != nil {
+		t.Fatalf("RenderTo failed: %v", err)
+	}
+
+	// Outputs should be identical
+	if !bytes.Equal(renderOutput, renderToBuffer.Bytes()) {
+		t.Errorf("Render() and RenderTo() produced different output\nRender():\n%s\n\nRenderTo():\n%s",
+			string(renderOutput), renderToBuffer.String())
+	}
+
+	// Verify transformations were applied:
+	// - Sorted by age ascending: Bob (25), Alice (30), Charlie (35)
+	// - Limited to 2: Bob and Alice only, Charlie filtered out
+	output := string(renderOutput)
+	if !strings.Contains(output, "Bob") || !strings.Contains(output, "Alice") {
+		t.Error("Expected Bob and Alice in output after sort and limit")
+	}
+	if strings.Contains(output, "Charlie") {
+		t.Error("Transformation not applied: Charlie should be limited out but appears in output")
+	}
+
+	// Verify Bob appears before Alice (sorted by age)
+	bobIndex := strings.Index(output, "Bob")
+	aliceIndex := strings.Index(output, "Alice")
+	if bobIndex == -1 || aliceIndex == -1 || bobIndex >= aliceIndex {
+		t.Error("Sort transformation not applied: Bob (age 25) should appear before Alice (age 30)")
 	}
 }
