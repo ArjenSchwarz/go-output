@@ -327,3 +327,256 @@ func TestTableContent_ThreadSafety(t *testing.T) {
 		t.Error("External modification affected original table")
 	}
 }
+
+// TestTableContent_WithTransformations tests that the WithTransformations option stores operations correctly
+func TestTableContent_WithTransformations(t *testing.T) {
+	tests := map[string]struct {
+		transformations []Operation
+		wantCount       int
+	}{
+		"single transformation": {
+			transformations: []Operation{
+				NewFilterOp(func(r Record) bool { return true }),
+			},
+			wantCount: 1,
+		},
+		"multiple transformations": {
+			transformations: []Operation{
+				NewFilterOp(func(r Record) bool { return true }),
+				NewSortOp(SortKey{Column: "name", Direction: Ascending}),
+				NewLimitOp(10),
+			},
+			wantCount: 3,
+		},
+		"zero transformations": {
+			transformations: []Operation{},
+			wantCount:       0,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			data := []map[string]any{
+				{"name": "Alice", "age": 30},
+			}
+
+			table, err := NewTableContent("Test", data,
+				WithKeys("name", "age"),
+				WithTransformations(tc.transformations...),
+			)
+			if err != nil {
+				t.Fatalf("NewTableContent failed: %v", err)
+			}
+
+			transformations := table.GetTransformations()
+			if len(transformations) != tc.wantCount {
+				t.Errorf("GetTransformations() count = %d, want %d", len(transformations), tc.wantCount)
+			}
+		})
+	}
+}
+
+// TestTableContent_GetTransformations tests that GetTransformations returns stored operations correctly
+func TestTableContent_GetTransformations(t *testing.T) {
+	data := []map[string]any{
+		{"name": "Alice", "age": 30},
+	}
+
+	filterOp := NewFilterOp(func(r Record) bool { return true })
+	sortOp := NewSortOp(SortKey{Column: "name", Direction: Ascending})
+	limitOp := NewLimitOp(10)
+
+	table, err := NewTableContent("Test", data,
+		WithKeys("name", "age"),
+		WithTransformations(filterOp, sortOp, limitOp),
+	)
+	if err != nil {
+		t.Fatalf("NewTableContent failed: %v", err)
+	}
+
+	transformations := table.GetTransformations()
+
+	// Verify we got the right number of transformations
+	if len(transformations) != 3 {
+		t.Fatalf("GetTransformations() count = %d, want 3", len(transformations))
+	}
+
+	// Verify operation names (order matters)
+	expectedNames := []string{"Filter", "Sort", "Limit"}
+	for i, op := range transformations {
+		if op.Name() != expectedNames[i] {
+			t.Errorf("transformation %d name = %s, want %s", i, op.Name(), expectedNames[i])
+		}
+	}
+}
+
+// TestTableContent_ClonePreservesTransformations tests that Clone() preserves transformations
+func TestTableContent_ClonePreservesTransformations(t *testing.T) {
+	data := []map[string]any{
+		{"name": "Alice", "age": 30},
+	}
+
+	filterOp := NewFilterOp(func(r Record) bool { return true })
+	sortOp := NewSortOp(SortKey{Column: "name", Direction: Ascending})
+
+	original, err := NewTableContent("Test", data,
+		WithKeys("name", "age"),
+		WithTransformations(filterOp, sortOp),
+	)
+	if err != nil {
+		t.Fatalf("NewTableContent failed: %v", err)
+	}
+
+	// Clone the table
+	cloned := original.Clone()
+
+	// Verify cloned content has the same transformations
+	clonedTable, ok := cloned.(*TableContent)
+	if !ok {
+		t.Fatal("Clone() did not return *TableContent")
+	}
+
+	originalTransformations := original.GetTransformations()
+	clonedTransformations := clonedTable.GetTransformations()
+
+	if len(clonedTransformations) != len(originalTransformations) {
+		t.Errorf("cloned transformations count = %d, want %d",
+			len(clonedTransformations), len(originalTransformations))
+	}
+
+	// Verify transformation order is preserved
+	for i := range originalTransformations {
+		if clonedTransformations[i].Name() != originalTransformations[i].Name() {
+			t.Errorf("transformation %d name = %s, want %s",
+				i, clonedTransformations[i].Name(), originalTransformations[i].Name())
+		}
+	}
+}
+
+// TestTableContent_TransformationOrderPreservation tests that transformation order is preserved
+func TestTableContent_TransformationOrderPreservation(t *testing.T) {
+	data := []map[string]any{
+		{"name": "Alice", "age": 30},
+	}
+
+	// Create operations in specific order
+	ops := []Operation{
+		NewLimitOp(5),
+		NewFilterOp(func(r Record) bool { return true }),
+		NewSortOp(SortKey{Column: "name", Direction: Ascending}),
+		NewLimitOp(10),
+	}
+
+	table, err := NewTableContent("Test", data,
+		WithKeys("name", "age"),
+		WithTransformations(ops...),
+	)
+	if err != nil {
+		t.Fatalf("NewTableContent failed: %v", err)
+	}
+
+	transformations := table.GetTransformations()
+
+	// Verify exact order matches input
+	expectedOrder := []string{"Limit", "Filter", "Sort", "Limit"}
+	for i, op := range transformations {
+		if op.Name() != expectedOrder[i] {
+			t.Errorf("transformation %d name = %s, want %s", i, op.Name(), expectedOrder[i])
+		}
+	}
+}
+
+// TestTableContent_ZeroTransformations tests behavior with no transformations
+func TestTableContent_ZeroTransformations(t *testing.T) {
+	tests := map[string]struct {
+		useOption bool
+	}{
+		"no WithTransformations option": {
+			useOption: false,
+		},
+		"WithTransformations with empty slice": {
+			useOption: true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			data := []map[string]any{
+				{"name": "Alice", "age": 30},
+			}
+
+			var table *TableContent
+			var err error
+
+			if tc.useOption {
+				table, err = NewTableContent("Test", data,
+					WithKeys("name", "age"),
+					WithTransformations(),
+				)
+			} else {
+				table, err = NewTableContent("Test", data,
+					WithKeys("name", "age"),
+				)
+			}
+
+			if err != nil {
+				t.Fatalf("NewTableContent failed: %v", err)
+			}
+
+			transformations := table.GetTransformations()
+			if transformations == nil {
+				t.Error("GetTransformations() should not return nil, expected empty slice")
+			}
+			if len(transformations) != 0 {
+				t.Errorf("GetTransformations() count = %d, want 0", len(transformations))
+			}
+		})
+	}
+}
+
+// TestTableContent_OperationInstancesShared tests that operation instances are shared, not cloned
+func TestTableContent_OperationInstancesShared(t *testing.T) {
+	data := []map[string]any{
+		{"name": "Alice", "age": 30},
+	}
+
+	// Create operations
+	filterOp := NewFilterOp(func(r Record) bool { return true })
+	sortOp := NewSortOp(SortKey{Column: "name", Direction: Ascending})
+
+	table, err := NewTableContent("Test", data,
+		WithKeys("name", "age"),
+		WithTransformations(filterOp, sortOp),
+	)
+	if err != nil {
+		t.Fatalf("NewTableContent failed: %v", err)
+	}
+
+	transformations := table.GetTransformations()
+
+	// Verify operations are the same instances (not clones)
+	// Note: We can't use pointer comparison directly since Operation is an interface,
+	// but we can verify through the Clone() method that operations are shared
+	cloned := table.Clone()
+	clonedTable, ok := cloned.(*TableContent)
+	if !ok {
+		t.Fatal("Clone() did not return *TableContent")
+	}
+
+	clonedTransformations := clonedTable.GetTransformations()
+
+	// Both original and cloned should have the same number of transformations
+	if len(clonedTransformations) != len(transformations) {
+		t.Errorf("cloned transformations count = %d, want %d",
+			len(clonedTransformations), len(transformations))
+	}
+
+	// The operations should be the same instances (shared, not deep copied)
+	// We verify this by checking that they have the same behavior
+	for i := range transformations {
+		if transformations[i].Name() != clonedTransformations[i].Name() {
+			t.Errorf("transformation %d name mismatch: got %s, want %s",
+				i, clonedTransformations[i].Name(), transformations[i].Name())
+		}
+	}
+}

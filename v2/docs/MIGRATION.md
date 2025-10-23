@@ -18,6 +18,12 @@ This guide provides comprehensive instructions for migrating from go-output v1 t
 - [Feature-by-Feature Migration](#feature-by-feature-migration)
 - [Common Issues](#common-issues)
 - [Examples](#examples)
+- [Per-Content Transformations (New in v2.4+)](#per-content-transformations-new-in-v24)
+  - [Why Per-Content Transformations?](#why-per-content-transformations)
+  - [Basic Migration Pattern](#basic-migration-pattern)
+  - [Multiple Tables with Different Transformations](#multiple-tables-with-different-transformations)
+  - [Available Operations](#available-operations)
+  - [Further Resources](#further-resources)
 
 ## Overview
 
@@ -1663,11 +1669,99 @@ out := output.NewOutput(
 // ✅ Format-agnostic operations
 ```
 
+## Per-Content Transformations (New in v2.4+)
+
+v2.4 introduces **per-content transformations** and removes the document-level Pipeline API. This allows attaching transformations directly to individual tables at creation time.
+
+### Why Per-Content Transformations?
+
+The Pipeline API (removed in v2.4) applied transformations globally to all tables in a document. Per-content transformations solve this limitation by allowing each table to have its own transformation logic.
+
+### Basic Migration Pattern
+
+**Pipeline API (REMOVED in v2.4)**:
+```go
+doc := output.New().
+    Table("users", users, output.WithKeys("name", "age")).
+    Build()
+
+// This API has been REMOVED
+transformed, _ := doc.Pipeline().
+    Filter(func(r output.Record) bool {
+        return r["age"].(int) >= 18
+    }).
+    Sort(output.SortKey{Column: "name", Direction: output.Ascending}).
+    Execute()
+```
+
+**Per-Content Transformations (use instead)**:
+```go
+doc := output.New().
+    Table("users", users,
+        output.WithKeys("name", "age"),
+        output.WithTransformations(
+            output.NewFilterOp(func(r output.Record) bool {
+                return r["age"].(int) >= 18
+            }),
+            output.NewSortOp(output.SortKey{Column: "name", Direction: output.Ascending}),
+        ),
+    ).
+    Build()
+
+// Transformations apply automatically during rendering
+```
+
+### Multiple Tables with Different Transformations
+
+This is where per-content transformations really shine:
+
+```go
+doc := output.New().
+    // Filter and sort users
+    Table("adult_users", users,
+        output.WithKeys("name", "email", "age"),
+        output.WithTransformations(
+            output.NewFilterOp(func(r output.Record) bool {
+                return r["age"].(int) >= 18
+            }),
+            output.NewSortOp(output.SortKey{Column: "name", Direction: output.Ascending}),
+        ),
+    ).
+    // Different transformations for products
+    Table("top_products", products,
+        output.WithKeys("id", "name", "price"),
+        output.WithTransformations(
+            output.NewSortOp(output.SortKey{Column: "price", Direction: output.Descending}),
+            output.NewLimitOp(10), // Top 10 by price
+        ),
+    ).
+    Build()
+```
+
+### Available Operations
+
+All Pipeline operations have equivalent constructors for per-content use:
+
+| Pipeline Method | Per-Content Operation |
+|----------------|----------------------|
+| `.Filter(predicate)` | `NewFilterOp(predicate)` |
+| `.Sort(keys...)` | `NewSortOp(keys...)` |
+| `.Limit(count)` | `NewLimitOp(count)` |
+| `.GroupBy(cols, aggs)` | `NewGroupByOp(cols, aggs)` |
+| `.AddColumn(name, fn)` | `NewAddColumnOp(name, fn, nil)` |
+
+### Further Resources
+
+For complete migration examples and best practices, see:
+- [PIPELINE_MIGRATION.md](PIPELINE_MIGRATION.md) - Detailed Pipeline API to per-content migration
+- [BEST_PRACTICES.md](BEST_PRACTICES.md) - Thread safety and performance guidance
+
 ## Need Help?
 
 - Check the [API documentation](https://pkg.go.dev/github.com/ArjenSchwarz/go-output/v2)
 - Review the [examples](https://github.com/ArjenSchwarz/go-output/tree/main/v2/examples)
 - See [collapsible examples](https://github.com/ArjenSchwarz/go-output/tree/main/v2/examples/collapsible_*)
+- Read [PIPELINE_MIGRATION.md](PIPELINE_MIGRATION.md) for Pipeline API migration
 - Report issues at [GitHub Issues](https://github.com/ArjenSchwarz/go-output/issues)
 
 The migration tool can handle most common patterns automatically. For complex migrations, refer to this guide and the API documentation.

@@ -1,5 +1,185 @@
 ## Unreleased
 
+### Fixed
+- **Critical: Streaming Render Path Inconsistency** - Fixed `RenderTo()` methods bypassing per-content transformations, causing different output than `Render()`:
+  - Updated `baseRenderer.renderDocumentTo()` to apply transformations before rendering (v2/base_renderer.go)
+  - All renderers (JSON, YAML, CSV, Markdown, HTML, Table) now properly apply transformations in streaming paths
+  - Added comprehensive tests verifying `Render()` and `RenderTo()` produce identical output (v2/renderer_streaming_test.go)
+
+- **Critical: Nested Content Transformation Gap** - Fixed transformations being ignored for content nested within sections and collapsible sections:
+  - Updated `MarkdownRenderer.renderSectionContentMarkdownWithDepth()` to apply transformations to nested content (v2/markdown_renderer.go)
+  - Updated `jsonRenderer.renderSectionContentJSON()` to apply transformations (v2/json_yaml_renderer.go)
+  - Updated `yamlRenderer.renderSectionContentYAML()` to apply transformations (v2/json_yaml_renderer.go)
+  - Updated `htmlRenderer.renderSectionContentHTML()` to apply transformations (v2/html_renderer.go)
+  - Updated `markdownRenderer.renderCollapsibleSection()` to apply transformations for collapsible sections (v2/markdown_renderer.go)
+  - Added comprehensive tests for nested content at multiple depths (v2/renderer_nested_test.go)
+
+- **Critical: JSON/YAML Streaming Nested Content Bugs** - Fixed additional streaming render bugs discovered during design review:
+  - Fixed `jsonRenderer.renderSectionContentJSONStream()` to apply transformations to nested content (v2/json_yaml_renderer.go)
+  - Fixed `yamlRenderer.renderSectionContentYAMLStream()` to apply transformations to nested content (v2/json_yaml_renderer.go)
+  - Fixed `csvRenderer` to handle sections and extract nested tables with transformations (v2/csv_renderer.go)
+  - Fixed `tableRenderer` to apply transformations to nested section content (v2/table_renderer.go)
+  - Added specific tests for JSON and YAML `RenderTo()` with nested sections (v2/renderer_integration_streaming_test.go)
+  - Expanded integration tests to cover all 6 renderers (Markdown, HTML, JSON, YAML, CSV, Table)
+
+### Added
+- **Test Coverage for Critical Fixes** - Added integration tests verifying combined streaming and nested transformation behavior:
+  - Tests for streaming render with nested sections containing transformations
+  - Tests for complex document structures with multiple sections and various transformations
+  - Tests for consistency between `Render()` and `RenderTo()` across all renderers
+  - Performance tests with large documents containing nested transformations
+  - Error handling tests across streaming and nested transformation paths
+  - All tests in v2/renderer_integration_streaming_test.go
+
+- **Documentation Updates** - Enhanced best practices guide with streaming and nested content guidance:
+  - Added "Streaming Render and Nested Content" section to v2/docs/BEST_PRACTICES.md
+  - Documented that `Render()` and `RenderTo()` produce identical output
+  - Documented nested content transformation behavior with examples
+  - Added multi-level nesting examples and best practices
+  - Updated summary checklist with nested content and streaming render validation items
+
+### Changed
+- **Example Cleanup and Documentation** - Improved examples and ignore patterns for build artifacts:
+  - Updated migration example to clarify Pipeline API removal with code snippet showing deprecated approach and listing problems it had
+  - Added binary names to v2/.gitignore: `migration_example` and `transformations`
+  - Added `coverage.html` to gitignore for test coverage artifacts
+  - Updated go.mod and go.sum in pipeline_transformation example to include AWS SDK v2 dependencies
+
+### Fixed
+- **Specification Task Completion** - Marked final validation task as complete in specs/per-content-transformations/tasks.md
+
+### Added
+- **Design Decision Documentation** - Added Decision 12 to specs/per-content-transformations/decision_log.md explaining type-specific transformation function names:
+  - Rationale for using `WithTransformations()`, `WithTextTransformations()`, `WithRawTransformations()`, and `WithSectionTransformations()` instead of uniform naming
+  - Go's lack of function overloading requires distinct names for different content types
+  - Type-specific names provide better IDE support and type safety
+
+### Removed
+- **Pipeline API Complete Removal (Phase 9)** - Removed document-level Pipeline API in favor of per-content transformations:
+  - Removed Pipeline struct and all methods (Pipeline(), Filter(), Sort(), SortBy(), SortWith(), Limit(), GroupBy(), AddColumn(), AddColumnAt(), Execute(), ExecuteContext(), ExecuteWithFormat(), Validate(), WithOptions()) from v2/pipeline.go
+  - Removed createDocumentWithContents() helper function and GetTransformStats() method
+  - Kept Operation and FormatAwareOperation interfaces (required for per-content transformations)
+  - Removed 8 pipeline test files totaling 3,264 lines (pipeline_advanced_test.go, pipeline_benchmark_test.go, pipeline_core_test.go, pipeline_filter_test.go, pipeline_integration_test.go, pipeline_limit_test.go, pipeline_sort_test.go, errors_pipeline_test.go)
+  - Removed Pipeline-related tests from requirements_validation_test.go (305 lines)
+  - Updated v2/docs/PIPELINE_MIGRATION.md to clarify Pipeline API was removed in v2.4.0 (not just deprecated)
+  - Updated v2/docs/MIGRATION.md Per-Content Transformations section to indicate Pipeline API was removed
+  - Updated v2/doc.go from "Deprecated Pipeline API" to "Pipeline API Removal" with clear removal messaging
+  - Converted v2/examples/pipeline_transformation/ example to demonstrate per-content transformations:
+    - Renamed functions to reflect per-content approach (basicTransformationExample, multipleTablesExample)
+    - Converted all 5 examples to use WithTransformations() instead of doc.Pipeline()
+    - Added new example demonstrating multiple tables with different transformations (key benefit over Pipeline API)
+    - Updated README.md with migration guidance and benefits of per-content transformations
+  - Total reduction: 4,498 lines removed, 353 lines added
+
+### Added
+- **Pipeline API Deprecation & Documentation (Phase 8)** - Complete documentation and migration guidance for transitioning from Pipeline API to per-content transformations:
+  - Added deprecation notices to all Pipeline API methods in v2/pipeline.go (Pipeline(), Filter(), Sort(), SortBy(), SortWith(), Limit(), GroupBy(), AddColumn(), AddColumnAt(), Execute(), ExecuteContext(), ExecuteWithFormat()) with clear guidance to use WithTransformations() instead and reference to migration guide
+  - Created comprehensive package documentation in v2/doc.go covering all library features (content types, output formats, basic usage, per-content transformations, thread safety, performance characteristics, context cancellation, error handling, key order preservation) with complete working example
+  - Created v2/docs/PIPELINE_MIGRATION.md with detailed migration patterns for all Pipeline API operations including basic filter/sort/limit examples, multiple tables with different transformations, GroupBy operations, AddColumn operations, custom comparators, dynamic transformation construction, context-aware rendering, operation reference table, and common pitfalls with solutions
+  - Created runnable migration example in v2/examples/migration_example/ demonstrating old Pipeline API vs new per-content transformations, multiple tables with different transformations, and dynamic transformation construction
+  - Created v2/docs/BEST_PRACTICES.md with guidance on thread safety (stateless operations, safe vs unsafe patterns, testing), closure safety (loop variable capture problems, factory function pattern), performance optimization (transformation chain length, memory efficiency, context cancellation), error handling (fail-fast philosophy, validation), testing (unit tests, integration tests, concurrent operations), and common pitfalls (operation reuse, missing timeouts, complex predicates, column name typos, unsafe type assertions)
+  - Enhanced v2/table_options.go WithTransformations() documentation with thread safety requirements, usage examples, and references to best practices
+  - Updated v2/docs/MIGRATION.md with new section on per-content transformations including basic migration pattern, multiple tables example, and operation reference table
+  - All documentation follows keepachangelog.com format with clear examples and practical guidance
+  - Migration example compiles cleanly and demonstrates all key migration scenarios
+
+### Changed
+- **Pipeline API Marked for Removal** - Updated requirements to remove Pipeline API entirely instead of deprecation:
+  - Modified specs/per-content-transformations/requirements.md section 3 from "Pipeline API Deprecation" to "Pipeline API Removal" with rationale explaining the API is too limiting and not yet widely adopted
+  - Updated acceptance criteria to specify complete removal of Pipeline struct, methods, and tests while keeping Operation interface and implementations used by per-content transformations
+  - Added Phase 9 tasks to specs/per-content-transformations/tasks.md for Pipeline API removal including implementation removal (task 35), test removal (task 36), documentation updates (task 37), and example updates (task 38)
+  - Renumbered final validation to Phase 10 (task 39)
+
+### Added
+- **Integration Tests & Examples for Per-Content Transformations (Phase 7)** - Complete integration testing and example code for per-content transformations feature:
+  - Added 7 integration tests in v2/integration_test.go covering transformation workflows with JSON/YAML rendering, multiple tables with different transformations, mixed content (text + transformed tables), complex transformation chains (filter → sort → limit), and original data preservation verification
+  - Created comprehensive example application in v2/examples/transformations/ demonstrating:
+    - Basic filter + sort transformations on employee data
+    - Multiple tables with different transformation strategies (top N by revenue, active customers sorted by value)
+    - Dynamic transformation construction based on runtime conditions (user preferences, filters, sorting)
+    - Error handling patterns for invalid operations and validation failures
+  - All integration tests verify correctness of filtered records, sorted data, limited results, and immutability of original document data
+  - Example includes detailed README.md with overview, feature explanations, key concepts, and running instructions
+  - Example compiles cleanly, runs successfully, and demonstrates all key transformation features
+  - All tests pass with `make test-integration` and example passes linting with `make lint`
+- **Thread Safety & Performance Testing Suite (TDD)** - Complete testing infrastructure for concurrent operations and performance validation of per-content transformations:
+  - Thread safety tests covering concurrent rendering of same document with multiple goroutines, concurrent rendering of different content with shared operations, cloned content independence verification, operation safety during concurrent execution, and concurrent cloning operations
+  - All tests pass with `-race` detector enabled confirming zero data races
+  - `ValidateStatelessOperation()` testing utility for detecting non-deterministic operations by applying operations twice to cloned content and comparing results with `reflect.DeepEqual()`
+  - Comprehensive test suite for statelessness validation covering detection of stateful operations (call counters, mutable state), verification of deterministic operations (filter, sort, limit), and usage examples
+  - Performance benchmarks establishing baseline metrics for 100 content items with 10 transformations each (~21ms per iteration), 1000-record tables with transformations (~1.3ms), transformation storage memory overhead (~348ns, 56B, 3 allocs), transformation execution time breakdown, cloning overhead (~19.7μs per 100-record table), and multiple clones in transformation chains
+  - Memory allocation tracking with `b.ReportAllocs()` for identifying optimization opportunities
+  - All benchmarks meet performance target: system handles 100 items × 10 transformations without degradation
+  - Test files total 1,196 lines covering concurrent operations, stateless validation, and performance characteristics
+- **Advanced Error Handling Tests (TDD)** - Comprehensive test suite for validation and context cancellation error handling in per-content transformations:
+  - Validation error tests covering configuration errors (nil predicates, negative limits, empty column names, invalid groupby operations)
+  - Data-dependent validation error tests for missing columns and empty operations
+  - Error message context tests verifying content ID and operation index inclusion in all error messages
+  - Fail-fast behavior tests confirming rendering stops immediately on validation errors
+  - Context cancellation detection tests for pre-cancelled contexts and deadline exceeded scenarios
+  - Context propagation tests verifying context.Canceled and context.DeadlineExceeded proper wrapping
+  - Context cancellation error message tests ensuring proper error context with content ID
+  - Rendering stop tests confirming no operations execute when context is cancelled
+  - All tests follow TDD red-green pattern with proper test organization using map-based table tests
+- **Renderer Integration for Per-Content Transformations (TDD)** - Integrated transformation execution across all renderers following Test-Driven Development:
+  - Updated JSONRenderer and YAMLRenderer via shared `renderDocumentGeneric()` function to call `applyContentTransformations()` before rendering each content item
+  - Updated HTMLRenderer via `baseRenderer.renderTransformedDocument()` to apply transformations in the base rendering pipeline
+  - Updated CSVRenderer, TableRenderer, and MarkdownRenderer with direct transformation calls in their custom rendering loops
+  - All renderers properly preserve document immutability by cloning content before applying transformations
+  - Fail-fast error handling propagates transformation errors immediately with detailed context
+  - Context cancellation properly flows through all renderer implementations for responsive cancellation
+  - Comprehensive test suite with 850+ lines of tests covering all renderers:
+    - JSONRenderer: 5 test functions covering transformation integration, fail-fast errors, context cancellation, immutability, and mixed content scenarios
+    - YAMLRenderer: 4 test functions covering filter operations, sort/limit chains, fail-fast behavior, and context handling
+    - CSVRenderer, TableRenderer, MarkdownRenderer, HTMLRenderer: Integration tests verifying transformation application
+  - All tests verify transformed output correctness (filtered records, sorted data, limited results)
+  - All renderers support mixing transformed and non-transformed content in the same document
+- **Per-Content Transformations Specification** - Complete requirements, design, and implementation specification for attaching transformations directly to individual content items (tables, text, sections) at creation time, enabling different operations to be applied to different content in the same document.
+- **Content Interface Transformation Support** - Extended Content interface with `Clone()` and `GetTransformations()` methods to enable per-content transformation capabilities across all content types (TableContent, TextContent, RawContent, SectionContent, DefaultCollapsibleSection, GraphContent, ChartContent, DrawIOContent)
+- **Transformation Execution Helper (TDD)** - Implemented core transformation execution logic following Test-Driven Development:
+  - Added `applyContentTransformations()` helper function in v2/renderer.go for executing per-content transformations during rendering
+  - Clones content once at start to preserve immutability of original document data
+  - Applies transformations sequentially in user-specified order
+  - Validates each operation configuration before execution via `Validate()` method
+  - Checks context cancellation before each operation for responsive cancellation
+  - Provides detailed error messages including content ID, operation index (zero-based), and operation name
+  - Implements fail-fast error handling (stops immediately on first transformation error)
+  - Comprehensive test suite with 9 test functions covering no-transformations, sequential execution, validation, context cancellation, error messages, immutability preservation, lazy execution, multiple transformations, and fail-fast behavior
+  - All tests verify transformations execute during rendering only (not during Build())
+- **TableContent Transformation Storage (TDD)** - Implemented per-content transformations for TableContent following Test-Driven Development:
+  - Added `transformations []Operation` field to TableContent struct for storing operation references
+  - Created `WithTransformations(ops ...Operation)` TableOption function supporting variadic arguments and method chaining
+  - Updated `GetTransformations()` to return transformations slice (empty slice instead of nil when no transformations exist)
+  - Enhanced `Clone()` method to preserve transformations with shallow copy of operation references (operations are shared, not cloned)
+  - Comprehensive test suite covering single/multiple/zero transformations, order preservation, cloning behavior, and operation instance sharing
+  - Updated tableConfig struct to include transformations field for functional options pattern
+  - Modified NewTableContent to apply transformations from configuration
+- **TextContent Transformation Storage (TDD)** - Implemented per-content transformations for TextContent following Test-Driven Development:
+  - Added `transformations []Operation` field to TextContent struct
+  - Created `WithTextTransformations(ops ...Operation)` TextOption function (type-specific naming required due to Go's no-overloading constraint)
+  - Updated `GetTransformations()` to return transformations slice (returns empty slice when no transformations)
+  - Enhanced `Clone()` method to preserve transformations with shallow copy of operation instances
+  - Comprehensive test suite with 13 subtests covering transformation storage, retrieval, cloning, and order preservation
+  - Updated textConfig struct to include transformations field
+- **RawContent Transformation Storage (TDD)** - Implemented per-content transformations for RawContent following Test-Driven Development:
+  - Added `transformations []Operation` field to RawContent struct
+  - Created `WithRawTransformations(ops ...Operation)` RawOption function
+  - Updated `GetTransformations()` to return transformations slice
+  - Enhanced `Clone()` method to preserve transformations with shallow copy
+  - Comprehensive test suite with 9 subtests covering all transformation scenarios
+  - Updated rawConfig struct to include transformations field
+- **SectionContent Transformation Storage (TDD)** - Implemented per-content transformations for SectionContent following Test-Driven Development:
+  - Added `transformations []Operation` field to SectionContent struct
+  - Created `WithSectionTransformations(ops ...Operation)` SectionOption function
+  - Updated `GetTransformations()` to return transformations slice
+  - Enhanced `Clone()` method to preserve transformations AND correctly handle nested content deep cloning
+  - Comprehensive test suite with 13 subtests including nested content cloning verification
+  - Updated sectionConfig struct to include transformations field
+
+### Changed
+- **Clone Implementation Consolidation** - Moved TableContent.Clone() from transform_data.go to content.go with complete field coverage (id, title, records, schema) fixing incomplete implementation that was missing id and title fields
+- **Code Modernization** - Updated map copying to use maps.Copy() instead of manual loops per Go 1.24+ best practices
+
 ### Added
 - **HTML Template System Integration Testing (Phase 6)** - Complete integration test suite for HTML document rendering and thread safety validation
   - 30 comprehensive integration tests covering full document generation workflow

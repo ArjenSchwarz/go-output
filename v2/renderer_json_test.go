@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestJSONRenderer_TableKeyOrderPreservation(t *testing.T) {
@@ -235,5 +236,432 @@ func TestJSONRenderer_StreamingVsBuffered(t *testing.T) {
 		if !strings.Contains(streamedStr, element) {
 			t.Errorf("Streamed result missing element: %s", element)
 		}
+	}
+}
+
+// TestJSONRenderer_TransformationIntegration tests that JSONRenderer correctly calls
+// applyContentTransformations() for content with transformations
+func TestJSONRenderer_TransformationIntegration(t *testing.T) {
+	tests := map[string]struct {
+		data            []Record
+		transformations []Operation
+		expectedCount   int // Expected number of records after transformation
+		wantErr         bool
+	}{
+		"filter operation": {
+			data: []Record{
+				{"name": "Alice", "age": 30},
+				{"name": "Bob", "age": 25},
+				{"name": "Charlie", "age": 35},
+			},
+			transformations: []Operation{
+				NewFilterOp(func(r Record) bool {
+					age, ok := r["age"].(int)
+					return ok && age >= 30
+				}),
+			},
+			expectedCount: 2,
+		},
+		"sort and limit operations": {
+			data: []Record{
+				{"name": "Charlie", "score": 85},
+				{"name": "Alice", "score": 95},
+				{"name": "Bob", "score": 90},
+			},
+			transformations: []Operation{
+				NewSortOp(SortKey{Column: "score", Direction: Descending}),
+				NewLimitOp(2),
+			},
+			expectedCount: 2,
+		},
+		"multiple filters": {
+			data: []Record{
+				{"name": "Alice", "age": 30, "active": true},
+				{"name": "Bob", "age": 25, "active": false},
+				{"name": "Charlie", "age": 35, "active": true},
+			},
+			transformations: []Operation{
+				NewFilterOp(func(r Record) bool {
+					age, ok := r["age"].(int)
+					return ok && age >= 30
+				}),
+				NewFilterOp(func(r Record) bool {
+					active, ok := r["active"].(bool)
+					return ok && active
+				}),
+			},
+			expectedCount: 2,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Create document with transformations
+			doc := New().
+				Table("test", tc.data,
+					WithKeys("name", "age", "score", "active"),
+					WithTransformations(tc.transformations...),
+				).
+				Build()
+
+			renderer := &jsonRenderer{}
+			result, err := renderer.Render(context.Background(), doc)
+
+			if tc.wantErr && err == nil {
+				t.Error("Expected error but got none")
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+			if tc.wantErr {
+				return
+			}
+
+			// Parse result to verify transformation was applied
+			var parsed map[string]any
+			if err := json.Unmarshal(result, &parsed); err != nil {
+				t.Fatalf("Failed to parse JSON: %v", err)
+			}
+
+			data, ok := parsed["data"].([]any)
+			if !ok {
+				t.Fatal("Expected data array in JSON output")
+			}
+
+			if len(data) != tc.expectedCount {
+				t.Errorf("Expected %d records after transformation, got %d", tc.expectedCount, len(data))
+			}
+		})
+	}
+}
+
+// TestJSONRenderer_TransformationFailFast tests that rendering stops immediately
+// on the first transformation error (fail-fast behavior)
+func TestJSONRenderer_TransformationFailFast(t *testing.T) {
+	tests := map[string]struct {
+		data            []Record
+		transformations []Operation
+		wantErrContains string
+	}{
+		"invalid filter predicate": {
+			data: []Record{
+				{"name": "Alice", "age": 30},
+			},
+			transformations: []Operation{
+				&FilterOp{predicate: nil}, // Invalid: nil predicate
+			},
+			wantErrContains: "invalid",
+		},
+		"invalid limit count": {
+			data: []Record{
+				{"name": "Alice", "age": 30},
+			},
+			transformations: []Operation{
+				NewLimitOp(-1), // Invalid: negative limit
+			},
+			wantErrContains: "invalid",
+		},
+		"sort on non-existent column": {
+			data: []Record{
+				{"name": "Alice", "age": 30},
+			},
+			transformations: []Operation{
+				NewSortOp(SortKey{Column: "nonexistent", Direction: Ascending}),
+			},
+			wantErrContains: "failed",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			doc := New().
+				Table("test", tc.data,
+					WithKeys("name", "age"),
+					WithTransformations(tc.transformations...),
+				).
+				Build()
+
+			renderer := &jsonRenderer{}
+			_, err := renderer.Render(context.Background(), doc)
+
+			if err == nil {
+				t.Fatal("Expected error but got none")
+			}
+
+			if tc.wantErrContains != "" && !strings.Contains(err.Error(), tc.wantErrContains) {
+				t.Errorf("Error message %q does not contain %q", err.Error(), tc.wantErrContains)
+			}
+		})
+	}
+}
+
+// TestJSONRenderer_TransformationContextCancellation tests that context cancellation
+// is properly propagated during transformation execution
+func TestJSONRenderer_TransformationContextCancellation(t *testing.T) {
+	tests := map[string]struct {
+		setupContext func() context.Context
+		wantErr      bool
+	}{
+		"cancelled context": {
+			setupContext: func() context.Context {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel() // Cancel immediately
+				return ctx
+			},
+			wantErr: true,
+		},
+		"timeout context": {
+			setupContext: func() context.Context {
+				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+				defer cancel()
+				time.Sleep(10 * time.Millisecond) // Ensure timeout
+				return ctx
+			},
+			wantErr: true,
+		},
+		"valid context": {
+			setupContext: func() context.Context {
+				return context.Background()
+			},
+			wantErr: false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			data := []Record{
+				{"name": "Alice", "age": 30},
+				{"name": "Bob", "age": 25},
+			}
+
+			doc := New().
+				Table("test", data,
+					WithKeys("name", "age"),
+					WithTransformations(
+						NewFilterOp(func(r Record) bool {
+							return r["age"].(int) >= 25
+						}),
+					),
+				).
+				Build()
+
+			renderer := &jsonRenderer{}
+			ctx := tc.setupContext()
+			_, err := renderer.Render(ctx, doc)
+
+			if tc.wantErr && err == nil {
+				t.Error("Expected error but got none")
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// TestJSONRenderer_OriginalDocumentUnchanged tests that the original document
+// remains unchanged after transformation (immutability)
+func TestJSONRenderer_OriginalDocumentUnchanged(t *testing.T) {
+	originalData := []Record{
+		{"name": "Alice", "age": 30},
+		{"name": "Bob", "age": 25},
+		{"name": "Charlie", "age": 35},
+	}
+
+	doc := New().
+		Table("test", originalData,
+			WithKeys("name", "age"),
+			WithTransformations(
+				NewFilterOp(func(r Record) bool {
+					return r["age"].(int) >= 30
+				}),
+			),
+		).
+		Build()
+
+	// Get original content before rendering
+	originalContents := doc.GetContents()
+	if len(originalContents) != 1 {
+		t.Fatalf("Expected 1 content item, got %d", len(originalContents))
+	}
+
+	originalTable, ok := originalContents[0].(*TableContent)
+	if !ok {
+		t.Fatal("Expected TableContent")
+	}
+
+	originalRecordCount := len(originalTable.Records())
+
+	// Render with transformations
+	renderer := &jsonRenderer{}
+	_, err := renderer.Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	// Verify original document is unchanged
+	afterContents := doc.GetContents()
+	if len(afterContents) != 1 {
+		t.Fatalf("Expected 1 content item after render, got %d", len(afterContents))
+	}
+
+	afterTable, ok := afterContents[0].(*TableContent)
+	if !ok {
+		t.Fatal("Expected TableContent after render")
+	}
+
+	afterRecordCount := len(afterTable.Records())
+
+	if afterRecordCount != originalRecordCount {
+		t.Errorf("Original document was modified: had %d records, now has %d", originalRecordCount, afterRecordCount)
+	}
+
+	// Verify record data is still the same
+	if originalRecordCount != 3 {
+		t.Errorf("Expected 3 records in original document, got %d", originalRecordCount)
+	}
+}
+
+// TestJSONRenderer_MixedContentTransformations tests rendering documents with
+// mixed content (some with transformations, some without)
+func TestJSONRenderer_MixedContentTransformations(t *testing.T) {
+	tests := map[string]struct {
+		setupDoc        func() *Document
+		expectTableData map[string]int // table ID -> expected record count
+	}{
+		"one table with transformations, one without": {
+			setupDoc: func() *Document {
+				return New().
+					Table("filtered", []Record{
+						{"name": "Alice", "age": 30},
+						{"name": "Bob", "age": 25},
+						{"name": "Charlie", "age": 35},
+					},
+						WithKeys("name", "age"),
+						WithTransformations(
+							NewFilterOp(func(r Record) bool {
+								return r["age"].(int) >= 30
+							}),
+						),
+					).
+					Table("unfiltered", []Record{
+						{"id": 1, "status": "active"},
+						{"id": 2, "status": "inactive"},
+					},
+						WithKeys("id", "status"),
+						// No transformations
+					).
+					Build()
+			},
+			expectTableData: map[string]int{
+				"filtered":   2, // Filtered to 2 records
+				"unfiltered": 2, // All 2 records
+			},
+		},
+		"multiple tables all with transformations": {
+			setupDoc: func() *Document {
+				return New().
+					Table("users", []Record{
+						{"name": "Alice", "age": 30},
+						{"name": "Bob", "age": 25},
+					},
+						WithKeys("name", "age"),
+						WithTransformations(
+							NewFilterOp(func(r Record) bool {
+								return r["age"].(int) >= 30
+							}),
+						),
+					).
+					Table("products", []Record{
+						{"name": "Product A", "price": 100},
+						{"name": "Product B", "price": 50},
+						{"name": "Product C", "price": 75},
+					},
+						WithKeys("name", "price"),
+						WithTransformations(
+							NewSortOp(SortKey{Column: "price", Direction: Descending}),
+							NewLimitOp(2),
+						),
+					).
+					Build()
+			},
+			expectTableData: map[string]int{
+				"users":    1,
+				"products": 2,
+			},
+		},
+		"text content mixed with table transformations": {
+			setupDoc: func() *Document {
+				return New().
+					Text("Header text", WithHeader(true)).
+					Table("data", []Record{
+						{"name": "Alice", "value": 10},
+						{"name": "Bob", "value": 20},
+						{"name": "Charlie", "value": 15},
+					},
+						WithKeys("name", "value"),
+						WithTransformations(
+							NewLimitOp(2),
+						),
+					).
+					Text("Footer text").
+					Build()
+			},
+			expectTableData: map[string]int{
+				"data": 2,
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			doc := tc.setupDoc()
+
+			renderer := &jsonRenderer{}
+			result, err := renderer.Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render failed: %v", err)
+			}
+
+			// Parse result
+			var parsed []any
+			if err := json.Unmarshal(result, &parsed); err != nil {
+				t.Fatalf("Failed to parse JSON: %v", err)
+			}
+
+			// Verify each table's record count
+			for _, item := range parsed {
+				itemMap, ok := item.(map[string]any)
+				if !ok {
+					continue
+				}
+
+				// Check if this is a table with data
+				data, hasData := itemMap["data"].([]any)
+				if !hasData {
+					continue
+				}
+
+				// Find which table this is by checking schema
+				_, hasSchema := itemMap["schema"].(map[string]any)
+				if !hasSchema {
+					continue
+				}
+
+				// Match by number of records for simplicity
+				recordCount := len(data)
+				found := false
+				for _, expectedCount := range tc.expectTableData {
+					if recordCount == expectedCount {
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					t.Errorf("Unexpected record count %d in output", recordCount)
+				}
+			}
+		})
 	}
 }

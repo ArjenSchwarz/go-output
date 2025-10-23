@@ -4,10 +4,11 @@ import "sort"
 
 // tableConfig holds configuration for table creation
 type tableConfig struct {
-	schema      *Schema
-	keys        []string
-	autoSchema  bool
-	detectOrder bool
+	schema          *Schema
+	keys            []string
+	autoSchema      bool
+	detectOrder     bool
+	transformations []Operation
 }
 
 // TableOption configures table creation
@@ -47,6 +48,39 @@ func WithAutoSchemaOrdered(keys ...string) TableOption {
 		tc.autoSchema = true
 		tc.keys = keys
 		tc.detectOrder = false
+	}
+}
+
+// WithTransformations attaches one or more operations to the table content.
+// Operations execute during rendering in the order specified.
+//
+// Transformations enable filtering, sorting, limiting, grouping, and other operations
+// to be applied to individual tables without affecting other content in the document.
+//
+// Thread Safety Requirements:
+// Operations MUST be stateless and thread-safe. Do not create operations with:
+//   - Mutable state modified during Apply()
+//   - Closures capturing mutable variables by reference
+//   - External side effects (file writes, network calls, etc.)
+//
+// Example usage:
+//
+//	builder.Table("users", userData,
+//	    output.WithKeys("name", "email", "age"),
+//	    output.WithTransformations(
+//	        output.NewFilterOp(func(r Record) bool {
+//	            return r["age"].(int) >= 18
+//	        }),
+//	        output.NewSortOp(output.SortKey{Column: "name", Direction: output.Ascending}),
+//	        output.NewLimitOp(10),
+//	    ),
+//	)
+//
+// See v2/BEST_PRACTICES.md for safe operation patterns and v2/MIGRATION.md
+// for examples migrating from the deprecated Pipeline API.
+func WithTransformations(ops ...Operation) TableOption {
+	return func(tc *tableConfig) {
+		tc.transformations = ops
 	}
 }
 

@@ -12,9 +12,13 @@ examples/*/mixed_content
 examples/*/multiple_formats
 examples/*/pipeline_transformation
 examples/*/progress_tracking
+examples/*/migration_example
+examples/*/transformations
+
 
 # Test binaries
 *.test
 
 # Coverage files
 *.out
+coverage.html

@@ -29,6 +29,17 @@ func (m *testContent) AppendBinary(b []byte) ([]byte, error) {
 	return append(b, []byte(m.id)...), nil
 }
 
+func (m *testContent) Clone() Content {
+	return &testContent{
+		id:          m.id,
+		contentType: m.contentType,
+	}
+}
+
+func (m *testContent) GetTransformations() []Operation {
+	return nil
+}
+
 func TestNew(t *testing.T) {
 	builder := New()
 	if builder == nil {

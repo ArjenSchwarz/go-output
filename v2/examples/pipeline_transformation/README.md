@@ -1,20 +1,20 @@
-# Data Transformation Pipeline Example
+# Per-Content Transformations Example
 
-This example demonstrates the powerful Data Transformation Pipeline system introduced in Go-Output v2. The pipeline enables complex data operations like filtering, sorting, aggregation, and calculated fields directly on structured data before rendering.
+This example demonstrates the Per-Content Transformations system in Go-Output v2.4+. This approach enables complex data operations like filtering, sorting, aggregation, and calculated fields to be attached directly to individual tables at creation time.
 
 ## What This Example Shows
 
-### 1. Basic Pipeline Operations
+### 1. Basic Per-Content Transformations
 - **Filtering**: Select records based on conditions
 - **Sorting**: Order data by column values
 - **Limiting**: Restrict output to top N results
-- **Method chaining**: Fluent API for readable code
+- **Attached to content**: Transformations defined where tables are created
 
 ### 2. Advanced Analytics
 - **Calculated Fields**: Add computed columns based on existing data
 - **Multi-column operations**: Complex transformations with multiple steps
 - **Type-safe operations**: Proper type handling with Go type assertions
-- **Performance optimization**: Automatic operation reordering
+- **Lazy execution**: Transformations apply during rendering
 
 ### 3. Aggregation and Reporting
 - **GroupBy operations**: Group records by column values
@@ -23,51 +23,81 @@ This example demonstrates the powerful Data Transformation Pipeline system intro
 - **Multi-level grouping**: Complex analytical queries
 
 ### 4. Combined Transformations
-- **Data pipeline**: Structured data manipulation
+- **Per-content transformations**: Structured data manipulation per table
 - **Byte transformers**: Visual styling and formatting
 - **Best practices**: When to use each transformation type
 
-### 5. Error Handling and Performance
-- **Pipeline errors**: Detailed error context and debugging
-- **Performance tracking**: Built-in statistics collection
-- **Resource management**: Safe operation with limits
+### 5. Multiple Tables with Different Transformations
+- **Independent transformations**: Each table can have its own operations
+- **Flexible document composition**: Mix tables with different analyses
+- **Key advantage**: Not possible with the old Pipeline API
 
 ## Key Features Demonstrated
 
-### Data-Level Operations
+### Per-Content Transformation
 ```go
-transformedDoc := doc.Pipeline().
-    Filter(func(r output.Record) bool {
-        return r["status"] == "completed" && r["amount"].(float64) > 20000
-    }).
-    AddColumn("commission", func(r output.Record) any {
-        return r["amount"].(float64) * 0.05
-    }).
-    SortBy("amount", output.Descending).
-    Limit(10).
-    Execute()
+doc := output.New().
+    Table("Top Sales", salesData,
+        output.WithKeys("id", "salesperson", "amount"),
+        output.WithTransformations(
+            output.NewFilterOp(func(r output.Record) bool {
+                return r["status"] == "completed" && r["amount"].(float64) > 20000
+            }),
+            output.NewAddColumnOp("commission", func(r output.Record) any {
+                return r["amount"].(float64) * 0.05
+            }, nil),
+            output.NewSortOp(output.SortKey{Column: "amount", Direction: output.Descending}),
+            output.NewLimitOp(10),
+        ),
+    ).
+    Build()
 ```
 
 ### Aggregation and Analytics
 ```go
-reportDoc := doc.Pipeline().
-    GroupBy(
-        []string{"region"},
-        map[string]output.AggregateFunc{
-            "total_sales": output.SumAggregate("amount"),
-            "avg_sale":    output.AverageAggregate("amount"),
-            "sale_count":  output.CountAggregate,
-        },
-    ).
-    SortBy("total_sales", output.Descending).
-    Execute()
+builder.Table("Regional Report", salesData,
+    output.WithKeys("region", "total_sales", "avg_sale", "sale_count"),
+    output.WithTransformations(
+        output.NewGroupByOp(
+            []string{"region"},
+            map[string]output.AggregateFunc{
+                "total_sales": output.SumAggregate("amount"),
+                "avg_sale":    output.AverageAggregate("amount"),
+                "sale_count":  output.CountAggregate(),
+            },
+        ),
+        output.NewSortOp(output.SortKey{Column: "total_sales", Direction: output.Descending}),
+    ),
+)
 ```
 
-### Performance Optimization
-The pipeline automatically optimizes operations for better performance:
-- Filters are applied first to reduce dataset size
-- Sort operations work on smaller datasets
-- Limits are applied last to get top N of final results
+### Multiple Tables with Different Transformations
+```go
+builder := output.New()
+
+// Table 1: Top performers
+builder.Table("Top Performers", salesData,
+    output.WithTransformations(
+        output.NewFilterOp(func(r output.Record) bool {
+            return r["status"] == "completed" && r["amount"].(float64) > 30000
+        }),
+        output.NewSortOp(output.SortKey{Column: "amount", Direction: output.Descending}),
+        output.NewLimitOp(5),
+    ),
+)
+
+// Table 2: Pending sales (different transformations)
+builder.Table("Pending Sales", salesData,
+    output.WithTransformations(
+        output.NewFilterOp(func(r output.Record) bool {
+            return r["status"] == "pending"
+        }),
+        output.NewSortOp(output.SortKey{Column: "date", Direction: output.Descending}),
+    ),
+)
+
+doc := builder.Build()
+```
 
 ## Running the Example
 
@@ -80,28 +110,50 @@ go run main.go
 
 The example generates realistic sales data and demonstrates:
 
-1. **Filtered Results**: Shows top 10 high-value completed sales
+1. **Basic Transformations**: Top 10 high-value completed sales
 2. **Analytics Report**: Detailed analysis with calculated fields
-3. **Regional Summary**: Aggregated statistics by region
+3. **Aggregation**: Regional and quarterly summaries
 4. **Styled Output**: Combined data operations with visual formatting
-5. **Performance Stats**: Detailed timing and processing metrics
+5. **Multiple Tables**: Different transformations for different tables
 
-## Migration Benefits
+## Migration from Pipeline API
 
-This example highlights the advantages of the pipeline system over manual data manipulation:
+The Pipeline API has been removed in v2.4.0. Use per-content transformations instead:
 
-- **50% less code** compared to manual operations
-- **Type-safe operations** with clear error messages
-- **Format-agnostic** - works with all output formats
-- **Automatic optimization** for better performance
-- **Built-in error handling** with detailed context
-- **Immutable transformations** preserving original data
+**Old (Pipeline API - REMOVED):**
+```go
+doc := builder.Build()
+transformed, _ := doc.Pipeline().
+    Filter(predicate).
+    Sort(keys...).
+    Execute()
+```
 
-## When to Use Pipeline vs Byte Transformers
+**New (Per-Content Transformations):**
+```go
+doc := output.New().
+    Table("data", records,
+        output.WithTransformations(
+            output.NewFilterOp(predicate),
+            output.NewSortOp(keys...),
+        ),
+    ).
+    Build()
+```
 
-**Use Pipeline For:**
+## Benefits Over Pipeline API
+
+- **Per-table control**: Each table can have unique transformations
+- **Clearer intent**: Transformations defined where content is created
+- **Better composability**: Build tables with transformations in one place
+- **No global state**: Transformations belong to content items
+- **Flexible documents**: Mix tables with and without transformations
+
+## When to Use Per-Content Transformations vs Byte Transformers
+
+**Use Per-Content Transformations For:**
 - Filtering records based on data values
-- Sorting by column values  
+- Sorting by column values
 - Performing aggregations
 - Adding calculated fields
 - Data structure manipulation
@@ -114,6 +166,7 @@ This example highlights the advantages of the pipeline system over manual data m
 
 ## Learn More
 
-- [API Documentation](../../docs/API.md#data-transformation-pipeline-system)
-- [Migration Guide](../../docs/MIGRATION.md#data-transformation-pipeline-migration)
+- [Pipeline Migration Guide](../../docs/PIPELINE_MIGRATION.md)
+- [API Documentation](../../docs/API.md)
+- [Migration Guide](../../docs/MIGRATION.md)
 - [Other Examples](../)

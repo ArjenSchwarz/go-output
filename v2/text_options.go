@@ -2,7 +2,8 @@ package output
 
 // textConfig holds configuration for text creation
 type textConfig struct {
-	style TextStyle
+	style           TextStyle
+	transformations []Operation
 }
 
 // TextOption configures text creation
@@ -47,6 +48,13 @@ func WithSize(size int) TextOption {
 func WithHeader(header bool) TextOption {
 	return func(tc *textConfig) {
 		tc.style.Header = header
+	}
+}
+
+// WithTextTransformations sets transformations for the text content
+func WithTextTransformations(ops ...Operation) TextOption {
+	return func(tc *textConfig) {
+		tc.transformations = ops
 	}
 }
 

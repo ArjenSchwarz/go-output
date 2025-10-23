@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"maps"
 )
 
 // CollapsibleSection represents entire content blocks that can be expanded/collapsed (Requirement 15)
@@ -158,6 +159,37 @@ func (cs *DefaultCollapsibleSection) AppendText(b []byte) ([]byte, error) {
 func (cs *DefaultCollapsibleSection) AppendBinary(b []byte) ([]byte, error) {
 	// For binary append, we'll use the same text representation
 	return cs.AppendText(b)
+}
+
+// Clone creates a deep copy of the DefaultCollapsibleSection
+func (cs *DefaultCollapsibleSection) Clone() Content {
+	// Deep copy the nested contents
+	newContent := make([]Content, len(cs.content))
+	for i, content := range cs.content {
+		newContent[i] = content.Clone()
+	}
+
+	// Deep copy format hints
+	newFormatHints := make(map[string]map[string]any)
+	for format, hints := range cs.formatHints {
+		newHints := make(map[string]any)
+		maps.Copy(newHints, hints)
+		newFormatHints[format] = newHints
+	}
+
+	return &DefaultCollapsibleSection{
+		id:              cs.id,
+		title:           cs.title,
+		content:         newContent,
+		defaultExpanded: cs.defaultExpanded,
+		level:           cs.level,
+		formatHints:     newFormatHints,
+	}
+}
+
+// GetTransformations returns the transformations attached to this collapsible section
+func (cs *DefaultCollapsibleSection) GetTransformations() []Operation {
+	return nil // Implementation will be added in future tasks
 }
 
 // Helper functions for creating collapsible sections

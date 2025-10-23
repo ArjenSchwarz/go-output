@@ -742,3 +742,41 @@ func TestMarkdownRenderer_CombinedFeatures(t *testing.T) {
 		t.Errorf("Missing raw markdown content")
 	}
 }
+
+// TestMarkdownRenderer_TransformationIntegration tests that MarkdownRenderer applies transformations
+func TestMarkdownRenderer_TransformationIntegration(t *testing.T) {
+	data := []Record{
+		{"name": "Alice", "age": 30},
+		{"name": "Bob", "age": 25},
+		{"name": "Charlie", "age": 35},
+	}
+
+	doc := New().
+		Table("test", data,
+			WithKeys("name", "age"),
+			WithTransformations(
+				NewFilterOp(func(r Record) bool {
+					return r["age"].(int) >= 30
+				}),
+			),
+		).
+		Build()
+
+	renderer := &markdownRenderer{headingLevel: 1}
+	result, err := renderer.Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	resultStr := string(result)
+	// Should contain Alice and Charlie but not Bob
+	if !strings.Contains(resultStr, "Alice") {
+		t.Error("Missing Alice after filter")
+	}
+	if !strings.Contains(resultStr, "Charlie") {
+		t.Error("Missing Charlie after filter")
+	}
+	if strings.Contains(resultStr, "Bob") {
+		t.Error("Bob should be filtered out")
+	}
+}

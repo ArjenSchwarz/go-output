@@ -61,7 +61,13 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 		default:
 		}
 
-		switch c := content.(type) {
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		switch c := transformed.(type) {
 		case *TableContent:
 			if i > 0 {
 				result.WriteString("\n")
@@ -110,19 +116,45 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 
 			// Render section contents
 			for j, subContent := range c.Contents() {
-				if subTable, ok := subContent.(*TableContent); ok {
+				// Apply per-content transformations before rendering
+				transformed, err := applyContentTransformations(ctx, subContent)
+				if err != nil {
+					return nil, err
+				}
+
+				if subTable, ok := transformed.(*TableContent); ok {
 					if j > 0 {
 						result.WriteString("\n")
 					}
 					tableWriter := t.renderTable(subTable)
 					result.WriteString(tableWriter.Render())
 					result.WriteString("\n")
-				} else if subText, ok := subContent.(*TextContent); ok {
+				} else if subText, ok := transformed.(*TextContent); ok {
 					if j > 0 {
 						result.WriteString("\n")
 					}
 					result.WriteString(subText.Text())
 					result.WriteString("\n")
+				} else if nestedSection, ok := transformed.(*SectionContent); ok {
+					// Handle nested sections recursively
+					if j > 0 {
+						result.WriteString("\n")
+					}
+					result.WriteString(fmt.Sprintf("=== %s ===\n\n", nestedSection.Title()))
+					for k, nestedContent := range nestedSection.Contents() {
+						nestedTransformed, err := applyContentTransformations(ctx, nestedContent)
+						if err != nil {
+							return nil, err
+						}
+						if nestedTable, ok := nestedTransformed.(*TableContent); ok {
+							if k > 0 {
+								result.WriteString("\n")
+							}
+							tableWriter := t.renderTable(nestedTable)
+							result.WriteString(tableWriter.Render())
+							result.WriteString("\n")
+						}
+					}
 				}
 			}
 

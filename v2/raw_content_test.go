@@ -1,6 +1,7 @@
 package output
 
 import (
+	"context"
 	"testing"
 )
 
@@ -351,5 +352,218 @@ func TestBuilder_MixedContentWithRaw(t *testing.T) {
 	cssContent := contents[3].(*RawContent)
 	if cssContent.Format() != "css" {
 		t.Errorf("Expected CSS format, got %q", cssContent.Format())
+	}
+}
+
+// Mock operation for testing transformation storage (reuse from text_content_test.go)
+type mockRawOperation struct {
+	name string
+}
+
+func (m *mockRawOperation) Name() string {
+	return m.name
+}
+
+func (m *mockRawOperation) Apply(ctx context.Context, content Content) (Content, error) {
+	return content, nil
+}
+
+func (m *mockRawOperation) CanOptimize(with Operation) bool {
+	return false
+}
+
+func (m *mockRawOperation) Validate() error {
+	return nil
+}
+
+func TestRawContent_WithTransformations(t *testing.T) {
+	tests := map[string]struct {
+		format          string
+		data            []byte
+		transformations []Operation
+		wantCount       int
+	}{
+		"no transformations": {
+			format:          FormatHTML,
+			data:            []byte("<p>Test</p>"),
+			transformations: nil,
+			wantCount:       0,
+		},
+		"single transformation": {
+			format: FormatJSON,
+			data:   []byte(`{"key": "value"}`),
+			transformations: []Operation{
+				&mockRawOperation{name: "transform1"},
+			},
+			wantCount: 1,
+		},
+		"multiple transformations": {
+			format: FormatText,
+			data:   []byte("test data"),
+			transformations: []Operation{
+				&mockRawOperation{name: "transform1"},
+				&mockRawOperation{name: "transform2"},
+				&mockRawOperation{name: "transform3"},
+			},
+			wantCount: 3,
+		},
+		"empty transformations slice": {
+			format:          FormatYAML,
+			data:            []byte("key: value"),
+			transformations: []Operation{},
+			wantCount:       0,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var content *RawContent
+			var err error
+			if tc.transformations != nil {
+				content, err = NewRawContent(tc.format, tc.data, WithRawTransformations(tc.transformations...))
+			} else {
+				content, err = NewRawContent(tc.format, tc.data)
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			got := content.GetTransformations()
+			if len(got) != tc.wantCount {
+				t.Errorf("Expected %d transformations, got %d", tc.wantCount, len(got))
+			}
+		})
+	}
+}
+
+func TestRawContent_GetTransformations(t *testing.T) {
+	tests := map[string]struct {
+		format          string
+		data            []byte
+		transformations []Operation
+		wantNames       []string
+	}{
+		"returns empty slice when no transformations": {
+			format:          FormatHTML,
+			data:            []byte("<p>Test</p>"),
+			transformations: nil,
+			wantNames:       []string{},
+		},
+		"returns all transformations in order": {
+			format: FormatJSON,
+			data:   []byte(`{"test": true}`),
+			transformations: []Operation{
+				&mockRawOperation{name: "filter"},
+				&mockRawOperation{name: "sort"},
+				&mockRawOperation{name: "limit"},
+			},
+			wantNames: []string{"filter", "sort", "limit"},
+		},
+		"returns single transformation": {
+			format: FormatText,
+			data:   []byte("test"),
+			transformations: []Operation{
+				&mockRawOperation{name: "transform"},
+			},
+			wantNames: []string{"transform"},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var content *RawContent
+			var err error
+			if tc.transformations != nil {
+				content, err = NewRawContent(tc.format, tc.data, WithRawTransformations(tc.transformations...))
+			} else {
+				content, err = NewRawContent(tc.format, tc.data)
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			got := content.GetTransformations()
+			if len(got) != len(tc.wantNames) {
+				t.Errorf("Expected %d transformations, got %d", len(tc.wantNames), len(got))
+			}
+
+			for i, op := range got {
+				if op.Name() != tc.wantNames[i] {
+					t.Errorf("Transformation %d: expected name %q, got %q", i, tc.wantNames[i], op.Name())
+				}
+			}
+		})
+	}
+}
+
+func TestRawContent_Clone_PreservesTransformations(t *testing.T) {
+	tests := map[string]struct {
+		format          string
+		data            []byte
+		transformations []Operation
+		wantCount       int
+	}{
+		"clone with no transformations": {
+			format:          FormatHTML,
+			data:            []byte("<p>Test</p>"),
+			transformations: nil,
+			wantCount:       0,
+		},
+		"clone with single transformation": {
+			format: FormatJSON,
+			data:   []byte(`{"test": true}`),
+			transformations: []Operation{
+				&mockRawOperation{name: "transform1"},
+			},
+			wantCount: 1,
+		},
+		"clone with multiple transformations": {
+			format: FormatText,
+			data:   []byte("test data"),
+			transformations: []Operation{
+				&mockRawOperation{name: "transform1"},
+				&mockRawOperation{name: "transform2"},
+				&mockRawOperation{name: "transform3"},
+			},
+			wantCount: 3,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var original *RawContent
+			var err error
+			if tc.transformations != nil {
+				original, err = NewRawContent(tc.format, tc.data, WithRawTransformations(tc.transformations...))
+			} else {
+				original, err = NewRawContent(tc.format, tc.data)
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+
+			cloned := original.Clone()
+
+			// Verify cloned content has transformations
+			clonedTransformations := cloned.GetTransformations()
+			if len(clonedTransformations) != tc.wantCount {
+				t.Errorf("Cloned content: expected %d transformations, got %d", tc.wantCount, len(clonedTransformations))
+			}
+
+			// Verify original still has transformations
+			originalTransformations := original.GetTransformations()
+			if len(originalTransformations) != tc.wantCount {
+				t.Errorf("Original content: expected %d transformations, got %d", tc.wantCount, len(originalTransformations))
+			}
+
+			// Verify they reference the same operation instances (shallow copy)
+			if tc.wantCount > 0 {
+				for i := range originalTransformations {
+					if originalTransformations[i] != clonedTransformations[i] {
+						t.Errorf("Transformation %d: expected same instance after clone", i)
+					}
+				}
+			}
+		})
 	}
 }

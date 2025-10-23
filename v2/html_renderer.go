@@ -248,7 +248,13 @@ func (h *htmlRenderer) renderSectionContentHTML(section *SectionContent) ([]byte
 
 	// Render nested content
 	for _, content := range section.Contents() {
-		contentHTML, err := h.renderContent(content)
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(context.Background(), content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentHTML, err := h.renderContent(transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}
