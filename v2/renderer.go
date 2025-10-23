@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"fmt"
 	"io"
 )
 
@@ -110,6 +111,43 @@ func MarkdownWithOptions(includeToC bool, frontMatter map[string]string) Format 
 		Name:     FormatMarkdown,
 		Renderer: NewMarkdownRendererWithOptions(includeToC, frontMatter),
 	}
+}
+
+// applyContentTransformations applies transformations to content during rendering
+// This is a helper function used by renderers to execute per-content transformations
+func applyContentTransformations(ctx context.Context, content Content) (Content, error) {
+	transformations := content.GetTransformations()
+	if len(transformations) == 0 {
+		return content, nil // No transformations
+	}
+
+	// Start with a clone to preserve immutability
+	current := content.Clone()
+
+	// Apply each transformation in sequence
+	for i, op := range transformations {
+		// Check context cancellation before operation
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("content %s transformation cancelled: %w",
+				content.ID(), err)
+		}
+
+		// Validate operation configuration
+		if err := op.Validate(); err != nil {
+			return nil, fmt.Errorf("content %s transformation %d (%s) invalid: %w",
+				content.ID(), i, op.Name(), err)
+		}
+
+		// Apply the operation
+		result, err := op.Apply(ctx, current)
+		if err != nil {
+			return nil, fmt.Errorf("content %s transformation %d (%s) failed: %w",
+				content.ID(), i, op.Name(), err)
+		}
+		current = result
+	}
+
+	return current, nil
 }
 
 // HTMLWithTemplate creates an HTML format with a custom template

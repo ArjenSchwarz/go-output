@@ -3,6 +3,16 @@
 ### Added
 - **Per-Content Transformations Specification** - Complete requirements, design, and implementation specification for attaching transformations directly to individual content items (tables, text, sections) at creation time, enabling different operations to be applied to different content in the same document.
 - **Content Interface Transformation Support** - Extended Content interface with `Clone()` and `GetTransformations()` methods to enable per-content transformation capabilities across all content types (TableContent, TextContent, RawContent, SectionContent, DefaultCollapsibleSection, GraphContent, ChartContent, DrawIOContent)
+- **Transformation Execution Helper (TDD)** - Implemented core transformation execution logic following Test-Driven Development:
+  - Added `applyContentTransformations()` helper function in v2/renderer.go for executing per-content transformations during rendering
+  - Clones content once at start to preserve immutability of original document data
+  - Applies transformations sequentially in user-specified order
+  - Validates each operation configuration before execution via `Validate()` method
+  - Checks context cancellation before each operation for responsive cancellation
+  - Provides detailed error messages including content ID, operation index (zero-based), and operation name
+  - Implements fail-fast error handling (stops immediately on first transformation error)
+  - Comprehensive test suite with 9 test functions covering no-transformations, sequential execution, validation, context cancellation, error messages, immutability preservation, lazy execution, multiple transformations, and fail-fast behavior
+  - All tests verify transformations execute during rendering only (not during Build())
 - **TableContent Transformation Storage (TDD)** - Implemented per-content transformations for TableContent following Test-Driven Development:
   - Added `transformations []Operation` field to TableContent struct for storing operation references
   - Created `WithTransformations(ops ...Operation)` TableOption function supporting variadic arguments and method chaining
