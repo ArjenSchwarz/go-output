@@ -496,4 +496,3 @@ func TestFileWriterHTMLRendering_ConsecutiveFragments(t *testing.T) {
 		}
 	}
 }
-

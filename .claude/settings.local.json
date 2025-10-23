@@ -63,5 +63,9 @@
       "Bash(gh pr diff:*)"
     ],
     "deny": []
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
   }
 }

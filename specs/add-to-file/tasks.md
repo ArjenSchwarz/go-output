@@ -147,13 +147,13 @@ references:
 
 ## Phase 3: CSV Format Support
 
-- [ ] 7. CSV Header Skipping
+- [x] 7. CSV Header Skipping
   - Implement appendCSVWithoutHeaders() using simple line splitting
   - Normalize CRLF to LF before splitting
   - Handle edge cases (empty files, header-only files)
   - Requirements: [2.7](requirements.md#2.7), [3.1](requirements.md#3.1)
   - References: v2/file_writer.go
-  - [ ] 7.1. Write unit tests for CSV header skipping
+  - [x] 7.1. Write unit tests for CSV header skipping
     - Test header is stripped when appending
     - Test Unix LF line endings
     - Test Windows CRLF line endings
@@ -161,7 +161,7 @@ references:
     - Test header-only CSV (should append nothing)
     - Test empty CSV data
     - Requirements: [2.7](requirements.md#2.7), [9.8](requirements.md#9.8)
-  - [ ] 7.2. Implement appendCSVWithoutHeaders()
+  - [x] 7.2. Implement appendCSVWithoutHeaders()
     - Normalize line endings: bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
     - Split on first newline: bytes.SplitN(data, []byte("\n"), 2)
     - Return early if only header line exists
@@ -169,20 +169,20 @@ references:
     - Add comments explaining CRLF normalization
     - Requirements: [2.7](requirements.md#2.7)
 
-- [ ] 8. Multi-Section Document Support
+- [x] 8. Multi-Section Document Support
   - Verify multi-section documents work with append mode
   - Ensure all sections are appended in order
   - Test section boundaries are preserved
   - Requirements: [7.1](requirements.md#7.1), [7.2](requirements.md#7.2), [7.3](requirements.md#7.3), [7.4](requirements.md#7.4), [7.5](requirements.md#7.5)
   - References: v2/file_writer.go
-  - [ ] 8.1. Write integration tests for multi-section appending
+  - [x] 8.1. Write integration tests for multi-section appending
     - Test appending document with multiple table sections
     - Test appending document with mixed content types
     - Test HTML multi-section append (all before marker)
     - Test CSV multi-section append (only first section has headers stripped)
     - Verify sections maintain order and separation
     - Requirements: [7.1](requirements.md#7.1), [7.2](requirements.md#7.2), [7.3](requirements.md#7.3), [7.4](requirements.md#7.4), [7.5](requirements.md#7.5), [9.7](requirements.md#9.7)
-  - [ ] 8.2. Update Write() to handle multi-section documents
+  - [x] 8.2. Update Write() to handle multi-section documents
     - Iterate through all sections in document
     - Append each section using appropriate method
     - Preserve section boundaries (format-specific separators)

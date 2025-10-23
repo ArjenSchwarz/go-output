@@ -284,9 +284,8 @@ func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data
 		return fmt.Errorf("failed to open file for append %q: %w", fullPath, err)
 	}
 	defer func() {
-		if err := file.Close(); err != nil {
-			// Note: error already has context, don't wrap again
-		}
+		// Close file, errors are intentionally ignored as we already have the data
+		_ = file.Close()
 	}()
 
 	_, err = file.Write(data)
@@ -358,9 +357,8 @@ func (fw *FileWriter) appendHTMLWithMarker(ctx context.Context, fullPath string,
 	tempPath := tempFile.Name()
 	// Cleanup temp file on error using defer
 	defer func() {
-		if err := os.Remove(tempPath); err != nil && !strings.Contains(err.Error(), "no such file") {
-			// Ignore if file already removed (successful rename), only log other errors
-		}
+		// Attempt to remove temp file - ignore errors (file may have been renamed successfully)
+		_ = os.Remove(tempPath)
 	}()
 
 	// Build new content: [before marker] + [new data] + [marker] + [after marker]

@@ -181,6 +181,20 @@
 - **Code Modernization** - Updated map copying to use maps.Copy() instead of manual loops per Go 1.24+ best practices
 
 ### Added
+- **Add-to-File Feature Phase 3: CSV Format Support and Multi-Section Document Handling** - CSV header stripping and multi-section append functionality with cross-platform line ending support
+  - CSV header skipping implementation in existing `appendCSVWithoutHeaders()` method with CRLF/LF normalization
+  - Multi-section document append support verified for HTML, CSV, and JSON formats
+  - **Unit Tests (106 lines)**:
+    - `TestFileWriterCSVHeaderSkipping`: 8 test cases covering header stripping with Unix LF, Windows CRLF, mixed line endings, header-only files, and empty data
+  - **Integration Tests (354 lines)**:
+    - `TestFileWriterMultiSectionAppend`: Multi-table CSV documents and mixed content type JSON appends
+    - `TestFileWriterHTMLMultiSectionAppend`: HTML multi-section append with all content before marker and section content verification
+    - `TestFileWriterCSVMultiSectionHeaderHandling`: Verification that only first header is stripped from multi-section CSV documents
+  - Cross-platform line ending handling: `bytes.ReplaceAll()` for CRLF-to-LF normalization before header detection
+  - Multi-section support: FileWriter correctly handles documents with multiple tables/sections via renderer output
+  - Code quality improvements: Fixed linter issues (SA9003) in file close and temp file cleanup defer statements
+  - Total: 460 lines of test code covering 11 test scenarios with explicit key ordering for deterministic CSV output
+
 - **Add-to-File Feature Phase 2: HTML Format Support** - Atomic HTML append operations with marker-based insertion and fragment rendering support
   - `appendHTMLWithMarker()` method implementing atomic write-to-temp-and-rename pattern for safe HTML content insertion
   - `appendCSVWithoutHeaders()` method for CSV-aware appending that strips duplicate header rows with CRLF/LF normalization

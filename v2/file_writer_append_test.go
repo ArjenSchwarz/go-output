@@ -362,3 +362,109 @@ func TestFileWriterDisallowUnsafeAppend(t *testing.T) {
 		})
 	}
 }
+
+func TestFileWriterCSVHeaderSkipping(t *testing.T) {
+	t.Parallel()
+	skipIfNotIntegration(t)
+
+	tempDir := t.TempDir()
+	fw, err := NewFileWriterWithOptions(tempDir, "test-{format}.{ext}", WithAppendMode())
+	if err != nil {
+		t.Fatalf("failed to create FileWriter: %v", err)
+	}
+
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		initialData  string
+		appendData   string
+		wantCombined string
+		wantErr      bool
+	}{
+		"header is stripped when appending": {
+			initialData:  "Name,Age\nAlice,30\n",
+			appendData:   "Name,Age\nBob,25\n",
+			wantCombined: "Name,Age\nAlice,30\nBob,25\n",
+			wantErr:      false,
+		},
+		"unix LF line endings": {
+			initialData:  "Name,Age\nAlice,30\n",
+			appendData:   "Name,Age\nBob,25\n",
+			wantCombined: "Name,Age\nAlice,30\nBob,25\n",
+			wantErr:      false,
+		},
+		"windows CRLF line endings": {
+			initialData:  "Name,Age\r\nAlice,30\r\n",
+			appendData:   "Name,Age\r\nBob,25\r\n",
+			wantCombined: "Name,Age\r\nAlice,30\r\nBob,25\n",
+			wantErr:      false,
+		},
+		"mixed line endings": {
+			initialData:  "Name,Age\r\nAlice,30\n",
+			appendData:   "Name,Age\nBob,25\r\n",
+			wantCombined: "Name,Age\r\nAlice,30\nBob,25\n",
+			wantErr:      false,
+		},
+		"header-only CSV appends nothing": {
+			initialData:  "Name,Age\nAlice,30\n",
+			appendData:   "Name,Age\n",
+			wantCombined: "Name,Age\nAlice,30\n",
+			wantErr:      false,
+		},
+		"empty CSV data": {
+			initialData:  "Name,Age\nAlice,30\n",
+			appendData:   "",
+			wantCombined: "Name,Age\nAlice,30\n",
+			wantErr:      false,
+		},
+		"multiple data rows": {
+			initialData:  "Name,Age\nAlice,30\n",
+			appendData:   "Name,Age\nBob,25\nCharlie,35\n",
+			wantCombined: "Name,Age\nAlice,30\nBob,25\nCharlie,35\n",
+			wantErr:      false,
+		},
+		"CRLF header only": {
+			initialData:  "Name,Age\r\nAlice,30\r\n",
+			appendData:   "Name,Age\r\n",
+			wantCombined: "Name,Age\r\nAlice,30\r\n",
+			wantErr:      false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			filename := "test-csv-" + strings.ReplaceAll(name, " ", "-") + ".csv"
+			filepath := filepath.Join(fw.dir, filename)
+
+			// Create initial file
+			if err := os.WriteFile(filepath, []byte(tc.initialData), 0644); err != nil {
+				t.Fatalf("failed to create initial file: %v", err)
+			}
+
+			// Append CSV data (should strip headers)
+			err := fw.appendCSVWithoutHeaders(ctx, filepath, []byte(tc.appendData))
+			if tc.wantErr {
+				if err == nil {
+					t.Error("expected error but got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// Verify combined content
+			content, err := os.ReadFile(filepath)
+			if err != nil {
+				t.Fatalf("failed to read file: %v", err)
+			}
+
+			if string(content) != tc.wantCombined {
+				t.Errorf("file content = %q, want %q", string(content), tc.wantCombined)
+			}
+		})
+	}
+}
