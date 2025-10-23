@@ -279,11 +279,11 @@ func (m *markdownRenderer) renderRawContentMarkdown(raw *RawContent) ([]byte, er
 
 // renderSectionContentMarkdown renders section content with proper heading levels
 func (m *markdownRenderer) renderSectionContentMarkdown(section *SectionContent) ([]byte, error) {
-	return m.renderSectionContentMarkdownWithDepth(section, m.headingLevel)
+	return m.renderSectionContentMarkdownWithDepth(context.Background(), section, m.headingLevel)
 }
 
 // renderSectionContentMarkdownWithDepth renders section content with explicit depth tracking
-func (m *markdownRenderer) renderSectionContentMarkdownWithDepth(section *SectionContent, depth int) ([]byte, error) {
+func (m *markdownRenderer) renderSectionContentMarkdownWithDepth(ctx context.Context, section *SectionContent, depth int) ([]byte, error) {
 	var result strings.Builder
 
 	// Use depth as the heading level, clamped to valid range
@@ -294,14 +294,24 @@ func (m *markdownRenderer) renderSectionContentMarkdownWithDepth(section *Sectio
 
 	// Render nested content with increased depth for nested sections
 	for _, content := range section.Contents() {
-		var contentMD []byte
-		var err error
+		// Check for context cancellation
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 
-		if nestedSection, ok := content.(*SectionContent); ok {
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		var contentMD []byte
+
+		if nestedSection, ok := transformed.(*SectionContent); ok {
 			// Increase depth for nested sections
-			contentMD, err = m.renderSectionContentMarkdownWithDepth(nestedSection, depth+1)
+			contentMD, err = m.renderSectionContentMarkdownWithDepth(ctx, nestedSection, depth+1)
 		} else {
-			contentMD, err = m.renderContent(content)
+			contentMD, err = m.renderContent(transformed)
 		}
 
 		if err != nil {
@@ -753,7 +763,13 @@ func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleS
 			result.WriteString("\n")
 		}
 
-		contentMD, err := m.renderContent(content)
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(context.Background(), content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentMD, err := m.renderContent(transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}

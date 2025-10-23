@@ -236,7 +236,13 @@ func (b *baseRenderer) renderDocumentTo(ctx context.Context, doc *Document, w io
 			}
 		}
 
-		if err := renderFunc(content, w); err != nil {
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return err
+		}
+
+		if err := renderFunc(transformed, w); err != nil {
 			return fmt.Errorf("failed to render content %s: %w", content.ID(), err)
 		}
 	}

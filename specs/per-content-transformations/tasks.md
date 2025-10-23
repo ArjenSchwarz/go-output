@@ -397,3 +397,110 @@ references:
   - Verify all tests pass and code quality checks succeed
   - Requirements: [7.1](requirements.md#7.1), [7.2](requirements.md#7.2), [7.3](requirements.md#7.3), [8.1](requirements.md#8.1), [8.2](requirements.md#8.2)
   - References: Makefile
+
+## Phase 11: PR Feedback Fixes (Critical Issues)
+
+- [x] 40. Write tests for streaming render with transformations
+  - Issue: Streaming render path bypasses applyContentTransformations (PR #32 comment r2453641814)
+  - Problem: RenderTo methods produce different output than Render() when transformations present
+  - Root Cause: renderDocumentTo in base_renderer.go:212 calls renderFunc on original content
+  - Write test: RenderTo with WithTransformations() should produce same output as Render()
+  - Write test: JSONRenderer.RenderTo with filter transformation
+  - Write test: YAMLRenderer.RenderTo with sort transformation
+  - Write test: CSVRenderer.RenderTo with limit transformation
+  - Write test: MarkdownRenderer.RenderTo with multiple transformations
+  - Write test: HTMLRenderer.RenderTo with transformations
+  - Write test: TableRenderer.RenderTo with transformations
+  - Write test: Verify original content unchanged after streaming render
+  - Write test: Streaming render error handling (validation failures)
+  - Write test: Streaming render with context cancellation
+  - All tests should fail initially (red phase)
+  - Requirements: [2.1](requirements.md#2.1), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4), [5.1](requirements.md#5.1)
+  - References: v2/renderer_json_test.go, v2/renderer_yaml_test.go, v2/renderer_csv_test.go, v2/renderer_markdown_test.go, v2/renderer_html_test.go, v2/renderer_table_test.go
+
+- [x] 41. Fix streaming render path in baseRenderer
+  - Update renderDocumentTo method in base_renderer.go to apply transformations before delegating to renderFunc
+  - Apply applyContentTransformations(ctx, content) to each content item before calling renderFunc(transformed, w)
+  - Handle transformation errors with fail-fast behavior
+  - Ensure error messages include content ID and operation index
+  - Propagate context cancellation errors appropriately
+  - Run tests - all should pass (green phase)
+  - Requirements: [2.1](requirements.md#2.1), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5), [5.1](requirements.md#5.1), [5.2](requirements.md#5.2), [5.3](requirements.md#5.3)
+  - References: v2/base_renderer.go:212
+
+- [x] 42. Fix streaming render path in format-specific renderers
+  - Verify all renderer-specific RenderTo methods delegate to baseRenderer properly
+  - Check JSONRenderer, YAMLRenderer, CSVRenderer, MarkdownRenderer, HTMLRenderer, TableRenderer
+  - Update any renderer-specific streaming code that bypasses transformation
+  - Ensure consistent behavior across all renderers
+  - Run tests - all should pass (green phase)
+  - Requirements: [2.1](requirements.md#2.1), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4)
+  - References: v2/json_yaml_renderer.go, v2/csv_renderer.go, v2/markdown_renderer.go, v2/html_renderer.go, v2/table_renderer.go
+
+- [x] 43. Write tests for nested content transformations
+  - Issue: Nested content transformations ignored during rendering (PR #32 comment r2453641820)
+  - Problem: Sections containing content with WithTransformations() ignore those transformations
+  - Root Cause: Section rendering (markdown_renderer.go:304) calls renderContent directly without applying transformations
+  - Write test: Section containing table with WithTransformations()
+  - Write test: Section containing text with WithTransformations()
+  - Write test: Nested sections with transformations at multiple levels
+  - Write test: Section with mixed content (some with transformations, some without)
+  - Write test: Multi-level nesting (section → section → table with transformations)
+  - Write test: Verify nested transformations execute during rendering
+  - Write test: Verify nested content errors propagate correctly
+  - Write test: CollapsibleSection with nested transformations
+  - Write test: GraphContent (DOT, Mermaid, Drawio) nested in sections with transformations
+  - All tests should fail initially (red phase)
+  - Requirements: [1.6](requirements.md#1.6), [2.1](requirements.md#2.1), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4)
+  - References: v2/section_content_test.go, v2/renderer_test.go
+
+- [x] 44. Fix nested content rendering in MarkdownRenderer
+  - Update `renderSectionContentMarkdownWithDepth` to apply transformations to nested content before rendering
+  - Apply `applyContentTransformations(ctx, content)` to each nested content item
+  - Ensure recursive application for multi-level nesting
+  - Handle transformation errors with fail-fast behavior
+  - Run tests - all should pass (green phase)
+  - Requirements: [1.6](requirements.md#1.6), [2.1](requirements.md#2.1), [2.3](requirements.md#2.3), [4.4](requirements.md#4.4), [5.1](requirements.md#5.1)
+  - References: v2/markdown_renderer.go:304
+
+- [x] 45. Fix nested content rendering in other renderers
+  - Update JSONRenderer section rendering to apply transformations to nested content
+  - Update YAMLRenderer section rendering to apply transformations to nested content
+  - Update HTMLRenderer section rendering to apply transformations to nested content
+  - Update CSVRenderer section handling (if applicable)
+  - Update TableRenderer section handling (if applicable)
+  - Verify consistent recursive transformation application across all renderers
+  - Run tests - all should pass (green phase)
+  - Requirements: [1.6](requirements.md#1.6), [2.1](requirements.md#2.1), [2.3](requirements.md#2.3)
+  - References: v2/json_yaml_renderer.go, v2/html_renderer.go, v2/csv_renderer.go, v2/table_renderer.go
+
+- [x] 46. Add integration tests for combined fixes
+  - Write test: Streaming render with nested sections containing transformations
+  - Write test: RenderTo with complex document structure (sections, nested content, transformations)
+  - Write test: Consistency between Render() and RenderTo() for nested content with transformations
+  - Write test: Performance with large documents containing nested transformations
+  - Write test: Error handling across streaming and nested transformation paths
+  - Run tests - all should pass (green phase)
+  - Requirements: [2.1](requirements.md#2.1), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4), [8.2](requirements.md#8.2)
+  - References: v2/integration_test.go
+
+- [x] 47. Update documentation for fixes
+  - Update best practices guide to include streaming render with transformations
+  - Document nested content transformation behavior
+  - Add examples of sections with transformed nested content
+  - Update migration guide if needed
+  - Verify documentation accuracy with examples
+  - Requirements: [9.2](requirements.md#9.2), [9.6](requirements.md#9.6)
+  - References: v2/docs/BEST_PRACTICES.md, v2/doc.go
+
+- [x] 48. Run final validation for Phase 11
+  - Run all tests (unit + integration) with coverage: make test-coverage
+  - Run tests with -race flag to ensure thread safety
+  - Run golangci-lint: make lint
+  - Verify streaming render tests pass for all renderers
+  - Verify nested content transformation tests pass
+  - Verify integration tests pass
+  - Verify no regression in existing functionality
+  - Verify all Phase 11 requirements met
+  - Requirements: [2.1](requirements.md#2.1), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4), [7.1](requirements.md#7.1), [7.2](requirements.md#7.2)
+  - References: Makefile

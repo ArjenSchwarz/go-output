@@ -280,7 +280,13 @@ func (j *jsonRenderer) renderSectionContentJSON(section *SectionContent) ([]byte
 
 	var contents []any
 	for _, content := range section.Contents() {
-		contentJSON, err := j.renderContent(content)
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(context.Background(), content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentJSON, err := j.renderContent(transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}
@@ -774,7 +780,13 @@ func (y *yamlRenderer) renderSectionContentYAML(section *SectionContent) ([]byte
 
 	var contents []any
 	for _, content := range section.Contents() {
-		contentYAML, err := y.renderContent(content)
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(context.Background(), content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentYAML, err := y.renderContent(transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}

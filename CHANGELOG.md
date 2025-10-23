@@ -1,5 +1,35 @@
 ## Unreleased
 
+### Fixed
+- **Critical: Streaming Render Path Inconsistency** - Fixed `RenderTo()` methods bypassing per-content transformations, causing different output than `Render()`:
+  - Updated `baseRenderer.renderDocumentTo()` to apply transformations before rendering (v2/base_renderer.go)
+  - All renderers (JSON, YAML, CSV, Markdown, HTML, Table) now properly apply transformations in streaming paths
+  - Added comprehensive tests verifying `Render()` and `RenderTo()` produce identical output (v2/renderer_streaming_test.go)
+
+- **Critical: Nested Content Transformation Gap** - Fixed transformations being ignored for content nested within sections and collapsible sections:
+  - Updated `MarkdownRenderer.renderSectionContentMarkdownWithDepth()` to apply transformations to nested content (v2/markdown_renderer.go)
+  - Updated `jsonRenderer.renderSectionContentJSON()` to apply transformations (v2/json_yaml_renderer.go)
+  - Updated `yamlRenderer.renderSectionContentYAML()` to apply transformations (v2/json_yaml_renderer.go)
+  - Updated `htmlRenderer.renderSectionContentHTML()` to apply transformations (v2/html_renderer.go)
+  - Updated `markdownRenderer.renderCollapsibleSection()` to apply transformations for collapsible sections (v2/markdown_renderer.go)
+  - Added comprehensive tests for nested content at multiple depths (v2/renderer_nested_test.go)
+
+### Added
+- **Test Coverage for Critical Fixes** - Added integration tests verifying combined streaming and nested transformation behavior:
+  - Tests for streaming render with nested sections containing transformations
+  - Tests for complex document structures with multiple sections and various transformations
+  - Tests for consistency between `Render()` and `RenderTo()` across all renderers
+  - Performance tests with large documents containing nested transformations
+  - Error handling tests across streaming and nested transformation paths
+  - All tests in v2/renderer_integration_streaming_test.go
+
+- **Documentation Updates** - Enhanced best practices guide with streaming and nested content guidance:
+  - Added "Streaming Render and Nested Content" section to v2/docs/BEST_PRACTICES.md
+  - Documented that `Render()` and `RenderTo()` produce identical output
+  - Documented nested content transformation behavior with examples
+  - Added multi-level nesting examples and best practices
+  - Updated summary checklist with nested content and streaming render validation items
+
 ### Changed
 - **Example Cleanup and Documentation** - Improved examples and ignore patterns for build artifacts:
   - Updated migration example to clarify Pipeline API removal with code snippet showing deprecated approach and listing problems it had

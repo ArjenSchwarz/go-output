@@ -10,6 +10,7 @@ This guide provides patterns and recommendations for writing safe, efficient tra
 - [Error Handling](#error-handling)
 - [Testing](#testing)
 - [Common Pitfalls](#common-pitfalls)
+- [Streaming Render and Nested Content](#streaming-render-and-nested-content)
 
 ## Thread Safety
 
@@ -664,6 +665,80 @@ filter := output.NewFilterOp(func(r output.Record) bool {
 })
 ```
 
+## Streaming Render and Nested Content
+
+### Streaming Render Consistency
+
+Both `Render()` and `RenderTo()` methods apply per-content transformations identically. Use `RenderTo()` for large documents to avoid buffering entire output in memory.
+
+```go
+table, _ := output.NewTableContent("data", records,
+    output.WithKeys("name", "value"),
+    output.WithTransformations(
+        output.NewSortOp(output.SortKey{Column: "value", Direction: output.Descending}),
+        output.NewLimitOp(100),
+    ),
+)
+
+doc := output.New().AddContent(table).Build()
+
+// Both produce identical output
+buffered, _ := renderer.Render(ctx, doc)
+renderer.RenderTo(ctx, doc, writer)  // Streams directly to writer
+```
+
+### Nested Content Transformations
+
+Transformations are properly applied to content nested within sections and collapsible sections.
+
+```go
+// Table with transformations
+filteredTable, _ := output.NewTableContent("active-users", users,
+    output.WithKeys("name", "email"),
+    output.WithTransformations(
+        output.NewFilterOp(func(r output.Record) bool {
+            return r["active"].(bool)
+        }),
+    ),
+)
+
+// Create section containing the table
+section := output.NewSectionContent("User Management")
+section.AddContent(filteredTable)
+
+doc := output.New().AddContent(section).Build()
+
+// Transformations are applied during rendering
+// regardless of nesting depth
+result, _ := renderer.Render(ctx, doc)
+```
+
+### Multi-Level Nesting
+
+Transformations work at any nesting depth:
+
+```go
+table, _ := output.NewTableContent("data", records,
+    output.WithTransformations(output.NewLimitOp(10)),
+)
+
+innerSection := output.NewSectionContent("Inner")
+innerSection.AddContent(table)
+
+outerSection := output.NewSectionContent("Outer")
+outerSection.AddContent(innerSection)
+
+// Transformation executes correctly at any depth
+doc := output.New().AddContent(outerSection).Build()
+```
+
+### Best Practices for Nested Content
+
+1. **Apply transformations at the content level**, not the section level
+2. **Keep nesting shallow** (≤ 3 levels) for maintainability
+3. **Test nested scenarios** if using sections with transformations
+4. **Use consistent rendering** - both `Render()` and `RenderTo()` work identically
+
 ## Summary Checklist
 
 - [ ] Operations are stateless and thread-safe
@@ -676,6 +751,8 @@ filter := output.NewFilterOp(func(r output.Record) bool {
 - [ ] Error cases tested with integration tests
 - [ ] Complex predicates extracted to named functions
 - [ ] Transformation chains kept under 10 operations
+- [ ] Nested content transformations tested if using sections
+- [ ] Streaming renders (`RenderTo`) tested for large documents
 
 ## Further Resources
 
