@@ -347,6 +347,105 @@ out := output.NewOutput(
 )
 ```
 
+### Append Mode
+
+v2 introduces append mode for both FileWriter and S3Writer, allowing you to add content to existing files instead of replacing them.
+
+#### Configuration Change
+
+**v1 Approach:**
+```go
+settings := format.NewOutputSettings()
+settings.ShouldAppend = true
+settings.OutputFileFormat = output.FormatHTML
+```
+
+**v2 Approach:**
+```go
+// FileWriter with append mode
+fw, err := output.NewFileWriterWithOptions(
+    "./output",
+    "report.{ext}",
+    output.WithAppendMode(),
+)
+
+out := output.NewOutput(
+    output.WithFormat(output.FormatHTML),
+    output.WithWriter(fw),
+)
+```
+
+#### Breaking Change: HTML Marker
+
+**⚠️ CRITICAL:** v2 uses a different HTML append marker that is incompatible with v1 files.
+
+```html
+<!-- v1 marker (no longer supported) -->
+<div id='end'></div>
+
+<!-- v2 marker (required) -->
+<!-- go-output-append -->
+```
+
+**Migration Action Required:**
+- Replace `<div id='end'></div>` with `<!-- go-output-append -->` in existing HTML files, OR
+- Regenerate HTML files using v2
+
+#### Format-Specific Behavior
+
+```go
+// JSON/YAML: Byte-level appending (useful for NDJSON logging)
+fw, _ := output.NewFileWriterWithOptions("./logs", "app.{ext}", output.WithAppendMode())
+out := output.NewOutput(output.WithFormat(output.FormatJSON), output.WithWriter(fw))
+// Each render creates a new JSON object on a new line
+
+// CSV: Automatic header skipping
+fw, _ := output.NewFileWriterWithOptions("./data", "sensors.{ext}", output.WithAppendMode())
+out := output.NewOutput(output.WithFormat(output.FormatCSV), output.WithWriter(fw))
+// Headers from appended data are automatically removed
+
+// HTML: Inserts before marker comment
+fw, _ := output.NewFileWriterWithOptions("./reports", "daily.{ext}", output.WithAppendMode())
+out := output.NewOutput(output.WithFormat(output.FormatHTML), output.WithWriter(fw))
+// Content is inserted before <!-- go-output-append --> marker
+```
+
+#### New Features in v2
+
+**S3 Append Mode** (not available in v1):
+```go
+import (
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+cfg, _ := config.LoadDefaultConfig(ctx)
+s3Client := s3.NewFromConfig(cfg)
+
+sw := output.NewS3WriterWithOptions(
+    s3Client,
+    "my-bucket",
+    "logs/app.{ext}",
+    output.WithS3AppendMode(),
+    output.WithMaxAppendSize(10*1024*1024), // 10MB limit
+)
+```
+
+**Thread Safety:** v2 append operations use sync.Mutex for safe concurrent writes.
+
+**Unsafe Append Prevention:**
+```go
+// Prevent accidental JSON/YAML appending (creates invalid files)
+fw, _ := output.NewFileWriterWithOptions(
+    "./output",
+    "data.{ext}",
+    output.WithAppendMode(),
+    output.WithDisallowUnsafeAppend(), // Error on JSON/YAML append
+)
+```
+
+**Examples:** See [v2/examples/append_mode/](../../examples/append_mode/) for detailed usage patterns including NDJSON logging, HTML reports, CSV data collection, and S3 appending.
+
 ### S3 Output
 
 v2 S3Writer is fully compatible with AWS SDK v2 and requires no adapter:

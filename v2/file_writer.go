@@ -429,21 +429,108 @@ func WithAbsolutePaths() FileWriterOption {
 	}
 }
 
-// WithAppendMode enables append mode for the FileWriter
+// WithAppendMode enables append mode for the FileWriter.
+//
+// When append mode is enabled, the FileWriter will append new content to existing
+// files instead of replacing them. The append behavior varies by format:
+//
+//   - JSON/YAML: Byte-level appending (useful for NDJSON-style logging). This produces
+//     concatenated output like {"a":1}{"b":2}, not merged JSON structures.
+//   - CSV: Headers are automatically skipped when appending to existing files. Only
+//     data rows are appended to preserve CSV structure.
+//   - HTML: Uses the <!-- go-output-append --> comment marker system. New HTML fragments
+//     are inserted before the marker. The target file must contain this marker or an
+//     error will be returned. For new files, a full HTML page with the marker is created.
+//   - Other formats (Table, Markdown, etc.): Pure byte-level appending.
+//
+// Thread Safety: The FileWriter uses sync.Mutex to serialize write operations when
+// multiple goroutines share the same FileWriter instance. This provides thread-safety
+// within a single process, but does NOT protect across separate FileWriter instances
+// or separate processes writing to the same file.
+//
+// File Creation: If the target file does not exist, it will be created with the
+// configured permissions (default 0644). The append mode will not take effect until
+// subsequent writes to the same file.
+//
+// UTF-8 Encoding: All files are assumed to be UTF-8 encoded. Non-UTF-8 files may
+// produce unexpected results.
+//
+// Example:
+//
+//	// Create FileWriter with append mode
+//	fw, err := output.NewFileWriterWithOptions(
+//	    "./logs",
+//	    "app-{format}.{ext}",
+//	    output.WithAppendMode(),
+//	)
+//
+//	// First write creates the file
+//	fw.Write(ctx, output.FormatJSON, []byte(`{"event":"start"}`))
+//
+//	// Second write appends (NDJSON pattern)
+//	fw.Write(ctx, output.FormatJSON, []byte(`{"event":"end"}`))
+//	// Result: {"event":"start"}{"event":"end"}
 func WithAppendMode() FileWriterOption {
 	return func(fw *FileWriter) {
 		fw.appendMode = true
 	}
 }
 
-// WithPermissions sets custom file permissions (default 0644)
+// WithPermissions sets custom file permissions for newly created files.
+//
+// The default permission is 0644 (rw-r--r--), which allows the owner to read and write,
+// while others can only read. This is the standard Unix permission for user-created files.
+//
+// Common permission values:
+//   - 0644: Owner read/write, group/others read only (default)
+//   - 0600: Owner read/write, no access for others (secure)
+//   - 0666: Read/write for everyone (less secure)
+//   - 0755: Owner read/write/execute, others read/execute (for directories)
+//
+// This option only affects new file creation. Permissions of existing files are not modified.
+//
+// Example:
+//
+//	// Create files with restricted permissions
+//	fw, err := output.NewFileWriterWithOptions(
+//	    "./secure",
+//	    "data-{format}.{ext}",
+//	    output.WithPermissions(0600), // Only owner can read/write
+//	)
 func WithPermissions(perm os.FileMode) FileWriterOption {
 	return func(fw *FileWriter) {
 		fw.permissions = perm
 	}
 }
 
-// WithDisallowUnsafeAppend prevents appending to JSON/YAML files
+// WithDisallowUnsafeAppend prevents appending to JSON/YAML files.
+//
+// By default, FileWriter allows byte-level appending to JSON and YAML files when
+// WithAppendMode() is enabled. This is useful for NDJSON-style logging where each
+// line is a separate JSON object. However, this produces concatenated output like
+// {"a":1}{"b":2} which is NOT valid JSON for most parsers.
+//
+// When WithDisallowUnsafeAppend() is enabled, any attempt to append to JSON or YAML
+// files will return an error. This helps prevent accidental creation of invalid
+// structured data files.
+//
+// This option has no effect if WithAppendMode() is not enabled.
+//
+// Example:
+//
+//	// Prevent accidental JSON/YAML appending
+//	fw, err := output.NewFileWriterWithOptions(
+//	    "./output",
+//	    "report-{format}.{ext}",
+//	    output.WithAppendMode(),
+//	    output.WithDisallowUnsafeAppend(), // Forbid JSON/YAML appending
+//	)
+//
+//	// This will succeed (HTML supports safe appending)
+//	fw.Write(ctx, output.FormatHTML, htmlData)
+//
+//	// This will return an error
+//	fw.Write(ctx, output.FormatJSON, jsonData)
 func WithDisallowUnsafeAppend() FileWriterOption {
 	return func(fw *FileWriter) {
 		fw.disallowUnsafeAppend = true

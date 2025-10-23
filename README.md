@@ -92,6 +92,37 @@ out := output.NewOutput(
 )
 ```
 
+## Append Mode
+
+Append new content to existing files instead of replacing them:
+
+```go
+// Enable append mode for file writing
+fw, _ := output.NewFileWriterWithOptions(
+    "./logs",
+    "app.{ext}",
+    output.WithAppendMode(),
+)
+
+out := output.NewOutput(
+    output.WithFormat(output.FormatJSON),
+    output.WithWriter(fw),
+)
+
+// Each render appends to the existing file
+out.Render(ctx, doc1)  // Creates/appends to logs/app.json
+out.Render(ctx, doc2)  // Appends to logs/app.json
+out.Render(ctx, doc3)  // Appends to logs/app.json
+```
+
+**Format-specific behavior:**
+- **JSON/YAML**: Byte-level appending (useful for NDJSON logging)
+- **CSV**: Automatically skips headers when appending to existing files
+- **HTML**: Inserts content before `<!-- go-output-append -->` marker
+- **S3**: Download-modify-upload with ETag conflict detection
+
+**Examples:** See [v2/examples/append_mode/](v2/examples/append_mode/) for NDJSON logging, HTML reports, CSV data collection, and S3 appending patterns.
+
 ## Mixed Content Documents
 
 Create rich documents with multiple content types:

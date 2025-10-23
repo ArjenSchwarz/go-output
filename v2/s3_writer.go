@@ -213,7 +213,7 @@ func (sw *S3Writer) appendToS3Object(ctx context.Context, format, key string, ne
 	// Combine data based on format
 	combinedData, err := sw.combineData(format, existingData, newData)
 	if err != nil {
-		return err
+		return sw.wrapError(format, err)
 	}
 
 	// Upload with conditional put (ETag check for optimistic locking)

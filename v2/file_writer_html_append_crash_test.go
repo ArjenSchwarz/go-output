@@ -290,7 +290,7 @@ func TestFileWriterHTMLAppendCrashSafety_ConcurrentOperations(t *testing.T) {
 
 	// Simulate sequential appends (like concurrent operations would do)
 	// The mutex in FileWriter should prevent interleaving
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		content := []byte("<p>Content" + string(rune('1'+i)) + "</p>")
 		err := fw.Write(ctx, FormatHTML, content)
 		if err != nil {

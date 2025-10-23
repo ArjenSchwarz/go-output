@@ -181,6 +181,50 @@
 - **Code Modernization** - Updated map copying to use maps.Copy() instead of manual loops per Go 1.24+ best practices
 
 ### Added
+- **Add-to-File Feature Phase 5: Documentation and Examples** - Complete documentation suite with API reference, migration guide, and practical examples for append mode functionality
+  - **API Documentation (v2/docs/API.md)**:
+    - Append Mode section with FileWriter and S3Writer configuration examples
+    - Functional options reference: `WithAppendMode()`, `WithPermissions()`, `WithDisallowUnsafeAppend()`, `WithS3AppendMode()`, `WithMaxAppendSize()`
+    - Format-specific behavior table documenting JSON/YAML (byte-level), CSV (header-aware), HTML (marker-based), and Text/Table (byte-level) append behavior
+    - HTML append marker documentation with `<!-- go-output-append -->` constant reference
+    - Thread safety and S3 append limitations documentation
+  - **Migration Guide (v2/docs/MIGRATION.md)**:
+    - Append Mode section documenting v1 to v2 migration path
+    - Configuration change examples showing v1's `ShouldAppend` to v2's `WithAppendMode()` transition
+    - Breaking change warning for HTML marker incompatibility (`<div id='end'></div>` → `<!-- go-output-append -->`)
+    - Format-specific behavior examples for JSON/YAML, CSV, and HTML append modes
+    - New v2 features documentation: S3 append mode, thread safety, unsafe append prevention
+    - Side-by-side code comparisons for all append scenarios
+  - **Practical Examples (v2/examples/append_mode/)**:
+    - `json_ndjson_logging.go` (85 lines): NDJSON log streaming with application lifecycle events
+    - `html_reports.go` (116 lines): Multi-section HTML reports with marker-based insertion
+    - `csv_data_collection.go` (136 lines): Batch CSV data collection with automatic header handling
+    - `multisection_reports.go` (175 lines): Complex reports with mixed content types (tables, text, sections)
+    - `s3_append_logging.go` (174 lines): S3 append operations with concurrent modification handling and format-aware data combining
+    - All examples include detailed comments explaining key concepts and use cases
+    - Examples demonstrate real-world scenarios: log aggregation, daily reports, sensor data collection, monitoring dashboards
+  - **README.md Enhancement**:
+    - New Append Mode section with quick-start examples
+    - Format-specific behavior summary table
+    - Links to example code for hands-on learning
+  - **Error Handling Documentation**:
+    - Enhanced error messages with format mismatch details (expected vs actual extensions)
+    - HTML marker missing errors with file path and marker format guidance
+    - I/O error messages including operation type and file path
+    - S3 ETag mismatch errors with retry suggestions
+    - Cross-platform compatibility notes for file permissions and line endings
+  - **Cross-Platform Testing**:
+    - `file_writer_crossplatform_test.go` (348 lines): Unix vs Windows file permissions, CRLF handling, path handling with filepath package
+    - Tests verify append mode behavior across different operating systems and line ending conventions
+  - **Error Handling Tests**:
+    - `file_writer_append_errors_test.go` (373 lines): Format mismatch, marker missing, I/O errors, directory traversal attempts
+    - `s3_writer_append_errors_test.go` (419 lines): S3 GetObject failures, ETag conflicts, size limit violations, malformed data
+    - All error paths tested with clear, actionable error messages
+  - Total documentation: 159+ lines of API docs, 99+ lines of migration guide, 686 lines of example code, 1,140 lines of test code
+  - All examples use `WithKeys()` for deterministic column ordering
+  - Example code integrated with go.mod dependencies (aws-sdk-go-v2)
+  - Documentation cross-references between API docs, migration guide, and examples
+
 - **Add-to-File Feature Phase 4: S3 Append Support** - Complete S3Writer append mode implementation with ETag-based conflict detection and format-aware data combining
   - S3Writer append mode using download-modify-upload pattern for infrequent logging scenarios
   - `WithS3AppendMode()` functional option to enable S3 append operations

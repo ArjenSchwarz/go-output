@@ -10,7 +10,28 @@ import (
 
 // Constants for repeated strings
 const (
-	openAttribute    = " open"
+	openAttribute = " open"
+
+	// HTMLAppendMarker is the HTML comment marker used for append mode operations.
+	//
+	// When a FileWriter or S3Writer operates in append mode with HTML format, this marker
+	// indicates the insertion point for new content. New HTML fragments are inserted
+	// immediately before this marker, allowing multiple appends while preserving the
+	// overall HTML structure.
+	//
+	// The marker is automatically included when rendering a full HTML page (useTemplate=true).
+	// It is positioned near the end of the document, before the closing </body> and </html> tags.
+	//
+	// HTML fragments (useTemplate=false) do not include the marker, as they are meant to be
+	// inserted into existing HTML documents that already contain it.
+	//
+	// Required for Append Mode: When appending to an existing HTML file, the file MUST
+	// contain this marker or an error will be returned. The FileWriter will not attempt
+	// to guess an insertion point.
+	//
+	// Marker Location: The marker should appear only once in the document and should be
+	// placed before any closing tags (</body>, </html>). Multiple markers or incorrectly
+	// positioned markers will cause undefined behavior.
 	HTMLAppendMarker = "<!-- go-output-append -->"
 )
 

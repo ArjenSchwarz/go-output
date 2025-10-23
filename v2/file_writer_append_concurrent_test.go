@@ -75,7 +75,7 @@ func TestFileWriterConcurrentAppends(t *testing.T) {
 	}
 
 	// Check that all appended data is present
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		expectedLine := fmt.Sprintf("append-%d", i)
 		if !strings.Contains(contentStr, expectedLine) {
 			t.Errorf("expected append data %q not found in file", expectedLine)

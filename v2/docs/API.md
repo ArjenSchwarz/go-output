@@ -1011,6 +1011,65 @@ func NewMultiWriter(writers ...Writer) Writer
 - `"report.{format}"` → `report.json`, `report.csv`
 - `"output/{format}/data.{ext}"` → `output/json/data.json`
 
+#### Append Mode
+
+FileWriter and S3Writer support append mode to add content to existing files instead of replacing them:
+
+```go
+// Enable append mode with options
+fw, err := output.NewFileWriterWithOptions(
+    "./logs",
+    "app.{ext}",
+    output.WithAppendMode(),
+)
+
+// S3 append mode with conflict detection
+sw := output.NewS3WriterWithOptions(
+    s3Client,
+    "my-bucket",
+    "logs/app.{ext}",
+    output.WithS3AppendMode(),
+    output.WithMaxAppendSize(10*1024*1024), // 10MB limit
+)
+```
+
+**FileWriter Options**:
+```go
+// Functional options for FileWriter configuration
+func WithAppendMode() FileWriterOption
+func WithPermissions(perms os.FileMode) FileWriterOption
+func WithDisallowUnsafeAppend() FileWriterOption
+```
+
+**S3Writer Options**:
+```go
+// Functional options for S3Writer configuration
+func WithS3AppendMode() S3WriterOption
+func WithMaxAppendSize(size int64) S3WriterOption
+```
+
+**Format-Specific Behavior**:
+
+| Format | Append Behavior | Notes |
+|--------|-----------------|-------|
+| JSON/YAML | Byte-level append | Creates NDJSON-style logging (newline-separated objects) |
+| CSV | Header-aware append | Automatically skips headers from appended data |
+| HTML | Marker-based insert | Inserts before `<!-- go-output-append -->` marker |
+| Text/Table | Byte-level append | Simple file concatenation |
+
+**HTML Append Marker**:
+```go
+const HTMLAppendMarker = "<!-- go-output-append -->"
+```
+
+When using append mode with HTML format, content is inserted before this marker comment. The marker must be present in the file for append operations to succeed.
+
+**Thread Safety**: Append operations use `sync.Mutex` for safe concurrent writes within a single FileWriter instance.
+
+**S3 Append**: Uses download-modify-upload pattern with ETag-based conflict detection. Not suitable for high-frequency concurrent writes.
+
+**Examples**: See [v2/examples/append_mode/](../../examples/append_mode/) for practical usage patterns.
+
 ### Transformer System
 
 #### Transformer Interface
