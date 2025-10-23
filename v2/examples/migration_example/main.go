@@ -56,14 +56,16 @@ func main() {
 	dynamicTransformations(users, true, true, 3)
 }
 
-// oldWay demonstrates the deprecated Pipeline API
+// oldWay demonstrates the deprecated Pipeline API (REMOVED in v2.4.0)
 func oldWay(users []output.Record) {
+	fmt.Println("The Pipeline API was removed in v2.4.0. Here's what the old code looked like:\n")
+	fmt.Println(`
+	// Step 1: Build document with table
 	builder := output.New()
 	builder.Table("users", users, output.WithKeys("name", "email", "age"))
-
 	doc := builder.Build()
 
-	// Apply transformations using deprecated pipeline
+	// Step 2: Apply transformations using deprecated Pipeline API
 	transformed, err := doc.Pipeline().
 		Filter(func(r output.Record) bool {
 			return r["age"].(int) >= 18
@@ -75,7 +77,7 @@ func oldWay(users []output.Record) {
 		log.Fatalf("Pipeline error: %v", err)
 	}
 
-	// Render result
+	// Step 3: Render transformed document
 	out := output.NewOutput(
 		output.WithFormat(output.JSON),
 		output.WithWriter(output.NewStdoutWriter()),
@@ -83,6 +85,13 @@ func oldWay(users []output.Record) {
 	if err := out.Render(context.Background(), transformed); err != nil {
 		log.Fatalf("Render error: %v", err)
 	}
+	`)
+	fmt.Println("\nPROBLEMS with this approach:")
+	fmt.Println("1. Transformations separated from content definition")
+	fmt.Println("2. Required intermediate 'transformed' document")
+	fmt.Println("3. Could only transform entire documents, not individual tables")
+	fmt.Println("4. Pipeline state management was error-prone")
+	fmt.Println("\nSee the NEW WAY below for the improved approach...\n")
 }
 
 // newWay demonstrates per-content transformations

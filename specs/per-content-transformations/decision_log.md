@@ -615,6 +615,49 @@ All revisions maintain public API stability:
 
 ---
 
+## Decision 12: Type-Specific Transformation Function Names
+
+**Date:** 2025-01-23
+
+**Context:** Design document specified a single `WithTransformations()` function name across all content types for consistency. However, implementation uses type-specific names: `WithTransformations()`, `WithTextTransformations()`, `WithRawTransformations()`, and `WithSectionTransformations()`.
+
+**Decision:** Use type-specific function names for transformation options rather than a uniform `WithTransformations()` across all content types.
+
+**Rationale:**
+- Go does not support function overloading - all functions in a package must have unique names
+- Functions like `WithTransformations()` must have distinct signatures or names to work with different content types
+- Type-specific names provide better clarity about which content type is being configured
+- Consistent with Go idioms (e.g., `strings.Builder`, `json.Decoder` - type-specific APIs)
+- IDE autocomplete shows relevant options for each content type
+
+**Implementation:**
+```go
+// Table content transformations
+output.WithTransformations(ops...)
+
+// Text content transformations
+output.WithTextTransformations(ops...)
+
+// Raw content transformations
+output.WithRawTransformations(ops...)
+
+// Section content transformations
+output.WithSectionTransformations(ops...)
+```
+
+**Consequences:**
+- Slightly more verbose than uniform naming
+- Better type safety - compiler catches mismatched content/options
+- Clearer documentation - each function documents its specific content type
+- No ambiguity about which content type an option applies to
+
+**Alternatives Considered:**
+- Uniform `WithTransformations()` with type assertions (rejected: not possible in Go without overloading)
+- Generic function with type parameters (rejected: excessive complexity for simple use case)
+- Interface-based approach with type switches (rejected: less ergonomic)
+
+---
+
 ## Open Questions for User Validation
 
 None - all design questions resolved through research and decision-making process.

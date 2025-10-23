@@ -1,5 +1,21 @@
 ## Unreleased
 
+### Changed
+- **Example Cleanup and Documentation** - Improved examples and ignore patterns for build artifacts:
+  - Updated migration example to clarify Pipeline API removal with code snippet showing deprecated approach and listing problems it had
+  - Added binary names to v2/.gitignore: `migration_example` and `transformations`
+  - Added `coverage.html` to gitignore for test coverage artifacts
+  - Updated go.mod and go.sum in pipeline_transformation example to include AWS SDK v2 dependencies
+
+### Fixed
+- **Specification Task Completion** - Marked final validation task as complete in specs/per-content-transformations/tasks.md
+
+### Added
+- **Design Decision Documentation** - Added Decision 12 to specs/per-content-transformations/decision_log.md explaining type-specific transformation function names:
+  - Rationale for using `WithTransformations()`, `WithTextTransformations()`, `WithRawTransformations()`, and `WithSectionTransformations()` instead of uniform naming
+  - Go's lack of function overloading requires distinct names for different content types
+  - Type-specific names provide better IDE support and type safety
+
 ### Removed
 - **Pipeline API Complete Removal (Phase 9)** - Removed document-level Pipeline API in favor of per-content transformations:
   - Removed Pipeline struct and all methods (Pipeline(), Filter(), Sort(), SortBy(), SortWith(), Limit(), GroupBy(), AddColumn(), AddColumnAt(), Execute(), ExecuteContext(), ExecuteWithFormat(), Validate(), WithOptions()) from v2/pipeline.go
