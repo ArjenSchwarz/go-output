@@ -74,33 +74,33 @@ references:
 
 ## Phase 2: HTML Format Support
 
-- [ ] 4. HTML Append Marker System
+- [x] 4. HTML Append Marker System
   - Update HTML renderer to include <!-- go-output-append --> marker
   - Ensure marker is placed before closing body/html tags
   - HTMLFragment format should not include marker
   - Requirements: [4.2](requirements.md#4.2), [4.3](requirements.md#4.3)
   - References: v2/html_renderer.go
-  - [ ] 4.1. Write unit tests for HTML marker in renderer
+  - [x] 4.1. Write unit tests for HTML marker in renderer
     - Test full HTML page includes marker
     - Test HTMLFragment does not include marker
     - Test marker placement (before closing tags)
     - Verify marker format matches constant
     - Requirements: [4.2](requirements.md#4.2), [4.3](requirements.md#4.3), [9.4](requirements.md#9.4)
-  - [ ] 4.2. Implement HTML marker insertion in htmlRenderer.Render()
+  - [x] 4.2. Implement HTML marker insertion in htmlRenderer.Render()
     - Add HTMLAppendMarker constant
     - Insert marker in full page template before </body>
     - Ensure fragment mode doesn't include marker
     - Update DefaultHTMLTemplate if needed
     - Requirements: [4.1](requirements.md#4.1), [4.2](requirements.md#4.2), [4.3](requirements.md#4.3)
 
-- [ ] 5. HTML Atomic Append Implementation
+- [x] 5. HTML Atomic Append Implementation
   - Implement appendHTMLWithMarker() using write-to-temp-and-rename pattern
   - Use os.CreateTemp() for secure temp file creation
   - Add Sync() call for durability
   - Implement atomic rename with error cleanup
   - Requirements: [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [4.6](requirements.md#4.6), [4.7](requirements.md#4.7), [4.8](requirements.md#4.8), [6.7](requirements.md#6.7), [6.8](requirements.md#6.8), [6.9](requirements.md#6.9), [6.10](requirements.md#6.10)
   - References: v2/file_writer.go
-  - [ ] 5.1. Write unit tests for HTML atomic append
+  - [x] 5.1. Write unit tests for HTML atomic append
     - Test marker detection and content insertion
     - Test error when marker is missing
     - Test content inserted before marker
@@ -108,7 +108,7 @@ references:
     - Verify temp files created in same directory
     - Verify cryptographically random temp file suffix
     - Requirements: [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [4.7](requirements.md#4.7), [4.8](requirements.md#4.8), [9.4](requirements.md#9.4), [9.9](requirements.md#9.9)
-  - [ ] 5.2. Implement appendHTMLWithMarker() with security fixes
+  - [x] 5.2. Implement appendHTMLWithMarker() with security fixes
     - Read existing file content
     - Find marker using bytes.Index()
     - Create temp file with os.CreateTemp(filepath.Dir(fullPath), ".go-output-*.tmp")
@@ -118,27 +118,27 @@ references:
     - Atomic rename with os.Rename()
     - Cleanup temp file on error with defer os.Remove()
     - Requirements: [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [4.6](requirements.md#4.6), [4.7](requirements.md#4.7), [4.8](requirements.md#4.8), [6.7](requirements.md#6.7), [6.8](requirements.md#6.8), [6.9](requirements.md#6.9), [6.10](requirements.md#6.10)
-  - [ ] 5.3. Write crash safety tests for HTML append
+  - [x] 5.3. Write crash safety tests for HTML append
     - Simulate failure after temp file write but before rename
     - Verify original file remains unchanged
     - Verify temp file is cleaned up
     - Test disk full scenarios if possible
     - Requirements: [6.10](requirements.md#6.10), [9.9](requirements.md#9.9)
 
-- [ ] 6. HTML Fragment Rendering Mode
+- [x] 6. HTML Fragment Rendering Mode
   - Update FileWriter to detect existing files
   - Request full HTML page for new files
   - Request HTML fragment for existing files
   - Wire HTML rendering mode selection into Write() method
   - Requirements: [4.1](requirements.md#4.1), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5)
   - References: v2/file_writer.go, v2/renderer.go
-  - [ ] 6.1. Write unit tests for HTML rendering mode selection
+  - [x] 6.1. Write unit tests for HTML rendering mode selection
     - Test new file gets full HTML page with marker
     - Test existing file gets HTML fragment without marker
     - Test fragment content is inserted correctly
     - Verify no duplicate html/head/body tags when appending
     - Requirements: [4.3](requirements.md#4.3), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5), [9.4](requirements.md#9.4)
-  - [ ] 6.2. Implement rendering mode detection in Write()
+  - [x] 6.2. Implement rendering mode detection in Write()
     - Check if file exists using os.Stat()
     - Use HTML format for new files
     - Use HTMLFragment format for existing files in append mode

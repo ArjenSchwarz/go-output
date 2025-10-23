@@ -181,6 +181,39 @@
 - **Code Modernization** - Updated map copying to use maps.Copy() instead of manual loops per Go 1.24+ best practices
 
 ### Added
+- **Add-to-File Feature Phase 2: HTML Format Support** - Atomic HTML append operations with marker-based insertion and fragment rendering support
+  - `appendHTMLWithMarker()` method implementing atomic write-to-temp-and-rename pattern for safe HTML content insertion
+  - `appendCSVWithoutHeaders()` method for CSV-aware appending that strips duplicate header rows with CRLF/LF normalization
+  - HTML comment marker system using `<!-- go-output-append -->` for content positioning with crash-safety guarantees
+  - Format-specific append routing in `appendToFile()` for HTML, CSV, and byte-level formats
+  - Comprehensive documentation of HTML rendering mode selection (full page vs fragment) in FileWriter comments
+  - **Unit Tests (311 lines)**:
+    - `TestFileWriterHTMLAppendWithMarker`: Marker detection, content insertion, error handling, multi-section append
+    - `TestFileWriterHTMLAppendMarkerPreservation`: Marker position validation after consecutive appends
+    - `TestFileWriterHTMLAppendEmptyContent`: Empty content handling
+    - `TestFileWriterHTMLAppendMultipleMarkers`: Multiple marker edge case handling
+    - `TestFileWriterHTMLAppendWithSpecialCharacters`: UTF-8, HTML entities, and newline preservation
+  - **Crash Safety Tests (325 lines)**:
+    - `TestFileWriterHTMLAppendCrashSafety_TempFileCleanup`: Verification of temp file cleanup on success/error
+    - `TestFileWriterHTMLAppendCrashSafety_OriginalFilePreserved`: Original file preservation on error
+    - `TestFileWriterHTMLAppendCrashSafety_TemporaryFileCreation`: Same-directory temp file creation for atomic rename
+    - `TestFileWriterHTMLAppendCrashSafety_AtomicRename`: Atomic rename with immediate file accessibility
+    - `TestFileWriterHTMLAppendCrashSafety_SyncBeforeRename`: Durability via fsync() before rename
+    - `TestFileWriterHTMLAppendCrashSafety_ErrorDoesNotCorruptFile`: File integrity on append errors
+    - `TestFileWriterHTMLAppendCrashSafety_ConcurrentOperations`: Mutex-protected concurrent append safety
+  - **Rendering Mode Tests (505 lines)**:
+    - `TestFileWriterHTMLRendering_NewFileGetsFullPage`: Full HTML page with marker for new files
+    - `TestFileWriterHTMLRendering_ExistingFileExpectsFragment`: Fragment insertion for existing files
+    - `TestFileWriterHTMLRendering_ModeSelectionBasedOnFileExistence`: File existence-driven mode selection
+    - `TestFileWriterHTMLRendering_NoPlacementErrorOnFragment`: Fragment validation
+    - `TestFileWriterHTMLRendering_MultipleAppends`: Multi-section append verification
+    - `TestFileWriterHTMLRendering_ValidatesHTMLStructure`: Marker requirement validation
+    - `TestFileWriterHTMLRendering_FragmentWithoutPageStructure`: No duplicate page structure tags
+    - `TestFileWriterHTMLRendering_ConsecutiveFragments`: Consecutive fragment ordering and marker positioning
+  - Security features: Cryptographically random temp file suffixes via `os.CreateTemp()`, fsync() for durability, same-filesystem atomic renames
+  - Error handling: Original file remains unchanged on errors, temp files automatically cleaned up via defer
+  - Total: 1,141 lines of comprehensive test code covering 16 test scenarios
+
 - **Add-to-File Feature Phase 1: Core Infrastructure** - Complete implementation of FileWriter append mode with comprehensive test coverage
   - `WithAppendMode()` functional option for configuring append vs replace behavior at FileWriter creation time
   - `WithPermissions(os.FileMode)` functional option for custom file permissions (default 0644)

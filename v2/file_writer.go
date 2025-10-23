@@ -1,6 +1,7 @@
 package output
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"maps"
@@ -11,6 +12,15 @@ import (
 )
 
 // FileWriter writes rendered output to files using a pattern
+//
+// HTML Rendering Mode Selection:
+// When appending HTML content in append mode, callers should:
+// 1. For new files: Render with HTML format (full page with <!-- go-output-append --> marker)
+// 2. For existing files: Render with HTMLFragment format (no page structure, content only)
+//
+// The FileWriter will automatically detect file existence and append appropriately.
+// The marker positioning ensures that fragments are inserted before the marker,
+// preserving the original HTML structure and allowing multiple appends.
 type FileWriter struct {
 	baseWriter
 	dir                  string            // Base directory for files
@@ -249,9 +259,15 @@ func (fw *FileWriter) appendToFile(ctx context.Context, format string, fullPath 
 		return fw.wrapError(format, fmt.Errorf("append to %s files is not allowed (unsafe format)", format))
 	}
 
-	// For now, use simple byte-level append for all formats
-	// Future: format-specific handling (CSV, HTML) will be added
-	return fw.appendByteLevel(ctx, fullPath, data)
+	// Format-specific append handling
+	switch format {
+	case FormatHTML:
+		return fw.appendHTMLWithMarker(ctx, fullPath, data)
+	case FormatCSV:
+		return fw.appendCSVWithoutHeaders(ctx, fullPath, data)
+	default:
+		return fw.appendByteLevel(ctx, fullPath, data)
+	}
 }
 
 // appendByteLevel performs byte-level appending to a file
@@ -311,6 +327,91 @@ func (fw *FileWriter) validateFormatMatch(format string, fullPath string) error 
 	}
 
 	return nil
+}
+
+// appendHTMLWithMarker appends HTML content to an existing file using atomic write-to-temp-and-rename pattern
+func (fw *FileWriter) appendHTMLWithMarker(ctx context.Context, fullPath string, data []byte) error {
+	// Check context cancellation
+	select {
+	case <-ctx.Done():
+		return fw.wrapError(FormatHTML, ctx.Err())
+	default:
+	}
+
+	// Read existing file content
+	existing, err := os.ReadFile(fullPath)
+	if err != nil {
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to read existing file: %w", err))
+	}
+
+	// Find marker using bytes.Index
+	markerIndex := bytes.Index(existing, []byte(HTMLAppendMarker))
+	if markerIndex == -1 {
+		return fw.wrapError(FormatHTML, fmt.Errorf("HTML append marker not found in file: %s", fullPath))
+	}
+
+	// Create temp file in same directory with cryptographically random suffix
+	tempFile, err := os.CreateTemp(filepath.Dir(fullPath), ".go-output-*.tmp")
+	if err != nil {
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to create temp file: %w", err))
+	}
+	tempPath := tempFile.Name()
+	// Cleanup temp file on error using defer
+	defer func() {
+		if err := os.Remove(tempPath); err != nil && !strings.Contains(err.Error(), "no such file") {
+			// Ignore if file already removed (successful rename), only log other errors
+		}
+	}()
+
+	// Build new content: [before marker] + [new data] + [marker] + [after marker]
+	var buf bytes.Buffer
+	buf.Write(existing[:markerIndex])
+	buf.Write(data)
+	buf.WriteString(HTMLAppendMarker)
+	buf.Write(existing[markerIndex+len(HTMLAppendMarker):])
+
+	// Write to temp file
+	if _, err := tempFile.Write(buf.Bytes()); err != nil {
+		tempFile.Close()
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to write temp file: %w", err))
+	}
+
+	// Ensure data is flushed to disk before rename (durability requirement)
+	if err := tempFile.Sync(); err != nil {
+		tempFile.Close()
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to sync temp file: %w", err))
+	}
+	tempFile.Close()
+
+	// Atomic rename (atomic on same filesystem)
+	if err := os.Rename(tempPath, fullPath); err != nil {
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to rename temp file: %w", err))
+	}
+
+	return nil
+}
+
+// appendCSVWithoutHeaders appends CSV data to an existing file, stripping the header line
+func (fw *FileWriter) appendCSVWithoutHeaders(ctx context.Context, fullPath string, data []byte) error {
+	// Check context cancellation
+	select {
+	case <-ctx.Done():
+		return fw.wrapError(FormatCSV, ctx.Err())
+	default:
+	}
+
+	// Normalize line endings (handle both LF and CRLF)
+	data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
+
+	// Strip first line (header) from data
+	lines := bytes.SplitN(data, []byte("\n"), 2)
+	if len(lines) < 2 {
+		// Only one line (or empty) - nothing to append after removing header
+		return nil
+	}
+
+	dataWithoutHeader := lines[1]
+	return fw.appendByteLevel(ctx, fullPath, dataWithoutHeader)
 }
 
 // FileWriterOption configures a FileWriter

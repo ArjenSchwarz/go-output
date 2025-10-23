@@ -10,7 +10,8 @@ import (
 
 // Constants for repeated strings
 const (
-	openAttribute = " open"
+	openAttribute    = " open"
+	HTMLAppendMarker = "<!-- go-output-append -->"
 )
 
 // htmlRenderer implements HTML output format
@@ -612,6 +613,7 @@ func (h *htmlRenderer) getTemplateHeader(tmpl *HTMLTemplate) []byte {
 
 // getTemplateFooter returns the HTML footer portion of the template (from </body> to end)
 // This is used for streaming output where the footer is written after content.
+// When useTemplate is true, includes the HTMLAppendMarker before closing tags.
 func (h *htmlRenderer) getTemplateFooter(tmpl *HTMLTemplate) []byte {
 	if tmpl == nil {
 		tmpl = DefaultHTMLTemplate
@@ -624,6 +626,12 @@ func (h *htmlRenderer) getTemplateFooter(tmpl *HTMLTemplate) []byte {
 		buf.WriteString(tmpl.BodyExtra) // NOT escaped (scripts, etc.)
 	}
 
+	// Include append marker before closing body tag when using template
+	if h.useTemplate {
+		buf.WriteString("\n")
+		buf.WriteString(HTMLAppendMarker)
+	}
+
 	buf.WriteString("\n</body>\n</html>\n")
 
 	return []byte(buf.String())
@@ -632,6 +640,7 @@ func (h *htmlRenderer) getTemplateFooter(tmpl *HTMLTemplate) []byte {
 // wrapInTemplate wraps rendered HTML fragment in a complete HTML5 document using the provided template.
 // All user-controlled fields are HTML-escaped to prevent XSS injection.
 // CSS and extra content fields (CSS, HeadExtra, BodyExtra) are included as-is (user responsibility for safety).
+// When useTemplate is true, includes the HTMLAppendMarker before closing body tag.
 func (h *htmlRenderer) wrapInTemplate(fragmentHTML []byte, tmpl *HTMLTemplate) []byte {
 	var result strings.Builder
 
