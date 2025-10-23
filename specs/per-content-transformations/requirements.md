@@ -51,32 +51,27 @@ Per-content transformations execute during document rendering, applying the spec
 
 ### 4. Transformation Validation
 
-**User Story:** As a developer, I want transformation configuration errors to be caught early and reported clearly, so that I can fix issues before rendering.
+**User Story:** As a developer, I want transformation errors to be reported clearly during rendering, so that I can diagnose and fix issues quickly.
 
 **Acceptance Criteria:**
 
-1. <a name="4.1"></a>The system SHALL perform static configuration validation of per-content transformations during the Build() phase
-2. <a name="4.2"></a>The system SHALL call the `Validate()` method on each per-content operation during Build() to check static configuration (e.g., nil predicates, negative limits, empty column names)
-3. <a name="4.3"></a>The system SHALL NOT validate data-dependent operation constraints during Build() (e.g., column existence, data types) - these SHALL be validated during rendering when data is available
-4. <a name="4.4"></a>The system SHALL collect validation errors from all content items during Build()
-5. <a name="4.5"></a>The system SHALL make validation errors available via Builder.Errors() method
-6. <a name="4.6"></a>The system SHALL provide error messages that identify which content item and which transformation failed
-7. <a name="4.7"></a>The system SHALL include the content ID and operation index in validation error messages for debugging
-8. <a name="4.8"></a>The system SHALL allow Build() to complete even with validation errors, making them queryable via HasErrors()/Errors()
+1. <a name="4.1"></a>The system SHALL validate transformations during rendering when they are applied
+2. <a name="4.2"></a>The system SHALL call the `Validate()` method on each operation before applying it to check configuration (e.g., nil predicates, negative limits, empty column names)
+3. <a name="4.3"></a>The system SHALL validate data-dependent constraints during rendering when data is available (e.g., column existence, data types)
+4. <a name="4.4"></a>The system SHALL provide error messages that identify which content item and which transformation failed
+5. <a name="4.5"></a>The system SHALL include the content ID and operation index in error messages for debugging
+6. <a name="4.6"></a>The system SHALL stop rendering immediately on first validation or transformation error (fail-fast)
 
-### 5. Error Handling During Execution
+### 5. Error Handling During Rendering
 
-**User Story:** As a developer, I want clear error messages when transformations fail during execution, so that I can diagnose and fix issues quickly.
+**User Story:** As a developer, I want clear error messages when transformations fail during rendering, so that I can diagnose and fix issues quickly.
 
 **Acceptance Criteria:**
 
-1. <a name="5.1"></a>The system SHALL provide configurable failure behavior when a per-content transformation fails during rendering
-2. <a name="5.2"></a>The system SHALL support fail-fast mode (default) where rendering stops immediately and returns an error
-3. <a name="5.3"></a>The system SHALL support partial rendering mode where failed content items are skipped and rendering continues with remaining content
-4. <a name="5.4"></a>The system SHALL return an error that identifies the failing content and operation
-5. <a name="5.5"></a>The system SHALL include the content type, content ID, and operation index in error context
-6. <a name="5.6"></a>The system SHALL propagate context cancellation errors appropriately
-7. <a name="5.7"></a>The system SHALL provide input data samples in error messages for debugging when appropriate and safe (avoiding sensitive data exposure)
+1. <a name="5.1"></a>The system SHALL use fail-fast error handling where rendering stops immediately on first transformation error
+2. <a name="5.2"></a>The system SHALL return an error that identifies the failing content and operation
+3. <a name="5.3"></a>The system SHALL include the content type, content ID, and operation index in error context
+4. <a name="5.4"></a>The system SHALL propagate context cancellation errors appropriately
 
 ### 6. Content Cloning Behavior
 

@@ -1,6 +1,9 @@
 ## Unreleased
 
 ### Added
+- **Per-Content Transformations Specification** - Complete requirements, design, and implementation specification for attaching transformations directly to individual content items (tables, text, sections) at creation time, enabling different operations to be applied to different content in the same document.
+
+### Added
 - **HTML Template System Integration Testing (Phase 6)** - Complete integration test suite for HTML document rendering and thread safety validation
   - 30 comprehensive integration tests covering full document generation workflow
   - Mermaid chart integration tests (4): script injection order, fragment mode, multiple charts, XSS prevention

@@ -9,7 +9,7 @@ This document provides the detailed design for per-content transformations in go
 1. **Content-Centric**: Transformations belong to content items, not documents
 2. **Lazy Execution**: Transformations execute during rendering, preserving original data
 3. **Thread-Safe**: Operations must be stateless and safe for concurrent rendering
-4. **Fail-Safe**: Default to fail-fast with optional partial rendering mode
+4. **Fail-Fast**: Always fail immediately on transformation errors
 5. **Migration Path**: Deprecate document-level Pipeline API with clear migration examples
 
 ## Architecture
@@ -29,9 +29,7 @@ graph TD
     I --> J[Execute operation Apply]
     J --> K{Operation succeeds?}
     K -->|Yes| L[Next operation or render]
-    K -->|No| M{Failure mode?}
-    M -->|Fail-fast| N[Return error immediately]
-    M -->|Partial| O[Skip content, continue with next]
+    K -->|No| M[Return error immediately]
 ```
 
 ### Component Interactions
@@ -67,26 +65,28 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-### 1. TransformableContent Interface
+### 1. Enhanced Content Interface
 
-A new interface that extends Content with transformation capabilities:
+The existing Content interface is extended to include transformation capabilities:
 
 ```go
-// TransformableContent represents content that can have transformations applied
-type TransformableContent interface {
-    Content
-
-    // Clone creates a deep copy of the content for transformation
+// Content interface - enhanced with transformation support
+type Content interface {
+    ID() string
+    Title() string
+    Type() ContentType
     Clone() Content
-
-    // GetTransformations returns the transformations attached to this content
     GetTransformations() []Operation
+    encoding.TextAppender
+    encoding.BinaryAppender
 }
 ```
 
+All content types (TableContent, TextContent, RawContent, SectionContent) implement these methods, making every content item transformable.
+
 ### 2. Content Structure Enhancement
 
-All content types will be enhanced to store transformations and implement TransformableContent:
+All content types will be enhanced to store transformations:
 
 ```go
 // TableContent with transformations
@@ -98,7 +98,7 @@ type TableContent struct {
     transformations []Operation  // NEW: Per-content transformations
 }
 
-// Implement TransformableContent
+// Implement Content interface method
 func (tc *TableContent) GetTransformations() []Operation {
     return tc.transformations
 }
@@ -173,35 +173,9 @@ func WithTransformations(ops ...Operation) SectionOption {
 }
 ```
 
-### 4. Build-Time Validation
+### 4. Rendering-Time Validation
 
-Enhance `Builder.Build()` to validate per-content transformations:
-
-```go
-// Builder - add validation during Build()
-func (b *Builder) Build() *Document {
-    b.mu.Lock()
-    defer b.mu.Unlock()
-
-    // Validate all per-content transformations (static config only)
-    for _, content := range b.doc.contents {
-        if transformable, ok := content.(TransformableContent); ok {
-            for i, op := range transformable.GetTransformations() {
-                if err := op.Validate(); err != nil {
-                    // Wrap error with content context
-                    validationErr := fmt.Errorf("content %s transformation %d (%s): %w",
-                        content.ID(), i, op.Name(), err)
-                    b.errors = append(b.errors, validationErr)
-                }
-            }
-        }
-    }
-
-    doc := b.doc
-    b.doc = nil
-    return doc
-}
-```
+Validation occurs during rendering when transformations are applied, allowing for both configuration and data-dependent validation in a single phase.
 
 ### 5. Transformation Execution During Rendering
 
@@ -209,53 +183,39 @@ Add transformation execution logic in renderers:
 
 ```go
 // Helper function for applying per-content transformations
-func applyContentTransformations(ctx context.Context, content Content, format string) (Content, error) {
-    // Check if content has transformations
-    transformable, ok := content.(TransformableContent)
-    if !ok {
-        return content, nil // No transformations
-    }
-
-    transformations := transformable.GetTransformations()
+func applyContentTransformations(ctx context.Context, content Content) (Content, error) {
+    transformations := content.GetTransformations()
     if len(transformations) == 0 {
         return content, nil // No transformations
     }
 
     // Start with a clone to preserve immutability
-    current := transformable.Clone()
+    current := content.Clone()
 
     // Apply each transformation in sequence
     for i, op := range transformations {
-        // Check context cancellation BEFORE each operation (not during)
-        select {
-        case <-ctx.Done():
+        // Check context cancellation before operation
+        if err := ctx.Err(); err != nil {
             return nil, fmt.Errorf("content %s transformation cancelled: %w",
-                content.ID(), ctx.Err())
-        default:
+                content.ID(), err)
         }
 
-        // Check if operation applies to this content type and format
-        if formatAwareOp, ok := op.(FormatAwareOperation); ok {
-            if !formatAwareOp.CanTransform(current, format) {
-                continue // Skip non-applicable operation
-            }
+        // Validate operation configuration
+        if err := op.Validate(); err != nil {
+            return nil, fmt.Errorf("content %s transformation %d (%s) invalid: %w",
+                content.ID(), i, op.Name(), err)
         }
 
         // Apply the operation
         // NOTE: Operations should NOT check context in hot loops (e.g., sort comparators)
         // Context checking happens here between operations, providing responsive cancellation
         // without performance degradation in CPU-bound operations
-        var err error
-        if formatAwareOp, ok := op.(FormatAwareOperation); ok {
-            current, err = formatAwareOp.ApplyWithFormat(ctx, current, format)
-        } else {
-            current, err = op.Apply(ctx, current)
-        }
-
+        result, err := op.Apply(ctx, current)
         if err != nil {
             return nil, fmt.Errorf("content %s transformation %d (%s) failed: %w",
                 content.ID(), i, op.Name(), err)
         }
+        current = result
     }
 
     return current, nil
@@ -263,6 +223,8 @@ func applyContentTransformations(ctx context.Context, content Content, format st
 ```
 
 ### 6. Cloning Behavior
+
+Content cloning already exists in v2. The Clone() method is added to the Content interface to formalize this capability.
 
 Update `Clone()` methods to preserve transformations:
 
@@ -338,440 +300,32 @@ type sectionConfig struct {
 }
 ```
 
-### Failure Mode Configuration
+### Rendering Behavior
 
-```go
-// RenderOptions - new structure for renderer configuration
-type RenderOptions struct {
-    FailureMode FailureMode
-    // Other rendering options...
-}
-
-// FailureMode determines behavior when transformations fail
-type FailureMode int
-
-const (
-    // FailFast stops rendering on first transformation error (default)
-    FailFast FailureMode = iota
-    // PartialRender skips failed content and continues with remaining content
-    PartialRender
-)
-
-// Renderer configuration
-type BaseRenderer struct {
-    options RenderOptions
-}
-
-// Option function for configuration
-func WithFailureMode(mode FailureMode) RenderOption {
-    return func(r *BaseRenderer) {
-        r.options.FailureMode = mode
-    }
-}
-```
-
-## Design Decisions and Trade-offs
-
-### Decision 1: Closure Safety Best Practices
-
-**Problem**: Operations with closures need clear guidelines to avoid common pitfalls.
-
-**Note**: This project uses Go 1.24+, which has fixed the historic loop variable capture issue. However, developers should still follow closure best practices.
-
-**Decision**: Document closure best practices without unnecessary workarounds
-
-**Guidelines**:
-
-1. **Prefer explicit parameters**: When possible, pass values as parameters rather than capturing them
-2. **Be mindful of mutable state**: Avoid capturing pointers to mutable data
-3. **Document closure behavior**: Make it clear when operations capture external state
-
-**Example - Clear closure usage**:
-
-```go
-// Good: Clear about what's being captured
-threshold := 50
-builder.AddTable("data", data,
-    WithTransformations(
-        NewFilterOp(func(r Record) bool {
-            return r["value"].(int) > threshold  // Captures threshold (clear intent)
-        }),
-    ),
-)
-
-// Also good: Factory helper for common patterns
-func NewFilterByField(field string, predicate func(any) bool) *FilterOp {
-    return &FilterOp{
-        predicate: func(r Record) bool {
-            return predicate(r[field])
-        },
-    }
-}
-```
-
-**Documentation**: Include closure usage examples in godoc and best practices guide.
-
-### Decision 2: Runtime Stateless Validation
-
-**Problem**: Operations must be stateless for thread safety, but Go cannot enforce this at compile time.
-
-**Research Findings**:
-- No automatic runtime detection for pure functions in Go
-- Best practice is manual testing with deterministic checks
-- Libraries use testing utilities to verify behavior
-
-**Decision**: Provide testing utility for detecting output non-determinism
-
-**Implementation**:
-
-```go
-// Testing utility for validating output determinism
-// NOTE: This checks if operations produce consistent results, but does NOT detect:
-// - Hidden state mutations that don't affect output
-// - External side effects (file writes, network calls)
-// - Non-deterministic operations that happen to match twice
-func ValidateStatelessOperation(t *testing.T, op Operation, testContent Content) {
-    t.Helper()
-
-    ctx := context.Background()
-
-    // Apply operation twice
-    result1, err1 := op.Apply(ctx, testContent.(TransformableContent).Clone())
-    if err1 != nil {
-        t.Fatalf("First application failed: %v", err1)
-    }
-
-    result2, err2 := op.Apply(ctx, testContent.(TransformableContent).Clone())
-    if err2 != nil {
-        t.Fatalf("Second application failed: %v", err2)
-    }
-
-    // Results should be identical
-    if !reflect.DeepEqual(result1, result2) {
-        t.Errorf("Operation produces non-deterministic results")
-    }
-}
-
-// Example test:
-func TestFilterOpIsStateless(t *testing.T) {
-    op := NewFilterOp(func(r Record) bool {
-        return r["value"].(int) > 50
-    })
-
-    testContent := &TableContent{
-        records: []Record{
-            {"value": 40},
-            {"value": 60},
-        },
-    }
-
-    ValidateStatelessOperation(t, op, testContent)
-}
-```
-
-**Limitations**: This utility only detects observable non-determinism in output. Operations must still be designed to be stateless (no field mutations, no external side effects).
-
-**Documentation**: Document testing utility with clear limitations and encourage its use in test suites.
-
-### Decision 3: Partial Rendering API Configuration
-
-**Problem**: How should partial rendering mode be configured - per-document, per-renderer, or both?
-
-**Research Findings**:
-- Go resilience libraries (failsafe-go, goresilience) use policy composition
-- Circuit breaker and retry patterns are configured at the point of use
-- Rendering configuration is typically per-renderer, not per-document
-
-**Decision**: Configure failure mode at renderer level via functional options
-
-**Implementation**:
-
-```go
-// Renderer creation with options
-jsonRenderer := output.NewJSONRenderer(
-    output.WithFailureMode(output.PartialRender),
-    output.WithPrettyPrint(true),
-)
-
-// Or use default (FailFast)
-defaultRenderer := output.NewJSONRenderer()
-
-// Render with configured behavior
-result, err := jsonRenderer.Render(doc)
-if err != nil {
-    // In PartialRender mode, err may contain information about skipped content
-    if partialErr, ok := err.(*PartialRenderError); ok {
-        log.Printf("Rendered partial document, skipped %d items", len(partialErr.Skipped))
-    }
-}
-```
-
-**Rationale**:
-- Renderer-level configuration matches Go idioms (http.Server, sql.DB)
-- Single configuration point, clear behavior per render call
-- Allows different renderers with different failure modes for same document
-
-### Decision 4: Context Propagation
-
-**Problem**: How is context threaded through transformation chains?
-
-**Research Findings**:
-- Go blog: "pass Context explicitly as first parameter"
-- Pipeline cancellation: check `<-ctx.Done()` between stages
-- Child contexts for per-stage timeouts if needed
-
-**Decision**: Pass context through operation chain, check before each operation
-
-**Implementation**:
-
-```go
-// Context passed from renderer to transformation chain
-func (r *JSONRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
-    // Apply timeout if configured
-    if r.options.Timeout > 0 {
-        var cancel context.CancelFunc
-        ctx, cancel = context.WithTimeout(ctx, r.options.Timeout)
-        defer cancel()
-    }
-
-    for _, content := range doc.GetContents() {
-        // Apply per-content transformations with context
-        transformed, err := applyContentTransformations(ctx, content, "json")
-        if err != nil {
-            if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-                return nil, fmt.Errorf("rendering cancelled: %w", err)
-            }
-            return nil, err
-        }
-
-        // Render transformed content
-        // ...
-    }
-}
-
-// Operation checks context BEFORE executing (not during hot loops)
-func (o *SortOp) Apply(ctx context.Context, content Content) (Content, error) {
-    // Check cancellation before starting operation
-    select {
-    case <-ctx.Done():
-        return nil, ctx.Err()
-    default:
-    }
-
-    // Perform sorting without context checks
-    // NOTE: Context checks in comparator functions create massive performance overhead
-    // (10,000+ channel operations for sorting 10,000 records)
-    // Instead, we check context BEFORE and AFTER the operation
-    sort.SliceStable(records, func(i, j int) bool {
-        return o.compareRecords(records[i], records[j]) < 0
-    })
-
-    // Check after operation completes
-    select {
-    case <-ctx.Done():
-        return nil, ctx.Err()
-    default:
-    }
-
-    return cloned, nil
-}
-```
-
-**Rationale**:
-- Explicit context passing follows Go conventions
-- Checks before/after operations balance responsiveness with performance
-- Avoids context checks in hot loops (comparators, predicates) which create severe overhead
-- Works with existing timeout mechanisms
-
-### Decision 5: Debug Hints in Error Messages
-
-**Problem**: Should error messages include data samples to aid debugging?
-
-**Research Findings**:
-- OWASP: Never log PII (health, government IDs, financial data) in production
-- Error messages often appear in logs, monitoring systems, and bug reports
-- Data samples are helpful during development but risky in production
-- Simple field name matching cannot reliably detect all PII
-
-**Decision**: Opt-in debug mode with simple sensitive field redaction
-
-**Implementation**:
-
-```go
-// Error options
-type ErrorOptions struct {
-    IncludeDataSamples bool
-    SensitiveFields    []string  // Fields to redact
-}
-
-// Default: no data samples
-var DefaultErrorOptions = ErrorOptions{
-    IncludeDataSamples: false,
-    SensitiveFields: []string{
-        "password", "token", "secret", "key", "ssn",
-        "credit_card", "account_number", "api_key",
-    },
-}
-
-// Operation error with conditional data samples
-func (o *FilterOp) Apply(ctx context.Context, content Content) (Content, error) {
-    tableContent, ok := content.(*TableContent)
-    if !ok {
-        return nil, NewValidationError("content_type", content.Type().String(),
-            "filter operation requires table content")
-    }
-
-    // ... filtering logic ...
-
-    if err != nil {
-        opErr := fmt.Errorf("filter operation failed: %w", err)
-
-        // Only include data samples if explicitly enabled
-        if shouldIncludeDataSamples() {
-            // Redact sensitive fields
-            sanitizedSample := redactSensitiveFields(tableContent.records[0])
-            return nil, fmt.Errorf("%w (sample: %v)", opErr, sanitizedSample)
-        }
-
-        return nil, opErr
-    }
-
-    return cloned, nil
-}
-
-// Helper to check if data samples should be included
-func shouldIncludeDataSamples() bool {
-    // Check environment variable or global config
-    return os.Getenv("GO_OUTPUT_DEBUG") == "true"
-}
-
-// Redact sensitive fields from record
-func redactSensitiveFields(record Record) Record {
-    sanitized := make(Record)
-    for k, v := range record {
-        if isSensitiveField(k) {
-            sanitized[k] = "[REDACTED]"
-        } else {
-            sanitized[k] = v
-        }
-    }
-    return sanitized
-}
-
-func isSensitiveField(fieldName string) bool {
-    fieldLower := strings.ToLower(fieldName)
-    for _, sensitive := range DefaultErrorOptions.SensitiveFields {
-        if strings.Contains(fieldLower, sensitive) {
-            return true
-        }
-    }
-    return false
-}
-```
-
-**Rationale**:
-- **Primary goal**: Help developers debug transformation failures during development
-- **Not a security feature**: Simple field name matching cannot reliably detect all PII
-- **Production safety**: Disabled by default (GO_OUTPUT_DEBUG must be explicitly enabled)
-- **Development aid**: Data samples with basic redaction help troubleshoot predicate/comparator issues
-- **Limitations understood**: This is convenience tooling, not a security boundary
-- **Documentation emphasis**: Developers must ensure production environments don't set GO_OUTPUT_DEBUG=true
-
-**Important Notes**:
-- Field name redaction is a courtesy, not comprehensive PII protection
-- Production systems should never enable data samples regardless of redaction
-- For true security, implement proper log sanitization at the infrastructure level
-- This feature exists to improve the development experience, not to secure production logs
+Rendering always uses fail-fast mode - stopping immediately on the first transformation error. This provides predictable, safe behavior without additional configuration complexity.
 
 ## Error Handling
 
-### Build-Time Validation Errors
+### Transformation Errors
+
+All errors occur during rendering with clear context about what failed:
 
 ```go
-// Validation errors collected in Builder
-type ValidationError struct {
-    ContentID   string
-    OpIndex     int
-    OpName      string
-    Cause       error
-}
-
-func (e *ValidationError) Error() string {
-    return fmt.Sprintf("content %s transformation %d (%s): %v",
-        e.ContentID, e.OpIndex, e.OpName, e.Cause)
-}
-
-// Usage
-doc := builder.Build()
-if builder.HasErrors() {
-    for _, err := range builder.Errors() {
-        log.Printf("Validation error: %v", err)
-    }
-}
-```
-
-### Render-Time Transformation Errors
-
-```go
-// Fail-fast mode (default)
-func renderFailFast(ctx context.Context, doc *Document) ([]byte, error) {
+// Fail-fast rendering (only mode)
+func render(ctx context.Context, doc *Document) ([]byte, error) {
     for _, content := range doc.GetContents() {
-        transformed, err := applyContentTransformations(ctx, content, format)
+        transformed, err := applyContentTransformations(ctx, content)
         if err != nil {
-            return nil, err  // Stop immediately
+            // Error includes content ID and operation index
+            return nil, err
         }
         // ... render transformed content ...
     }
     return result, nil
 }
 
-// Partial rendering mode
-type PartialRenderError struct {
-    Skipped []SkippedContent
-}
-
-type SkippedContent struct {
-    ContentID string
-    Reason    error
-}
-
-func (e *PartialRenderError) Error() string {
-    return fmt.Sprintf("partial render: skipped %d content items", len(e.Skipped))
-}
-
-func renderPartial(ctx context.Context, doc *Document) ([]byte, error) {
-    var skipped []SkippedContent
-    var output []byte
-
-    for _, content := range doc.GetContents() {
-        transformed, err := applyContentTransformations(ctx, content, format)
-        if err != nil {
-            skipped = append(skipped, SkippedContent{
-                ContentID: content.ID(),
-                Reason:    err,
-            })
-            continue  // Skip this content, continue with rest
-        }
-
-        // Render transformed content
-        rendered, err := renderContent(transformed)
-        if err != nil {
-            skipped = append(skipped, SkippedContent{
-                ContentID: content.ID(),
-                Reason:    err,
-            })
-            continue
-        }
-
-        output = append(output, rendered...)
-    }
-
-    if len(skipped) > 0 {
-        return output, &PartialRenderError{Skipped: skipped}
-    }
-
-    return output, nil
-}
+// Error messages provide clear context
+// Example: "content users transformation 2 (sort) failed: column 'age' not found"
 ```
 
 ## Testing Strategy
@@ -783,27 +337,21 @@ func renderPartial(ctx context.Context, doc *Document) ([]byte, error) {
    - Test transformations preserved during cloning
    - Test transformations accessible from content
 
-2. **Build-Time Validation**
-   - Test static configuration validation (nil predicates, negative limits)
-   - Test validation errors collected in Builder.Errors()
-   - Test Build() completes with errors
-
-3. **Transformation Execution**
+2. **Transformation Execution**
    - Test lazy execution during rendering
-   - Test CanTransform() filters non-applicable operations
    - Test operations execute in order
    - Test context cancellation
-   - Test both fail-fast and partial rendering modes
+   - Test fail-fast error handling
+   - Test validation during rendering
 
-4. **Thread Safety**
+3. **Thread Safety**
    - Test concurrent rendering with same operations
    - Test `ValidateStatelessOperation()` utility
    - Use `-race` detector in tests
 
-5. **Error Handling**
+4. **Error Handling**
    - Test error messages include content ID and operation index
-   - Test sensitive data redaction
-   - Test partial render error structure
+   - Test error propagation during rendering
 
 ### Integration Tests
 
@@ -859,9 +407,6 @@ func TestPerContentTransformations(t *testing.T) {
             )
 
             doc := builder.Build()
-            if builder.HasErrors() {
-                t.Fatalf("Build errors: %v", builder.Errors())
-            }
 
             renderer := NewJSONRenderer()
             result, err := renderer.Render(context.Background(), doc)
@@ -979,6 +524,14 @@ builder.AddTable("data", data,
 2. **Lazy cloning**: Clone only when mutation occurs
 3. **Caching**: Cache transformed content for multiple renders (future enhancement)
 
-## Open Questions for Implementation
+## Design Rationale
 
-None - all design questions resolved through research and decision-making process.
+Key design decisions and their rationale are documented in `decision_log.md`. Major decisions include:
+
+- **Content Interface Extension** (Decision 6): All content types implement transformations directly
+- **Single Validation Phase** (Decision 8): Validation occurs during rendering only
+- **Fail-Fast Error Handling** (Decision 9): No partial rendering mode
+- **Context Propagation** (Decision 14): Check context once before each operation
+- **Stateless Operations** (Decision 13): Testing utility for validation
+
+See `decision_log.md` for complete decision history and rationale.

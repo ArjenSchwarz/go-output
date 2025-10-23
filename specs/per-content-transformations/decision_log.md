@@ -142,7 +142,34 @@ This document tracks key decisions made during the requirements phase for the pe
 
 ---
 
-## Decision 6: Support All Content Types
+## Decision 6: Extend Content Interface for Transformations
+
+**Date:** 2025-01-21
+
+**Context:** Should transformations use a separate TransformableContent interface or extend the existing Content interface?
+
+**Decision:** Extend the existing Content interface to include Clone() and GetTransformations() methods.
+
+**Rationale:**
+- Every content type is transformable - no need for a separate interface
+- Simpler mental model: transformations are a fundamental capability of content
+- Eliminates unnecessary type assertions and interface checks
+- Content already has ID(), Title(), Type() - transformation methods fit naturally
+- Clone() already exists in all content types, just not formalized in interface
+
+**Consequences:**
+- Content interface gains two new methods
+- All content types must implement GetTransformations() and Clone()
+- No TransformableContent interface needed
+- Type assertions eliminated from rendering code
+
+**Alternatives Considered:**
+- Separate TransformableContent interface (rejected: unnecessary abstraction)
+- No interface changes, use type assertions (rejected: less clean)
+
+---
+
+## Decision 7: Support All Content Types
 
 **Date:** 2025-01-19
 
@@ -168,7 +195,64 @@ This document tracks key decisions made during the requirements phase for the pe
 
 ---
 
-## Decision 7: Lazy Execution During Rendering
+## Decision 8: Single Validation Phase During Rendering
+
+**Date:** 2025-01-21
+
+**Context:** Should validation occur at build-time, render-time, or both?
+
+**Decision:** Validate transformations only during rendering when they are applied.
+
+**Rationale:**
+- Simpler mental model: Build() constructs, Render() validates and transforms
+- Most validation errors require data context (column existence, type compatibility)
+- Static validation adds complexity without proportional benefit
+- Eliminates dual error handling paths
+- All errors discovered at the point they matter
+
+**Consequences:**
+- Build() never fails due to transformations
+- No Builder.HasErrors() or Builder.Errors() for transformations
+- All validation happens inline during rendering
+- Configuration and data errors have consistent handling
+- Simpler Builder implementation
+
+**Alternatives Considered:**
+- Build-time static validation (rejected: adds complexity, limited value)
+- Dual validation (rejected: two error paths to handle)
+
+---
+
+## Decision 9: Fail-Fast Error Handling Only
+
+**Date:** 2025-01-21
+
+**Context:** Should rendering support partial rendering mode or only fail-fast?
+
+**Decision:** Always fail-fast - stop rendering immediately on first transformation error.
+
+**Rationale:**
+- Simpler implementation and API surface
+- Partial rendering adds configuration complexity for unproven use case
+- Fail-fast is correct default for data integrity
+- Users needing resilience can catch errors themselves
+- Most use cases want all-or-nothing rendering
+- No evidence of need for partial rendering
+
+**Consequences:**
+- No FailureMode configuration needed
+- No PartialRenderError type
+- No skip tracking or error collection
+- Clear, predictable behavior
+- Less code to write and maintain
+
+**Alternatives Considered:**
+- Configurable failure modes (rejected: premature flexibility)
+- Always partial (rejected: unsafe default)
+
+---
+
+## Decision 10: Lazy Execution During Rendering
 
 **Date:** 2025-01-19
 
@@ -194,7 +278,7 @@ This document tracks key decisions made during the requirements phase for the pe
 
 ---
 
-## Decision 8: Measurable Performance Requirements
+## Decision 11: Measurable Performance Requirements
 
 **Date:** 2025-01-19
 
@@ -224,15 +308,13 @@ This document tracks key decisions made during the requirements phase for the pe
 
 1. **Operation factory functions**: Should we provide builder patterns to avoid closure capture issues?
 2. **Runtime stateless validation**: What specific checks should the debug mode perform?
-3. **Partial rendering API**: How should partial mode be configured (per-document? per-renderer?)?
-4. **Context propagation**: How is context threaded through transformation chains?
-5. **Error message security**: What heuristics determine when to include data samples?
+3. **Context propagation**: How is context threaded through transformation chains?
 
 ---
 
 ## Design Phase Decisions
 
-### Decision 9: Operation Factory Functions for Closure Safety
+### Decision 12: Operation Factory Functions for Closure Safety
 
 **Date:** 2025-01-19
 
@@ -266,7 +348,7 @@ func NewFilterByField(field string, predicate func(any) bool) *FilterOp {
 
 ---
 
-### Decision 10: Runtime Stateless Validation
+### Decision 13: Runtime Stateless Validation
 
 **Date:** 2025-01-19
 
@@ -295,39 +377,7 @@ func ValidateStatelessOperation(t *testing.T, op Operation, testContent Content)
 
 ---
 
-### Decision 11: Partial Rendering API Configuration
-
-**Date:** 2025-01-19
-
-**Context:** Need to specify where partial rendering mode is configured.
-
-**Decision:** Configure failure mode at renderer level via functional options, not per-document.
-
-**Rationale:**
-- Matches Go idioms (http.Server, sql.DB configure at creation)
-- Single configuration point, clear behavior per render call
-- Allows different renderers with different modes for same document
-- Aligns with Go resilience library patterns
-
-**Implementation:**
-```go
-renderer := NewJSONRenderer(
-    WithFailureMode(PartialRender),
-)
-```
-
-**Consequences:**
-- Renderer creation includes configuration
-- Clear separation: document has data, renderer has behavior
-- Can render same document with different failure modes
-
-**Alternatives Considered:**
-- Per-document configuration (rejected: document shouldn't know rendering behavior)
-- Per-transformation configuration (rejected: too fine-grained)
-
----
-
-### Decision 12: Context Propagation Design
+### Decision 14: Context Propagation Design
 
 **Date:** 2025-01-19
 **Revised:** 2025-01-20 (removed context checks from hot loops)
@@ -345,11 +395,9 @@ renderer := NewJSONRenderer(
 
 **Implementation:**
 ```go
-// Check BEFORE operation
-select {
-case <-ctx.Done():
-    return nil, ctx.Err()
-default:
+// Check once before operation
+if err := ctx.Err(); err != nil {
+    return nil, err
 }
 
 // Perform operation without context checks in hot loops
@@ -358,13 +406,6 @@ default:
 sort.SliceStable(records, func(i, j int) bool {
     return compare(records[i], records[j]) < 0
 })
-
-// Check AFTER operation
-select {
-case <-ctx.Done():
-    return nil, ctx.Err()
-default:
-}
 ```
 
 **Consequences:**
@@ -375,45 +416,9 @@ default:
 - No additional goroutine overhead
 
 **Revision Notes:**
-- Original design included periodic checks during long operations
-- Peer review identified this creates severe performance overhead
-- Revised to check only before/after operations, not during execution
-
----
-
-### Decision 13: Error Message Security Heuristics
-
-**Date:** 2025-01-19
-
-**Context:** Need heuristics for when to include data samples in errors without exposing PII.
-
-**Decision:** Conservative approach - no data samples by default, opt-in via environment variable with automatic redaction.
-
-**Rationale:**
-- OWASP guidelines: never log PII (health, government IDs, financial data)
-- Secure by default principle
-- Debug mode with `GO_OUTPUT_DEBUG=true` for troubleshooting
-- Automatic redaction of known sensitive patterns (password, token, ssn, etc.)
-
-**Implementation:**
-```go
-// Default: no data samples
-if os.Getenv("GO_OUTPUT_DEBUG") == "true" {
-    sanitized := redactSensitiveFields(record)
-    return fmt.Errorf("%w (sample: %v)", err, sanitized)
-}
-```
-
-**Consequences:**
-- Production: no data exposure risk
-- Development: enable debugging with environment variable
-- Automatic protection against common PII patterns
-- Can be extended with custom sensitive field lists
-
-**Alternatives Considered:**
-- Always include samples (rejected: security risk)
-- Per-operation opt-in (rejected: too verbose)
-- Regex-based detection (deferred: simpler field name matching sufficient)
+- Original design included checks before and after operations
+- Simplified to single check before operation only
+- Cancellation happens between operations in chain, providing sufficient responsiveness
 
 ---
 
@@ -474,7 +479,54 @@ default:
 - Still responsive to cancellation (checks between operations)
 - Updated Decision 12 in decision_log.md
 
-### Revision 3: Remove Go 1.21 Complexity (Major Revision)
+### Revision 3: Expand Content Interface Instead of New Interface (Major Revision)
+
+**Problem:** Design created TransformableContent interface, but this adds unnecessary abstraction.
+
+**Solution:** Extend existing Content interface with Clone() and GetTransformations() methods.
+
+**Impact:**
+- Simpler architecture with single Content interface
+- All content is transformable without type assertions
+- Clone() formalized in interface (already existed in implementations)
+- Documented in Decision 6
+
+### Revision 4: Single Validation Phase (Major Revision)
+
+**Problem:** Build-time and render-time validation created dual error handling paths.
+
+**Solution:** Validate only during rendering when both configuration and data are available.
+
+**Impact:**
+- Simpler mental model
+- No Builder.HasErrors() or Builder.Errors() needed
+- All validation errors discovered at render time
+- Documented in Decision 8
+
+### Revision 5: Remove Partial Rendering Mode (Major Revision)
+
+**Problem:** Partial rendering adds configuration complexity without proven use case.
+
+**Solution:** Always fail-fast - stop immediately on first error.
+
+**Impact:**
+- No FailureMode configuration
+- No PartialRenderError type
+- Simpler renderer implementation
+- Documented in Decision 9
+
+### Revision 6: Simplify Context Checks (Minor Revision)
+
+**Problem:** Checking context before and after operations is redundant.
+
+**Solution:** Check context once before each operation only.
+
+**Impact:**
+- Simpler implementation
+- Same responsiveness (checks between operations)
+- Updated Decision 14
+
+### Revision 7: Remove Go 1.21 Complexity (Major Revision)
 
 **Problem:** Decision 9 created complex factory patterns to work around Go 1.21 loop variable capture bug, but project uses Go 1.24+ where this is fixed.
 
@@ -485,7 +537,7 @@ default:
 - Simplified API and developer experience
 - Documentation focuses on clear intent, not outdated workarounds
 
-### Revision 4: Stateless Validation Limitations (Major Revision)
+### Revision 8: Stateless Validation Limitations (Major Revision)
 
 **Problem:** Decision 10 claimed `ValidateStatelessOperation()` detects statelessness, but it only detects output determinism.
 
@@ -501,28 +553,62 @@ default:
 **Impact:**
 - Sets correct expectations for testing utility
 - Developers understand what is and isn't validated
-- Updated Decision 2 in design.md
+- Updated Decision 3 in design.md
 
-### Revision 5: Reframe Error Message Security (Major Revision)
+### Revision 9: Remove Debug Data Samples (Major Revision)
 
-**Problem:** Decision 13 positioned field name redaction as a security feature, but it's not comprehensive PII protection.
+**Date:** 2025-01-21
 
-**Solution:** Reframed Decision 5 as "Debug Hints in Error Messages" with clear limitations:
+**Problem:** Debug data samples with field redaction created security complexity without proportional value.
 
-- **Primary goal**: Development debugging aid
-- **Not a security feature**: Field name matching cannot reliably detect all PII
-- **Production safety**: Disabled by default
-- **Documentation emphasis**: This is convenience tooling, not a security boundary
+**Decision:** Remove debug data samples feature entirely.
+
+**Rationale:**
+- Security anti-pattern: error messages shouldn't include data
+- Field name redaction gives false confidence
+- Clear error messages with row/column context are sufficient
+- Developers can examine input data separately if needed
+- Eliminates environment variable configuration and global state
 
 **Impact:**
-- Honest about capabilities and limitations
-- Developers understand this helps debugging, not production security
-- Production systems should never enable GO_OUTPUT_DEBUG regardless of redaction
+- Simpler error handling implementation
+- No GO_OUTPUT_DEBUG environment variable
+- No sensitive field redaction logic
+- Clearer separation: errors describe what failed, not data contents
+- Less code, fewer security concerns
+
+---
+
+## Code Simplifier Review Decisions
+
+**Date:** 2025-01-21
+
+**Context:** code-simplifier agent reviewed the design and identified overcomplexity.
+
+**Decisions Made:**
+1. ✅ **Extend Content interface** - No separate TransformableContent interface (Decision 6)
+2. ✅ **Single validation phase** - Only during rendering (Decision 8)
+3. ✅ **Fail-fast only** - No partial rendering mode (Decision 9)
+4. ✅ **Remove debug data samples** - Security concern without proportional value (Revision 9)
+5. ✅ **Simplify context checks** - Single check before operations (Revision 6)
+6. ⚠️ **Keep CanOptimize()** - For future optimization potential (retained)
+
+**Not Implemented:**
+- Removing FormatAwareOperation interface (deferred: may be needed)
+- Removing ApplyWithFormat() method (deferred: cross-format consistency)
+
+**Impact:**
+- 30-40% reduction in design complexity
+- Clearer mental model for developers
+- Less code to write and maintain
+- Same functionality for real-world use cases
+
+---
 
 ### API Stability
 
 All revisions maintain public API stability:
-- New TransformableContent interface is additive (Content interface unchanged)
+- Content interface extended with new methods (additive change)
 - Context propagation changes are internal implementation details
 - Error message changes are internal formatting, not API changes
 - No breaking changes to planned transformation API
