@@ -1,6 +1,29 @@
 ## Unreleased
 
 ### Fixed
+- **HTML Append File Permissions** - Fixed HTML append operations losing original file permissions:
+  - HTML append uses atomic write-to-temp-and-rename pattern for crash safety
+  - `os.CreateTemp()` creates temp files with restrictive 0600 permissions by default
+  - After rename, files lost their original permissions (e.g., 0644 became 0600)
+  - Added `os.Stat()` to capture original file mode before modification (v2/file_writer.go:341-345)
+  - Added `os.Chmod()` to restore original permissions after rename (v2/file_writer.go:396-399)
+  - Added test `TestFileWriterHTMLAppendPreservesPermissions` verifying 0644, 0600, and 0755 permissions are preserved (v2/file_writer_html_append_test.go:326-405)
+
+### Changed
+- **Code Quality Improvements** - Replaced unnecessary custom string utilities with standard library:
+  - Removed custom `contains()` and `containsHelper()` functions from s3_append_logging.go example (12 lines)
+  - Replaced with `strings.Contains()` from standard library (v2/examples/append_mode/s3_append_logging.go:152, 160)
+  - Minor formatting improvements for consistency
+
+### Fixed
+- **Race Detector Warnings** - Removed all `t.Parallel()` calls from test files to eliminate race conditions:
+  - Removed 222 `t.Parallel()` calls across 17 test files in v2/
+  - Race conditions were caused by tests mutating shared global Format variables (HTML.Renderer, etc.)
+  - Tests now run sequentially, preventing concurrent access to shared global state
+  - Added documentation to v2/CLAUDE.md explaining no-parallel-tests policy
+  - All race detector warnings resolved: `go test -race ./...` now passes cleanly
+
+### Fixed
 - **Critical: Streaming Render Path Inconsistency** - Fixed `RenderTo()` methods bypassing per-content transformations, causing different output than `Render()`:
   - Updated `baseRenderer.renderDocumentTo()` to apply transformations before rendering (v2/base_renderer.go)
   - All renderers (JSON, YAML, CSV, Markdown, HTML, Table) now properly apply transformations in streaming paths
@@ -181,6 +204,154 @@
 - **Code Modernization** - Updated map copying to use maps.Copy() instead of manual loops per Go 1.24+ best practices
 
 ### Added
+- **Add-to-File Feature Phase 5: Documentation and Examples** - Complete documentation suite with API reference, migration guide, and practical examples for append mode functionality
+  - **API Documentation (v2/docs/API.md)**:
+    - Append Mode section with FileWriter and S3Writer configuration examples
+    - Functional options reference: `WithAppendMode()`, `WithPermissions()`, `WithDisallowUnsafeAppend()`, `WithS3AppendMode()`, `WithMaxAppendSize()`
+    - Format-specific behavior table documenting JSON/YAML (byte-level), CSV (header-aware), HTML (marker-based), and Text/Table (byte-level) append behavior
+    - HTML append marker documentation with `<!-- go-output-append -->` constant reference
+    - Thread safety and S3 append limitations documentation
+  - **Migration Guide (v2/docs/MIGRATION.md)**:
+    - Append Mode section documenting v1 to v2 migration path
+    - Configuration change examples showing v1's `ShouldAppend` to v2's `WithAppendMode()` transition
+    - Breaking change warning for HTML marker incompatibility (`<div id='end'></div>` → `<!-- go-output-append -->`)
+    - Format-specific behavior examples for JSON/YAML, CSV, and HTML append modes
+    - New v2 features documentation: S3 append mode, thread safety, unsafe append prevention
+    - Side-by-side code comparisons for all append scenarios
+  - **Practical Examples (v2/examples/append_mode/)**:
+    - `json_ndjson_logging.go` (85 lines): NDJSON log streaming with application lifecycle events
+    - `html_reports.go` (116 lines): Multi-section HTML reports with marker-based insertion
+    - `csv_data_collection.go` (136 lines): Batch CSV data collection with automatic header handling
+    - `multisection_reports.go` (175 lines): Complex reports with mixed content types (tables, text, sections)
+    - `s3_append_logging.go` (174 lines): S3 append operations with concurrent modification handling and format-aware data combining
+    - All examples include detailed comments explaining key concepts and use cases
+    - Examples demonstrate real-world scenarios: log aggregation, daily reports, sensor data collection, monitoring dashboards
+  - **README.md Enhancement**:
+    - New Append Mode section with quick-start examples
+    - Format-specific behavior summary table
+    - Links to example code for hands-on learning
+  - **Error Handling Documentation**:
+    - Enhanced error messages with format mismatch details (expected vs actual extensions)
+    - HTML marker missing errors with file path and marker format guidance
+    - I/O error messages including operation type and file path
+    - S3 ETag mismatch errors with retry suggestions
+    - Cross-platform compatibility notes for file permissions and line endings
+  - **Cross-Platform Testing**:
+    - `file_writer_crossplatform_test.go` (348 lines): Unix vs Windows file permissions, CRLF handling, path handling with filepath package
+    - Tests verify append mode behavior across different operating systems and line ending conventions
+  - **Error Handling Tests**:
+    - `file_writer_append_errors_test.go` (373 lines): Format mismatch, marker missing, I/O errors, directory traversal attempts
+    - `s3_writer_append_errors_test.go` (419 lines): S3 GetObject failures, ETag conflicts, size limit violations, malformed data
+    - All error paths tested with clear, actionable error messages
+  - Total documentation: 159+ lines of API docs, 99+ lines of migration guide, 686 lines of example code, 1,140 lines of test code
+  - All examples use `WithKeys()` for deterministic column ordering
+  - Example code integrated with go.mod dependencies (aws-sdk-go-v2)
+  - Documentation cross-references between API docs, migration guide, and examples
+
+- **Add-to-File Feature Phase 4: S3 Append Support** - Complete S3Writer append mode implementation with ETag-based conflict detection and format-aware data combining
+  - S3Writer append mode using download-modify-upload pattern for infrequent logging scenarios
+  - `WithS3AppendMode()` functional option to enable S3 append operations
+  - `WithMaxAppendSize(int64)` functional option to configure maximum object size for append (default 100MB)
+  - Enhanced S3 interfaces: `S3GetObjectAPI` for GetObject operations, `S3ClientAPI` combining Get and Put operations
+  - `appendToS3Object()` method implementing download-modify-upload with single GetObject API call (no HeadObject needed)
+  - Size validation preventing append operations on objects exceeding configured maximum
+  - ETag-based optimistic locking for concurrent modification detection using `IfMatch` parameter in PutObject
+  - Format-specific data combining via `combineData()` method:
+    - HTML: Inserts new content before `<!-- go-output-append -->` marker
+    - CSV: Strips headers from new data using CRLF/LF normalization before appending
+    - Other formats: Simple byte concatenation for NDJSON-style logging
+  - `combineHTMLData()` method for marker-based HTML content insertion (reuses FileWriter logic)
+  - `combineCSVData()` method for header-aware CSV appending with line ending normalization
+  - **Configuration Tests (104 lines)**:
+    - `TestS3WriterAppendModeConfiguration`: 6 test cases covering append mode enable/disable, max size configuration, combined options, and edge cases (zero/negative values)
+  - **Integration Tests (249 lines)**:
+    - `TestS3WriterAppend_CreateNewObject`: Verifies new object creation when object doesn't exist (NoSuchKey error handling)
+    - `TestS3WriterAppend_ExistingObject`: Tests download-modify-upload workflow with combined data verification
+    - `TestS3WriterAppend_SizeExceedsLimit`: Validates size limit enforcement rejecting 200MB object with 100MB limit
+    - `TestS3WriterAppend_ConcurrentModification`: Tests ETag mismatch detection with clear error message suggesting retry
+    - `TestS3WriterAppend_HTMLFormat`: Verifies HTML marker preservation and content insertion ordering
+    - `TestS3WriterAppend_CSVFormat`: Tests CSV header stripping producing single-header combined output
+  - Error handling improvements:
+    - PreconditionFailed detection by checking error message for "PreconditionFailed", "pre-condition", or "412" status code
+    - Clear error messages for concurrent modifications with retry suggestions
+    - Size limit errors include current size and maximum allowed size
+    - GetObject failures wrapped with descriptive context
+  - Mock S3 client enhanced with GetObject support for append mode testing
+  - All code passes golangci-lint, go fmt, and test suite validation
+  - Total: 353 lines of test code covering 7 test scenarios with mock S3 client
+  - Full integration with existing S3Writer architecture maintaining backward compatibility
+
+- **Add-to-File Feature Phase 3: CSV Format Support and Multi-Section Document Handling** - CSV header stripping and multi-section append functionality with cross-platform line ending support
+  - CSV header skipping implementation in existing `appendCSVWithoutHeaders()` method with CRLF/LF normalization
+  - Multi-section document append support verified for HTML, CSV, and JSON formats
+  - **Unit Tests (106 lines)**:
+    - `TestFileWriterCSVHeaderSkipping`: 8 test cases covering header stripping with Unix LF, Windows CRLF, mixed line endings, header-only files, and empty data
+  - **Integration Tests (354 lines)**:
+    - `TestFileWriterMultiSectionAppend`: Multi-table CSV documents and mixed content type JSON appends
+    - `TestFileWriterHTMLMultiSectionAppend`: HTML multi-section append with all content before marker and section content verification
+    - `TestFileWriterCSVMultiSectionHeaderHandling`: Verification that only first header is stripped from multi-section CSV documents
+  - Cross-platform line ending handling: `bytes.ReplaceAll()` for CRLF-to-LF normalization before header detection
+  - Multi-section support: FileWriter correctly handles documents with multiple tables/sections via renderer output
+  - Code quality improvements: Fixed linter issues (SA9003) in file close and temp file cleanup defer statements
+  - Total: 460 lines of test code covering 11 test scenarios with explicit key ordering for deterministic CSV output
+
+- **Add-to-File Feature Phase 2: HTML Format Support** - Atomic HTML append operations with marker-based insertion and fragment rendering support
+  - `appendHTMLWithMarker()` method implementing atomic write-to-temp-and-rename pattern for safe HTML content insertion
+  - `appendCSVWithoutHeaders()` method for CSV-aware appending that strips duplicate header rows with CRLF/LF normalization
+  - HTML comment marker system using `<!-- go-output-append -->` for content positioning with crash-safety guarantees
+  - Format-specific append routing in `appendToFile()` for HTML, CSV, and byte-level formats
+  - Comprehensive documentation of HTML rendering mode selection (full page vs fragment) in FileWriter comments
+  - **Unit Tests (311 lines)**:
+    - `TestFileWriterHTMLAppendWithMarker`: Marker detection, content insertion, error handling, multi-section append
+    - `TestFileWriterHTMLAppendMarkerPreservation`: Marker position validation after consecutive appends
+    - `TestFileWriterHTMLAppendEmptyContent`: Empty content handling
+    - `TestFileWriterHTMLAppendMultipleMarkers`: Multiple marker edge case handling
+    - `TestFileWriterHTMLAppendWithSpecialCharacters`: UTF-8, HTML entities, and newline preservation
+  - **Crash Safety Tests (325 lines)**:
+    - `TestFileWriterHTMLAppendCrashSafety_TempFileCleanup`: Verification of temp file cleanup on success/error
+    - `TestFileWriterHTMLAppendCrashSafety_OriginalFilePreserved`: Original file preservation on error
+    - `TestFileWriterHTMLAppendCrashSafety_TemporaryFileCreation`: Same-directory temp file creation for atomic rename
+    - `TestFileWriterHTMLAppendCrashSafety_AtomicRename`: Atomic rename with immediate file accessibility
+    - `TestFileWriterHTMLAppendCrashSafety_SyncBeforeRename`: Durability via fsync() before rename
+    - `TestFileWriterHTMLAppendCrashSafety_ErrorDoesNotCorruptFile`: File integrity on append errors
+    - `TestFileWriterHTMLAppendCrashSafety_ConcurrentOperations`: Mutex-protected concurrent append safety
+  - **Rendering Mode Tests (505 lines)**:
+    - `TestFileWriterHTMLRendering_NewFileGetsFullPage`: Full HTML page with marker for new files
+    - `TestFileWriterHTMLRendering_ExistingFileExpectsFragment`: Fragment insertion for existing files
+    - `TestFileWriterHTMLRendering_ModeSelectionBasedOnFileExistence`: File existence-driven mode selection
+    - `TestFileWriterHTMLRendering_NoPlacementErrorOnFragment`: Fragment validation
+    - `TestFileWriterHTMLRendering_MultipleAppends`: Multi-section append verification
+    - `TestFileWriterHTMLRendering_ValidatesHTMLStructure`: Marker requirement validation
+    - `TestFileWriterHTMLRendering_FragmentWithoutPageStructure`: No duplicate page structure tags
+    - `TestFileWriterHTMLRendering_ConsecutiveFragments`: Consecutive fragment ordering and marker positioning
+  - Security features: Cryptographically random temp file suffixes via `os.CreateTemp()`, fsync() for durability, same-filesystem atomic renames
+  - Error handling: Original file remains unchanged on errors, temp files automatically cleaned up via defer
+  - Total: 1,141 lines of comprehensive test code covering 16 test scenarios
+
+- **Add-to-File Feature Phase 1: Core Infrastructure** - Complete implementation of FileWriter append mode with comprehensive test coverage
+  - `WithAppendMode()` functional option for configuring append vs replace behavior at FileWriter creation time
+  - `WithPermissions(os.FileMode)` functional option for custom file permissions (default 0644)
+  - `WithDisallowUnsafeAppend()` functional option to prevent appending to JSON/YAML formats
+  - `appendByteLevel()` method for simple byte-level appending using os.O_APPEND flag
+  - `appendToFile()` method for format-aware append routing with validation
+  - `fileExists()` helper for checking file existence before append
+  - `validateFormatMatch()` method for file extension validation with graceful handling of no-extension files
+  - File format validation that occurs before any file modifications (requirement 3.6)
+  - Full integration with existing Write() method's mutex protection for thread-safe concurrent appends
+  - 13+ unit tests covering append configuration, byte-level append, format validation, and unsafe format prevention
+  - 2 concurrent test suites with 20+ goroutines testing heavy concurrent append scenarios
+  - All tests use map-based table-driven test pattern (Go 2025 best practices)
+  - Code modernized to Go 1.24+ patterns: `range over int` for loops, `fmt.Appendf` for []byte formatting
+  - All code passes golangci-lint, go fmt, and modernize validation
+  - Tasks completed: Phase 1 (Core Infrastructure) including FileWriter append core (1), file validation (2), and thread safety (3)
+- **Add-to-File Feature Specification** - Complete requirements, design, and implementation plan for v2 append mode functionality
+  - Requirements documentation with 78 acceptance criteria across 11 sections covering FileWriter append mode, format-specific behavior, HTML comment marker system, S3Writer append support, thread safety, and error handling
+  - Design documentation with detailed implementation guidance for atomic file operations, CSV header handling, HTML fragment rendering, and S3 download-modify-upload pattern
+  - Decision log documenting 15 key design decisions including HTML comment marker (`<!-- go-output-append -->` replacing v1's div), byte-level JSON/YAML append for NDJSON logging, CSV header skipping, S3 append with ETag-based conflict detection, and atomic write patterns
+  - Implementation task list with 48 tasks organized into 5 phases: Core Infrastructure (FileWriter append, validation, thread safety), HTML Format Support (marker system, atomic append, fragment rendering), CSV Format Support (header skipping with CRLF normalization), S3 Append Support (download-modify-upload, ETag conflicts), and Polish/Documentation
+  - Security improvements: TOCTOU protection via `os.CreateTemp()`, fsync for durability, same-filesystem atomic renames, temp file cleanup guarantees
+  - Test strategy covering unit tests, integration tests, thread safety tests, cross-platform compatibility, and crash safety validation
+  - Migration guide requirements for v1 to v2 transition documenting breaking changes (HTML marker format change from div to comment)
 - **HTML Template System Integration Testing (Phase 6)** - Complete integration test suite for HTML document rendering and thread safety validation
   - 30 comprehensive integration tests covering full document generation workflow
   - Mermaid chart integration tests (4): script injection order, fragment mode, multiple charts, XSS prevention

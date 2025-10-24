@@ -11,7 +11,6 @@ import (
 // Integration tests for complete end-to-end HTML document generation
 
 func TestIntegration_DocumentWithTableContent_ProducesValidHTML5(t *testing.T) {
-	t.Parallel()
 
 	data := []map[string]any{
 		{"Name": "Alice", "Age": 30},
@@ -58,7 +57,6 @@ func TestIntegration_DocumentWithTableContent_ProducesValidHTML5(t *testing.T) {
 }
 
 func TestIntegration_DocumentWithMultipleContentTypes(t *testing.T) {
-	t.Parallel()
 
 	data := []map[string]any{
 		{"Product": "Widget A", "Price": "$10"},
@@ -102,7 +100,6 @@ func TestIntegration_DocumentWithMultipleContentTypes(t *testing.T) {
 }
 
 func TestIntegration_DOCTYPEAndMetaTags(t *testing.T) {
-	t.Parallel()
 
 	doc := New().Text("Test Content").Build()
 	output, err := HTML.Renderer.Render(context.Background(), doc)
@@ -132,7 +129,6 @@ func TestIntegration_DOCTYPEAndMetaTags(t *testing.T) {
 }
 
 func TestIntegration_HTMLStructureOrder(t *testing.T) {
-	t.Parallel()
 
 	data := []map[string]any{{"X": "1"}}
 	doc := New().
@@ -170,7 +166,6 @@ func TestIntegration_HTMLStructureOrder(t *testing.T) {
 }
 
 func TestIntegration_EndToEndRenderingPipeline(t *testing.T) {
-	t.Parallel()
 
 	data := []map[string]any{
 		{"Metric": "CPU", "Value": "45%"},
@@ -218,7 +213,6 @@ func TestIntegration_EndToEndRenderingPipeline(t *testing.T) {
 }
 
 func TestIntegration_TemplateFeatures(t *testing.T) {
-	t.Parallel()
 
 	customTemplate := &HTMLTemplate{
 		Title:     "Custom Report",
@@ -257,7 +251,6 @@ func TestIntegration_TemplateFeatures(t *testing.T) {
 }
 
 func TestIntegration_MermaidChartWithTemplate_IncludesScriptAtEndOfBody(t *testing.T) {
-	t.Parallel()
 
 	// Create a document with a chart
 	doc := New().
@@ -320,7 +313,6 @@ func TestIntegration_MermaidChartWithTemplate_IncludesScriptAtEndOfBody(t *testi
 }
 
 func TestIntegration_MermaidChartInFragmentMode_IncludesScript(t *testing.T) {
-	t.Parallel()
 
 	// Create a document with a chart
 	doc := New().
@@ -366,7 +358,6 @@ func TestIntegration_MermaidChartInFragmentMode_IncludesScript(t *testing.T) {
 }
 
 func TestIntegration_MultipleMermaidCharts_InSameDocument(t *testing.T) {
-	t.Parallel()
 
 	// Create a document with multiple charts
 	doc := New().
@@ -423,7 +414,6 @@ func TestIntegration_MultipleMermaidCharts_InSameDocument(t *testing.T) {
 }
 
 func TestIntegration_ScriptInjectionOrder_ContentThenScriptsThenClosingTags(t *testing.T) {
-	t.Parallel()
 
 	// Create a document with content and chart
 	doc := New().
@@ -490,7 +480,6 @@ func TestIntegration_ScriptInjectionOrder_ContentThenScriptsThenClosingTags(t *t
 // Template Customization Tests
 
 func TestIntegration_CustomTitle_AppearsInOutput(t *testing.T) {
-	t.Parallel()
 
 	customTitle := "My Custom Report"
 	customTemplate := &HTMLTemplate{
@@ -520,7 +509,6 @@ func TestIntegration_CustomTitle_AppearsInOutput(t *testing.T) {
 }
 
 func TestIntegration_CustomCSS_OverridesDefaults(t *testing.T) {
-	t.Parallel()
 
 	customCSS := "body { background-color: #ff0000; } h1 { color: blue; }"
 	customTemplate := &HTMLTemplate{
@@ -555,7 +543,6 @@ func TestIntegration_CustomCSS_OverridesDefaults(t *testing.T) {
 }
 
 func TestIntegration_ExternalStylesheetLinks_AreRendered(t *testing.T) {
-	t.Parallel()
 
 	externalCSS := []string{
 		"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css",
@@ -594,7 +581,6 @@ func TestIntegration_ExternalStylesheetLinks_AreRendered(t *testing.T) {
 }
 
 func TestIntegration_MetaTags_AreInjected(t *testing.T) {
-	t.Parallel()
 
 	description := "This is a test report"
 	author := "Test Author"
@@ -645,7 +631,6 @@ func TestIntegration_MetaTags_AreInjected(t *testing.T) {
 }
 
 func TestIntegration_HeadExtra_ContentInjection(t *testing.T) {
-	t.Parallel()
 
 	headExtraContent := `<script src="https://example.com/analytics.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">`
@@ -683,7 +668,6 @@ func TestIntegration_HeadExtra_ContentInjection(t *testing.T) {
 }
 
 func TestIntegration_BodyExtra_ContentInjection(t *testing.T) {
-	t.Parallel()
 
 	bodyExtraContent := `<script>console.log("Page loaded");</script>
     <noscript>JavaScript is disabled</noscript>`
@@ -721,7 +705,6 @@ func TestIntegration_BodyExtra_ContentInjection(t *testing.T) {
 }
 
 func TestIntegration_ThemeOverrides_GenerateSeparateStyleBlock(t *testing.T) {
-	t.Parallel()
 
 	customTemplate := &HTMLTemplate{
 		Title: "Test",
@@ -769,7 +752,6 @@ func TestIntegration_ThemeOverrides_GenerateSeparateStyleBlock(t *testing.T) {
 }
 
 func TestIntegration_BodyClass_AndBodyAttrs_AppliedToBodyElement(t *testing.T) {
-	t.Parallel()
 
 	bodyClass := "dark-theme report-page"
 	bodyAttrs := map[string]string{
@@ -823,7 +805,6 @@ func TestIntegration_BodyClass_AndBodyAttrs_AppliedToBodyElement(t *testing.T) {
 }
 
 func TestIntegration_AllTemplateCustomizations_Combined(t *testing.T) {
-	t.Parallel()
 
 	customTemplate := &HTMLTemplate{
 		Title:       "Advanced Report",
@@ -898,7 +879,6 @@ func TestIntegration_AllTemplateCustomizations_Combined(t *testing.T) {
 // Edge Case Tests
 
 func TestIntegration_EdgeCase_EmptyDocument_ProducesValidHTMLStructure(t *testing.T) {
-	t.Parallel()
 
 	// Create an empty document
 	doc := New().Build()
@@ -941,7 +921,6 @@ func TestIntegration_EdgeCase_EmptyDocument_ProducesValidHTMLStructure(t *testin
 }
 
 func TestIntegration_EdgeCase_EmptyCSS_ProducesTemplateWithoutStyleTags(t *testing.T) {
-	t.Parallel()
 
 	// Template with empty CSS
 	customTemplate := &HTMLTemplate{
@@ -981,7 +960,6 @@ func TestIntegration_EdgeCase_EmptyCSS_ProducesTemplateWithoutStyleTags(t *testi
 }
 
 func TestIntegration_EdgeCase_EmptyExternalCSS_ProducesTemplateWithoutLinkTags(t *testing.T) {
-	t.Parallel()
 
 	// Template with empty ExternalCSS slice
 	customTemplate := &HTMLTemplate{
@@ -1015,7 +993,6 @@ func TestIntegration_EdgeCase_EmptyExternalCSS_ProducesTemplateWithoutLinkTags(t
 }
 
 func TestIntegration_EdgeCase_MissingOptionalFields_UsesDefaults(t *testing.T) {
-	t.Parallel()
 
 	// Template with only required/minimal fields
 	customTemplate := &HTMLTemplate{
@@ -1069,7 +1046,6 @@ func TestIntegration_EdgeCase_MissingOptionalFields_UsesDefaults(t *testing.T) {
 }
 
 func TestIntegration_EdgeCase_NilTemplate_UsesDefault(t *testing.T) {
-	t.Parallel()
 
 	// HTMLWithTemplate(nil) should use default template (fragment mode)
 	doc := New().Text("Content").Build()
@@ -1097,7 +1073,6 @@ func TestIntegration_EdgeCase_NilTemplate_UsesDefault(t *testing.T) {
 }
 
 func TestIntegration_EdgeCase_EmptyMetaTags_NoTagsRendered(t *testing.T) {
-	t.Parallel()
 
 	// Template with empty MetaTags map
 	customTemplate := &HTMLTemplate{
@@ -1132,7 +1107,6 @@ func TestIntegration_EdgeCase_EmptyMetaTags_NoTagsRendered(t *testing.T) {
 }
 
 func TestIntegration_EdgeCase_EmptyBodyAttrs_BodyTagStillValid(t *testing.T) {
-	t.Parallel()
 
 	// Template with empty BodyAttrs map
 	customTemplate := &HTMLTemplate{
@@ -1166,7 +1140,6 @@ func TestIntegration_EdgeCase_EmptyBodyAttrs_BodyTagStillValid(t *testing.T) {
 }
 
 func TestIntegration_EdgeCase_EmptyThemeOverrides_NoExtraStyleBlock(t *testing.T) {
-	t.Parallel()
 
 	// Template with empty ThemeOverrides map
 	customTemplate := &HTMLTemplate{
@@ -1203,7 +1176,6 @@ func TestIntegration_EdgeCase_EmptyThemeOverrides_NoExtraStyleBlock(t *testing.T
 }
 
 func TestIntegration_EdgeCase_AllOptionalFieldsEmpty_ValidOutput(t *testing.T) {
-	t.Parallel()
 
 	// Minimal template with all optional fields empty/nil/zero
 	customTemplate := &HTMLTemplate{
@@ -1275,7 +1247,6 @@ func TestIntegration_EdgeCase_AllOptionalFieldsEmpty_ValidOutput(t *testing.T) {
 // Thread Safety Tests
 
 func TestIntegration_ThreadSafety_ConcurrentRenderingSameTemplate(t *testing.T) {
-	t.Parallel()
 
 	// Create a template and document
 	customTemplate := &HTMLTemplate{
@@ -1354,7 +1325,6 @@ func TestIntegration_ThreadSafety_ConcurrentRenderingSameTemplate(t *testing.T) 
 }
 
 func TestIntegration_ThreadSafety_TemplateInstanceReuse(t *testing.T) {
-	t.Parallel()
 
 	// Create shared template and document
 	sharedTemplate := &HTMLTemplate{
@@ -1427,7 +1397,6 @@ func TestIntegration_ThreadSafety_TemplateInstanceReuse(t *testing.T) {
 }
 
 func TestIntegration_ThreadSafety_NoSharedMutableState(t *testing.T) {
-	t.Parallel()
 
 	// Test that different documents don't interfere with each other
 	// when rendered concurrently with different templates
@@ -1532,7 +1501,6 @@ func TestIntegration_ThreadSafety_NoSharedMutableState(t *testing.T) {
 }
 
 func TestIntegration_ThreadSafety_ConcurrentWithMermaidCharts(t *testing.T) {
-	t.Parallel()
 
 	// Test thread safety with Mermaid chart content
 	doc := New().
@@ -1599,7 +1567,6 @@ func TestIntegration_ThreadSafety_ConcurrentWithMermaidCharts(t *testing.T) {
 }
 
 func TestIntegration_RenderToWithTemplate_ProducesCompleteHTMLDocument(t *testing.T) {
-	t.Parallel()
 
 	data := []map[string]any{
 		{"Name": "Alice", "Score": 95},
@@ -1666,7 +1633,6 @@ func TestIntegration_RenderToWithTemplate_ProducesCompleteHTMLDocument(t *testin
 }
 
 func TestIntegration_RenderToWithMermaidCharts_InjectsMermaidScript(t *testing.T) {
-	t.Parallel()
 
 	doc := New().
 		Text("Diagram Test").
@@ -1707,7 +1673,6 @@ func TestIntegration_RenderToWithMermaidCharts_InjectsMermaidScript(t *testing.T
 }
 
 func TestIntegration_RenderToWithoutTemplate_StreamsFragmentsOnly(t *testing.T) {
-	t.Parallel()
 
 	data := []map[string]any{
 		{"Item": "A", "Value": 1},

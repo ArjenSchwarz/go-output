@@ -7,6 +7,17 @@ replace github.com/ArjenSchwarz/go-output/v2 => ../../
 require github.com/ArjenSchwarz/go-output/v2 v2.0.0-00010101000000-000000000000
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.39.3 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.2 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.10 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.10 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.5 // indirect
+	github.com/aws/smithy-go v1.23.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.4.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

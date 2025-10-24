@@ -15,8 +15,6 @@ func TestAWSIconsWithDrawIO(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	t.Parallel()
-
 	// Create test data with different AWS services
 	testServices := []struct {
 		name  string
@@ -66,8 +64,6 @@ func TestAWSIconPlaceholderPattern(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	t.Parallel()
-
 	// Example: User wants to use %AWSIcon% placeholder in their DrawIOHeader.Style
 	// They would populate the AWSIcon column with GetAWSShape results
 
@@ -90,7 +86,6 @@ func TestAWSIconPlaceholderPattern(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Get the AWS icon style
 			style, err := GetAWSShape(tc.group, tc.title)
@@ -118,8 +113,6 @@ func TestMultipleIconsInDiagram(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-
-	t.Parallel()
 
 	// Simulate a multi-tier architecture diagram with different AWS services
 	architectureNodes := []struct {
@@ -173,8 +166,6 @@ func TestDrawIOStyleStringFormat(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	t.Parallel()
-
 	testCases := map[string]struct {
 		group string
 		title string
@@ -195,7 +186,6 @@ func TestDrawIOStyleStringFormat(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Get style
 			style, err := GetAWSShape(tc.group, tc.title)
@@ -221,8 +211,6 @@ func TestDuplicateKeyHandling(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	t.Parallel()
-
 	// The General Resources group has duplicate "Internet" keys in aws.json
 	// Go's json.Unmarshal uses the last occurrence for any duplicate key
 	// This test verifies the behavior is consistent (last value wins)
@@ -244,8 +232,6 @@ func TestIconsUsableInDrawIOWorkflow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-
-	t.Parallel()
 
 	// Step 1: User has data about their AWS architecture
 	type AWSResource struct {

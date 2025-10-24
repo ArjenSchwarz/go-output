@@ -95,7 +95,6 @@ func TestConcurrentRendering_SameDocument(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			doc := tc.setupDoc()
 			ctx := context.Background()
@@ -149,7 +148,6 @@ func TestConcurrentRendering_DifferentContent(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Create multiple content items with the same transformation operations
 			filterOp := NewFilterOp(func(r Record) bool {
@@ -374,7 +372,6 @@ func TestConcurrentCloning(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			original := tc.createContent()
 			var wg sync.WaitGroup
@@ -485,7 +482,6 @@ func TestOperationSafety_ConcurrentExecution(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			op := tc.createOp()
 			ctx := context.Background()

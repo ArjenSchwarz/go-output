@@ -3,6 +3,7 @@ module github.com/ArjenSchwarz/go-output/v2
 go 1.24.3
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.39.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.5
 	github.com/fatih/color v1.18.0
 	github.com/jedib0t/go-pretty/v6 v6.4.9
@@ -11,7 +12,6 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.39.3 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.10 // indirect

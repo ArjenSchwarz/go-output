@@ -148,6 +148,7 @@ The v2 codebase follows modern Go 2025 testing best practices:
 - **Test Separation**: Integration tests use `INTEGRATION=1` environment variable (not build tags)
 - **File Organization**: Large test files (>800 lines) split by logical functionality
 - **Naming Conventions**: Descriptive test names and consistent got/want error patterns
+- **No Parallel Tests**: Tests do NOT use `t.Parallel()` to avoid race conditions with shared global state (Format variables)
 
 #### Test Categories
 - **Unit Tests**: Run by default with `make test` or `go test ./...`

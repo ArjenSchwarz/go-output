@@ -1,20 +1,25 @@
 package output
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
-// mockS3Client is a mock implementation of S3PutObjectAPI for testing.
+// mockS3Client is a mock implementation of S3ClientAPI for testing.
 // It uses actual AWS SDK v2 types, ensuring full type compatibility.
 type mockS3Client struct {
 	putObjectFunc func(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	getObjectFunc func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	calls         []capturedCall
 	mu            sync.Mutex
 }
@@ -59,6 +64,15 @@ func (m *mockS3Client) PutObject(ctx context.Context, input *s3.PutObjectInput, 
 		ETag:      &etag,
 		VersionId: &versionId,
 	}, nil
+}
+
+func (m *mockS3Client) GetObject(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+	if m.getObjectFunc != nil {
+		return m.getObjectFunc(ctx, input, optFns...)
+	}
+
+	// Default behavior: return not found error
+	return nil, errors.New("object not found")
 }
 
 func (m *mockS3Client) getCalls() []capturedCall {
@@ -426,6 +440,309 @@ func TestGenerateKeyEdgeCases(t *testing.T) {
 
 			if key != tt.expectedKey {
 				t.Errorf("key = %q, want %q", key, tt.expectedKey)
+			}
+		})
+	}
+}
+
+func TestS3WriterAppend_CreateNewObject(t *testing.T) {
+	if testing.Short() && os.Getenv("INTEGRATION") == "" {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+	testData := []byte("first write")
+
+	client := &mockS3Client{
+		getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			// Simulate object not found
+			return nil, &types.NoSuchKey{
+				Message: aws.String("The specified key does not exist."),
+			}
+		},
+	}
+
+	sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}", WithS3AppendMode())
+
+	err := sw.Write(ctx, FormatJSON, testData)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify PutObject was called
+	calls := client.getCalls()
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 PutObject call, got %d", len(calls))
+	}
+
+	if calls[0].Body != string(testData) {
+		t.Errorf("body = %q, want %q", calls[0].Body, string(testData))
+	}
+}
+
+func TestS3WriterAppend_ExistingObject(t *testing.T) {
+	if testing.Short() && os.Getenv("INTEGRATION") == "" {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+	existingData := []byte("existing data\n")
+	newData := []byte("new data\n")
+
+	etag := "test-etag-123"
+	contentLength := int64(len(existingData))
+
+	client := &mockS3Client{
+		getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			return &s3.GetObjectOutput{
+				Body:          io.NopCloser(bytes.NewReader(existingData)),
+				ETag:          &etag,
+				ContentLength: &contentLength,
+			}, nil
+		},
+	}
+
+	sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}", WithS3AppendMode())
+
+	err := sw.Write(ctx, FormatJSON, newData)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify PutObject was called with combined data
+	calls := client.getCalls()
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 PutObject call, got %d", len(calls))
+	}
+
+	wantBody := string(existingData) + string(newData)
+	if calls[0].Body != wantBody {
+		t.Errorf("body = %q, want %q", calls[0].Body, wantBody)
+	}
+}
+
+func TestS3WriterAppend_SizeExceedsLimit(t *testing.T) {
+	if testing.Short() && os.Getenv("INTEGRATION") == "" {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+	newData := []byte("new data")
+
+	// Object size exceeds limit
+	etag := "test-etag"
+	contentLength := int64(200 * 1024 * 1024) // 200MB
+
+	client := &mockS3Client{
+		getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			return &s3.GetObjectOutput{
+				Body:          io.NopCloser(bytes.NewReader([]byte{})),
+				ETag:          &etag,
+				ContentLength: &contentLength,
+			}, nil
+		},
+	}
+
+	sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}",
+		WithS3AppendMode(),
+		WithMaxAppendSize(100*1024*1024)) // 100MB limit
+
+	err := sw.Write(ctx, FormatJSON, newData)
+	if err == nil {
+		t.Fatal("expected error for oversized object, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "exceeds maximum append size") {
+		t.Errorf("error should mention size limit, got: %v", err)
+	}
+}
+
+func TestS3WriterAppend_ConcurrentModification(t *testing.T) {
+	if testing.Short() && os.Getenv("INTEGRATION") == "" {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+	existingData := []byte("existing data")
+	newData := []byte("new data")
+
+	etag := "test-etag-123"
+	contentLength := int64(len(existingData))
+
+	client := &mockS3Client{
+		getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			return &s3.GetObjectOutput{
+				Body:          io.NopCloser(bytes.NewReader(existingData)),
+				ETag:          &etag,
+				ContentLength: &contentLength,
+			}, nil
+		},
+		putObjectFunc: func(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+			// Simulate ETag mismatch (concurrent modification)
+			return nil, errors.New("PreconditionFailed: At least one of the pre-conditions you specified did not hold")
+		},
+	}
+
+	sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}", WithS3AppendMode())
+
+	err := sw.Write(ctx, FormatJSON, newData)
+	if err == nil {
+		t.Fatal("expected error for concurrent modification, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "concurrent modification detected") {
+		t.Errorf("error should mention concurrent modification, got: %v", err)
+	}
+}
+
+func TestS3WriterAppend_HTMLFormat(t *testing.T) {
+	if testing.Short() && os.Getenv("INTEGRATION") == "" {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+	existingHTML := []byte("<html><body><p>Existing content</p><!-- go-output-append --></body></html>")
+	newHTML := []byte("<p>New content</p>")
+
+	etag := "test-etag"
+	contentLength := int64(len(existingHTML))
+
+	client := &mockS3Client{
+		getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			return &s3.GetObjectOutput{
+				Body:          io.NopCloser(bytes.NewReader(existingHTML)),
+				ETag:          &etag,
+				ContentLength: &contentLength,
+			}, nil
+		},
+	}
+
+	sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}", WithS3AppendMode())
+
+	err := sw.Write(ctx, FormatHTML, newHTML)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify marker is preserved and new content inserted before it
+	calls := client.getCalls()
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 PutObject call, got %d", len(calls))
+	}
+
+	body := calls[0].Body
+	if !strings.Contains(body, "Existing content") {
+		t.Error("combined HTML should contain existing content")
+	}
+	if !strings.Contains(body, "New content") {
+		t.Error("combined HTML should contain new content")
+	}
+	if !strings.Contains(body, HTMLAppendMarker) {
+		t.Error("combined HTML should contain append marker")
+	}
+
+	// Verify marker comes after new content
+	markerIdx := strings.Index(body, HTMLAppendMarker)
+	newContentIdx := strings.Index(body, "New content")
+	if markerIdx < newContentIdx {
+		t.Error("marker should come after new content")
+	}
+}
+
+func TestS3WriterAppend_CSVFormat(t *testing.T) {
+	if testing.Short() && os.Getenv("INTEGRATION") == "" {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+	existingCSV := []byte("Name,Age\nAlice,30\n")
+	newCSV := []byte("Name,Age\nBob,25\n")
+
+	etag := "test-etag"
+	contentLength := int64(len(existingCSV))
+
+	client := &mockS3Client{
+		getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			return &s3.GetObjectOutput{
+				Body:          io.NopCloser(bytes.NewReader(existingCSV)),
+				ETag:          &etag,
+				ContentLength: &contentLength,
+			}, nil
+		},
+	}
+
+	sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}", WithS3AppendMode())
+
+	err := sw.Write(ctx, FormatCSV, newCSV)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify header was stripped from new data
+	calls := client.getCalls()
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 PutObject call, got %d", len(calls))
+	}
+
+	wantBody := "Name,Age\nAlice,30\nBob,25\n"
+	if calls[0].Body != wantBody {
+		t.Errorf("body = %q, want %q", calls[0].Body, wantBody)
+	}
+}
+
+func TestS3WriterAppendModeConfiguration(t *testing.T) {
+	client := &mockS3Client{}
+
+	tests := map[string]struct {
+		options           []S3WriterOption
+		wantAppendMode    bool
+		wantMaxAppendSize int64
+	}{
+		"default configuration has append disabled": {
+			options:           nil,
+			wantAppendMode:    false,
+			wantMaxAppendSize: 104857600, // 100MB default
+		},
+		"WithS3AppendMode enables append": {
+			options:           []S3WriterOption{WithS3AppendMode()},
+			wantAppendMode:    true,
+			wantMaxAppendSize: 104857600,
+		},
+		"WithMaxAppendSize sets custom size": {
+			options:           []S3WriterOption{WithMaxAppendSize(50 * 1024 * 1024)},
+			wantAppendMode:    false,
+			wantMaxAppendSize: 50 * 1024 * 1024,
+		},
+		"combined options": {
+			options: []S3WriterOption{
+				WithS3AppendMode(),
+				WithMaxAppendSize(10 * 1024 * 1024),
+			},
+			wantAppendMode:    true,
+			wantMaxAppendSize: 10 * 1024 * 1024,
+		},
+		"WithMaxAppendSize with zero is ignored": {
+			options:           []S3WriterOption{WithMaxAppendSize(0)},
+			wantAppendMode:    false,
+			wantMaxAppendSize: 104857600, // Should remain default
+		},
+		"WithMaxAppendSize with negative is ignored": {
+			options:           []S3WriterOption{WithMaxAppendSize(-100)},
+			wantAppendMode:    false,
+			wantMaxAppendSize: 104857600, // Should remain default
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}", tc.options...)
+
+			if sw.appendMode != tc.wantAppendMode {
+				t.Errorf("appendMode = %v, want %v", sw.appendMode, tc.wantAppendMode)
+			}
+
+			if sw.maxAppendSize != tc.wantMaxAppendSize {
+				t.Errorf("maxAppendSize = %d, want %d", sw.maxAppendSize, tc.wantMaxAppendSize)
 			}
 		})
 	}
