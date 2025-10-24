@@ -1,6 +1,14 @@
 ## Unreleased
 
 ### Fixed
+- **Race Detector Warnings** - Removed all `t.Parallel()` calls from test files to eliminate race conditions:
+  - Removed 222 `t.Parallel()` calls across 17 test files in v2/
+  - Race conditions were caused by tests mutating shared global Format variables (HTML.Renderer, etc.)
+  - Tests now run sequentially, preventing concurrent access to shared global state
+  - Added documentation to v2/CLAUDE.md explaining no-parallel-tests policy
+  - All race detector warnings resolved: `go test -race ./...` now passes cleanly
+
+### Fixed
 - **Critical: Streaming Render Path Inconsistency** - Fixed `RenderTo()` methods bypassing per-content transformations, causing different output than `Render()`:
   - Updated `baseRenderer.renderDocumentTo()` to apply transformations before rendering (v2/base_renderer.go)
   - All renderers (JSON, YAML, CSV, Markdown, HTML, Table) now properly apply transformations in streaming paths

@@ -9,7 +9,6 @@ import (
 // Tests for HTML format constants and constructors
 
 func TestHTML_Format_UsesTemplateByDefault(t *testing.T) {
-	t.Parallel()
 
 	// Get the HTML format and render a document
 	format := HTML
@@ -39,7 +38,6 @@ func TestHTML_Format_UsesTemplateByDefault(t *testing.T) {
 }
 
 func TestHTMLFragment_Format_SkipsTemplateWrapping(t *testing.T) {
-	t.Parallel()
 
 	// Get the HTMLFragment format and render a document
 	format := HTMLFragment
@@ -69,7 +67,6 @@ func TestHTMLFragment_Format_SkipsTemplateWrapping(t *testing.T) {
 }
 
 func TestHTMLWithTemplate_Nil_EnablesFragmentMode(t *testing.T) {
-	t.Parallel()
 
 	// Create a format with nil template (should enable fragment mode)
 	format := HTMLWithTemplate(nil)
@@ -94,7 +91,6 @@ func TestHTMLWithTemplate_Nil_EnablesFragmentMode(t *testing.T) {
 }
 
 func TestHTMLWithTemplate_Custom_UsesCustomTemplate(t *testing.T) {
-	t.Parallel()
 
 	// Create a custom template
 	customTemplate := &HTMLTemplate{
@@ -135,7 +131,6 @@ func TestHTMLWithTemplate_Custom_UsesCustomTemplate(t *testing.T) {
 }
 
 func TestFormatConstructor_CreatesNewRendererInstance(t *testing.T) {
-	t.Parallel()
 
 	// Create two format instances with custom templates
 	template1 := &HTMLTemplate{Title: "Title1", Charset: "UTF-8"}
@@ -173,7 +168,6 @@ func TestFormatConstructor_CreatesNewRendererInstance(t *testing.T) {
 }
 
 func TestHTML_Format_RendersFullDocument(t *testing.T) {
-	t.Parallel()
 
 	// Test that HTML format produces a complete, valid-looking HTML document
 	doc := New().

@@ -9,7 +9,6 @@ import (
 )
 
 func TestFileWriterMultiSectionAppend(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -59,7 +58,6 @@ func TestFileWriterMultiSectionAppend(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			testDir := filepath.Join(tempDir, strings.ReplaceAll(name, " ", "-"))
 			err := os.MkdirAll(testDir, 0755)
@@ -143,7 +141,6 @@ func TestFileWriterMultiSectionAppend(t *testing.T) {
 }
 
 func TestFileWriterHTMLMultiSectionAppend(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -205,7 +202,6 @@ func TestFileWriterHTMLMultiSectionAppend(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			testDir := filepath.Join(tempDir, strings.ReplaceAll(name, " ", "-"))
 			err := os.MkdirAll(testDir, 0755)
@@ -270,7 +266,6 @@ func TestFileWriterHTMLMultiSectionAppend(t *testing.T) {
 }
 
 func TestFileWriterCSVMultiSectionHeaderHandling(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -278,7 +273,6 @@ func TestFileWriterCSVMultiSectionHeaderHandling(t *testing.T) {
 
 	// Test that only the first section has headers stripped
 	t.Run("CSV multi-section only first section has headers stripped", func(t *testing.T) {
-		t.Parallel()
 
 		testDir := filepath.Join(tempDir, "csv-multisection")
 		err := os.MkdirAll(testDir, 0755)

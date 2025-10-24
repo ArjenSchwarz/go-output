@@ -11,7 +11,6 @@ import (
 
 // TestFileWriter_CrossPlatformPathHandling verifies path handling works across platforms
 func TestFileWriter_CrossPlatformPathHandling(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		pattern      string
@@ -37,7 +36,6 @@ func TestFileWriter_CrossPlatformPathHandling(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			dir := t.TempDir()
 
@@ -72,7 +70,6 @@ func TestFileWriter_CrossPlatformPathHandling(t *testing.T) {
 
 // TestFileWriter_CrossPlatformPermissions verifies file permission handling across platforms
 func TestFileWriter_CrossPlatformPermissions(t *testing.T) {
-	t.Parallel()
 
 	// Skip on Windows as permission model is different
 	if runtime.GOOS == "windows" {
@@ -99,7 +96,6 @@ func TestFileWriter_CrossPlatformPermissions(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			dir := t.TempDir()
 
@@ -136,7 +132,6 @@ func TestFileWriter_CrossPlatformPermissions(t *testing.T) {
 
 // TestFileWriter_CSVLineEndingHandling verifies CRLF handling for CSV append
 func TestFileWriter_CSVLineEndingHandling(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		initialData  string
@@ -172,7 +167,6 @@ func TestFileWriter_CSVLineEndingHandling(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			dir := t.TempDir()
 			filePath := filepath.Join(dir, "test.csv")
@@ -208,7 +202,6 @@ func TestFileWriter_CSVLineEndingHandling(t *testing.T) {
 
 // TestFileWriter_PathSeparatorHandling verifies filepath.Join usage across platforms
 func TestFileWriter_PathSeparatorHandling(t *testing.T) {
-	t.Parallel()
 
 	dir := t.TempDir()
 
@@ -240,7 +233,6 @@ func TestFileWriter_PathSeparatorHandling(t *testing.T) {
 
 // TestFileWriter_UTF8Encoding verifies UTF-8 content handling across platforms
 func TestFileWriter_UTF8Encoding(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		initialData string
@@ -266,7 +258,6 @@ func TestFileWriter_UTF8Encoding(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			dir := t.TempDir()
 			// Get the correct extension for the format

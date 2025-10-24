@@ -9,7 +9,6 @@ import (
 )
 
 func TestFileWriterHTMLAppendWithMarker(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -48,7 +47,6 @@ func TestFileWriterHTMLAppendWithMarker(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Create a subdirectory for this test case to avoid conflicts
 			testDir := filepath.Join(tempDir, name)
@@ -108,7 +106,6 @@ func TestFileWriterHTMLAppendWithMarker(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendMarkerPreservation(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -135,7 +132,6 @@ func TestFileWriterHTMLAppendMarkerPreservation(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Create a subdirectory for this test case to avoid conflicts
 			testDir := filepath.Join(tempDir, name)
@@ -186,7 +182,6 @@ func TestFileWriterHTMLAppendMarkerPreservation(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendEmptyContent(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -222,7 +217,6 @@ func TestFileWriterHTMLAppendEmptyContent(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendMultipleMarkers(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -270,7 +264,6 @@ func TestFileWriterHTMLAppendMultipleMarkers(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendWithSpecialCharacters(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -291,7 +284,6 @@ func TestFileWriterHTMLAppendWithSpecialCharacters(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Create a subdirectory for this test case to avoid conflicts
 			testDir := filepath.Join(tempDir, name)

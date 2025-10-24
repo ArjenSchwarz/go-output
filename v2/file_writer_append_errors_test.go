@@ -11,7 +11,6 @@ import (
 
 // TestFileWriter_AppendErrorHandling tests error scenarios for append operations
 func TestFileWriter_AppendErrorHandling(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		setupFile    func(t *testing.T, dir string) string // Returns filepath
@@ -144,7 +143,6 @@ func TestFileWriter_AppendErrorHandling(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Create temp directory
 			dir := t.TempDir()
@@ -185,7 +183,6 @@ func TestFileWriter_AppendErrorHandling(t *testing.T) {
 
 // TestFileWriter_AppendHTMLMarkerErrorMessage verifies HTML marker error includes marker format
 func TestFileWriter_AppendHTMLMarkerErrorMessage(t *testing.T) {
-	t.Parallel()
 
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "test.html")
@@ -231,7 +228,6 @@ func TestFileWriter_AppendHTMLMarkerErrorMessage(t *testing.T) {
 
 // TestFileWriter_AppendFormatMismatchDetails verifies format mismatch error details
 func TestFileWriter_AppendFormatMismatchDetails(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		fileExt      string
@@ -267,7 +263,6 @@ func TestFileWriter_AppendFormatMismatchDetails(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			dir := t.TempDir()
 			filename := "test." + tc.fileExt
@@ -313,7 +308,6 @@ func TestFileWriter_AppendFormatMismatchDetails(t *testing.T) {
 
 // TestFileWriter_AppendIOErrorsIncludeContext verifies I/O errors include operation context
 func TestFileWriter_AppendIOErrorsIncludeContext(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		setupError    func(t *testing.T, dir string) string
@@ -338,7 +332,6 @@ func TestFileWriter_AppendIOErrorsIncludeContext(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			dir := t.TempDir()
 			filePath := tc.setupError(t, dir)

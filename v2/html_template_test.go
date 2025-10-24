@@ -8,7 +8,6 @@ import (
 )
 
 func TestDefaultHTMLTemplateDefaults(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		template *HTMLTemplate
@@ -39,7 +38,6 @@ func TestDefaultHTMLTemplateDefaults(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			var got any
 			switch tc.field {
@@ -61,7 +59,6 @@ func TestDefaultHTMLTemplateDefaults(t *testing.T) {
 }
 
 func TestMinimalHTMLTemplateDefaults(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		field string
@@ -87,7 +84,6 @@ func TestMinimalHTMLTemplateDefaults(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			var got any
 			switch tc.field {
@@ -109,7 +105,6 @@ func TestMinimalHTMLTemplateDefaults(t *testing.T) {
 }
 
 func TestMermaidHTMLTemplateDefaults(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		field string
@@ -135,7 +130,6 @@ func TestMermaidHTMLTemplateDefaults(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			var got any
 			switch tc.field {
@@ -157,7 +151,6 @@ func TestMermaidHTMLTemplateDefaults(t *testing.T) {
 }
 
 func TestCustomHTMLTemplateOverrides(t *testing.T) {
-	t.Parallel()
 
 	custom := &HTMLTemplate{
 		Title:    "Custom Title",
@@ -190,7 +183,6 @@ func TestCustomHTMLTemplateOverrides(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if tc.got != tc.want {
 				t.Errorf("got %q, want %q", tc.got, tc.want)
@@ -200,7 +192,6 @@ func TestCustomHTMLTemplateOverrides(t *testing.T) {
 }
 
 func TestEmptyHTMLTemplateFieldHandling(t *testing.T) {
-	t.Parallel()
 
 	empty := &HTMLTemplate{}
 
@@ -248,7 +239,6 @@ func TestEmptyHTMLTemplateFieldHandling(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if !tc.check() {
 				t.Errorf("expected empty field %q", tc.field)
@@ -258,7 +248,6 @@ func TestEmptyHTMLTemplateFieldHandling(t *testing.T) {
 }
 
 func TestDefaultResponsiveCSSContainsCSSCustomProperties(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		pattern string
@@ -273,7 +262,6 @@ func TestDefaultResponsiveCSSContainsCSSCustomProperties(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if !strings.Contains(defaultResponsiveCSS, tc.pattern) {
 				t.Errorf("defaultResponsiveCSS missing pattern %q", tc.pattern)
@@ -283,7 +271,6 @@ func TestDefaultResponsiveCSSContainsCSSCustomProperties(t *testing.T) {
 }
 
 func TestDefaultResponsiveCSSmobileBreakpoint(t *testing.T) {
-	t.Parallel()
 
 	if !strings.Contains(defaultResponsiveCSS, "@media (max-width: 480px)") && !strings.Contains(defaultResponsiveCSS, "@media (max-width:480px)") {
 		t.Error("defaultResponsiveCSS missing mobile breakpoint @media (max-width: 480px)")
@@ -291,7 +278,6 @@ func TestDefaultResponsiveCSSmobileBreakpoint(t *testing.T) {
 }
 
 func TestDefaultResponsiveCSSTableStacking(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		pattern string
@@ -303,7 +289,6 @@ func TestDefaultResponsiveCSSTableStacking(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if !strings.Contains(defaultResponsiveCSS, tc.pattern) {
 				t.Errorf("defaultResponsiveCSS missing pattern %q", tc.pattern)
@@ -313,7 +298,6 @@ func TestDefaultResponsiveCSSTableStacking(t *testing.T) {
 }
 
 func TestDefaultResponsiveCSSSystemFontStack(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		pattern string
@@ -331,7 +315,6 @@ func TestDefaultResponsiveCSSSystemFontStack(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if !strings.Contains(defaultResponsiveCSS, tc.pattern) {
 				t.Errorf("defaultResponsiveCSS missing system font pattern %q", tc.pattern)
@@ -341,7 +324,6 @@ func TestDefaultResponsiveCSSSystemFontStack(t *testing.T) {
 }
 
 func TestDefaultResponsiveCSSWCAGColorContrast(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		pattern string
@@ -363,7 +345,6 @@ func TestDefaultResponsiveCSSWCAGColorContrast(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if !strings.Contains(defaultResponsiveCSS, tc.pattern) {
 				t.Errorf("defaultResponsiveCSS missing %s with pattern %q", tc.name, tc.pattern)
@@ -373,7 +354,6 @@ func TestDefaultResponsiveCSSWCAGColorContrast(t *testing.T) {
 }
 
 func TestMermaidOptimizedCSSContainsMermaidStyles(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		pattern string
@@ -387,7 +367,6 @@ func TestMermaidOptimizedCSSContainsMermaidStyles(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if !strings.Contains(mermaidOptimizedCSS, tc.pattern) {
 				t.Errorf("mermaidOptimizedCSS missing %s with pattern %q", tc.name, tc.pattern)
@@ -400,7 +379,6 @@ func TestMermaidOptimizedCSSContainsMermaidStyles(t *testing.T) {
 // These tests verify that the wrapInTemplate function correctly generates valid HTML5 documents
 
 func TestWrapInTemplate_DOCTYPEDeclaration(t *testing.T) {
-	t.Parallel()
 
 	renderer := &htmlRenderer{useTemplate: true, template: DefaultHTMLTemplate}
 	doc := New().Text("Test content").Build()
@@ -417,7 +395,6 @@ func TestWrapInTemplate_DOCTYPEDeclaration(t *testing.T) {
 }
 
 func TestWrapInTemplate_HTMLElementWithLangAttribute(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		template *HTMLTemplate
@@ -439,7 +416,6 @@ func TestWrapInTemplate_HTMLElementWithLangAttribute(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			renderer := &htmlRenderer{useTemplate: true, template: tc.template}
 			doc := New().Text("Test").Build()
@@ -459,7 +435,6 @@ func TestWrapInTemplate_HTMLElementWithLangAttribute(t *testing.T) {
 }
 
 func TestWrapInTemplate_HeadSectionWithCharsetMeta(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		template    *HTMLTemplate
@@ -480,7 +455,6 @@ func TestWrapInTemplate_HeadSectionWithCharsetMeta(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			renderer := &htmlRenderer{useTemplate: true, template: tc.template}
 			doc := New().Text("Test").Build()
@@ -500,7 +474,6 @@ func TestWrapInTemplate_HeadSectionWithCharsetMeta(t *testing.T) {
 }
 
 func TestWrapInTemplate_ViewportMetaTag(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		template     *HTMLTemplate
@@ -521,7 +494,6 @@ func TestWrapInTemplate_ViewportMetaTag(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			renderer := &htmlRenderer{useTemplate: true, template: tc.template}
 			doc := New().Text("Test").Build()
@@ -541,7 +513,6 @@ func TestWrapInTemplate_ViewportMetaTag(t *testing.T) {
 }
 
 func TestWrapInTemplate_TitleTagWithEscaping(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		title     string
@@ -563,7 +534,6 @@ func TestWrapInTemplate_TitleTagWithEscaping(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			template := &HTMLTemplate{
 				Title:   tc.title,
@@ -587,7 +557,6 @@ func TestWrapInTemplate_TitleTagWithEscaping(t *testing.T) {
 }
 
 func TestWrapInTemplate_DescriptionAndAuthorMetaTags(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		name               string
@@ -636,7 +605,6 @@ func TestWrapInTemplate_DescriptionAndAuthorMetaTags(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			template := &HTMLTemplate{
 				Title:       "Test",
@@ -674,7 +642,6 @@ func TestWrapInTemplate_DescriptionAndAuthorMetaTags(t *testing.T) {
 }
 
 func TestWrapInTemplate_CustomMetaTags(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Test",
@@ -708,7 +675,6 @@ func TestWrapInTemplate_CustomMetaTags(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if !strings.Contains(html, tc.wantTag) {
 				t.Errorf("HTML should contain %q, got:\n%s", tc.wantTag, html)
@@ -718,7 +684,6 @@ func TestWrapInTemplate_CustomMetaTags(t *testing.T) {
 }
 
 func TestWrapInTemplate_ExternalCSSLinks(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:       "Test",
@@ -749,7 +714,6 @@ func TestWrapInTemplate_ExternalCSSLinks(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			if !strings.Contains(html, tc.wantLink) {
 				t.Errorf("HTML should contain %q, got:\n%s", tc.wantLink, html)
@@ -759,7 +723,6 @@ func TestWrapInTemplate_ExternalCSSLinks(t *testing.T) {
 }
 
 func TestWrapInTemplate_ExternalCSSWithEscaping(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:       "Test",
@@ -783,7 +746,6 @@ func TestWrapInTemplate_ExternalCSSWithEscaping(t *testing.T) {
 }
 
 func TestWrapInTemplate_EmbeddedCSSStyleTag(t *testing.T) {
-	t.Parallel()
 
 	css := "body { color: red; }"
 	template := &HTMLTemplate{
@@ -809,7 +771,6 @@ func TestWrapInTemplate_EmbeddedCSSStyleTag(t *testing.T) {
 }
 
 func TestWrapInTemplate_ThemeOverrides(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Test",
@@ -845,7 +806,6 @@ func TestWrapInTemplate_ThemeOverrides(t *testing.T) {
 }
 
 func TestWrapInTemplate_ThemeOverridesWithEscaping(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Test",
@@ -871,7 +831,6 @@ func TestWrapInTemplate_ThemeOverridesWithEscaping(t *testing.T) {
 }
 
 func TestWrapInTemplate_HeadExtraContent(t *testing.T) {
-	t.Parallel()
 
 	headExtra := `<link rel="preconnect" href="https://fonts.googleapis.com">`
 	template := &HTMLTemplate{
@@ -901,7 +860,6 @@ func TestWrapInTemplate_HeadExtraContent(t *testing.T) {
 }
 
 func TestWrapInTemplate_BodyWithClass(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:     "Test",
@@ -925,7 +883,6 @@ func TestWrapInTemplate_BodyWithClass(t *testing.T) {
 }
 
 func TestWrapInTemplate_BodyAttrs(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Test",
@@ -956,7 +913,6 @@ func TestWrapInTemplate_BodyAttrs(t *testing.T) {
 }
 
 func TestWrapInTemplate_BodyAttrsWithEscaping(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Test",
@@ -982,7 +938,6 @@ func TestWrapInTemplate_BodyAttrsWithEscaping(t *testing.T) {
 }
 
 func TestWrapInTemplate_FragmentContentInjection(t *testing.T) {
-	t.Parallel()
 
 	template := DefaultHTMLTemplate
 	renderer := &htmlRenderer{useTemplate: true, template: template}
@@ -1009,7 +964,6 @@ func TestWrapInTemplate_FragmentContentInjection(t *testing.T) {
 }
 
 func TestWrapInTemplate_BodyExtra(t *testing.T) {
-	t.Parallel()
 
 	bodyExtra := `<script>console.log('Analytics');</script>`
 	template := &HTMLTemplate{
@@ -1042,7 +996,6 @@ func TestWrapInTemplate_BodyExtra(t *testing.T) {
 }
 
 func TestWrapInTemplate_NilTemplate(t *testing.T) {
-	t.Parallel()
 
 	renderer := &htmlRenderer{useTemplate: true, template: nil}
 	doc := New().Text("Test").Build()
@@ -1064,7 +1017,6 @@ func TestWrapInTemplate_NilTemplate(t *testing.T) {
 }
 
 func TestWrapInTemplate_EmptyFieldsProducingValidOutput(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		name     string
@@ -1107,7 +1059,6 @@ func TestWrapInTemplate_EmptyFieldsProducingValidOutput(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			renderer := &htmlRenderer{useTemplate: true, template: tc.template}
 			doc := New().Text("Content").Build()
@@ -1126,7 +1077,6 @@ func TestWrapInTemplate_EmptyFieldsProducingValidOutput(t *testing.T) {
 }
 
 func TestWrapInTemplate_HTMLStructureOrder(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:       "Test Report",
@@ -1231,7 +1181,6 @@ func TestWrapInTemplate_HTMLStructureOrder(t *testing.T) {
 // Tests for HTML escaping (XSS prevention)
 
 func TestWrapInTemplate_XSSPrevention_TitleWithScript(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "<script>alert('xss')</script>",
@@ -1260,7 +1209,6 @@ func TestWrapInTemplate_XSSPrevention_TitleWithScript(t *testing.T) {
 }
 
 func TestWrapInTemplate_XSSPrevention_TitleWithVariousPatterns(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		title         string
@@ -1286,7 +1234,6 @@ func TestWrapInTemplate_XSSPrevention_TitleWithVariousPatterns(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			template := &HTMLTemplate{
 				Title:   tc.title,
@@ -1315,7 +1262,6 @@ func TestWrapInTemplate_XSSPrevention_TitleWithVariousPatterns(t *testing.T) {
 }
 
 func TestWrapInTemplate_XSSPrevention_DescriptionAndAuthor(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:       "Test",
@@ -1352,7 +1298,6 @@ func TestWrapInTemplate_XSSPrevention_DescriptionAndAuthor(t *testing.T) {
 }
 
 func TestWrapInTemplate_XSSPrevention_MetaTags(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Test",
@@ -1393,7 +1338,6 @@ func TestWrapInTemplate_XSSPrevention_MetaTags(t *testing.T) {
 }
 
 func TestWrapInTemplate_XSSPrevention_BodyClass(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:     "Test",
@@ -1423,7 +1367,6 @@ func TestWrapInTemplate_XSSPrevention_BodyClass(t *testing.T) {
 }
 
 func TestWrapInTemplate_XSSPrevention_BodyAttrs(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Test",
@@ -1464,7 +1407,6 @@ func TestWrapInTemplate_XSSPrevention_BodyAttrs(t *testing.T) {
 }
 
 func TestWrapInTemplate_XSSPrevention_ThemeOverrides(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Test",
@@ -1497,7 +1439,6 @@ func TestWrapInTemplate_XSSPrevention_ThemeOverrides(t *testing.T) {
 }
 
 func TestWrapInTemplate_NoEscaping_CSSField(t *testing.T) {
-	t.Parallel()
 
 	// CSS field should NOT be escaped - it's trusted content
 	cssContent := `body { color: red; }
@@ -1529,7 +1470,6 @@ func TestWrapInTemplate_NoEscaping_CSSField(t *testing.T) {
 }
 
 func TestWrapInTemplate_NoEscaping_HeadExtraField(t *testing.T) {
-	t.Parallel()
 
 	// HeadExtra field should NOT be escaped - it's trusted HTML
 	headExtra := `<meta property="og:title" content="My Page">
@@ -1565,7 +1505,6 @@ func TestWrapInTemplate_NoEscaping_HeadExtraField(t *testing.T) {
 }
 
 func TestWrapInTemplate_NoEscaping_BodyExtraField(t *testing.T) {
-	t.Parallel()
 
 	// BodyExtra field should NOT be escaped - it's trusted HTML
 	bodyExtra := `<script>
@@ -1607,7 +1546,6 @@ func TestWrapInTemplate_NoEscaping_BodyExtraField(t *testing.T) {
 }
 
 func TestWrapInTemplate_SpecialCharactersInAllFields(t *testing.T) {
-	t.Parallel()
 
 	specialChars := "Test & <HTML> \"quotes\" 'apostrophes'"
 
@@ -1676,7 +1614,6 @@ func TestWrapInTemplate_SpecialCharactersInAllFields(t *testing.T) {
 }
 
 func TestWrapInTemplate_SpecialCharactersInURLs(t *testing.T) {
-	t.Parallel()
 
 	urlWithSpecialChars := `https://example.com/page?title=Test&author="John"&desc=<hello>`
 
@@ -1703,7 +1640,6 @@ func TestWrapInTemplate_SpecialCharactersInURLs(t *testing.T) {
 }
 
 func TestWrapInTemplate_NullByteHandling(t *testing.T) {
-	t.Parallel()
 
 	// Test with various problematic characters
 	tests := map[string]struct {
@@ -1722,7 +1658,6 @@ func TestWrapInTemplate_NullByteHandling(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			template := &HTMLTemplate{
 				Title:   tc.title,
@@ -1755,7 +1690,6 @@ func TestWrapInTemplate_NullByteHandling(t *testing.T) {
 // Integration tests for htmlRenderer with template wrapping
 
 func TestHTMLRenderer_UseTemplate_True_CallsWrapInTemplate(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Integration Test",
@@ -1794,7 +1728,6 @@ func TestHTMLRenderer_UseTemplate_True_CallsWrapInTemplate(t *testing.T) {
 }
 
 func TestHTMLRenderer_UseTemplate_False_SkipsTemplateWrapping(t *testing.T) {
-	t.Parallel()
 
 	renderer := &htmlRenderer{useTemplate: false, template: nil}
 	doc := New().Text("Test content").Build()
@@ -1823,7 +1756,6 @@ func TestHTMLRenderer_UseTemplate_False_SkipsTemplateWrapping(t *testing.T) {
 }
 
 func TestHTMLRenderer_TemplateWrappingAsFinalStep(t *testing.T) {
-	t.Parallel()
 
 	customTemplate := &HTMLTemplate{
 		Title:       "Final Step Test",
@@ -1857,7 +1789,6 @@ func TestHTMLRenderer_TemplateWrappingAsFinalStep(t *testing.T) {
 }
 
 func TestHTMLRenderer_DefaultTemplateUsedWhenNil(t *testing.T) {
-	t.Parallel()
 
 	// Create renderer with nil template but useTemplate=true
 	renderer := &htmlRenderer{useTemplate: true, template: nil}
@@ -1887,7 +1818,6 @@ func TestHTMLRenderer_DefaultTemplateUsedWhenNil(t *testing.T) {
 }
 
 func TestHTMLRenderer_IntegrationMultipleContents(t *testing.T) {
-	t.Parallel()
 
 	template := &HTMLTemplate{
 		Title:   "Multi-Content Test",

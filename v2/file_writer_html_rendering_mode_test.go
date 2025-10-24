@@ -9,7 +9,6 @@ import (
 )
 
 func TestFileWriterHTMLRendering_NewFileGetsFullPage(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -63,7 +62,6 @@ func TestFileWriterHTMLRendering_NewFileGetsFullPage(t *testing.T) {
 }
 
 func TestFileWriterHTMLRendering_ExistingFileExpectsFragment(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -131,7 +129,6 @@ func TestFileWriterHTMLRendering_ExistingFileExpectsFragment(t *testing.T) {
 }
 
 func TestFileWriterHTMLRendering_ModeSelectionBasedOnFileExistence(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -158,7 +155,6 @@ func TestFileWriterHTMLRendering_ModeSelectionBasedOnFileExistence(t *testing.T)
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			fw, err := NewFileWriterWithOptions(tempDir, name+".html", WithAppendMode())
 			if err != nil {
@@ -196,7 +192,6 @@ func TestFileWriterHTMLRendering_ModeSelectionBasedOnFileExistence(t *testing.T)
 }
 
 func TestFileWriterHTMLRendering_NoPlacementErrorOnFragment(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -238,7 +233,6 @@ func TestFileWriterHTMLRendering_NoPlacementErrorOnFragment(t *testing.T) {
 }
 
 func TestFileWriterHTMLRendering_MultipleAppends(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -302,7 +296,6 @@ func TestFileWriterHTMLRendering_MultipleAppends(t *testing.T) {
 }
 
 func TestFileWriterHTMLRendering_ValidatesHTMLStructure(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -331,7 +324,6 @@ func TestFileWriterHTMLRendering_ValidatesHTMLStructure(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			fw, err := NewFileWriterWithOptions(tempDir, name+".html", WithAppendMode())
 			if err != nil {
@@ -358,7 +350,6 @@ func TestFileWriterHTMLRendering_ValidatesHTMLStructure(t *testing.T) {
 }
 
 func TestFileWriterHTMLRendering_FragmentWithoutPageStructure(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -436,7 +427,6 @@ func TestFileWriterHTMLRendering_FragmentWithoutPageStructure(t *testing.T) {
 }
 
 func TestFileWriterHTMLRendering_ConsecutiveFragments(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()

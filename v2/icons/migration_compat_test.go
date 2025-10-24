@@ -14,8 +14,6 @@ func TestMigrationCompatibility_JSONStructure(t *testing.T) {
 		t.Skip("skipping migration compatibility test in short mode")
 	}
 
-	t.Parallel()
-
 	// Load the embedded JSON (same one v1 uses)
 	v2JSON := make(map[string]map[string]string)
 
@@ -68,8 +66,6 @@ func TestMigrationCompatibility_DuplicateKeyHandling(t *testing.T) {
 		t.Skip("skipping migration compatibility test in short mode")
 	}
 
-	t.Parallel()
-
 	// The aws.json has duplicate "Internet" entries in General Resources
 	// Go's json.Unmarshal uses the last value for duplicates
 	// This test verifies v2 behaves correctly
@@ -97,8 +93,6 @@ func TestMigrationCompatibility_StyleStringFormat(t *testing.T) {
 		t.Skip("skipping migration compatibility test in short mode")
 	}
 
-	t.Parallel()
-
 	testCases := map[string]struct {
 		group string
 		title string
@@ -123,7 +117,6 @@ func TestMigrationCompatibility_StyleStringFormat(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			style, err := GetAWSShape(tc.group, tc.title)
 			if err != nil {
@@ -161,8 +154,6 @@ func TestMigrationCompatibility_ErrorBehavior(t *testing.T) {
 		t.Skip("skipping migration compatibility test in short mode")
 	}
 
-	t.Parallel()
-
 	testCases := map[string]struct {
 		group         string
 		title         string
@@ -190,7 +181,6 @@ func TestMigrationCompatibility_ErrorBehavior(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			style, err := GetAWSShape(tc.group, tc.title)
 
@@ -224,8 +214,6 @@ func TestMigrationCompatibility_CaseSensitivity(t *testing.T) {
 		t.Skip("skipping migration compatibility test in short mode")
 	}
 
-	t.Parallel()
-
 	// v1 uses exact case-sensitive matching
 	// These should fail because case doesn't match
 	testCases := map[string]struct {
@@ -244,7 +232,6 @@ func TestMigrationCompatibility_CaseSensitivity(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			_, err := GetAWSShape(tc.group, tc.title)
 			if err == nil {

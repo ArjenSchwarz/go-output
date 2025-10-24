@@ -10,7 +10,6 @@ import (
 )
 
 func TestFileWriterHTMLAppendCrashSafety_TempFileCleanup(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -48,7 +47,6 @@ func TestFileWriterHTMLAppendCrashSafety_TempFileCleanup(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendCrashSafety_OriginalFilePreserved(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -89,7 +87,6 @@ func TestFileWriterHTMLAppendCrashSafety_OriginalFilePreserved(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendCrashSafety_TemporaryFileCreation(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -130,7 +127,6 @@ func TestFileWriterHTMLAppendCrashSafety_TemporaryFileCreation(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendCrashSafety_AtomicRename(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -183,7 +179,6 @@ func TestFileWriterHTMLAppendCrashSafety_AtomicRename(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendCrashSafety_SyncBeforeRename(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -222,7 +217,6 @@ func TestFileWriterHTMLAppendCrashSafety_SyncBeforeRename(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendCrashSafety_ErrorDoesNotCorruptFile(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()
@@ -270,7 +264,6 @@ func TestFileWriterHTMLAppendCrashSafety_ErrorDoesNotCorruptFile(t *testing.T) {
 }
 
 func TestFileWriterHTMLAppendCrashSafety_ConcurrentOperations(t *testing.T) {
-	t.Parallel()
 
 	tempDir := t.TempDir()
 	ctx := context.Background()

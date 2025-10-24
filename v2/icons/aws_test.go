@@ -9,7 +9,6 @@ import (
 
 // TestGetAWSShape_Success tests successful shape lookups
 func TestGetAWSShape_Success(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		group string
@@ -35,7 +34,6 @@ func TestGetAWSShape_Success(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			got, err := GetAWSShape(tc.group, tc.title)
 			if err != nil {
@@ -56,7 +54,6 @@ func TestGetAWSShape_Success(t *testing.T) {
 
 // TestGetAWSShape_MissingGroup tests error handling for missing groups
 func TestGetAWSShape_MissingGroup(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		group       string
@@ -82,7 +79,6 @@ func TestGetAWSShape_MissingGroup(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			got, err := GetAWSShape(tc.group, tc.title)
 			if err == nil {
@@ -102,7 +98,6 @@ func TestGetAWSShape_MissingGroup(t *testing.T) {
 
 // TestGetAWSShape_MissingShape tests error handling for missing shapes within valid groups
 func TestGetAWSShape_MissingShape(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		group       string
@@ -128,7 +123,6 @@ func TestGetAWSShape_MissingShape(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			got, err := GetAWSShape(tc.group, tc.title)
 			if err == nil {
@@ -148,7 +142,6 @@ func TestGetAWSShape_MissingShape(t *testing.T) {
 
 // TestGetAWSShape_ThreadSafety tests concurrent access to GetAWSShape
 func TestGetAWSShape_ThreadSafety(t *testing.T) {
-	t.Parallel()
 
 	const numGoroutines = 100
 	var wg sync.WaitGroup
@@ -169,7 +162,6 @@ func TestGetAWSShape_ThreadSafety(t *testing.T) {
 // TestGetAWSShape_ConcurrentSameShape tests multiple goroutines accessing the same shape
 // This specifically tests for race conditions when accessing the same map entries
 func TestGetAWSShape_ConcurrentSameShape(t *testing.T) {
-	t.Parallel()
 
 	const numGoroutines = 1000
 	var wg sync.WaitGroup
@@ -194,7 +186,6 @@ func TestGetAWSShape_ConcurrentSameShape(t *testing.T) {
 
 // TestGetAWSShape_ConcurrentDifferentShapes tests concurrent access to different shapes
 func TestGetAWSShape_ConcurrentDifferentShapes(t *testing.T) {
-	t.Parallel()
 
 	// Test shapes from different groups - using only known valid shapes
 	testCases := []struct {
@@ -233,7 +224,6 @@ func TestGetAWSShape_ConcurrentDifferentShapes(t *testing.T) {
 // This test is specifically designed to trigger race detector warnings if any exist
 func TestGetAWSShape_RaceDetector(t *testing.T) {
 	// Note: Run with `go test -race` to enable race detection
-	t.Parallel()
 
 	const numGoroutines = 50
 	done := make(chan bool)
@@ -269,7 +259,6 @@ func TestGetAWSShape_RaceDetector(t *testing.T) {
 
 // TestAllAWSGroups tests the helper function for listing all groups
 func TestAllAWSGroups(t *testing.T) {
-	t.Parallel()
 
 	groups := AllAWSGroups()
 
@@ -295,7 +284,6 @@ func TestAllAWSGroups(t *testing.T) {
 
 // TestAWSShapesInGroup tests the helper function for listing shapes in a group
 func TestAWSShapesInGroup(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		group       string
@@ -320,7 +308,6 @@ func TestAWSShapesInGroup(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			got, err := AWSShapesInGroup(tc.group)
 
@@ -351,7 +338,6 @@ func TestAWSShapesInGroup(t *testing.T) {
 
 // TestHasAWSShape tests the helper function for checking shape existence
 func TestHasAWSShape(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		group string
@@ -387,7 +373,6 @@ func TestHasAWSShape(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			got := HasAWSShape(tc.group, tc.title)
 			if got != tc.want {

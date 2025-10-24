@@ -7,7 +7,6 @@ import (
 )
 
 func TestHTMLRenderer_AppendMarkerInFullHTML(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		useTemplate   bool
@@ -28,7 +27,6 @@ func TestHTMLRenderer_AppendMarkerInFullHTML(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Build a simple document
 			doc := New().
@@ -81,7 +79,6 @@ func TestHTMLRenderer_AppendMarkerInFullHTML(t *testing.T) {
 }
 
 func TestHTMLRenderer_MarkerPlacement(t *testing.T) {
-	t.Parallel()
 
 	doc := New().
 		Text("Content").
@@ -126,7 +123,6 @@ func TestHTMLRenderer_MarkerPlacement(t *testing.T) {
 }
 
 func TestHTMLRenderer_MarkerFormat(t *testing.T) {
-	t.Parallel()
 
 	doc := New().
 		Text("Test").
@@ -153,7 +149,6 @@ func TestHTMLRenderer_MarkerFormat(t *testing.T) {
 }
 
 func TestHTMLRenderer_MultipleMarkers(t *testing.T) {
-	t.Parallel()
 
 	doc := New().
 		Text("Test").

@@ -9,7 +9,6 @@ import (
 )
 
 func TestFileWriterWithAppendMode(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -30,7 +29,6 @@ func TestFileWriterWithAppendMode(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			fw, err := NewFileWriterWithOptions(tempDir, "test-{format}.{ext}", tc.opts...)
 			if err != nil {
@@ -45,7 +43,6 @@ func TestFileWriterWithAppendMode(t *testing.T) {
 }
 
 func TestFileWriterWithPermissions(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -66,7 +63,6 @@ func TestFileWriterWithPermissions(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			fw, err := NewFileWriterWithOptions(tempDir, "test-{format}.{ext}", tc.opts...)
 			if err != nil {
@@ -81,7 +77,6 @@ func TestFileWriterWithPermissions(t *testing.T) {
 }
 
 func TestFileWriterAppendByteLevel(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -124,7 +119,6 @@ func TestFileWriterAppendByteLevel(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			filename := "test-" + name + ".json"
 			filepath := filepath.Join(fw.dir, filename)
@@ -163,7 +157,6 @@ func TestFileWriterAppendByteLevel(t *testing.T) {
 }
 
 func TestFileWriterFormatValidation(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -209,7 +202,6 @@ func TestFileWriterFormatValidation(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			err := fw.validateFormatMatch(tc.format, tc.filepath)
 			if tc.wantErr {
@@ -229,7 +221,6 @@ func TestFileWriterFormatValidation(t *testing.T) {
 }
 
 func TestFileWriterAppendWithFormatValidation(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -270,7 +261,6 @@ func TestFileWriterAppendWithFormatValidation(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			filepath := filepath.Join(fw.dir, tc.filename)
 
@@ -298,7 +288,6 @@ func TestFileWriterAppendWithFormatValidation(t *testing.T) {
 }
 
 func TestFileWriterDisallowUnsafeAppend(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -338,7 +327,6 @@ func TestFileWriterDisallowUnsafeAppend(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			filepath := filepath.Join(fw.dir, tc.filename)
 
@@ -364,7 +352,6 @@ func TestFileWriterDisallowUnsafeAppend(t *testing.T) {
 }
 
 func TestFileWriterCSVHeaderSkipping(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -433,7 +420,6 @@ func TestFileWriterCSVHeaderSkipping(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			filename := "test-csv-" + strings.ReplaceAll(name, " ", "-") + ".csv"
 			filepath := filepath.Join(fw.dir, filename)

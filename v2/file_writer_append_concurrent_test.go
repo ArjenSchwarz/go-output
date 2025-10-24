@@ -12,7 +12,6 @@ import (
 )
 
 func TestFileWriterConcurrentAppends(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -91,7 +90,6 @@ func TestFileWriterConcurrentAppends(t *testing.T) {
 }
 
 func TestFileWriterConcurrentWriteAndAppend(t *testing.T) {
-	t.Parallel()
 	skipIfNotIntegration(t)
 
 	tempDir := t.TempDir()
@@ -118,7 +116,6 @@ func TestFileWriterConcurrentWriteAndAppend(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			filename := fmt.Sprintf("concurrent-%s.txt", strings.ReplaceAll(name, " ", "-"))
 			filepath := filepath.Join(fw.dir, filename)

@@ -15,7 +15,6 @@ import (
 
 // TestS3Writer_AppendErrorHandling tests error scenarios for S3 append operations
 func TestS3Writer_AppendErrorHandling(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		setupClient  func() S3ClientAPI
@@ -154,7 +153,6 @@ func TestS3Writer_AppendErrorHandling(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			client := tc.setupClient()
 
@@ -189,7 +187,6 @@ func TestS3Writer_AppendErrorHandling(t *testing.T) {
 
 // TestS3Writer_AppendSizeLimitErrorDetails verifies size limit error includes details
 func TestS3Writer_AppendSizeLimitErrorDetails(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		objectSize     int64
@@ -219,7 +216,6 @@ func TestS3Writer_AppendSizeLimitErrorDetails(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			client := &mockS3ClientWithAppend{
 				getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, opts ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
@@ -268,7 +264,6 @@ func TestS3Writer_AppendSizeLimitErrorDetails(t *testing.T) {
 
 // TestS3Writer_AppendETagConflictSuggestsRetry verifies ETag conflict error suggests retry
 func TestS3Writer_AppendETagConflictSuggestsRetry(t *testing.T) {
-	t.Parallel()
 
 	tests := map[string]struct {
 		putError    error
@@ -300,7 +295,6 @@ func TestS3Writer_AppendETagConflictSuggestsRetry(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			client := &mockS3ClientWithAppend{
 				getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, opts ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
@@ -377,7 +371,6 @@ func (m *mockS3ClientWithAppend) PutObject(ctx context.Context, input *s3.PutObj
 
 // TestS3Writer_AppendObjectNotFoundCreatesNew verifies that non-existent objects are created
 func TestS3Writer_AppendObjectNotFoundCreatesNew(t *testing.T) {
-	t.Parallel()
 
 	putCalled := false
 	client := &mockS3ClientWithAppend{
