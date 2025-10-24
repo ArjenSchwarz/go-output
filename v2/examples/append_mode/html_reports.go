@@ -89,7 +89,7 @@ func main() {
 	doc = output.New().
 		Text("Daily Summary").
 		Table("summary", summaryData, output.WithKeys("Metric", "Value", "Target", "Status")).
-		Text("Report generated at: "+time.Now().Format(time.RFC3339)).
+		Text("Report generated at: " + time.Now().Format(time.RFC3339)).
 		Build()
 
 	if err := out.Render(ctx, doc); err != nil {

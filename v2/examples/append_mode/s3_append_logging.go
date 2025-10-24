@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -40,7 +41,7 @@ func main() {
 	s3Client := s3.NewFromConfig(cfg)
 
 	// Configure S3 bucket and key
-	bucket := "my-logs-bucket"      // Change to your bucket name
+	bucket := "my-logs-bucket"     // Change to your bucket name
 	keyPattern := "logs/app.{ext}" // Will become logs/app.json
 
 	fmt.Println("S3 Append Mode Example")
@@ -80,10 +81,10 @@ func main() {
 			"checks":    5,
 		},
 		{
-			"timestamp": time.Now().Add(2 * time.Minute).Format(time.RFC3339),
-			"level":     "WARNING",
-			"service":   "api-gateway",
-			"message":   "High latency detected",
+			"timestamp":  time.Now().Add(2 * time.Minute).Format(time.RFC3339),
+			"level":      "WARNING",
+			"service":    "api-gateway",
+			"message":    "High latency detected",
 			"latency_ms": 850,
 		},
 		{
@@ -148,7 +149,7 @@ func isETagConflict(err error) bool {
 		return false
 	}
 	// The error message from S3Writer contains "concurrent modification detected"
-	return contains(err.Error(), "concurrent modification")
+	return strings.Contains(err.Error(), "concurrent modification")
 }
 
 // isSizeLimitError checks if an error is due to size limit exceeded
@@ -156,19 +157,5 @@ func isSizeLimitError(err error) bool {
 	if err == nil {
 		return false
 	}
-	return contains(err.Error(), "exceeds maximum append size")
-}
-
-// contains checks if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := range len(s) - len(substr) + 1 {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	return strings.Contains(err.Error(), "exceeds maximum append size")
 }

@@ -337,6 +337,13 @@ func (fw *FileWriter) appendHTMLWithMarker(ctx context.Context, fullPath string,
 	default:
 	}
 
+	// Get original file permissions before modifying
+	fileInfo, err := os.Stat(fullPath)
+	if err != nil {
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to stat existing file: %w", err))
+	}
+	originalMode := fileInfo.Mode()
+
 	// Read existing file content
 	existing, err := os.ReadFile(fullPath)
 	if err != nil {
@@ -384,6 +391,11 @@ func (fw *FileWriter) appendHTMLWithMarker(ctx context.Context, fullPath string,
 	// Atomic rename (atomic on same filesystem)
 	if err := os.Rename(tempPath, fullPath); err != nil {
 		return fw.wrapError(FormatHTML, fmt.Errorf("failed to rename temp file: %w", err))
+	}
+
+	// Restore original file permissions after rename
+	if err := os.Chmod(fullPath, originalMode); err != nil {
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to restore file permissions: %w", err))
 	}
 
 	return nil

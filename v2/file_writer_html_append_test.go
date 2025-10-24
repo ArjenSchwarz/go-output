@@ -322,3 +322,84 @@ func TestFileWriterHTMLAppendWithSpecialCharacters(t *testing.T) {
 		})
 	}
 }
+
+func TestFileWriterHTMLAppendPreservesPermissions(t *testing.T) {
+
+	tempDir := t.TempDir()
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		permissions os.FileMode
+	}{
+		"preserves 0644 permissions": {
+			permissions: 0644,
+		},
+		"preserves 0600 permissions": {
+			permissions: 0600,
+		},
+		"preserves 0755 permissions": {
+			permissions: 0755,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+
+			// Create a subdirectory for this test case
+			testDir := filepath.Join(tempDir, name)
+			err := os.MkdirAll(testDir, 0755)
+			if err != nil {
+				t.Fatalf("failed to create test directory: %v", err)
+			}
+
+			// Create FileWriter
+			fw, err := NewFileWriterWithOptions(testDir, "test.html", WithAppendMode())
+			if err != nil {
+				t.Fatalf("failed to create FileWriter: %v", err)
+			}
+
+			// Create initial file with specific permissions
+			filePath := filepath.Join(testDir, "test.html")
+			initialContent := "<html><body><p>Initial</p><!-- go-output-append --></body></html>"
+			err = os.WriteFile(filePath, []byte(initialContent), tc.permissions)
+			if err != nil {
+				t.Fatalf("failed to create initial file: %v", err)
+			}
+
+			// Verify initial permissions
+			info, err := os.Stat(filePath)
+			if err != nil {
+				t.Fatalf("failed to stat initial file: %v", err)
+			}
+			initialMode := info.Mode()
+			if initialMode != tc.permissions {
+				t.Fatalf("initial permissions not set correctly: got %v, want %v", initialMode, tc.permissions)
+			}
+
+			// Append content (uses temp file + rename)
+			err = fw.Write(ctx, FormatHTML, []byte("<p>Appended</p>"))
+			if err != nil {
+				t.Fatalf("failed to append: %v", err)
+			}
+
+			// Verify permissions are preserved after append
+			info, err = os.Stat(filePath)
+			if err != nil {
+				t.Fatalf("failed to stat file after append: %v", err)
+			}
+			afterMode := info.Mode()
+			if afterMode != tc.permissions {
+				t.Errorf("permissions not preserved after append: got %v, want %v", afterMode, tc.permissions)
+			}
+
+			// Verify content was appended correctly
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				t.Fatalf("failed to read file: %v", err)
+			}
+			if !bytes.Contains(content, []byte("<p>Appended</p>")) {
+				t.Errorf("content not appended correctly")
+			}
+		})
+	}
+}

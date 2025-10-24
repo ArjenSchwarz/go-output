@@ -1,6 +1,21 @@
 ## Unreleased
 
 ### Fixed
+- **HTML Append File Permissions** - Fixed HTML append operations losing original file permissions:
+  - HTML append uses atomic write-to-temp-and-rename pattern for crash safety
+  - `os.CreateTemp()` creates temp files with restrictive 0600 permissions by default
+  - After rename, files lost their original permissions (e.g., 0644 became 0600)
+  - Added `os.Stat()` to capture original file mode before modification (v2/file_writer.go:341-345)
+  - Added `os.Chmod()` to restore original permissions after rename (v2/file_writer.go:396-399)
+  - Added test `TestFileWriterHTMLAppendPreservesPermissions` verifying 0644, 0600, and 0755 permissions are preserved (v2/file_writer_html_append_test.go:326-405)
+
+### Changed
+- **Code Quality Improvements** - Replaced unnecessary custom string utilities with standard library:
+  - Removed custom `contains()` and `containsHelper()` functions from s3_append_logging.go example (12 lines)
+  - Replaced with `strings.Contains()` from standard library (v2/examples/append_mode/s3_append_logging.go:152, 160)
+  - Minor formatting improvements for consistency
+
+### Fixed
 - **Race Detector Warnings** - Removed all `t.Parallel()` calls from test files to eliminate race conditions:
   - Removed 222 `t.Parallel()` calls across 17 test files in v2/
   - Race conditions were caused by tests mutating shared global Format variables (HTML.Renderer, etc.)

@@ -141,7 +141,7 @@ func main() {
 		Text("").
 		Text("Overall Assessment: 5 incidents occurred today, all successfully resolved.").
 		Text("System showed elevated resource usage during afternoon peak but remained operational.").
-		Text("Report generated at: "+time.Now().Format(time.RFC3339)).
+		Text("Report generated at: " + time.Now().Format(time.RFC3339)).
 		Build()
 
 	if err := out.Render(ctx, doc); err != nil {

@@ -60,12 +60,13 @@
       "mcp__devtools__codex-agent",
       "Bash(rune:*)",
       "Bash(golangci-lint run:*)",
-      "Bash(gh pr diff:*)"
+      "Bash(gh pr diff:*)",
+      "WebFetch(domain:api.github.com)"
     ],
     "deny": []
   },
   "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true
+    "autoAllowBashIfSandboxed": true,
+    "enabled": true
   }
 }
