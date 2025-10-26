@@ -2,6 +2,17 @@
 
 This guide provides comprehensive instructions for migrating from go-output v1 to v2. Version 2 is a complete redesign that eliminates global state, provides thread safety, and maintains exact key ordering while preserving all v1 functionality.
 
+**Current Version**: v2.4.0
+
+**Breaking Changes in v2.4.0**:
+- Pipeline API has been removed - use per-content transformations instead
+- See [Per-Content Transformations](#per-content-transformations-v240) section below
+
+**New Features in v2.4.0**:
+- Per-content transformations (attach transformations to individual tables)
+- File and S3 append mode with format-specific handling
+- HTML template system with responsive CSS
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -347,9 +358,9 @@ out := output.NewOutput(
 )
 ```
 
-### Append Mode
+### Append Mode (v2.4.0)
 
-v2 introduces append mode for both FileWriter and S3Writer, allowing you to add content to existing files instead of replacing them.
+v2.4.0 includes comprehensive append mode support for both FileWriter and S3Writer, allowing you to add content to existing files instead of replacing them.
 
 #### Configuration Change
 
@@ -638,6 +649,141 @@ out := output.NewOutput(
     output.WithWriter(output.NewStdoutWriter()),
 )
 out.Render(context.Background(), doc)
+```
+
+### HTML Template System (v2.4.0+)
+
+v2.4.0 introduces a complete HTML template system for generating full HTML documents with responsive styling. v1 only generated basic HTML fragments.
+
+#### v1 HTML Output
+```go
+// v1 - Basic HTML table fragment only
+settings := format.NewOutputSettings()
+settings.OutputFormat = "html"
+output.Write()
+// Produces: <table>...</table> (no page structure)
+```
+
+#### v2 HTML with Templates
+```go
+// v2 - Full HTML document with responsive template
+htmlFormat := output.HTML.WithOptions(
+    output.WithHTMLTemplate(output.DefaultHTMLTemplate),
+)
+
+out := output.NewOutput(
+    output.WithFormat(htmlFormat),
+    output.WithWriter(output.NewFileWriter(".", "report.html")),
+)
+
+err := out.Render(ctx, doc)
+// Produces: Complete HTML5 document with responsive CSS
+```
+
+#### Built-in Templates
+
+v2 provides three built-in templates:
+
+```go
+// 1. DefaultHTMLTemplate - Responsive design with mobile-first CSS
+htmlFormat := output.HTML.WithOptions(
+    output.WithHTMLTemplate(output.DefaultHTMLTemplate),
+)
+
+// 2. MinimalHTMLTemplate - Clean HTML with no styling
+htmlFormat := output.HTML.WithOptions(
+    output.WithHTMLTemplate(output.MinimalHTMLTemplate),
+)
+
+// 3. MermaidHTMLTemplate - Optimized for Mermaid diagrams
+htmlFormat := output.HTML.WithOptions(
+    output.WithHTMLTemplate(output.MermaidHTMLTemplate),
+)
+```
+
+#### Custom Templates
+
+Create custom templates with full control:
+
+```go
+customTemplate := &output.HTMLTemplate{
+    Title:       "Sales Report Q4 2024",
+    Description: "Quarterly sales analysis",
+    Author:      "Analytics Team",
+    CSS:         output.DefaultResponsiveCSS,
+    ThemeOverrides: map[string]string{
+        "--primary-color":   "#0066cc",
+        "--bg-color":        "#f8f9fa",
+        "--text-color":      "#212529",
+        "--font-family":     "Arial, sans-serif",
+    },
+    ExternalCSS: []string{
+        "https://cdn.example.com/custom-styles.css",
+    },
+}
+
+htmlFormat := output.HTML.WithOptions(
+    output.WithHTMLTemplate(customTemplate),
+)
+```
+
+#### Template Features
+
+**Responsive Design**:
+- Mobile-first CSS with breakpoints at 480px and 768px
+- Responsive table layout with mobile stacking
+- System font stack for performance
+- WCAG AA compliant color contrast
+
+**CSS Theming**:
+```go
+template := &output.HTMLTemplate{
+    Title: "Report",
+    CSS:   output.DefaultResponsiveCSS,
+    ThemeOverrides: map[string]string{
+        "--primary-color":   "#007bff",
+        "--secondary-color": "#6c757d",
+        "--border-color":    "#dee2e6",
+    },
+}
+```
+
+**Content Injection**:
+```go
+template := &output.HTMLTemplate{
+    HeadExtra: `<script src="analytics.js"></script>`,
+    BodyClass: "report-page",
+    BodyAttributes: `data-theme="dark"`,
+    BodyExtra: `<footer>© 2024 Company</footer>`,
+}
+```
+
+**Fragment Mode (Append)**:
+
+When using append mode, the HTML renderer automatically switches to fragment mode to avoid duplicate page structure:
+
+```go
+// First write: Full HTML document with template
+fw, _ := output.NewFileWriterWithOptions(
+    "./reports",
+    "daily.html",
+    output.WithAppendMode(),
+)
+
+htmlFormat := output.HTML.WithOptions(
+    output.WithHTMLTemplate(output.DefaultHTMLTemplate),
+)
+
+out := output.NewOutput(
+    output.WithFormat(htmlFormat),
+    output.WithWriter(fw),
+)
+
+// Creates: Complete HTML page with <!-- go-output-append --> marker
+
+// Subsequent writes: Fragments only (no <html>, <head>, <body>)
+out.Render(ctx, doc2)
+// Inserts: Content fragment before the marker
 ```
 
 ## Feature-by-Feature Migration
@@ -1768,13 +1914,13 @@ out := output.NewOutput(
 // ✅ Format-agnostic operations
 ```
 
-## Per-Content Transformations (New in v2.4+)
+## Per-Content Transformations (v2.4.0)
 
-v2.4 introduces **per-content transformations** and removes the document-level Pipeline API. This allows attaching transformations directly to individual tables at creation time.
+**Breaking Change in v2.4.0**: The Pipeline API has been removed and replaced with **per-content transformations**. This allows attaching transformations directly to individual tables at creation time.
 
 ### Why Per-Content Transformations?
 
-The Pipeline API (removed in v2.4) applied transformations globally to all tables in a document. Per-content transformations solve this limitation by allowing each table to have its own transformation logic.
+The Pipeline API applied transformations globally to all tables in a document. Per-content transformations solve this limitation by allowing each table to have its own transformation logic, which was the primary use case for most users.
 
 ### Basic Migration Pattern
 

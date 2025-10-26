@@ -11,7 +11,8 @@ A comprehensive Go library for outputting structured data in multiple formats wi
 - **Multiple Output Formats**: Support for 9 different output formats with simultaneous rendering
 - **Document-Builder Pattern**: Immutable documents with fluent API construction
 - **Rich Content Types**: Tables, text, raw content, and hierarchical sections
-- **Transform Pipeline**: Emoji conversion, colors, sorting, and custom transformations
+- **Per-Content Transformations**: Apply filters, sorting, and limits to individual content items
+- **Append Mode**: Add content to existing files with format-specific handling
 - **Multiple Writers**: Output to stdout, files, S3, or multiple destinations simultaneously
 - **Progress Indicators**: Visual progress bars for long-running operations
 - **Chart Generation**: Gantt charts, pie charts, and flow diagrams
@@ -122,6 +123,36 @@ out.Render(ctx, doc3)  // Appends to logs/app.json
 - **S3**: Download-modify-upload with ETag conflict detection
 
 **Examples:** See [v2/examples/append_mode/](v2/examples/append_mode/) for NDJSON logging, HTML reports, CSV data collection, and S3 appending patterns.
+
+## Per-Content Transformations
+
+Apply transformations to individual content items at creation time:
+
+```go
+// Different transformations for different tables
+doc := output.New().
+    Table("All Employees", allEmployees,
+        output.WithKeys("Name", "Department", "Salary"),
+        output.WithTransformations(
+            output.NewFilterOp(func(r output.Record) bool {
+                return r["Salary"].(float64) > 50000
+            }),
+            output.NewSortOp(output.SortKey{Column: "Salary", Direction: output.Descending}),
+        ),
+    ).
+    Table("Active Projects", projects,
+        output.WithKeys("Project", "Status", "Priority"),
+        output.WithTransformations(
+            output.NewFilterOp(func(r output.Record) bool {
+                return r["Status"] == "Active"
+            }),
+            output.NewLimitOp(10), // top 10 only
+        ),
+    ).
+    Build()
+```
+
+**Migration Note:** The Pipeline API was removed in v2.4.0. Use `WithTransformations()` on individual content items instead. See [v2/docs/PIPELINE_MIGRATION.md](v2/docs/PIPELINE_MIGRATION.md) for migration guidance.
 
 ## Mixed Content Documents
 
