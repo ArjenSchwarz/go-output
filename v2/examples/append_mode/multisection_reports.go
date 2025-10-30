@@ -37,7 +37,7 @@ func main() {
 
 	// Create output configuration for HTML format
 	out := output.NewOutput(
-		output.WithFormat(output.FormatHTML),
+		output.WithFormat(output.HTML()),
 		output.WithWriter(fw),
 	)
 

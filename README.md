@@ -57,7 +57,7 @@ func main() {
 
     // Configure output with multiple formats and destinations
     out := output.NewOutput(
-        output.WithFormats(output.Table, output.JSON),
+        output.WithFormats(output.Table(), output.JSON()),
         output.WithWriter(output.NewStdoutWriter()),
     )
 
@@ -87,7 +87,7 @@ Output to multiple formats and destinations simultaneously:
 fileWriter, _ := output.NewFileWriter("./reports", "report.{format}")
 
 out := output.NewOutput(
-    output.WithFormats(output.JSON, output.CSV, output.HTML),
+    output.WithFormats(output.JSON(), output.CSV(), output.HTML()),
     output.WithWriter(output.NewStdoutWriter()),
     output.WithWriter(fileWriter), // Creates report.json, report.csv, report.html
 )
@@ -106,7 +106,7 @@ fw, _ := output.NewFileWriterWithOptions(
 )
 
 out := output.NewOutput(
-    output.WithFormat(output.FormatJSON),
+    output.WithFormat(output.JSON()),
     output.WithWriter(fw),
 )
 

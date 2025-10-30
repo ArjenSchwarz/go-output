@@ -61,7 +61,8 @@
       "Bash(rune:*)",
       "Bash(golangci-lint run:*)",
       "Bash(gh pr diff:*)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:proxy.golang.org)"
     ],
     "deny": []
   },

@@ -60,7 +60,7 @@ func main() {
 
 	// Create output configuration for JSON format (NDJSON logging)
 	out := output.NewOutput(
-		output.WithFormat(output.FormatJSON),
+		output.WithFormat(output.JSON()),
 		output.WithWriter(sw),
 	)
 
