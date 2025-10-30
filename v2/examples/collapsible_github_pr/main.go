@@ -79,7 +79,7 @@ func generateCodeAnalysisComment() {
 		Build()
 
 	// Render as Markdown for GitHub
-	renderDocument(doc, output.Markdown, "github-pr-analysis.md")
+	renderDocument(doc, output.Markdown(), "github-pr-analysis.md")
 }
 
 func generateTestResultsComment() {
@@ -131,7 +131,7 @@ func generateTestResultsComment() {
 		Text("**Overall:** 65 passed, 3 failed, 4 skipped").
 		Build()
 
-	renderDocument(doc, output.Markdown, "github-pr-tests.md")
+	renderDocument(doc, output.Markdown(), "github-pr-tests.md")
 }
 
 func generateSecurityScanComment() {
@@ -178,7 +178,7 @@ func generateSecurityScanComment() {
 		Text("3. **Low**: Configure HTTPS endpoints").
 		Build()
 
-	renderDocument(doc, output.Markdown, "github-pr-security.md")
+	renderDocument(doc, output.Markdown(), "github-pr-security.md")
 }
 
 func renderDocument(doc *output.Document, format output.Format, filename string) {

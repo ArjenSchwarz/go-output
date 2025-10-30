@@ -61,7 +61,7 @@ output.Write()`)
 
 	out1 := output.NewOutput(
 		// Multiple formats instead of separate settings
-		output.WithFormats(output.TableWithStyle("ColoredBright"), output.HTML),
+		output.WithFormats(output.TableWithStyle("ColoredBright"), output.HTML()),
 		// Transformers replace boolean flags
 		output.WithTransformers(
 			output.NewEnhancedEmojiTransformer(),
@@ -122,7 +122,7 @@ p.Complete()`)
 	)
 
 	out2 := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 		output.WithProgress(progress),
 	)
@@ -175,7 +175,7 @@ output2.Write()`)
 
 	out3 := output.NewOutput(
 		// Multiple formats from single document
-		output.WithFormats(output.JSON, output.CSV, output.HTML, output.Table),
+		output.WithFormats(output.JSON(), output.CSV(), output.HTML(), output.Table()),
 		output.WithWriters(
 			output.NewStdoutWriter(),
 			multiFileWriter,

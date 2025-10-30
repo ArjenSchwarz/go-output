@@ -22,7 +22,7 @@ func TestIntegration_DocumentWithTableContent_ProducesValidHTML5(t *testing.T) {
 		Table("employees", data, WithKeys("Name", "Age")).
 		Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestIntegration_DocumentWithMultipleContentTypes(t *testing.T) {
 		Text("Thank you for visiting").
 		Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestIntegration_DocumentWithMultipleContentTypes(t *testing.T) {
 func TestIntegration_DOCTYPEAndMetaTags(t *testing.T) {
 
 	doc := New().Text("Test Content").Build()
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestIntegration_HTMLStructureOrder(t *testing.T) {
 		Text("Footer").
 		Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestIntegration_EndToEndRenderingPipeline(t *testing.T) {
 		Table("metrics", data, WithKeys("Metric", "Value")).
 		Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestIntegration_MermaidChartWithTemplate_IncludesScriptAtEndOfBody(t *testi
 		}).
 		Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -325,7 +325,7 @@ func TestIntegration_MermaidChartInFragmentMode_IncludesScript(t *testing.T) {
 		Build()
 
 	// Use fragment mode
-	output, err := HTMLFragment.Renderer.Render(context.Background(), doc)
+	output, err := HTMLFragment().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -375,7 +375,7 @@ func TestIntegration_MultipleMermaidCharts_InSameDocument(t *testing.T) {
 		}).
 		Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -430,7 +430,7 @@ func TestIntegration_ScriptInjectionOrder_ContentThenScriptsThenClosingTags(t *t
 		Text("Section 3").
 		Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -883,7 +883,7 @@ func TestIntegration_EdgeCase_EmptyDocument_ProducesValidHTMLStructure(t *testin
 	// Create an empty document
 	doc := New().Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}
@@ -1579,7 +1579,7 @@ func TestIntegration_RenderToWithTemplate_ProducesCompleteHTMLDocument(t *testin
 		Build()
 
 	var buf strings.Builder
-	err := HTML.Renderer.RenderTo(context.Background(), doc, &buf)
+	err := HTML().Renderer.RenderTo(context.Background(), doc, &buf)
 	if err != nil {
 		t.Fatalf("RenderTo failed: %v", err)
 	}
@@ -1619,7 +1619,7 @@ func TestIntegration_RenderToWithTemplate_ProducesCompleteHTMLDocument(t *testin
 
 	// Verify both Render and RenderTo produce similar structure
 	// (exact bytes may differ but structure should be the same)
-	renderOutput, _ := HTML.Renderer.Render(context.Background(), doc)
+	renderOutput, _ := HTML().Renderer.Render(context.Background(), doc)
 	renderStr := string(renderOutput)
 
 	// Both should have DOCTYPE and closing tags
@@ -1642,7 +1642,7 @@ func TestIntegration_RenderToWithMermaidCharts_InjectsMermaidScript(t *testing.T
 		Build()
 
 	var buf strings.Builder
-	err := HTML.Renderer.RenderTo(context.Background(), doc, &buf)
+	err := HTML().Renderer.RenderTo(context.Background(), doc, &buf)
 	if err != nil {
 		t.Fatalf("RenderTo failed: %v", err)
 	}
@@ -1685,7 +1685,7 @@ func TestIntegration_RenderToWithoutTemplate_StreamsFragmentsOnly(t *testing.T) 
 
 	// Use HTMLFragment which has useTemplate=false
 	var buf strings.Builder
-	err := HTMLFragment.Renderer.RenderTo(context.Background(), doc, &buf)
+	err := HTMLFragment().Renderer.RenderTo(context.Background(), doc, &buf)
 	if err != nil {
 		t.Fatalf("RenderTo failed: %v", err)
 	}

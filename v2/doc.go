@@ -29,7 +29,7 @@ Create a document using the builder pattern:
 Render to a specific format:
 
 	out := output.NewOutput(
-	    output.WithFormat(output.JSON),
+	    output.WithFormat(output.JSON()),
 	    output.WithWriter(output.NewStdoutWriter()),
 	)
 	err := out.Render(context.Background(), doc)
@@ -165,7 +165,7 @@ Transformations respect context cancellation:
 	defer cancel()
 
 	out := output.NewOutput(
-	    output.WithFormat(output.JSON),
+	    output.WithFormat(output.JSON()),
 	    output.WithWriter(output.NewStdoutWriter()),
 	)
 	err := out.Render(ctx, doc)  // Respects timeout
@@ -280,7 +280,7 @@ For comprehensive best practices, see v2/BEST_PRACTICES.md.
 
 	    // Render to JSON
 	    out := output.NewOutput(
-	        output.WithFormat(output.JSON),
+	        output.WithFormat(output.JSON()),
 	        output.WithWriter(output.NewStdoutWriter()),
 	    )
 

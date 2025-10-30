@@ -56,15 +56,15 @@ func TestRendererInterface(t *testing.T) {
 // TestFormatConstants ensures format constants are properly configured
 func TestFormatConstants(t *testing.T) {
 	formats := []Format{
-		JSON,
-		YAML,
-		CSV,
-		HTML,
-		Table,
-		Markdown,
-		DOT,
-		Mermaid,
-		DrawIO,
+		JSON(),
+		YAML(),
+		CSV(),
+		HTML(),
+		Table(),
+		Markdown(),
+		DOT(),
+		Mermaid(),
+		DrawIO(),
 	}
 
 	expectedNames := []string{

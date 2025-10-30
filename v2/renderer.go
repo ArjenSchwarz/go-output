@@ -42,28 +42,89 @@ type Format struct {
 	Options  map[string]any
 }
 
-// Built-in format constants for common output formats
-var (
-	JSON         = Format{Name: FormatJSON, Renderer: &jsonRenderer{}}
-	YAML         = Format{Name: FormatYAML, Renderer: &yamlRenderer{}}
-	CSV          = Format{Name: FormatCSV, Renderer: &csvRenderer{}}
-	HTML         = Format{Name: FormatHTML, Renderer: &htmlRenderer{useTemplate: true, template: DefaultHTMLTemplate}}
-	HTMLFragment = Format{Name: FormatHTML, Renderer: &htmlRenderer{useTemplate: false}}
-	Table        = Format{Name: FormatTable, Renderer: &tableRenderer{}}
-	Markdown     = Format{Name: FormatMarkdown, Renderer: &markdownRenderer{headingLevel: 1}}
-	DOT          = Format{Name: FormatDOT, Renderer: &dotRenderer{}}
-	Mermaid      = Format{Name: FormatMermaid, Renderer: &mermaidRenderer{}}
-	DrawIO       = Format{Name: FormatDrawIO, Renderer: &drawioRenderer{}}
-)
+// Built-in format constructor functions for common output formats
+// These functions return new Format instances with fresh renderers to ensure thread safety.
+// Each call creates a new renderer instance, preventing shared mutable state issues.
+//
+// IMPORTANT: Do not store these Format values in global variables and mutate their Renderer field.
+// Always call these functions when you need a Format to get a fresh instance.
 
-// Table style format constants for v1 compatibility
-var (
-	TableDefault       = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("Default")}
-	TableBold          = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("Bold")}
-	TableColoredBright = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("ColoredBright")}
-	TableLight         = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("Light")}
-	TableRounded       = Format{Name: FormatTable, Renderer: NewTableRendererWithStyle("Rounded")}
-)
+// JSON returns a Format configured for JSON output
+func JSON() Format {
+	return Format{Name: FormatJSON, Renderer: &jsonRenderer{}}
+}
+
+// YAML returns a Format configured for YAML output
+func YAML() Format {
+	return Format{Name: FormatYAML, Renderer: &yamlRenderer{}}
+}
+
+// CSV returns a Format configured for CSV output
+func CSV() Format {
+	return Format{Name: FormatCSV, Renderer: &csvRenderer{}}
+}
+
+// HTML returns a Format configured for complete HTML documents with the default template
+func HTML() Format {
+	return Format{Name: FormatHTML, Renderer: &htmlRenderer{useTemplate: true, template: DefaultHTMLTemplate}}
+}
+
+// HTMLFragment returns a Format configured for HTML fragments without template wrapping
+func HTMLFragment() Format {
+	return Format{Name: FormatHTML, Renderer: &htmlRenderer{useTemplate: false}}
+}
+
+// Table returns a Format configured for terminal table output with default style
+func Table() Format {
+	return Format{Name: FormatTable, Renderer: &tableRenderer{}}
+}
+
+// Markdown returns a Format configured for Markdown output
+func Markdown() Format {
+	return Format{Name: FormatMarkdown, Renderer: &markdownRenderer{headingLevel: 1}}
+}
+
+// DOT returns a Format configured for GraphViz DOT output
+func DOT() Format {
+	return Format{Name: FormatDOT, Renderer: &dotRenderer{}}
+}
+
+// Mermaid returns a Format configured for Mermaid diagram output
+func Mermaid() Format {
+	return Format{Name: FormatMermaid, Renderer: &mermaidRenderer{}}
+}
+
+// DrawIO returns a Format configured for Draw.io XML output
+func DrawIO() Format {
+	return Format{Name: FormatDrawIO, Renderer: &drawioRenderer{}}
+}
+
+// Table style format constructors for v1 compatibility
+
+// TableDefault returns a Format configured for terminal table output with Default style
+func TableDefault() Format {
+	return TableWithStyle("Default")
+}
+
+// TableBold returns a Format configured for terminal table output with Bold style
+func TableBold() Format {
+	return TableWithStyle("Bold")
+}
+
+// TableColoredBright returns a Format configured for terminal table output with ColoredBright style
+func TableColoredBright() Format {
+	return TableWithStyle("ColoredBright")
+}
+
+// TableLight returns a Format configured for terminal table output with Light style
+func TableLight() Format {
+	return TableWithStyle("Light")
+}
+
+// TableRounded returns a Format configured for terminal table output with Rounded style
+func TableRounded() Format {
+	return TableWithStyle("Rounded")
+}
 
 // TableWithStyle creates a table format with the specified style for v1 compatibility
 func TableWithStyle(styleName string) Format {

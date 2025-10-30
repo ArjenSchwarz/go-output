@@ -148,8 +148,8 @@ func main() {
 				"team":        "Infrastructure",
 				"environment": "Production",
 			}),
-			output.HTML,                            // Web dashboard
-			output.JSON,                            // API consumption
+			output.HTML(),                          // Web dashboard
+			output.JSON(),                          // API consumption
 			output.TableWithStyle("ColoredBright"), // Console/terminal
 		),
 
@@ -167,7 +167,7 @@ func main() {
 
 		// Progress tracking for large datasets
 		output.WithProgress(output.NewProgressForFormats(
-			[]output.Format{output.Markdown, output.HTML, output.JSON, output.Table},
+			[]output.Format{output.Markdown(), output.HTML(), output.JSON(), output.Table()},
 			output.WithProgressColor(output.ProgressColorBlue),
 			output.WithProgressStatus("Generating infrastructure report"),
 		)),

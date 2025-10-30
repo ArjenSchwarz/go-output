@@ -39,7 +39,7 @@ output.Write()`)
 		Build()
 
 	out1 := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -69,7 +69,7 @@ output.Write()`)
 		Build()
 
 	out2 := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -118,7 +118,7 @@ output.Write()`)
 		Build()
 
 	out3 := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -156,7 +156,7 @@ output.Write()`)
 	}
 
 	out4 := output.NewOutput(
-		output.WithFormat(output.HTML),
+		output.WithFormat(output.HTML()),
 		output.WithWriter(fileWriter),
 	)
 

@@ -79,7 +79,7 @@ func oldWay(users []output.Record) {
 
 	// Step 3: Render transformed document
 	out := output.NewOutput(
-		output.WithFormat(output.JSON),
+		output.WithFormat(output.JSON()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 	if err := out.Render(context.Background(), transformed); err != nil {
@@ -113,7 +113,7 @@ func newWay(users, products []output.Record) {
 
 	// Transformations apply automatically during rendering
 	out := output.NewOutput(
-		output.WithFormat(output.JSON),
+		output.WithFormat(output.JSON()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 	if err := out.Render(context.Background(), doc); err != nil {
@@ -147,7 +147,7 @@ func multipleTablesExample(users, products []output.Record) {
 	doc := builder.Build()
 
 	out := output.NewOutput(
-		output.WithFormat(output.JSON),
+		output.WithFormat(output.JSON()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 	if err := out.Render(context.Background(), doc); err != nil {
@@ -185,7 +185,7 @@ func dynamicTransformations(users []output.Record, filterAdults, sortByName bool
 	doc := builder.Build()
 
 	out := output.NewOutput(
-		output.WithFormat(output.JSON),
+		output.WithFormat(output.JSON()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 	if err := out.Render(context.Background(), doc); err != nil {

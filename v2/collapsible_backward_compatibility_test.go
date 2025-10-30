@@ -74,7 +74,7 @@ func TestCollapsibleBackwardCompatibility_ExistingFormatters(t *testing.T) {
 			// Test that it renders without errors
 			var buf bytes.Buffer
 			output := NewOutput(
-				WithFormat(Table),
+				WithFormat(Table()),
 				WithWriter(&backwardCompatTestWriter{buf: &buf}),
 			)
 
@@ -158,7 +158,7 @@ func TestCollapsibleBackwardCompatibility_OutputConsistency(t *testing.T) {
 	}
 
 	// Render with all formats
-	formats := []Format{JSON, YAML, Table, CSV, HTML, Markdown}
+	formats := []Format{JSON(), YAML(), Table(), CSV(), HTML(), Markdown()}
 	baselineOutputs := make(map[string][]byte)
 
 	// Generate baseline from first test case
@@ -254,7 +254,7 @@ func TestCollapsibleBackwardCompatibility_PerformanceRegression(t *testing.T) {
 		Build()
 
 	// Measure rendering performance for different formats
-	formats := []Format{JSON, Table, CSV}
+	formats := []Format{JSON(), Table(), CSV()}
 
 	for _, format := range formats {
 		t.Run(format.Name+"_NoCollapsible", func(t *testing.T) {
@@ -365,7 +365,7 @@ func TestCollapsibleBackwardCompatibility_APISignatures(t *testing.T) {
 		}
 
 		contents := doc.GetContents()
-		if len(contents) != 4 { // Header, Text, Table, Section
+		if len(contents) != 4 { // Header, Text, Table(), Section
 			t.Errorf("Expected 4 contents, got %d", len(contents))
 		}
 	})
@@ -388,9 +388,9 @@ func TestCollapsibleBackwardCompatibility_ZeroOverhead(t *testing.T) {
 		name   string
 		format Format
 	}{
-		{"JSON", JSON},
-		{"Table", Table},
-		{"CSV", CSV},
+		{"JSON", JSON()},
+		{"Table", Table()},
+		{"CSV", CSV()},
 	}
 
 	for _, renderer := range renderers {
@@ -476,7 +476,7 @@ func TestCollapsibleBackwardCompatibility_MigrationPath(t *testing.T) {
 
 				var buf bytes.Buffer
 				output := NewOutput(
-					WithFormat(Table),
+					WithFormat(Table()),
 					WithWriter(&backwardCompatTestWriter{buf: &buf}),
 				)
 
@@ -512,7 +512,7 @@ func TestCollapsibleBackwardCompatibility_MigrationPath(t *testing.T) {
 
 		var buf bytes.Buffer
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriter(&backwardCompatTestWriter{buf: &buf}),
 		)
 

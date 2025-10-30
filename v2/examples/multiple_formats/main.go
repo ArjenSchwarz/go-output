@@ -39,10 +39,10 @@ func main() {
 	out := output.NewOutput(
 		// Multiple formats - each will be rendered independently
 		output.WithFormats(
-			output.JSON,  // Machine-readable data
-			output.CSV,   // Spreadsheet import
-			output.HTML,  // Web display
-			output.Table, // Console display
+			output.JSON(),  // Machine-readable data
+			output.CSV(),   // Spreadsheet import
+			output.HTML(),  // Web display
+			output.Table(), // Console display
 		),
 		// Multiple writers - stdout and files
 		output.WithWriters(

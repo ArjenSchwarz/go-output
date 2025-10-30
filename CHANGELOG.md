@@ -1,3 +1,24 @@
+## 2.5.0 / 2025-10-30
+
+### Breaking Changes
+- **Format Variables Converted to Functions** - All format variables (`JSON`, `YAML`, `HTML`, etc.) are now functions that return fresh `Format` instances:
+  - **Required Change**: Add parentheses `()` to all format references: `output.JSON` → `output.JSON()`
+  - **Affected APIs**: `WithFormat()`, `WithFormats()`, all format variable assignments
+  - **Why**: Prevents race conditions by ensuring each usage gets an independent renderer instance
+  - **Benefit**: Enables parallel test execution with `t.Parallel()` without data races
+  - See v2/docs/MIGRATION.md section "Migration from v2.4.x to v2.5.0" for detailed migration steps
+
+### Changed
+- Converted global Format variables to constructor functions for thread safety:
+  - Core formats: `JSON()`, `YAML()`, `CSV()`, `HTML()`, `HTMLFragment()`, `Table()`, `Markdown()`, `DOT()`, `Mermaid()`, `DrawIO()`
+  - Table styles: `TableDefault()`, `TableBold()`, `TableColoredBright()`, `TableLight()`, `TableRounded()`
+  - Each function call returns a fresh Format with its own renderer instance
+- Updated all internal code, tests, examples, and documentation to use new format functions
+
+### Fixed
+- **Race Conditions in Parallel Tests** - Applications using go-output can now safely run tests in parallel without encountering "concurrent map write" errors
+- **Shared Mutable State** - Eliminated the last remnant of global mutable state by ensuring renderer instances are never shared between goroutines
+
 ## 2.4.0 / 2025-10-26
 
 ### Breaking Changes

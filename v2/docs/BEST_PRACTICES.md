@@ -282,7 +282,7 @@ ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 defer cancel()
 
 out := output.NewOutput(
-    output.WithFormat(output.JSON),
+    output.WithFormat(output.JSON()),
     output.WithWriter(output.NewStdoutWriter()),
 )
 err := out.Render(ctx, doc)
@@ -360,7 +360,7 @@ func TestFilterWithInvalidData(t *testing.T) {
     )
 
     doc := builder.Build()
-    out := output.NewOutput(output.WithFormat(output.JSON))
+    out := output.NewOutput(output.WithFormat(output.JSON()))
 
     err := out.Render(context.Background(), doc)
     if err == nil {
@@ -467,7 +467,7 @@ func TestDocumentWithTransformations(t *testing.T) {
     doc := builder.Build()
 
     out := output.NewOutput(
-        output.WithFormat(output.JSON),
+        output.WithFormat(output.JSON()),
         output.WithWriter(output.NewStdoutWriter()),
     )
 

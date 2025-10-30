@@ -127,7 +127,7 @@ func BenchmarkRendering_JSON(b *testing.B) {
 		Build()
 
 	output := NewOutput(
-		WithFormat(JSON),
+		WithFormat(JSON()),
 		WithWriter(&benchmarkWriter{}),
 	)
 	ctx := context.Background()
@@ -149,7 +149,7 @@ func BenchmarkRendering_Table(b *testing.B) {
 		Build()
 
 	output := NewOutput(
-		WithFormat(Table),
+		WithFormat(Table()),
 		WithWriter(&benchmarkWriter{}),
 	)
 	ctx := context.Background()
@@ -173,7 +173,7 @@ func BenchmarkTransformers(b *testing.B) {
 
 	b.Run("NoTransformers", func(b *testing.B) {
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriter(&benchmarkWriter{}),
 		)
 
@@ -185,7 +185,7 @@ func BenchmarkTransformers(b *testing.B) {
 
 	b.Run("WithSort", func(b *testing.B) {
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithTransformer(NewSortTransformer("Name", true)),
 			WithWriter(&benchmarkWriter{}),
 		)
@@ -198,7 +198,7 @@ func BenchmarkTransformers(b *testing.B) {
 
 	b.Run("MultipleTransformers", func(b *testing.B) {
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithTransformer(NewSortTransformer("Score", false)),
 			WithTransformer(&EmojiTransformer{}),
 			WithTransformer(NewColorTransformer()),
@@ -520,7 +520,7 @@ func BenchmarkRendering_WithCollapsible(b *testing.B) {
 
 	b.Run("Markdown_Rendering", func(b *testing.B) {
 		output := NewOutput(
-			WithFormat(Markdown),
+			WithFormat(Markdown()),
 			WithWriter(&benchmarkWriter{}),
 		)
 		b.ResetTimer()
@@ -531,7 +531,7 @@ func BenchmarkRendering_WithCollapsible(b *testing.B) {
 
 	b.Run("JSON_Rendering", func(b *testing.B) {
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriter(&benchmarkWriter{}),
 		)
 		b.ResetTimer()
@@ -542,7 +542,7 @@ func BenchmarkRendering_WithCollapsible(b *testing.B) {
 
 	b.Run("Table_Rendering", func(b *testing.B) {
 		output := NewOutput(
-			WithFormat(Table),
+			WithFormat(Table()),
 			WithWriter(&benchmarkWriter{}),
 		)
 		b.ResetTimer()
@@ -629,7 +629,7 @@ func BenchmarkBackwardCompatibility(b *testing.B) {
 			Build()
 
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriter(&benchmarkWriter{}),
 		)
 		ctx := context.Background()
@@ -658,7 +658,7 @@ func BenchmarkBackwardCompatibility(b *testing.B) {
 			Build()
 
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriter(&benchmarkWriter{}),
 		)
 		ctx := context.Background()

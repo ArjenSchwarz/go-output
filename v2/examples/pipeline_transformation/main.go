@@ -98,7 +98,7 @@ func basicTransformationExample(salesData []map[string]any) {
 
 	// Output results - transformations apply automatically during rendering
 	out := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -153,7 +153,7 @@ func complexAnalyticsExample(salesData []map[string]any) {
 
 	// Show results in both table and JSON format
 	out := output.NewOutput(
-		output.WithFormats(output.Table, output.JSON),
+		output.WithFormats(output.Table(), output.JSON()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -222,7 +222,7 @@ func aggregationExample(salesData []map[string]any) {
 	fmt.Println("🌍 Multiple aggregation tables with different transformations:")
 
 	out := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -269,7 +269,7 @@ func combinedTransformationExample(salesData []map[string]any) {
 
 	// Apply visual styling with byte transformers during rendering
 	out := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		// Add color coding based on performance levels
 		output.WithTransformer(output.NewColorTransformerWithScheme(output.ColorScheme{
 			Success: "excellent",    // Green
@@ -361,7 +361,7 @@ func multipleTablesExample(salesData []map[string]any) {
 	fmt.Println()
 
 	out := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 

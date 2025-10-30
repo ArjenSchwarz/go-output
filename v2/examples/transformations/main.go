@@ -60,7 +60,7 @@ func basicFilterAndSort() {
 
 	// Render to table format
 	out := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -118,7 +118,7 @@ func multipleTables() {
 
 	// Render to JSON format
 	out := output.NewOutput(
-		output.WithFormat(output.JSON),
+		output.WithFormat(output.JSON()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -189,7 +189,7 @@ func dynamicTransformations() {
 
 	// Render to table format
 	out := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -224,7 +224,7 @@ func errorHandling() {
 		Build()
 
 	out := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
