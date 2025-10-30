@@ -87,9 +87,9 @@ func main() {
 	// Configure output for multiple formats to show content adaptation
 	out := output.NewOutput(
 		output.WithFormats(
-			output.Table,    // Console-friendly
-			output.HTML,     // Web-friendly with raw HTML included
-			output.Markdown, // Documentation-friendly
+			output.Table(),    // Console-friendly
+			output.HTML(),     // Web-friendly with raw HTML included
+			output.Markdown(), // Documentation-friendly
 		),
 		output.WithWriter(output.NewStdoutWriter()),
 	)

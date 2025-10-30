@@ -453,7 +453,7 @@ func WithAbsolutePaths() FileWriterOption {
 //   - HTML: Uses the <!-- go-output-append --> comment marker system. New HTML fragments
 //     are inserted before the marker. The target file must contain this marker or an
 //     error will be returned. For new files, a full HTML page with the marker is created.
-//   - Other formats (Table, Markdown, etc.): Pure byte-level appending.
+//   - Other formats (Table, Markdown(), etc.): Pure byte-level appending.
 //
 // Thread Safety: The FileWriter uses sync.Mutex to serialize write operations when
 // multiple goroutines share the same FileWriter instance. This provides thread-safety

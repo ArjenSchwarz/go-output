@@ -35,7 +35,7 @@ func main() {
 	)
 
 	out1 := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 		output.WithProgress(progress1),
 	)
@@ -59,7 +59,7 @@ func main() {
 
 	// For multiple formats, progress system intelligently selects approach
 	progress2 := output.NewProgressForFormats(
-		[]output.Format{output.JSON, output.Table},
+		[]output.Format{output.JSON(), output.Table},
 		output.WithProgressColor(output.ProgressColorGreen),
 		output.WithProgressStatus("Multi-format export"),
 	)
@@ -70,7 +70,7 @@ func main() {
 	}
 
 	out2 := output.NewOutput(
-		output.WithFormats(output.JSON, output.Table),
+		output.WithFormats(output.JSON(), output.Table()),
 		output.WithWriters(
 			output.NewStdoutWriter(),
 			fileWriter,
@@ -102,7 +102,7 @@ func main() {
 	)
 
 	out3 := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 		output.WithProgress(progress3),
 	)

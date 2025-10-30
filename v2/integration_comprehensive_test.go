@@ -137,8 +137,8 @@ func TestIntegration_RenderingPipeline(t *testing.T) {
 	// Create output with multiple formats and transformers
 	var buf bytes.Buffer
 	output := NewOutput(
-		WithFormat(JSON),
-		WithFormat(Table),
+		WithFormat(JSON()),
+		WithFormat(Table()),
 		WithTransformer(NewSortTransformer("Price", true)),
 		WithWriter(NewStdoutWriter()),                 // Would write to stdout
 		WithWriter(&integrationMockWriter{buf: &buf}), // Test writer
@@ -204,7 +204,7 @@ func TestIntegration_ProgressWithRendering(t *testing.T) {
 	// Create output with progress
 	progress := NewNoOpProgress() // Use NoOp for testing
 	output := NewOutput(
-		WithFormat(JSON),
+		WithFormat(JSON()),
 		WithProgress(progress),
 		WithWriter(&integrationMockWriter{buf: &bytes.Buffer{}}),
 	)
@@ -241,7 +241,7 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 
 	// Create output with longer delay to ensure cancellation happens during write
 	output := NewOutput(
-		WithFormat(JSON),
+		WithFormat(JSON()),
 		WithWriter(&slowWriter{delay: 100 * time.Millisecond}),
 	)
 
@@ -370,7 +370,7 @@ func TestIntegration_LargeDataset(t *testing.T) {
 
 	// Test rendering performance
 	output := NewOutput(
-		WithFormat(JSON),
+		WithFormat(JSON()),
 		WithWriter(&integrationMockWriter{buf: &bytes.Buffer{}}),
 	)
 

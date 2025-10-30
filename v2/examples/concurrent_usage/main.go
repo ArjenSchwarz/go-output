@@ -70,7 +70,7 @@ func main() {
 		Build()
 
 	// Create multiple output configurations
-	formats := []output.Format{output.JSON, output.CSV, output.Table}
+	formats := []output.Format{output.JSON(), output.CSV(), output.Table}
 	var renderWG sync.WaitGroup
 	renderResults := make(chan string, len(formats))
 
@@ -207,7 +207,7 @@ func main() {
 
 		// Create output for each document
 		out := output.NewOutput(
-			output.WithFormat(output.JSON),
+			output.WithFormat(output.JSON()),
 			output.WithWriter(&countingWriter{id: processedCount}),
 		)
 

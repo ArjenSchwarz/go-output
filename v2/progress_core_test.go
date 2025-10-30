@@ -832,35 +832,35 @@ func TestNewProgressForFormat(t *testing.T) {
 	}{
 		"CSV format uses NoOp": {
 
-			format:       CSV,
+			format:       CSV(),
 			expectedType: "noop",
 		}, "DOT format uses NoOp": {
 
-			format:       DOT,
+			format:       DOT(),
 			expectedType: "noop",
 		}, "DrawIO format uses visual progress": {
 
-			format:       DrawIO,
+			format:       DrawIO(),
 			expectedType: "visual",
 		}, "HTML format uses visual progress": {
 
-			format:       HTML,
+			format:       HTML(),
 			expectedType: "visual",
 		}, "JSON format uses NoOp": {
 
-			format:       JSON,
+			format:       JSON(),
 			expectedType: "noop",
 		}, "Markdown format uses visual progress": {
 
-			format:       Markdown,
+			format:       Markdown(),
 			expectedType: "visual",
 		}, "Mermaid format uses visual progress": {
 
-			format:       Mermaid,
+			format:       Mermaid(),
 			expectedType: "visual",
 		}, "Table format uses visual progress": {
 
-			format:       Table,
+			format:       Table(),
 			expectedType: "visual",
 		}, "Unknown format uses text progress": {
 
@@ -868,7 +868,7 @@ func TestNewProgressForFormat(t *testing.T) {
 			expectedType: "text",
 		}, "YAML format uses NoOp": {
 
-			format:       YAML,
+			format:       YAML(),
 			expectedType: "noop",
 		}}
 
@@ -918,23 +918,23 @@ func TestNewProgressForFormats(t *testing.T) {
 		expectedType: "noop",
 	}, "Mixed formats uses conservative approach": {
 
-		formats:      []Format{JSON, Table, CSV},
+		formats:      []Format{JSON(), Table(), CSV()},
 		expectedType: "mixed",
 	}, "Only non-visual formats uses NoOp": {
 
-		formats:      []Format{JSON, CSV, YAML},
+		formats:      []Format{JSON(), CSV(), YAML()},
 		expectedType: "noop",
 	}, "Only visual formats uses visual progress": {
 
-		formats:      []Format{Table, HTML},
+		formats:      []Format{Table(), HTML()},
 		expectedType: "visual",
 	}, "Single non-visual format": {
 
-		formats:      []Format{DOT},
+		formats:      []Format{DOT()},
 		expectedType: "noop",
 	}, "Single visual format": {
 
-		formats:      []Format{Markdown},
+		formats:      []Format{Markdown()},
 		expectedType: "visual",
 	}}
 
@@ -1000,15 +1000,15 @@ func TestNewAutoProgress(t *testing.T) {
 func TestFormat_Constants(t *testing.T) {
 	// Test that all format constants are defined and unique
 	formats := []Format{
-		JSON,
-		CSV,
-		YAML,
-		DOT,
-		Table,
-		HTML,
-		Markdown,
-		Mermaid,
-		DrawIO,
+		JSON(),
+		CSV(),
+		YAML(),
+		DOT(),
+		Table(),
+		HTML(),
+		Markdown(),
+		Mermaid(),
+		DrawIO(),
 	}
 
 	seen := make(map[string]bool)
@@ -1073,7 +1073,7 @@ func TestNewProgressForFormatName(t *testing.T) {
 
 func TestProgressForFormat_Integration(t *testing.T) {
 	// Integration test that combines multiple format-aware functions
-	formats := []Format{Table, JSON}
+	formats := []Format{Table(), JSON()}
 
 	var buf bytes.Buffer
 	progress := NewProgressForFormats(formats,

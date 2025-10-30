@@ -36,7 +36,9 @@ func TestDualTransformerSystem_Integration(t *testing.T) {
 	}
 
 	// Create HTML renderer with transformers configured
-	renderer := HTML.Renderer
+	// Get a fresh HTML format instance to avoid shared state
+	htmlFormat := HTML()
+	renderer := htmlFormat.Renderer
 
 	// Manually configure the baseRenderer with transformers
 	// (This simulates proper configuration that would be done through constructor options)
@@ -112,7 +114,9 @@ func TestDualTransformerSystem_FormatFiltering(t *testing.T) {
 	}
 
 	// Create HTML renderer with data transformer
-	renderer := HTML.Renderer
+	// Get a fresh HTML format instance to avoid shared state
+	htmlFormat := HTML()
+	renderer := htmlFormat.Renderer
 	if htmlRenderer, ok := renderer.(*htmlRenderer); ok {
 		htmlRenderer.baseRenderer.config = RendererConfig{
 			DataTransformers: []*TransformerAdapter{
@@ -164,7 +168,9 @@ func TestDualTransformerSystem_PriorityOrdering(t *testing.T) {
 		prefix:   "[LOW]",
 	}
 
-	renderer := HTML.Renderer
+	// Get a fresh HTML format instance to avoid shared state
+	htmlFormat := HTML()
+	renderer := htmlFormat.Renderer
 	if htmlRenderer, ok := renderer.(*htmlRenderer); ok {
 		htmlRenderer.baseRenderer.config = RendererConfig{
 			DataTransformers: []*TransformerAdapter{

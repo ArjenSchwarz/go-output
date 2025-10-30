@@ -28,7 +28,7 @@ func main() {
 	// Create output configuration
 	// This example outputs to stdout in table format
 	out := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 

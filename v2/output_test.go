@@ -33,8 +33,8 @@ func TestNewOutput(t *testing.T) {
 		customProgress := NewProgress(WithProgressWriter(&buf))
 
 		output := NewOutput(
-			WithFormat(JSON),
-			WithFormat(CSV),
+			WithFormat(JSON()),
+			WithFormat(CSV()),
 			WithWriter(NewStdoutWriter()),
 			WithProgress(customProgress),
 			WithTableStyle("Bold"),
@@ -86,7 +86,7 @@ func TestOutput_Render_ProgressIntegration(t *testing.T) {
 		testWriter := &testStdoutWriter{}
 
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriter(testWriter),
 			WithProgress(progress),
 		)
@@ -124,7 +124,7 @@ func TestOutput_Render_ProgressIntegration(t *testing.T) {
 		testWriter := &testStdoutWriter{}
 
 		output := NewOutput(
-			WithFormats(JSON, CSV, YAML),
+			WithFormats(JSON(), CSV(), YAML()),
 			WithWriter(testWriter),
 			WithProgress(progress),
 		)
@@ -163,7 +163,7 @@ func TestOutput_Render_ProgressIntegration(t *testing.T) {
 		testWriter2 := &testStdoutWriter{}
 
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriters(
 				testWriter1,
 				testWriter2,
@@ -212,7 +212,7 @@ func TestOutput_Render_ProgressIntegration(t *testing.T) {
 		testWriter := &testStdoutWriter{}
 
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriter(testWriter),
 			WithProgress(progress),
 		)
@@ -278,7 +278,7 @@ func TestOutput_Render_ErrorHandling(t *testing.T) {
 		progress := NewProgress(WithProgressWriter(&progressBuf))
 
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithProgress(progress),
 		)
 
@@ -301,7 +301,7 @@ func TestOutput_Render_ErrorHandling(t *testing.T) {
 		progress := NewProgress(WithProgressWriter(&progressBuf))
 
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithWriter(NewStdoutWriter()),
 			WithProgress(progress),
 		)
@@ -359,7 +359,7 @@ func TestOutput_Render_WithTransformers(t *testing.T) {
 		testWriter := &testStdoutWriter{}
 
 		output := NewOutput(
-			WithFormat(JSON),
+			WithFormat(JSON()),
 			WithTransformer(emojiTransformer),
 			WithWriter(testWriter),
 			WithProgress(progress),
@@ -390,7 +390,7 @@ func TestOutput_RenderTo(t *testing.T) {
 
 	testWriter := &testStdoutWriter{}
 	output := NewOutput(
-		WithFormat(JSON),
+		WithFormat(JSON()),
 		WithWriter(testWriter),
 	)
 
@@ -414,7 +414,7 @@ func TestOutput_ThreadSafety(t *testing.T) {
 		Build()
 
 	output := NewOutput(
-		WithFormat(JSON),
+		WithFormat(JSON()),
 		WithWriter(NewStdoutWriter()),
 	)
 

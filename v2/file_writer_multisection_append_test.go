@@ -98,13 +98,13 @@ func TestFileWriterMultiSectionAppend(t *testing.T) {
 			var renderer Renderer
 			switch tc.format {
 			case FormatJSON:
-				renderer = JSON.Renderer
+				renderer = JSON().Renderer
 			case FormatCSV:
-				renderer = CSV.Renderer
+				renderer = CSV().Renderer
 			case FormatHTML:
-				renderer = HTMLFragment.Renderer
+				renderer = HTMLFragment().Renderer
 			case FormatYAML:
-				renderer = YAML.Renderer
+				renderer = YAML().Renderer
 			default:
 				t.Fatalf("unsupported format: %s", tc.format)
 			}
@@ -226,7 +226,7 @@ func TestFileWriterHTMLMultiSectionAppend(t *testing.T) {
 			doc := tc.buildDoc()
 
 			// Render as HTML fragment
-			renderer := HTMLFragment.Renderer
+			renderer := HTMLFragment().Renderer
 			renderedData, err := renderer.Render(ctx, doc)
 			if err != nil {
 				t.Fatalf("failed to render document: %v", err)
@@ -305,7 +305,7 @@ func TestFileWriterCSVMultiSectionHeaderHandling(t *testing.T) {
 		doc := builder.Build()
 
 		// Render as CSV
-		renderer := CSV.Renderer
+		renderer := CSV().Renderer
 		renderedData, err := renderer.Render(ctx, doc)
 		if err != nil {
 			t.Fatalf("failed to render document: %v", err)

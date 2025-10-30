@@ -127,7 +127,7 @@ func generateSystemAnalysisReport() {
 		Build()
 
 	// Render as table format for terminal display
-	renderReport(doc, output.Table, "System Performance")
+	renderReport(doc, output.Table(), "System Performance")
 }
 
 func generateCodeQualityReport() {
@@ -237,7 +237,7 @@ func generateCodeQualityReport() {
 		Text("3. Update major dependencies and fix vulnerabilities").
 		Build()
 
-	renderReport(doc, output.Table, "Code Quality")
+	renderReport(doc, output.Table(), "Code Quality")
 }
 
 func generateInfrastructureReport() {
@@ -331,7 +331,7 @@ func generateInfrastructureReport() {
 		Text("3. 🟡 **MEDIUM**: Review auth service rate limiting configuration").
 		Build()
 
-	renderReport(doc, output.Table, "Infrastructure Health")
+	renderReport(doc, output.Table(), "Infrastructure Health")
 }
 
 func renderReport(doc *output.Document, format output.Format, reportName string) {

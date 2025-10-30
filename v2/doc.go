@@ -5,13 +5,13 @@ Package output provides a flexible document construction and rendering system fo
 
 The go-output v2 library is a complete redesign providing a thread-safe, immutable
 Document-Builder pattern to convert structured data into various output formats including
-JSON, YAML, CSV, HTML, console tables, Markdown, DOT graphs, Mermaid diagrams, and Draw.io files.
+JSON, YAML(), CSV(), HTML(), console tables, Markdown(), DOT graphs, Mermaid diagrams, and Draw.io files.
 
 Key features:
   - Thread-safe operations with proper mutex usage
   - Immutable documents after Build() for safety
   - Exact preservation of user-specified column ordering
-  - Multiple output formats (JSON, YAML, CSV, HTML, Tables, Markdown, DOT, Mermaid, Draw.io)
+  - Multiple output formats (JSON, YAML(), CSV(), HTML(), Tables, Markdown(), DOT, Mermaid, Draw.io)
   - Document-Builder pattern with clean separation of concerns
   - Modern Go 1.24+ features with 'any' instead of 'interface{}'
   - No global state - complete elimination from v1
@@ -29,7 +29,7 @@ Create a document using the builder pattern:
 Render to a specific format:
 
 	out := output.NewOutput(
-	    output.WithFormat(output.JSON),
+	    output.WithFormat(output.JSON()),
 	    output.WithWriter(output.NewStdoutWriter()),
 	)
 	err := out.Render(context.Background(), doc)
@@ -165,7 +165,7 @@ Transformations respect context cancellation:
 	defer cancel()
 
 	out := output.NewOutput(
-	    output.WithFormat(output.JSON),
+	    output.WithFormat(output.JSON()),
 	    output.WithWriter(output.NewStdoutWriter()),
 	)
 	err := out.Render(ctx, doc)  // Respects timeout
@@ -280,7 +280,7 @@ For comprehensive best practices, see v2/BEST_PRACTICES.md.
 
 	    // Render to JSON
 	    out := output.NewOutput(
-	        output.WithFormat(output.JSON),
+	        output.WithFormat(output.JSON()),
 	        output.WithWriter(output.NewStdoutWriter()),
 	    )
 

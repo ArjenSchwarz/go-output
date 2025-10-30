@@ -194,7 +194,7 @@ func main() {
 	// Configure output for multiple diagram formats
 	out := output.NewOutput(
 		output.WithFormats(
-			output.Table,   // Console overview
+			output.Table(),   // Console overview
 			output.Mermaid, // Mermaid diagrams (.mmd files)
 			output.DOT,     // Graphviz diagrams (.dot files)
 			output.DrawIO,  // Draw.io CSV import (.csv files)

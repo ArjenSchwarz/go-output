@@ -11,7 +11,7 @@ import (
 func TestHTML_Format_UsesTemplateByDefault(t *testing.T) {
 
 	// Get the HTML format and render a document
-	format := HTML
+	format := HTML()
 	doc := New().Text("Test content").Build()
 
 	output, err := format.Renderer.Render(context.Background(), doc)
@@ -40,7 +40,7 @@ func TestHTML_Format_UsesTemplateByDefault(t *testing.T) {
 func TestHTMLFragment_Format_SkipsTemplateWrapping(t *testing.T) {
 
 	// Get the HTMLFragment format and render a document
-	format := HTMLFragment
+	format := HTMLFragment()
 	doc := New().Text("Test content").Build()
 
 	output, err := format.Renderer.Render(context.Background(), doc)
@@ -177,7 +177,7 @@ func TestHTML_Format_RendersFullDocument(t *testing.T) {
 		}, WithKeys("Name", "Age")).
 		Build()
 
-	output, err := HTML.Renderer.Render(context.Background(), doc)
+	output, err := HTML().Renderer.Render(context.Background(), doc)
 	if err != nil {
 		t.Fatalf("Render failed: %v", err)
 	}

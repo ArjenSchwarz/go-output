@@ -34,7 +34,7 @@ func TestValidation_V1FeatureParity(t *testing.T) {
 func testV1OutputFormats(t *testing.T) {
 	// Verify all v1 formats are available
 	formats := []Format{
-		JSON, YAML, CSV, HTML, Table, Markdown, DOT, Mermaid, DrawIO,
+		JSON(), YAML(), CSV(), HTML(), Table(), Markdown(), DOT(), Mermaid(), DrawIO(),
 	}
 
 	doc := New().
@@ -167,7 +167,7 @@ func testV1TableStyling(t *testing.T) {
 
 	for _, style := range styles {
 		output := NewOutput(
-			WithFormat(Table),
+			WithFormat(Table()),
 			WithTableStyle(style),
 			WithWriter(&nullWriter{}),
 		)
@@ -181,7 +181,7 @@ func testV1TableStyling(t *testing.T) {
 func testV1TableOfContents(t *testing.T) {
 	// Test TOC generation
 	output := NewOutput(
-		WithFormat(Markdown),
+		WithFormat(Markdown()),
 		WithTOC(true),
 		WithWriter(&nullWriter{}),
 	)
@@ -200,7 +200,7 @@ func testV1FrontMatter(t *testing.T) {
 	}
 
 	output := NewOutput(
-		WithFormat(Markdown),
+		WithFormat(Markdown()),
 		WithFrontMatter(frontMatter),
 		WithWriter(&nullWriter{}),
 	)
@@ -298,7 +298,7 @@ func TestValidation_DataIntegrity(t *testing.T) {
 		Build()
 
 	// Render to multiple formats
-	formats := []Format{JSON, YAML, CSV}
+	formats := []Format{JSON(), YAML(), CSV()}
 
 	for _, format := range formats {
 		t.Run(format.Name, func(t *testing.T) {
@@ -363,7 +363,7 @@ func TestValidation_KeyOrderConsistency(t *testing.T) {
 
 	// Render and verify order is maintained
 	output := NewOutput(
-		WithFormat(CSV),
+		WithFormat(CSV()),
 		WithWriter(&nullWriter{}),
 	)
 
@@ -411,7 +411,7 @@ func TestValidation_ErrorConditions(t *testing.T) {
 
 			doc := New().Text("Test").Build()
 			output := NewOutput(
-				WithFormat(JSON),
+				WithFormat(JSON()),
 				WithWriter(&nullWriter{}),
 			)
 			return output.Render(ctx, doc)
@@ -489,8 +489,8 @@ func TestValidation_CompleteScenario(t *testing.T) {
 
 	// Render to multiple formats with transformations
 	output := NewOutput(
-		WithFormat(Markdown),
-		WithFormat(JSON),
+		WithFormat(Markdown()),
+		WithFormat(JSON()),
 		WithTransformer(NewSortTransformer("Revenue", false)),
 		WithTableStyle("ColoredBright"),
 		WithTOC(true),

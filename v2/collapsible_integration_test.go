@@ -221,17 +221,17 @@ func TestCollapsibleIntegration_RealWorldScenarios(t *testing.T) {
 					var format Format
 					switch formatName {
 					case "json":
-						format = JSON
+						format = JSON()
 					case "yaml":
-						format = YAML
+						format = YAML()
 					case "markdown":
-						format = Markdown
+						format = Markdown()
 					case "table":
-						format = Table
+						format = Table()
 					case "html":
-						format = HTML
+						format = HTML()
 					case "csv":
-						format = CSV
+						format = CSV()
 					default:
 						t.Fatalf("Unknown format: %s", formatName)
 					}
@@ -279,7 +279,7 @@ func TestCollapsibleIntegration_CrossFormatConsistency(t *testing.T) {
 			)).
 		Build()
 
-	formats := []Format{JSON, YAML, Markdown, Table, HTML, CSV}
+	formats := []Format{JSON(), YAML(), Markdown(), Table(), HTML(), CSV()}
 	outputs := make(map[string][]byte)
 
 	// Render in all formats
@@ -451,7 +451,7 @@ func TestCollapsibleIntegration_ErrorRecovery(t *testing.T) {
 			)).
 		Build()
 
-	formats := []Format{JSON, Markdown, Table, HTML}
+	formats := []Format{JSON(), Markdown(), Table(), HTML()}
 
 	for _, format := range formats {
 		t.Run(format.Name, func(t *testing.T) {
@@ -514,7 +514,7 @@ func TestCollapsibleIntegration_PerformanceWithLargeData(t *testing.T) {
 		Build()
 
 	// Test performance across formats
-	formats := []Format{JSON, Table, Markdown}
+	formats := []Format{JSON(), Table(), Markdown()}
 	for _, format := range formats {
 		t.Run(format.Name, func(t *testing.T) {
 			var buf bytes.Buffer

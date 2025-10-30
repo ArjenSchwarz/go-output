@@ -275,11 +275,11 @@ func TestTableRenderer_PredefinedStyles(t *testing.T) {
 
 	// Test some of the predefined style formats
 	styles := []Format{
-		TableDefault,
-		TableBold,
-		TableColoredBright,
-		TableLight,
-		TableRounded,
+		TableDefault(),
+		TableBold(),
+		TableColoredBright(),
+		TableLight(),
+		TableRounded(),
 	}
 
 	ctx := context.Background()

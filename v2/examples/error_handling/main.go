@@ -56,7 +56,7 @@ func main() {
 	invalidWriter := &failingWriter{shouldFail: true}
 
 	out := output.NewOutput(
-		output.WithFormat(output.JSON),
+		output.WithFormat(output.JSON()),
 		output.WithWriter(invalidWriter),
 	)
 
@@ -86,7 +86,7 @@ func main() {
 
 	// Setup multiple failing writers
 	multiOut := output.NewOutput(
-		output.WithFormats(output.JSON, output.CSV),
+		output.WithFormats(output.JSON(), output.CSV()),
 		output.WithWriters(
 			&failingWriter{shouldFail: true, name: "Writer1"},
 			&failingWriter{shouldFail: true, name: "Writer2"},
@@ -122,7 +122,7 @@ func main() {
 	cancel()
 
 	cancelOut := output.NewOutput(
-		output.WithFormat(output.JSON),
+		output.WithFormat(output.JSON()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
@@ -152,7 +152,7 @@ func main() {
 		Build()
 
 	successOut := output.NewOutput(
-		output.WithFormat(output.Table),
+		output.WithFormat(output.Table()),
 		output.WithWriter(output.NewStdoutWriter()),
 	)
 
