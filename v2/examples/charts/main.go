@@ -195,9 +195,9 @@ func main() {
 	out := output.NewOutput(
 		output.WithFormats(
 			output.Table(),   // Console overview
-			output.Mermaid, // Mermaid diagrams (.mmd files)
-			output.DOT,     // Graphviz diagrams (.dot files)
-			output.DrawIO,  // Draw.io CSV import (.csv files)
+			output.Mermaid(), // Mermaid diagrams (.mmd files)
+			output.DOT(),     // Graphviz diagrams (.dot files)
+			output.DrawIO(),  // Draw.io CSV import (.csv files)
 		),
 		output.WithWriters(
 			output.NewStdoutWriter(), // Display summary

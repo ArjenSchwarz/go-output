@@ -59,7 +59,7 @@ func main() {
 
 	// For multiple formats, progress system intelligently selects approach
 	progress2 := output.NewProgressForFormats(
-		[]output.Format{output.JSON(), output.Table},
+		[]output.Format{output.JSON(), output.Table()},
 		output.WithProgressColor(output.ProgressColorGreen),
 		output.WithProgressStatus("Multi-format export"),
 	)

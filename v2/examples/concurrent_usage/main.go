@@ -70,7 +70,7 @@ func main() {
 		Build()
 
 	// Create multiple output configurations
-	formats := []output.Format{output.JSON(), output.CSV(), output.Table}
+	formats := []output.Format{output.JSON(), output.CSV(), output.Table()}
 	var renderWG sync.WaitGroup
 	renderResults := make(chan string, len(formats))
 
