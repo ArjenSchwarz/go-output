@@ -9,6 +9,7 @@
   - `SetWriter()` method for custom io.Writer injection (useful for testing)
   - Comprehensive test suite covering write operations, concurrency, context cancellation, and error handling
   - Follows same architecture as StdoutWriter for API consistency
+  - Full API documentation including usage examples for stream separation patterns
 
 ## 2.5.0 / 2025-10-30
 
