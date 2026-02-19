@@ -112,7 +112,7 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 			}
 
 			// Render section title with console-friendly formatting
-			result.WriteString(fmt.Sprintf("=== %s ===\n\n", c.Title()))
+			fmt.Fprintf(&result, "=== %s ===\n\n", c.Title())
 
 			// Render section contents
 			for j, subContent := range c.Contents() {
@@ -140,7 +140,7 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 					if j > 0 {
 						result.WriteString("\n")
 					}
-					result.WriteString(fmt.Sprintf("=== %s ===\n\n", nestedSection.Title()))
+					fmt.Fprintf(&result, "=== %s ===\n\n", nestedSection.Title())
 					for k, nestedContent := range nestedSection.Contents() {
 						nestedTransformed, err := applyContentTransformations(ctx, nestedContent)
 						if err != nil {
@@ -491,7 +491,7 @@ func (t *tableRenderer) renderCollapsibleSection(section *DefaultCollapsibleSect
 	}
 
 	// Create section header (Requirement 15.7)
-	result.WriteString(fmt.Sprintf("=== %s%s ===\n", section.Title(), expandIndicator))
+	fmt.Fprintf(&result, "=== %s%s ===\n", section.Title(), expandIndicator)
 
 	if section.IsExpanded() || t.collapsibleConfig.ForceExpansion {
 		// Render nested content when expanded (Requirement 15.7)
@@ -539,8 +539,8 @@ func (t *tableRenderer) renderCollapsibleSection(section *DefaultCollapsibleSect
 		}
 	} else {
 		// Show collapsed indicator (Requirement 15.7)
-		result.WriteString(fmt.Sprintf("  [Section collapsed - contains %d item(s)]\n",
-			len(section.Content())))
+		fmt.Fprintf(&result, "  [Section collapsed - contains %d item(s)]\n",
+			len(section.Content()))
 	}
 
 	result.WriteString("\n")
