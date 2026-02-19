@@ -690,6 +690,28 @@ func (output OutputArray) toMermaid() []byte {
 			label := output.toString(holder.Contents[output.Settings.FromToColumns.From])
 			var value float64
 			switch converted := holder.Contents[output.Settings.FromToColumns.To].(type) {
+			case int:
+				value = float64(converted)
+			case int8:
+				value = float64(converted)
+			case int16:
+				value = float64(converted)
+			case int32:
+				value = float64(converted)
+			case int64:
+				value = float64(converted)
+			case uint:
+				value = float64(converted)
+			case uint8:
+				value = float64(converted)
+			case uint16:
+				value = float64(converted)
+			case uint32:
+				value = float64(converted)
+			case uint64:
+				value = float64(converted)
+			case float32:
+				value = float64(converted)
 			case float64:
 				value = converted
 			}
