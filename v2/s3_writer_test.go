@@ -747,3 +747,80 @@ func TestS3WriterAppendModeConfiguration(t *testing.T) {
 		})
 	}
 }
+
+// TestS3Writer_CSVAppendNewlineHandling tests the regression for T-80
+// Ensures CSV append properly handles existing data without trailing newlines
+func TestS3Writer_CSVAppendNewlineHandling(t *testing.T) {
+	tests := map[string]struct {
+		existingCSV string
+		newCSV      string
+		wantResult  string
+	}{
+		"existing CSV without trailing newline": {
+			existingCSV: "name,age\nAlice,30\nBob,25",
+			newCSV:      "name,age\nCharlie,35\nDiana,28",
+			wantResult:  "name,age\nAlice,30\nBob,25\nCharlie,35\nDiana,28",
+		},
+		"existing CSV with trailing newline": {
+			existingCSV: "name,age\nAlice,30\nBob,25\n",
+			newCSV:      "name,age\nCharlie,35\nDiana,28",
+			wantResult:  "name,age\nAlice,30\nBob,25\nCharlie,35\nDiana,28",
+		},
+		"empty existing CSV": {
+			existingCSV: "",
+			newCSV:      "name,age\nCharlie,35",
+			wantResult:  "Charlie,35",
+		},
+		"new CSV with only header": {
+			existingCSV: "name,age\nAlice,30",
+			newCSV:      "name,age",
+			wantResult:  "name,age\nAlice,30",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var capturedBody string
+
+			client := &mockS3ClientWithAppend{
+				getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, opts ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+					size := int64(len(tc.existingCSV))
+					return &s3.GetObjectOutput{
+						Body:          io.NopCloser(strings.NewReader(tc.existingCSV)),
+						ContentLength: &size,
+						ETag:          aws.String("etag123"),
+					}, nil
+				},
+				putObjectFunc: func(ctx context.Context, input *s3.PutObjectInput, opts ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+					// Capture the body for verification
+					if input.Body != nil {
+						bodyBytes, err := io.ReadAll(input.Body)
+						if err != nil {
+							t.Fatalf("failed to read body: %v", err)
+						}
+						capturedBody = string(bodyBytes)
+					}
+					return &s3.PutObjectOutput{}, nil
+				},
+			}
+
+			sw := NewS3WriterWithOptions(
+				client,
+				"test-bucket",
+				"test.csv",
+				WithS3AppendMode(),
+			)
+
+			// Perform the append operation
+			err := sw.Write(context.Background(), FormatCSV, []byte(tc.newCSV))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// Verify the result
+			if capturedBody != tc.wantResult {
+				t.Errorf("CSV append result mismatch:\nwant: %q\ngot:  %q", tc.wantResult, capturedBody)
+			}
+		})
+	}
+}

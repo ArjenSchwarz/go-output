@@ -285,6 +285,12 @@ func (sw *S3Writer) combineCSVData(existing, new []byte) ([]byte, error) {
 	}
 
 	dataWithoutHeader := lines[1]
+
+	// Ensure existing data ends with newline before appending
+	if len(existing) > 0 && !bytes.HasSuffix(existing, []byte("\n")) {
+		existing = append(existing, '\n')
+	}
+
 	return append(existing, dataWithoutHeader...), nil
 }
 
