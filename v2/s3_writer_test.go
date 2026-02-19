@@ -557,6 +557,91 @@ func TestS3WriterAppend_SizeExceedsLimit(t *testing.T) {
 	}
 }
 
+// TestS3WriterAppend_CombinedSizeExceedsLimit tests the regression for T-79:
+// When existing object is small but new data causes combined size to exceed limit
+func TestS3WriterAppend_CombinedSizeExceedsLimit(t *testing.T) {
+	if testing.Short() && os.Getenv("INTEGRATION") == "" {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+
+	// Small existing object (50MB)
+	existingSize := int64(50 * 1024 * 1024)
+	existingData := make([]byte, existingSize)
+
+	// Large new data (60MB) - combined would be 110MB, exceeding 100MB limit
+	newDataSize := 60 * 1024 * 1024
+	newData := make([]byte, newDataSize)
+
+	etag := "test-etag"
+
+	client := &mockS3Client{
+		getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			return &s3.GetObjectOutput{
+				Body:          io.NopCloser(bytes.NewReader(existingData)),
+				ETag:          &etag,
+				ContentLength: &existingSize,
+			}, nil
+		},
+	}
+
+	sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}",
+		WithS3AppendMode(),
+		WithMaxAppendSize(100*1024*1024)) // 100MB limit
+
+	err := sw.Write(ctx, FormatJSON, newData)
+	if err == nil {
+		t.Fatal("expected error for combined size exceeding limit")
+	}
+
+	// Should specifically mention combined size
+	if !strings.Contains(err.Error(), "combined size") {
+		t.Errorf("error should mention combined size, got: %v", err)
+	}
+
+	// Should mention the actual combined size and limit
+	expectedCombined := existingSize + int64(newDataSize)
+	if !strings.Contains(err.Error(), "115343360") { // 110MB in bytes
+		t.Errorf("error should mention combined size %d, got: %v", expectedCombined, err)
+	}
+}
+
+// TestS3WriterAppend_NewDataSizeExceedsLimit tests validation of new data size alone
+func TestS3WriterAppend_NewDataSizeExceedsLimit(t *testing.T) {
+	if testing.Short() && os.Getenv("INTEGRATION") == "" {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+
+	// New data exceeds limit by itself (150MB)
+	newDataSize := 150 * 1024 * 1024
+	newData := make([]byte, newDataSize)
+
+	client := &mockS3Client{
+		getObjectFunc: func(ctx context.Context, input *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			// Should not even get here since new data size check comes first
+			t.Fatal("GetObject should not be called when new data exceeds limit")
+			return nil, nil
+		},
+	}
+
+	sw := NewS3WriterWithOptions(client, "test-bucket", "data.{ext}",
+		WithS3AppendMode(),
+		WithMaxAppendSize(100*1024*1024)) // 100MB limit
+
+	err := sw.Write(ctx, FormatJSON, newData)
+	if err == nil {
+		t.Fatal("expected error for new data size exceeding limit")
+	}
+
+	// Should specifically mention new data size
+	if !strings.Contains(err.Error(), "new data size") {
+		t.Errorf("error should mention new data size, got: %v", err)
+	}
+}
+
 func TestS3WriterAppend_ConcurrentModification(t *testing.T) {
 	if testing.Short() && os.Getenv("INTEGRATION") == "" {
 		t.Skip("Skipping integration test")

@@ -179,6 +179,12 @@ func (sw *S3Writer) appendToS3Object(ctx context.Context, format, key string, ne
 		return sw.wrapError(format, fmt.Errorf("S3 client does not support GetObject (required for append mode)"))
 	}
 
+	// Validate new data size before making any API calls
+	if int64(len(newData)) > sw.maxAppendSize {
+		return sw.wrapError(format, fmt.Errorf("new data size %d exceeds maximum append size %d",
+			len(newData), sw.maxAppendSize))
+	}
+
 	// Attempt to get existing object
 	// Using GetObject alone (no HeadObject) reduces API calls from 2 to 1
 	getInput := &s3.GetObjectInput{
@@ -198,10 +204,19 @@ func (sw *S3Writer) appendToS3Object(ctx context.Context, format, key string, ne
 	}
 	defer getOutput.Body.Close()
 
-	// Validate size limit using ContentLength from GetObject response
+	// Validate existing object size
 	if getOutput.ContentLength != nil && *getOutput.ContentLength > sw.maxAppendSize {
 		return sw.wrapError(format, fmt.Errorf("object size %d exceeds maximum append size %d",
 			*getOutput.ContentLength, sw.maxAppendSize))
+	}
+
+	// Validate combined size
+	if getOutput.ContentLength != nil {
+		combinedSize := *getOutput.ContentLength + int64(len(newData))
+		if combinedSize > sw.maxAppendSize {
+			return sw.wrapError(format, fmt.Errorf("combined size %d would exceed maximum append size %d",
+				combinedSize, sw.maxAppendSize))
+		}
 	}
 
 	// Read existing content
@@ -285,6 +300,12 @@ func (sw *S3Writer) combineCSVData(existing, new []byte) ([]byte, error) {
 	}
 
 	dataWithoutHeader := lines[1]
+
+	// Ensure existing data ends with newline before appending
+	if len(existing) > 0 && existing[len(existing)-1] != '\n' {
+		return append(append(existing, '\n'), dataWithoutHeader...), nil
+	}
+
 	return append(existing, dataWithoutHeader...), nil
 }
 
