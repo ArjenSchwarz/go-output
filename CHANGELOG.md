@@ -11,6 +11,7 @@
   - Provides specific error messages for different size limit violations
   - Prevents operations that would exceed the intended size guard
 - **Draw.io CSV Output Buffer Flushing** - Fixed issue where `drawio.CreateCSV` function did not flush the underlying `bufio.Writer`, potentially causing data loss when writing to files with small datasets
+- **CI Lint Compliance** - Replaced `WriteString(fmt.Sprintf(...))` with `fmt.Fprintf(...)` across `html_renderer.go`, `markdown_renderer.go`, and `table_renderer.go` to satisfy staticcheck QF1012
 ## 2.6.0 / 2025-11-07
 
 ### Added

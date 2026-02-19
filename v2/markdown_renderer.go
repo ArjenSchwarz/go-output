@@ -47,7 +47,7 @@ func (m *markdownRenderer) renderDocumentMarkdown(ctx context.Context, doc *Docu
 	if len(m.frontMatter) > 0 {
 		result.WriteString("---\n")
 		for key, value := range m.frontMatter {
-			result.WriteString(fmt.Sprintf("%s: %s\n", key, m.escapeYAMLValue(value)))
+			fmt.Fprintf(&result, "%s: %s\n", key, m.escapeYAMLValue(value))
 		}
 		result.WriteString("---\n\n")
 	}
@@ -172,7 +172,7 @@ func (m *markdownRenderer) renderTableContentMarkdown(table *TableContent) ([]by
 
 	// Add title if present
 	if table.Title() != "" {
-		result.WriteString(fmt.Sprintf("### %s\n\n", m.escapeMarkdown(table.Title())))
+		fmt.Fprintf(&result, "### %s\n\n", m.escapeMarkdown(table.Title()))
 	}
 
 	// Get key order from schema
@@ -184,7 +184,7 @@ func (m *markdownRenderer) renderTableContentMarkdown(table *TableContent) ([]by
 	// Write header row
 	result.WriteString("|")
 	for _, key := range keyOrder {
-		result.WriteString(fmt.Sprintf(" %s |", m.escapeMarkdown(key)))
+		fmt.Fprintf(&result, " %s |", m.escapeMarkdown(key))
 	}
 	result.WriteString("\n")
 
@@ -213,7 +213,7 @@ func (m *markdownRenderer) renderTableContentMarkdown(table *TableContent) ([]by
 				// For collapsible values, only replace newlines with <br>
 				cellValue = strings.ReplaceAll(cellValue, "\n", "<br>")
 			}
-			result.WriteString(fmt.Sprintf(" %s |", cellValue))
+			fmt.Fprintf(&result, " %s |", cellValue)
 		}
 		result.WriteString("\n")
 	}
@@ -290,7 +290,7 @@ func (m *markdownRenderer) renderSectionContentMarkdownWithDepth(ctx context.Con
 	headingLevel := min(max(depth, 1), 6)
 
 	headingPrefix := strings.Repeat("#", headingLevel)
-	result.WriteString(fmt.Sprintf("%s %s\n\n", headingPrefix, m.escapeMarkdown(section.Title())))
+	fmt.Fprintf(&result, "%s %s\n\n", headingPrefix, m.escapeMarkdown(section.Title()))
 
 	// Render nested content with increased depth for nested sections
 	for _, content := range section.Contents() {
@@ -754,8 +754,8 @@ func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleS
 	}
 
 	// Use nested details with section title (Requirement 15.4)
-	result.WriteString(fmt.Sprintf("<details%s>\n", openAttr))
-	result.WriteString(fmt.Sprintf("<summary>%s</summary>\n\n", m.escapeMarkdown(section.Title())))
+	fmt.Fprintf(&result, "<details%s>\n", openAttr)
+	fmt.Fprintf(&result, "<summary>%s</summary>\n\n", m.escapeMarkdown(section.Title()))
 
 	// Render all nested content within the collapsible section with indentation (Requirement 15.4)
 	for i, content := range section.Content() {

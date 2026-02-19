@@ -154,7 +154,7 @@ func (h *htmlRenderer) renderTableContentHTML(table *TableContent) ([]byte, erro
 
 	// Add title if present
 	if table.Title() != "" {
-		result.WriteString(fmt.Sprintf("<h3>%s</h3>\n", html.EscapeString(table.Title())))
+		fmt.Fprintf(&result, "<h3>%s</h3>\n", html.EscapeString(table.Title()))
 	}
 
 	result.WriteString("<div class=\"table-container\">\n")
@@ -171,7 +171,7 @@ func (h *htmlRenderer) renderTableContentHTML(table *TableContent) ([]byte, erro
 	result.WriteString("    <thead>\n")
 	result.WriteString("      <tr>\n")
 	for _, key := range keyOrder {
-		result.WriteString(fmt.Sprintf("        <th>%s</th>\n", html.EscapeString(key)))
+		fmt.Fprintf(&result, "        <th>%s</th>\n", html.EscapeString(key))
 	}
 	result.WriteString("      </tr>\n")
 	result.WriteString("    </thead>\n")
@@ -187,7 +187,7 @@ func (h *htmlRenderer) renderTableContentHTML(table *TableContent) ([]byte, erro
 				field := table.Schema().FindField(key)
 				cellValue = h.formatCellValue(val, field)
 			}
-			result.WriteString(fmt.Sprintf("        <td>%s</td>\n", cellValue))
+			fmt.Fprintf(&result, "        <td>%s</td>\n", cellValue)
 		}
 		result.WriteString("      </tr>\n")
 	}
@@ -237,8 +237,8 @@ func (h *htmlRenderer) renderTextContentHTML(text *TextContent) ([]byte, error) 
 	}
 
 	// Create the HTML element
-	result.WriteString(fmt.Sprintf("<%s class=\"%s\"%s>%s</%s>\n",
-		tag, cssClass, styleAttr, html.EscapeString(text.Text()), tag))
+	fmt.Fprintf(&result, "<%s class=\"%s\"%s>%s</%s>\n",
+		tag, cssClass, styleAttr, html.EscapeString(text.Text()), tag)
 
 	return []byte(result.String()), nil
 }
@@ -265,7 +265,7 @@ func (h *htmlRenderer) renderSectionContentHTML(section *SectionContent) ([]byte
 	headingLevel := min(max(section.Level(), 1), 6)
 
 	result.WriteString("<section class=\"content-section\">\n")
-	result.WriteString(fmt.Sprintf("  <h%d>%s</h%d>\n", headingLevel, html.EscapeString(section.Title()), headingLevel))
+	fmt.Fprintf(&result, "  <h%d>%s</h%d>\n", headingLevel, html.EscapeString(section.Title()), headingLevel)
 	result.WriteString("  <div class=\"section-content\">\n")
 
 	// Render nested content
@@ -510,10 +510,10 @@ func (h *htmlRenderer) renderCollapsibleSection(section *DefaultCollapsibleSecti
 		sectionClass = "collapsible-section"
 	}
 
-	result.WriteString(fmt.Sprintf(`<section class="%s">`, sectionClass))
-	result.WriteString(fmt.Sprintf(`<details%s class="%s">`, openAttr, cssClasses["details"]))
-	result.WriteString(fmt.Sprintf(`<summary class="%s">%s</summary>`,
-		cssClasses["summary"], html.EscapeString(section.Title())))
+	fmt.Fprintf(&result, `<section class="%s">`, sectionClass)
+	fmt.Fprintf(&result, `<details%s class="%s">`, openAttr, cssClasses["details"])
+	fmt.Fprintf(&result, `<summary class="%s">%s</summary>`,
+		cssClasses["summary"], html.EscapeString(section.Title()))
 
 	result.WriteString(`<div class="section-content" style="margin-left: 20px; padding-left: 10px;">`)
 
@@ -556,39 +556,39 @@ func (h *htmlRenderer) getTemplateHeader(tmpl *HTMLTemplate) []byte {
 	buf.WriteString("<!DOCTYPE html>\n")
 
 	// HTML element with lang attribute
-	buf.WriteString(fmt.Sprintf("<html lang=\"%s\">\n", html.EscapeString(tmpl.Language)))
+	fmt.Fprintf(&buf, "<html lang=\"%s\">\n", html.EscapeString(tmpl.Language))
 
 	// Head section
 	buf.WriteString("<head>\n")
-	buf.WriteString(fmt.Sprintf("  <meta charset=\"%s\">\n", html.EscapeString(tmpl.Charset)))
+	fmt.Fprintf(&buf, "  <meta charset=\"%s\">\n", html.EscapeString(tmpl.Charset))
 
 	if tmpl.Viewport != "" {
-		buf.WriteString(fmt.Sprintf("  <meta name=\"viewport\" content=\"%s\">\n",
-			html.EscapeString(tmpl.Viewport)))
+		fmt.Fprintf(&buf, "  <meta name=\"viewport\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Viewport))
 	}
 
-	buf.WriteString(fmt.Sprintf("  <title>%s</title>\n", html.EscapeString(tmpl.Title)))
+	fmt.Fprintf(&buf, "  <title>%s</title>\n", html.EscapeString(tmpl.Title))
 
 	// Additional meta tags (after title)
 	if tmpl.Description != "" {
-		buf.WriteString(fmt.Sprintf("  <meta name=\"description\" content=\"%s\">\n",
-			html.EscapeString(tmpl.Description)))
+		fmt.Fprintf(&buf, "  <meta name=\"description\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Description))
 	}
 	if tmpl.Author != "" {
-		buf.WriteString(fmt.Sprintf("  <meta name=\"author\" content=\"%s\">\n",
-			html.EscapeString(tmpl.Author)))
+		fmt.Fprintf(&buf, "  <meta name=\"author\" content=\"%s\">\n",
+			html.EscapeString(tmpl.Author))
 	}
 
 	// Custom meta tags
 	for name, content := range tmpl.MetaTags {
-		buf.WriteString(fmt.Sprintf("  <meta name=\"%s\" content=\"%s\">\n",
-			html.EscapeString(name), html.EscapeString(content)))
+		fmt.Fprintf(&buf, "  <meta name=\"%s\" content=\"%s\">\n",
+			html.EscapeString(name), html.EscapeString(content))
 	}
 
 	// External stylesheets
 	for _, href := range tmpl.ExternalCSS {
-		buf.WriteString(fmt.Sprintf("  <link rel=\"stylesheet\" href=\"%s\">\n",
-			html.EscapeString(href)))
+		fmt.Fprintf(&buf, "  <link rel=\"stylesheet\" href=\"%s\">\n",
+			html.EscapeString(href))
 	}
 
 	// Embedded CSS
@@ -603,8 +603,8 @@ func (h *htmlRenderer) getTemplateHeader(tmpl *HTMLTemplate) []byte {
 		buf.WriteString("  <style>\n")
 		buf.WriteString("    :root {\n")
 		for prop, value := range tmpl.ThemeOverrides {
-			buf.WriteString(fmt.Sprintf("      %s: %s;\n",
-				html.EscapeString(prop), html.EscapeString(value)))
+			fmt.Fprintf(&buf, "      %s: %s;\n",
+				html.EscapeString(prop), html.EscapeString(value))
 		}
 		buf.WriteString("    }\n")
 		buf.WriteString("  </style>\n")
