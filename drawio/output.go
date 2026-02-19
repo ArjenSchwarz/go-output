@@ -25,6 +25,7 @@ func CreateCSV(drawIOHeader Header, headerRow []string, contents []map[string]st
 		total = append(total, values)
 	}
 	var target io.Writer
+	var bufferedWriter *bufio.Writer
 	if filename == "" {
 		target = os.Stdout
 	} else {
@@ -37,7 +38,8 @@ func CreateCSV(drawIOHeader Header, headerRow []string, contents []map[string]st
 				log.Println(cerr)
 			}
 		}()
-		target = bufio.NewWriter(file)
+		bufferedWriter = bufio.NewWriter(file)
+		target = bufferedWriter
 	}
 	buf := new(bytes.Buffer)
 	fmt.Fprintf(buf, "%s", drawIOHeader.String())
@@ -57,6 +59,13 @@ func CreateCSV(drawIOHeader Header, headerRow []string, contents []map[string]st
 
 	if err := w.Error(); err != nil {
 		log.Fatal(err)
+	}
+
+	// Flush the underlying buffered writer if we're writing to a file
+	if bufferedWriter != nil {
+		if err := bufferedWriter.Flush(); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
