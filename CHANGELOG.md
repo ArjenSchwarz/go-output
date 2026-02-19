@@ -10,6 +10,7 @@
   - Validates combined size (existing + new data) to prevent memory exhaustion
   - Provides specific error messages for different size limit violations
   - Prevents operations that would exceed the intended size guard
+- **Draw.io CSV Output Buffer Flushing** - Fixed issue where `drawio.CreateCSV` function did not flush the underlying `bufio.Writer`, potentially causing data loss when writing to files with small datasets
 ## 2.6.0 / 2025-11-07
 
 ### Added
