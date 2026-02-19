@@ -5,7 +5,11 @@
   - Added validation guard clause to return clear error message instead of panicking
   - Error message guides users to use `SetS3Bucket()` for proper S3 configuration
   - Added regression test to prevent future occurrences
-
+- **S3Writer Append Size Validation** - Fixed bug where append operations could exceed maxAppendSize limit
+  - Now validates new data size before making API calls
+  - Validates combined size (existing + new data) to prevent memory exhaustion
+  - Provides specific error messages for different size limit violations
+  - Prevents operations that would exceed the intended size guard
 ## 2.6.0 / 2025-11-07
 
 ### Added
