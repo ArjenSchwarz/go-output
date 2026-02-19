@@ -1,3 +1,11 @@
+## Unreleased
+
+### Fixed
+- **S3 Output Panic Prevention** - Fixed panic in `PrintByteSlice` when S3Output has Bucket set but S3Client is nil
+  - Added validation guard clause to return clear error message instead of panicking
+  - Error message guides users to use `SetS3Bucket()` for proper S3 configuration
+  - Added regression test to prevent future occurrences
+
 ## 2.6.0 / 2025-11-07
 
 ### Added
