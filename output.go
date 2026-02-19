@@ -1086,6 +1086,9 @@ func PrintByteSlice(contents []byte, outputFile string, targetBucket S3Output) (
 		contents = re.ReplaceAll(contents, []byte(""))
 	}
 	if targetBucket.Bucket != "" {
+		if targetBucket.S3Client == nil {
+			return fmt.Errorf("S3 bucket '%s' specified but S3Client is nil - use SetS3Bucket() to properly configure S3 output", targetBucket.Bucket)
+		}
 		s3params := s3.PutObjectInput{
 			Bucket: &targetBucket.Bucket,
 			Key:    &targetBucket.Path,
