@@ -45,10 +45,14 @@ func NewPrettyProgress(opts ...ProgressOption) Progress {
 		return NewProgress(opts...)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	p := &prettyProgress{
 		config:    config,
 		startTime: time.Now(),
 		active:    true,
+		ctx:       ctx,
+		cancel:    cancel,
 		signals:   make(chan os.Signal, 1),
 	}
 
@@ -78,15 +82,25 @@ func NewPrettyProgress(opts ...ProgressOption) Progress {
 func (p *prettyProgress) handleSignals() {
 	for {
 		select {
-		case sig := <-p.signals:
+		case sig, ok := <-p.signals:
+			if !ok {
+				return
+			}
 			if p.isSIGWINCH(sig) {
 				// Terminal was resized - go-pretty handles this automatically
 				continue
 			}
-		case <-p.ctx.Done():
+		case <-p.contextDone():
 			return
 		}
 	}
+}
+
+func (p *prettyProgress) contextDone() <-chan struct{} {
+	if p.ctx == nil {
+		return nil
+	}
+	return p.ctx.Done()
 }
 
 // SetTotal sets the total number of units to be processed

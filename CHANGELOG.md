@@ -1,6 +1,10 @@
 ## Unreleased
 
 ### Fixed
+- **Pretty Progress Signal Context Safety** - Fixed startup panic in `NewPrettyProgress` when `handleSignals` accessed `p.ctx.Done()` before `SetContext` initialized the context
+  - Initialize a default cancellable background context before starting signal handling
+  - Added nil-safe context channel handling and closed-signal channel exit in `handleSignals`
+  - Added regression test `TestPrettyProgress_HandleSignals_NilContext_DoesNotPanic`
 - **S3 Output Panic Prevention** - Fixed panic in `PrintByteSlice` when S3Output has Bucket set but S3Client is nil
   - Added validation guard clause to return clear error message instead of panicking
   - Error message guides users to use `SetS3Bucket()` for proper S3 configuration

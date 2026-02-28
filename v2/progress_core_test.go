@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -786,6 +787,35 @@ func TestPrettyProgress_ThreadSafety(t *testing.T) {
 	// Should not panic and should complete successfully
 	if progress.IsActive() {
 		t.Error("progress should not be active after completion")
+	}
+}
+
+func TestPrettyProgress_HandleSignals_NilContext_DoesNotPanic(t *testing.T) {
+	p := &prettyProgress{
+		signals: make(chan os.Signal, 1),
+	}
+
+	done := make(chan struct{})
+	panicCh := make(chan any, 1)
+
+	go func() {
+		defer close(done)
+		defer func() {
+			if r := recover(); r != nil {
+				panicCh <- r
+			}
+		}()
+		p.handleSignals()
+	}()
+
+	close(p.signals)
+
+	select {
+	case r := <-panicCh:
+		t.Fatalf("handleSignals panicked with nil context: %v", r)
+	case <-done:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("handleSignals did not exit after signals channel close")
 	}
 }
 
