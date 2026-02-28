@@ -300,3 +300,35 @@ func TestBuilder_CollapsibleSection_Mixed_Content(t *testing.T) {
 		t.Error("Content types don't match expected: text, table, text")
 	}
 }
+
+func TestBuilder_NestedSectionErrorsArePropagated(t *testing.T) {
+	tests := map[string]func(*Builder){
+		"section": func(builder *Builder) {
+			builder.Section("Parent Section", func(b *Builder) {
+				b.Table("Invalid Table", "invalid data type", WithKeys("key"))
+				b.Raw("invalid-format", []byte("raw data"))
+			})
+		},
+		"collapsible section": func(builder *Builder) {
+			builder.CollapsibleSection("Parent Collapsible Section", func(b *Builder) {
+				b.Table("Invalid Table", "invalid data type", WithKeys("key"))
+				b.Raw("invalid-format", []byte("raw data"))
+			})
+		},
+	}
+
+	for name, build := range tests {
+		t.Run(name, func(t *testing.T) {
+			builder := New()
+			build(builder)
+
+			if !builder.HasErrors() {
+				t.Fatalf("expected parent builder to contain nested builder errors")
+			}
+
+			if len(builder.Errors()) != 2 {
+				t.Fatalf("expected 2 propagated errors, got %d", len(builder.Errors()))
+			}
+		})
+	}
+}
