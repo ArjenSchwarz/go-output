@@ -155,6 +155,14 @@ func (b *Builder) Section(title string, fn func(*Builder), opts ...SectionOption
 	subBuilder := &Builder{doc: &Document{metadata: make(map[string]any)}}
 	fn(subBuilder)
 
+	if subErrors := subBuilder.Errors(); len(subErrors) > 0 {
+		b.mu.Lock()
+		for _, err := range subErrors {
+			b.addError(err)
+		}
+		b.mu.Unlock()
+	}
+
 	// Add all contents from sub-builder to this section
 	subDoc := subBuilder.Build()
 	for _, content := range subDoc.GetContents() {
@@ -211,6 +219,14 @@ func (b *Builder) CollapsibleSection(title string, fn func(*Builder), opts ...Co
 	// Create sub-builder for section contents
 	subBuilder := &Builder{doc: &Document{metadata: make(map[string]any)}}
 	fn(subBuilder)
+
+	if subErrors := subBuilder.Errors(); len(subErrors) > 0 {
+		b.mu.Lock()
+		for _, err := range subErrors {
+			b.addError(err)
+		}
+		b.mu.Unlock()
+	}
 
 	// Add all contents from sub-builder to collapsible section
 	subDoc := subBuilder.Build()
