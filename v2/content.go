@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"fmt"
 	"maps"
+	"sync/atomic"
 )
 
 const (
@@ -61,13 +62,16 @@ type Content interface {
 	encoding.BinaryAppender
 }
 
+// idCounter is used as a fallback when crypto/rand is unavailable.
+var idCounter atomic.Uint64
+
 // GenerateID creates a unique identifier for content
 func GenerateID() string {
 	// Generate 8 random bytes
 	bytes := make([]byte, 8)
 	if _, err := rand.Read(bytes); err != nil {
 		// Fallback to a simple counter if crypto/rand fails
-		return fmt.Sprintf("content-%d", len(bytes))
+		return fmt.Sprintf("content-%d", idCounter.Add(1))
 	}
 	return fmt.Sprintf("content-%x", bytes)
 }
