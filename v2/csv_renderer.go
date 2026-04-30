@@ -60,8 +60,8 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 	csvWriter := csv.NewWriter(w)
 	defer csvWriter.Flush()
 
-	// Track if we've written any headers to avoid multiple header rows
-	hasWrittenHeaders := false
+	// Track the last written header schema to detect schema changes
+	var lastKeyOrder []string
 
 	for i, content := range contents {
 		// Check for context cancellation
@@ -81,7 +81,7 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 		switch content := transformed.(type) {
 		case *TableContent:
 			// Add a blank line between tables (except for the first table)
-			if i > 0 && hasWrittenHeaders {
+			if i > 0 && lastKeyOrder != nil {
 				if err := csvWriter.Write([]string{}); err != nil {
 					return fmt.Errorf("failed to write separator row: %w", err)
 				}
@@ -90,13 +90,13 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 			// Skip table title for CSV as it breaks parsing
 			// CSV format doesn't support comments in a standard way
 
-			// Write headers for first table or when headers differ
-			writeHeaders := !hasWrittenHeaders
+			// Write headers for first table or when schema differs from previous table
+			writeHeaders := !keyOrdersEqual(lastKeyOrder, content.Schema().GetKeyOrder())
 			if err := c.renderTableContentCSV(content, csvWriter, writeHeaders); err != nil {
 				return fmt.Errorf("failed to render table %s: %w", content.ID(), err)
 			}
 
-			hasWrittenHeaders = true
+			lastKeyOrder = content.Schema().GetKeyOrder()
 
 		case *SectionContent:
 			// Extract and render tables from sections
@@ -110,17 +110,17 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 
 				if nestedTable, ok := nestedTransformed.(*TableContent); ok {
 					// Add separator between tables
-					if hasWrittenHeaders {
+					if lastKeyOrder != nil {
 						if err := csvWriter.Write([]string{}); err != nil {
 							return fmt.Errorf("failed to write separator row: %w", err)
 						}
 					}
 
-					writeHeaders := !hasWrittenHeaders
+					writeHeaders := !keyOrdersEqual(lastKeyOrder, nestedTable.Schema().GetKeyOrder())
 					if err := c.renderTableContentCSV(nestedTable, csvWriter, writeHeaders); err != nil {
 						return fmt.Errorf("failed to render table %s: %w", nestedTable.ID(), err)
 					}
-					hasWrittenHeaders = true
+					lastKeyOrder = nestedTable.Schema().GetKeyOrder()
 				} else if nestedSection, ok := nestedTransformed.(*SectionContent); ok {
 					// Recursively handle nested sections
 					for _, deepContent := range nestedSection.Contents() {
@@ -129,16 +129,16 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 							return err
 						}
 						if deepTable, ok := deepTransformed.(*TableContent); ok {
-							if hasWrittenHeaders {
+							if lastKeyOrder != nil {
 								if err := csvWriter.Write([]string{}); err != nil {
 									return fmt.Errorf("failed to write separator row: %w", err)
 								}
 							}
-							writeHeaders := !hasWrittenHeaders
+							writeHeaders := !keyOrdersEqual(lastKeyOrder, deepTable.Schema().GetKeyOrder())
 							if err := c.renderTableContentCSV(deepTable, csvWriter, writeHeaders); err != nil {
 								return fmt.Errorf("failed to render table %s: %w", deepTable.ID(), err)
 							}
-							hasWrittenHeaders = true
+							lastKeyOrder = deepTable.Schema().GetKeyOrder()
 						}
 					}
 				}
@@ -146,12 +146,16 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 
 		case *DefaultCollapsibleSection:
 			// Handle CollapsibleSection with metadata comments (Requirement 15.8)
-			if err := c.renderCollapsibleSectionCSV(content, csvWriter, &hasWrittenHeaders); err != nil {
+			hasWritten := lastKeyOrder != nil
+			if err := c.renderCollapsibleSectionCSV(content, csvWriter, &hasWritten); err != nil {
 				return fmt.Errorf("failed to render collapsible section %s: %w", content.ID(), err)
+			}
+			if hasWritten && lastKeyOrder == nil {
+				lastKeyOrder = []string{"_collapsible"}
 			}
 
 		default:
-			if !hasWrittenHeaders {
+			if lastKeyOrder == nil {
 				// For non-table content, write as a single-column CSV row
 				// Only if no tables have been written yet (to avoid mixing formats)
 				contentText, err := content.AppendText(nil)
@@ -163,7 +167,7 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 					if err := csvWriter.Write([]string{c.formatValueForCSV(string(contentText))}); err != nil {
 						return fmt.Errorf("failed to write content row: %w", err)
 					}
-					hasWrittenHeaders = true
+					lastKeyOrder = []string{"content"}
 				}
 			}
 		}
@@ -473,4 +477,17 @@ func (c *csvRenderer) renderCollapsibleSectionCSV(section *DefaultCollapsibleSec
 	}
 
 	return nil
+}
+
+// keyOrdersEqual returns true if two key order slices are identical
+func keyOrdersEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
