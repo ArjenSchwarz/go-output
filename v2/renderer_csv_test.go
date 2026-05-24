@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -282,5 +283,58 @@ func TestCSVRenderer_TransformationIntegration(t *testing.T) {
 	// Should have header + 2 filtered records
 	if len(records) != 3 {
 		t.Errorf("Expected 3 rows (header + 2 data), got %d", len(records))
+	}
+}
+
+// csvFailWriter is an io.Writer that always fails. Because encoding/csv buffers
+// data through a bufio.Writer, the failure typically surfaces only when the
+// buffer is flushed rather than on the individual Write call.
+type csvFailWriter struct{}
+
+func (csvFailWriter) Write(p []byte) (int, error) {
+	return 0, errors.New("forced write failure")
+}
+
+// TestCSVRenderer_RenderToFlushError verifies that RenderTo reports the error
+// from an underlying writer that fails during flush (T-1186). csv.Writer.Write
+// buffers data, so a writer failure may only be reported by csvWriter.Error()
+// after Flush. Before the fix RenderTo returned nil for a failing writer.
+func TestCSVRenderer_RenderToFlushError(t *testing.T) {
+	doc := New().
+		Table("users", []map[string]any{
+			{"id": 1, "name": "Alice"},
+			{"id": 2, "name": "Bob"},
+		}, WithKeys("id", "name")).
+		Build()
+
+	renderer := &csvRenderer{}
+	err := renderer.RenderTo(context.Background(), doc, csvFailWriter{})
+	if err == nil {
+		t.Fatal("expected RenderTo to return an error when the underlying writer fails on flush, got nil")
+	}
+	if !strings.Contains(err.Error(), "forced write failure") {
+		t.Errorf("error = %v, want it to wrap the underlying %q failure", err, "forced write failure")
+	}
+}
+
+// TestCSVRenderer_RenderToFlushErrorWithSection verifies the same flush-error
+// detection for a document whose content comes from a section (a separate
+// rendering path through renderDocumentCSVTo).
+func TestCSVRenderer_RenderToFlushErrorWithSection(t *testing.T) {
+	doc := New().
+		Section("group", func(b *Builder) {
+			b.Table("users", []map[string]any{
+				{"id": 1, "name": "Alice"},
+			}, WithKeys("id", "name"))
+		}).
+		Build()
+
+	renderer := &csvRenderer{}
+	err := renderer.RenderTo(context.Background(), doc, csvFailWriter{})
+	if err == nil {
+		t.Fatal("expected RenderTo to return an error for a failing writer with section content, got nil")
+	}
+	if !strings.Contains(err.Error(), "forced write failure") {
+		t.Errorf("error = %v, want it to wrap the underlying %q failure", err, "forced write failure")
 	}
 }
