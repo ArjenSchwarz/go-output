@@ -159,8 +159,51 @@ func (o *Output) Render(ctx context.Context, doc *Document) error {
 			return err
 		}
 
+		// Validate individual configuration entries are non-nil. Without this,
+		// a Format with a nil Renderer, a nil transformer, or a nil writer would
+		// be dereferenced during rendering and surface as a recovered PanicError
+		// instead of a normal validation error.
+		if err := validateConfigEntries(formats, transformers, writers); err != nil {
+			return err
+		}
+
 		return o.renderWithConfig(ctx, doc, formats, writers, transformers, progress)
 	})
+}
+
+// validateConfigEntries checks that each configured format has a non-nil
+// renderer and that no transformer or writer entry is nil. It returns the first
+// validation error encountered, ensuring nil entries are reported as normal
+// validation errors rather than being dereferenced during rendering.
+func validateConfigEntries(formats []Format, transformers []Transformer, writers []Writer) error {
+	for i, f := range formats {
+		if f.Renderer == nil {
+			return NewValidationError(
+				fmt.Sprintf("formats[%d].renderer", i),
+				f.Renderer,
+				"cannot be nil",
+			)
+		}
+	}
+	for i, transformer := range transformers {
+		if transformer == nil {
+			return NewValidationError(
+				fmt.Sprintf("transformers[%d]", i),
+				transformer,
+				"transformer cannot be nil",
+			)
+		}
+	}
+	for i, writer := range writers {
+		if writer == nil {
+			return NewValidationError(
+				fmt.Sprintf("writers[%d]", i),
+				writer,
+				"writer cannot be nil",
+			)
+		}
+	}
+	return nil
 }
 
 // renderWithConfig performs the actual rendering with the given configuration
