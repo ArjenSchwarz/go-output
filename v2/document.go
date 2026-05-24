@@ -101,10 +101,20 @@ func (b *Builder) SetMetadata(key string, value any) *Builder {
 	return b
 }
 
-// AddContent is a helper method to safely add content
+// AddContent is a helper method to safely add content.
+//
+// Nil content is rejected: it is not appended to the document and a builder
+// error is recorded instead (consistent with Table and Raw). This prevents nil
+// entries in the document's contents, which would otherwise cause nil
+// dereferences during rendering and transformation.
 func (b *Builder) AddContent(content Content) *Builder {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	if content == nil {
+		b.addError(fmt.Errorf("AddContent: cannot add nil content"))
+		return b
+	}
 
 	if b.doc != nil {
 		b.doc.contents = append(b.doc.contents, content)
