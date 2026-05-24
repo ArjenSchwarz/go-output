@@ -69,6 +69,109 @@ func TestHTMLRenderer_ChartContent(t *testing.T) {
 	}
 }
 
+// TestHTMLRenderer_ChartContent_EscapesUserText is a regression test for T-1293.
+//
+// renderChartContentHTML wrote the raw Mermaid bytes directly inside
+// <pre class="mermaid"> without HTML escaping. Chart titles, task names,
+// section names, and pie labels are user-controlled and the Mermaid renderer
+// emits them as raw text, so values containing "<", "</pre>", or "<script>"
+// could break out of the pre block or be interpreted as HTML/script (an XSS
+// injection path).
+//
+// Expected behaviour: HTML metacharacters in user-controlled chart fields are
+// HTML-escaped in the output. The browser un-escapes the text content of the
+// pre block before Mermaid.js parses it, so this preserves valid Mermaid syntax.
+func TestHTMLRenderer_ChartContent_EscapesUserText(t *testing.T) {
+	tests := map[string]struct {
+		chart        *ChartContent
+		mustContain  []string
+		mustNotMatch []string
+	}{
+		"pie chart with injection in title and labels": {
+			chart: NewPieChart(`<script>alert('xss')</script>`, []PieSlice{
+				{Label: `</pre><script>alert(1)</script>`, Value: 60},
+				{Label: "Safe", Value: 40},
+			}, true),
+			mustContain: []string{
+				`<pre class="mermaid">`,
+				"</pre>",
+				// The injected markup must be escaped, not emitted verbatim.
+				"&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;",
+				"&lt;/pre&gt;&lt;script&gt;alert(1)&lt;/script&gt;",
+			},
+			mustNotMatch: []string{
+				// A literal opening script tag would execute in the browser.
+				"<script>alert('xss')</script>",
+				"<script>alert(1)</script>",
+				// A literal closing pre breaks out of the mermaid block.
+				"</pre><script>",
+			},
+		},
+		"gantt chart with injection in title, section and task name": {
+			chart: NewGanttChart(`<script>evil()</script>`, []GanttTask{
+				{
+					ID:        "task1",
+					Title:     `</pre><img src=x onerror=alert(1)>`,
+					StartDate: "2024-01-01",
+					Duration:  "5d",
+					Status:    "done",
+					Section:   `<script>section()</script>`,
+				},
+			}),
+			mustContain: []string{
+				`<pre class="mermaid">`,
+				"</pre>",
+				"&lt;script&gt;evil()&lt;/script&gt;",
+				"&lt;script&gt;section()&lt;/script&gt;",
+				"&lt;/pre&gt;&lt;img src=x onerror=alert(1)&gt;",
+			},
+			mustNotMatch: []string{
+				"<script>evil()</script>",
+				"<script>section()</script>",
+				"</pre><img src=x onerror=alert(1)>",
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			doc := New().AddContent(tc.chart).Build()
+			renderer := &htmlRenderer{}
+
+			result, err := renderer.Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+
+			output := string(result)
+
+			for _, expected := range tc.mustContain {
+				if !strings.Contains(output, expected) {
+					t.Errorf("Output should contain %q, got:\n%s", expected, output)
+				}
+			}
+
+			// Isolate the chart block so the mermaid script (which legitimately
+			// contains a <script> tag) does not produce false positives.
+			start := strings.Index(output, `<pre class="mermaid">`)
+			if start < 0 {
+				t.Fatalf("Output missing mermaid pre block, got:\n%s", output)
+			}
+			end := strings.Index(output[start:], "</pre>")
+			if end < 0 {
+				t.Fatalf("Output missing closing </pre>, got:\n%s", output)
+			}
+			chartBlock := output[start : start+end]
+
+			for _, forbidden := range tc.mustNotMatch {
+				if strings.Contains(chartBlock, forbidden) {
+					t.Errorf("Chart block should not contain unescaped %q, got:\n%s", forbidden, chartBlock)
+				}
+			}
+		})
+	}
+}
+
 func TestMarkdownRenderer_ChartContent(t *testing.T) {
 	tests := map[string]struct {
 		chart       *ChartContent
