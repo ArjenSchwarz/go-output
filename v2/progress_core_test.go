@@ -1124,3 +1124,48 @@ func TestProgressForFormat_Integration(t *testing.T) {
 		t.Errorf("Close() should not return error, got %v", err)
 	}
 }
+
+// TestTextProgress_NilWriter is a regression test for T-1256.
+//
+// WithProgressWriter(nil) used to store a nil io.Writer in ProgressConfig
+// without validation. The draw/drawFinal methods then called
+// fmt.Fprintf(p.config.Writer, ...) which panicked with a nil writer when any
+// drawing operation (SetTotal, SetStatus, Complete, Fail, Close) ran.
+//
+// Expected: a nil writer is normalized to the default writer, so none of the
+// drawing operations panic.
+func TestTextProgress_NilWriter(t *testing.T) {
+	t.Run("explicit nil writer does not panic on draw operations", func(t *testing.T) {
+		// Passing nil must not result in a nil Writer being used for rendering.
+		progress := NewProgress(
+			WithProgressWriter(nil),
+			WithUpdateInterval(0), // No throttling so every call draws
+		)
+
+		// Each of these triggers draw()/drawFinal(); with the bug present any
+		// of them would panic on fmt.Fprintf(nil, ...).
+		progress.SetTotal(100)
+		progress.SetCurrent(25)
+		progress.Increment(25)
+		progress.SetStatus("processing data")
+		progress.Complete()
+
+		if err := progress.Close(); err != nil {
+			t.Errorf("Close() should not return error, got %v", err)
+		}
+	})
+
+	t.Run("explicit nil writer does not panic on Fail", func(t *testing.T) {
+		progress := NewProgress(
+			WithProgressWriter(nil),
+			WithUpdateInterval(0),
+		)
+
+		progress.SetTotal(10)
+		progress.Fail(errors.New("boom"))
+
+		if err := progress.Close(); err != nil {
+			t.Errorf("Close() should not return error, got %v", err)
+		}
+	})
+}
