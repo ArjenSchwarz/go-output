@@ -342,6 +342,75 @@ func TestCollapsibleSectionNestedScenario(t *testing.T) {
 	}
 }
 
+// TestCollapsibleSectionContentSliceImmutability verifies that mutating the
+// caller-provided content slice after construction does not affect the section.
+// Regression test for T-1317: NewCollapsibleSection stored the caller slice directly.
+func TestCollapsibleSectionContentSliceImmutability(t *testing.T) {
+	text1 := NewTextContent("First content")
+	text2 := NewTextContent("Second content")
+
+	input := []Content{text1, text2}
+	section := NewCollapsibleSection("Test Section", input)
+
+	// Mutate the caller-owned slice after construction.
+	input[0] = NewTextContent("Mutated content")
+
+	// The section must still reference the original content.
+	got := section.Content()
+	if got[0] != text1 {
+		t.Errorf("mutating caller slice changed section content: got %v, want %v", got[0], text1)
+	}
+	if got[1] != text2 {
+		t.Errorf("section content[1] changed unexpectedly: got %v, want %v", got[1], text2)
+	}
+}
+
+// TestCollapsibleSectionFormatHintInputImmutability verifies that mutating the
+// caller-provided hints map after construction does not affect renderer behavior.
+// Regression test for T-1317: WithSectionFormatHint stored the caller map directly.
+func TestCollapsibleSectionFormatHintInputImmutability(t *testing.T) {
+	hints := map[string]any{"class": "expandable-section"}
+
+	section := NewCollapsibleSection("Test Section", []Content{},
+		WithSectionFormatHint("markdown", hints))
+
+	// Mutate the caller-owned map after construction.
+	hints["class"] = "mutated"
+	hints["extra"] = "added"
+
+	got := section.FormatHint("markdown")
+	if got["class"] != "expandable-section" {
+		t.Errorf("mutating caller hints map changed stored hints: got %v, want %v", got["class"], "expandable-section")
+	}
+	if _, exists := got["extra"]; exists {
+		t.Error("adding a key to the caller hints map leaked into stored hints")
+	}
+}
+
+// TestCollapsibleSectionFormatHintOutputImmutability verifies that mutating the
+// map returned by FormatHint does not affect the section's internal state.
+// Regression test for T-1317: FormatHint returned the stored map directly.
+func TestCollapsibleSectionFormatHintOutputImmutability(t *testing.T) {
+	hints := map[string]any{"class": "expandable-section"}
+
+	section := NewCollapsibleSection("Test Section", []Content{},
+		WithSectionFormatHint("markdown", hints))
+
+	// Mutate the returned map.
+	returned := section.FormatHint("markdown")
+	returned["class"] = "mutated"
+	returned["extra"] = "added"
+
+	// A fresh read must be unaffected.
+	got := section.FormatHint("markdown")
+	if got["class"] != "expandable-section" {
+		t.Errorf("mutating returned hints map changed stored hints: got %v, want %v", got["class"], "expandable-section")
+	}
+	if _, exists := got["extra"]; exists {
+		t.Error("adding a key to the returned hints map leaked into stored hints")
+	}
+}
+
 // Helper function for error creation in tests
 func errorf(format string, args ...any) error {
 	return &testError{message: sprintf(format, args...)}
