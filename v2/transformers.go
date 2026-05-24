@@ -29,29 +29,34 @@ func (e *EmojiTransformer) CanTransform(format string) bool {
 	return format == FormatTable || format == FormatMarkdown || format == FormatHTML || format == FormatCSV
 }
 
+// Word-based status indicators are matched with word boundaries so that only
+// standalone indicators are converted. Without boundaries, ordinary cell text
+// such as "Notes" or "Nobody" would be corrupted into "❌tes"/"❌body" (see
+// T-1267). Compiled once at package load since the patterns are constant.
+var emojiIndicatorReplacements = []struct {
+	pattern *regexp.Regexp
+	emoji   string
+}{
+	{regexp.MustCompile(`\bOK\b`), "✅"},
+	{regexp.MustCompile(`\bYes\b`), "✅"},
+	{regexp.MustCompile(`\bNo\b`), "❌"},
+	{regexp.MustCompile(`\btrue\b`), "✅"},
+	{regexp.MustCompile(`\bfalse\b`), "❌"},
+}
+
 // Transform converts text indicators to emoji
 func (e *EmojiTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
 	output := string(input)
 
-	// Common emoji substitutions based on v1 patterns
-	replacements := map[string]string{
-		"!!":  "🚨",
-		"OK":  "✅",
-		"Yes": "✅",
-		"No":  "❌",
-		"":    "ℹ️", // For info contexts
-	}
+	// The "!!" indicator is punctuation, so word boundaries (\b) do not apply;
+	// it is replaced as a plain substring.
+	output = strings.ReplaceAll(output, "!!", "🚨")
 
-	// Apply replacements
-	for text, emoji := range replacements {
-		if text != "" { // Skip empty string for now
-			output = strings.ReplaceAll(output, text, emoji)
-		}
+	// Word-based indicators use word boundaries so embedded substrings in normal
+	// cell text are left untouched and only standalone indicators are converted.
+	for _, r := range emojiIndicatorReplacements {
+		output = r.pattern.ReplaceAllString(output, r.emoji)
 	}
-
-	// Handle boolean-like patterns
-	output = regexp.MustCompile(`\btrue\b`).ReplaceAllString(output, "✅")
-	output = regexp.MustCompile(`\bfalse\b`).ReplaceAllString(output, "❌")
 
 	return []byte(output), nil
 }

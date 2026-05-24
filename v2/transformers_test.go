@@ -93,6 +93,97 @@ func TestEmojiTransformer_Transform(t *testing.T) {
 	}
 }
 
+// TestEmojiTransformer_Transform_WordBoundaries is a regression test for T-1267.
+//
+// The string indicators ("OK", "Yes", "No") were replaced with strings.ReplaceAll,
+// which has no word-boundary awareness. As a result, normal cell text containing
+// those substrings was corrupted: "Notes" became "❌tes", "Nobody" became "❌body",
+// and words containing "OK" (e.g. "Booking", "Looking") were mangled. Standalone
+// indicators must still convert, but indicators that are part of a larger word
+// must be left untouched.
+func TestEmojiTransformer_Transform_WordBoundaries(t *testing.T) {
+	transformer := &EmojiTransformer{}
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		input    string
+		expected string
+	}{
+		// Words that merely contain an indicator must be left untouched.
+		"word containing No (Notes)": {
+			input:    "Notes",
+			expected: "Notes",
+		},
+		"word containing No (Nobody)": {
+			input:    "Nobody",
+			expected: "Nobody",
+		},
+		"word containing No (Nope)": {
+			input:    "Nope",
+			expected: "Nope",
+		},
+		"word containing OK (Booking)": {
+			input:    "Booking",
+			expected: "Booking",
+		},
+		"word containing OK (Looking)": {
+			input:    "Looking",
+			expected: "Looking",
+		},
+		"word containing Yes (Yesterday)": {
+			input:    "Yesterday",
+			expected: "Yesterday",
+		},
+		"indicator as suffix (NoOK)": {
+			input:    "ABCNoDEF",
+			expected: "ABCNoDEF",
+		},
+		"mixed cell text with embedded indicators": {
+			input:    "Notes about Booking Yesterday",
+			expected: "Notes about Booking Yesterday",
+		},
+		// Standalone indicators must still be converted.
+		"standalone No": {
+			input:    "No",
+			expected: "❌",
+		},
+		"standalone Yes": {
+			input:    "Yes",
+			expected: "✅",
+		},
+		"standalone OK": {
+			input:    "OK",
+			expected: "✅",
+		},
+		"standalone indicators in a sentence": {
+			input:    "Active: Yes, Enabled: No, Status: OK",
+			expected: "Active: ✅, Enabled: ❌, Status: ✅",
+		},
+		"standalone No surrounded by punctuation": {
+			input:    "(No)",
+			expected: "(❌)",
+		},
+		// Embedded and standalone indicators together.
+		"standalone and embedded together": {
+			input:    "No Notes",
+			expected: "❌ Notes",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := transformer.Transform(ctx, []byte(test.input), "table")
+			if err != nil {
+				t.Fatalf("EmojiTransformer.Transform() error = %v", err)
+			}
+
+			if string(result) != test.expected {
+				t.Errorf("EmojiTransformer.Transform(%q) = %q, want %q", test.input, string(result), test.expected)
+			}
+		})
+	}
+}
+
 // Test ColorTransformer
 
 func TestColorTransformer_Name(t *testing.T) {
