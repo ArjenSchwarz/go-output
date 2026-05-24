@@ -176,7 +176,7 @@ func (m *markdownRenderer) renderTableContentMarkdown(table *TableContent) ([]by
 	}
 
 	// Get key order from schema
-	keyOrder := table.Schema().GetKeyOrder()
+	keyOrder := table.getSchema().GetKeyOrder()
 	if len(keyOrder) == 0 {
 		return []byte(""), nil // No columns to render
 	}
@@ -202,7 +202,7 @@ func (m *markdownRenderer) renderTableContentMarkdown(table *TableContent) ([]by
 			var cellValue string
 			if val, exists := record[key]; exists {
 				// Apply field formatter if available
-				field := table.Schema().FindField(key)
+				field := table.getSchema().FindField(key)
 				cellValue = m.formatCellValue(val, field)
 			}
 			// Escape markdown and handle newlines in table cells

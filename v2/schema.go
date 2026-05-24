@@ -1,5 +1,7 @@
 package output
 
+import "slices"
+
 // Schema defines table structure with explicit key ordering
 type Schema struct {
 	Fields   []Field
@@ -14,18 +16,20 @@ type Field struct {
 	Hidden    bool
 }
 
-// GetKeyOrder returns the preserved key order for the schema
+// GetKeyOrder returns a copy of the preserved key order for the schema.
+// A copy is returned so callers cannot mutate the schema's internal key order.
 func (s *Schema) GetKeyOrder() []string {
 	if s.keyOrder != nil {
-		return s.keyOrder
+		return slices.Clone(s.keyOrder)
 	}
 	// If keyOrder is not set, extract from fields
 	return extractKeyOrder(s.Fields)
 }
 
-// SetKeyOrder explicitly sets the key order for the schema
+// SetKeyOrder explicitly sets the key order for the schema.
+// The provided slice is cloned so later caller mutations cannot change the schema.
 func (s *Schema) SetKeyOrder(keys []string) {
-	s.keyOrder = keys
+	s.keyOrder = slices.Clone(keys)
 }
 
 // extractKeyOrder preserves the exact order of fields
@@ -39,15 +43,17 @@ func extractKeyOrder(fields []Field) []string {
 	return keys
 }
 
-// NewSchemaFromFields creates a schema from field definitions with preserved order
+// NewSchemaFromFields creates a schema from field definitions with preserved order.
+// The provided slice is cloned so later caller mutations cannot change the schema.
 func NewSchemaFromFields(fields []Field) *Schema {
 	return &Schema{
-		Fields:   fields,
+		Fields:   slices.Clone(fields),
 		keyOrder: extractKeyOrder(fields),
 	}
 }
 
-// NewSchemaFromKeys creates a schema from simple key list
+// NewSchemaFromKeys creates a schema from simple key list.
+// The provided slice is cloned so later caller mutations cannot change the schema.
 func NewSchemaFromKeys(keys []string) *Schema {
 	fields := make([]Field, len(keys))
 	for i, key := range keys {
@@ -55,7 +61,7 @@ func NewSchemaFromKeys(keys []string) *Schema {
 	}
 	return &Schema{
 		Fields:   fields,
-		keyOrder: keys,
+		keyOrder: slices.Clone(keys),
 	}
 }
 
@@ -88,4 +94,16 @@ func (s *Schema) VisibleFieldCount() int {
 // GetFieldNames returns the field names in their preserved order
 func (s *Schema) GetFieldNames() []string {
 	return s.GetKeyOrder()
+}
+
+// clone returns a defensive copy of the schema with independent slices.
+// Field values are copied (formatters are shared, as functions are immutable).
+func (s *Schema) clone() *Schema {
+	if s == nil {
+		return nil
+	}
+	return &Schema{
+		Fields:   slices.Clone(s.Fields),
+		keyOrder: slices.Clone(s.keyOrder),
+	}
 }

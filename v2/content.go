@@ -140,8 +140,17 @@ func (t *TableContent) Title() string {
 	return t.title
 }
 
-// Schema returns the table schema
+// Schema returns a defensive copy of the table schema.
+// A copy is returned so callers cannot mutate the built table's schema
+// (e.g. via SetKeyOrder) and change its rendered key order after Build().
 func (t *TableContent) Schema() *Schema {
+	return t.schema.clone()
+}
+
+// getSchema returns the live (non-copied) schema for internal package use.
+// Internal callers must only read from the returned schema, never mutate it.
+// External callers must use the public Schema() accessor, which returns a copy.
+func (t *TableContent) getSchema() *Schema {
 	return t.schema
 }
 
@@ -168,19 +177,7 @@ func (t *TableContent) Clone() Content {
 	}
 
 	// Deep copy schema
-	var newSchema *Schema
-	if t.schema != nil {
-		newFields := make([]Field, len(t.schema.Fields))
-		copy(newFields, t.schema.Fields)
-
-		newKeyOrder := make([]string, len(t.schema.keyOrder))
-		copy(newKeyOrder, t.schema.keyOrder)
-
-		newSchema = &Schema{
-			Fields:   newFields,
-			keyOrder: newKeyOrder,
-		}
-	}
+	newSchema := t.schema.clone()
 
 	// Shallow copy transformations (share same operation instances)
 	var newTransformations []Operation
