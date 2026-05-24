@@ -313,10 +313,16 @@ func (h *htmlRenderer) renderChartContentHTML(chart *ChartContent) ([]byte, erro
 		return nil, fmt.Errorf("failed to render chart as mermaid: %w", err)
 	}
 
-	// Wrap in <pre class="mermaid">
+	// Wrap in <pre class="mermaid">. The Mermaid renderer emits user-controlled
+	// fields (chart titles, task/section names, pie labels) as raw text, so HTML
+	// metacharacters must be escaped before embedding in the HTML document.
+	// Without escaping, values containing "<", "</pre>", or "<script>" could
+	// break out of the pre block and inject HTML/script (XSS). Escaping is safe
+	// for Mermaid.js: it reads the text content of the pre block, which the
+	// browser un-escapes before Mermaid parses it.
 	var result strings.Builder
 	result.WriteString("<pre class=\"mermaid\">\n")
-	result.Write(mermaidData)
+	result.WriteString(html.EscapeString(string(mermaidData)))
 	result.WriteString("</pre>\n")
 
 	return []byte(result.String()), nil

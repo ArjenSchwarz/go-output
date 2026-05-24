@@ -41,8 +41,9 @@ func TestHTMLRenderer_ChartContent(t *testing.T) {
 				`<pre class="mermaid">`,
 				"pie showData",
 				"title Distribution",
-				`"A" : 60.00`,
-				`"B" : 40.00`,
+				// Double quotes around pie labels are HTML-escaped (T-1293).
+				`&#34;A&#34; : 60.00`,
+				`&#34;B&#34; : 40.00`,
 				"</pre>",
 			},
 		},
