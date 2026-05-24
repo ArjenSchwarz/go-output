@@ -580,3 +580,98 @@ func TestTableContent_OperationInstancesShared(t *testing.T) {
 		}
 	}
 }
+
+// TestTableContent_DoesNotAliasCallerInput is a regression test for T-1203.
+//
+// NewTableContent must not retain references to caller-owned maps. Previously
+// convertToRecords returned Record(m) / the input []Record without copying, so
+// mutating the caller's input after building a table also mutated the table's
+// stored records, violating v2 immutability.
+//
+// Each subtest builds a table, mutates the original input, and asserts the
+// table's stored value is unchanged.
+func TestTableContent_DoesNotAliasCallerInput(t *testing.T) {
+	t.Run("Record (single map[string]any value)", func(t *testing.T) {
+		// A bare Record passed via []Record.
+		row := Record{"name": "before"}
+		table, err := NewTableContent("users", []Record{row}, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("NewTableContent: %v", err)
+		}
+
+		// Mutate the caller-owned map after building.
+		row["name"] = "after"
+
+		if got := table.Records()[0]["name"]; got != "before" {
+			t.Errorf("table aliases caller Record: got %q, want %q", got, "before")
+		}
+	})
+
+	t.Run("[]Record", func(t *testing.T) {
+		records := []Record{
+			{"name": "alice"},
+			{"name": "bob"},
+		}
+		table, err := NewTableContent("users", records, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("NewTableContent: %v", err)
+		}
+
+		// Mutate a value and replace a slice element.
+		records[0]["name"] = "mutated"
+		records[1] = Record{"name": "replaced"}
+
+		if got := table.Records()[0]["name"]; got != "alice" {
+			t.Errorf("table aliases caller []Record value: got %q, want %q", got, "alice")
+		}
+		if got := table.Records()[1]["name"]; got != "bob" {
+			t.Errorf("table aliases caller []Record slice: got %q, want %q", got, "bob")
+		}
+	})
+
+	t.Run("map[string]any", func(t *testing.T) {
+		m := map[string]any{"name": "before"}
+		table, err := NewTableContent("users", m, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("NewTableContent: %v", err)
+		}
+
+		m["name"] = "after"
+
+		if got := table.Records()[0]["name"]; got != "before" {
+			t.Errorf("table aliases caller map[string]any: got %q, want %q", got, "before")
+		}
+	})
+
+	t.Run("[]map[string]any", func(t *testing.T) {
+		data := []map[string]any{
+			{"name": "alice"},
+			{"name": "bob"},
+		}
+		table, err := NewTableContent("users", data, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("NewTableContent: %v", err)
+		}
+
+		data[0]["name"] = "mutated"
+
+		if got := table.Records()[0]["name"]; got != "alice" {
+			t.Errorf("table aliases caller []map[string]any: got %q, want %q", got, "alice")
+		}
+	})
+
+	t.Run("[]any of maps", func(t *testing.T) {
+		inner := map[string]any{"name": "before"}
+		data := []any{inner}
+		table, err := NewTableContent("users", data, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("NewTableContent: %v", err)
+		}
+
+		inner["name"] = "after"
+
+		if got := table.Records()[0]["name"]; got != "before" {
+			t.Errorf("table aliases caller []any map: got %q, want %q", got, "before")
+		}
+	})
+}
