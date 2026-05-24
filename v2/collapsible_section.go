@@ -37,10 +37,15 @@ type DefaultCollapsibleSection struct {
 
 // NewCollapsibleSection creates a new collapsible section
 func NewCollapsibleSection(title string, content []Content, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
+	// Defensively copy the content slice so later mutation of the caller's
+	// slice cannot change this section's rendering (T-1317).
+	contentCopy := make([]Content, len(content))
+	copy(contentCopy, content)
+
 	cs := &DefaultCollapsibleSection{
 		id:              GenerateID(),
 		title:           title,
-		content:         content,
+		content:         contentCopy,
 		defaultExpanded: false,
 		level:           0,
 		formatHints:     make(map[string]map[string]any),
@@ -76,7 +81,9 @@ func WithSectionLevel(level int) CollapsibleSectionOption {
 // WithSectionFormatHint adds format-specific hints for the section
 func WithSectionFormatHint(format string, hints map[string]any) CollapsibleSectionOption {
 	return func(cs *DefaultCollapsibleSection) {
-		cs.formatHints[format] = hints
+		// Defensively copy the hints map so later mutation of the caller's
+		// map cannot alter renderer behavior (T-1317).
+		cs.formatHints[format] = maps.Clone(hints)
 	}
 }
 
@@ -109,7 +116,8 @@ func (cs *DefaultCollapsibleSection) Level() int {
 // FormatHint provides renderer-specific hints
 func (cs *DefaultCollapsibleSection) FormatHint(format string) map[string]any {
 	if hints, exists := cs.formatHints[format]; exists {
-		return hints
+		// Return a copy so callers cannot mutate the stored hints (T-1317).
+		return maps.Clone(hints)
 	}
 	return nil
 }
