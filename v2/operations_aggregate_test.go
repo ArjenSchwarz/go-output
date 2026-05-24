@@ -651,3 +651,77 @@ func TestGroupByCompositeKeyCollision(t *testing.T) {
 		}
 	})
 }
+
+// TestGroupByNilAggregateFunc is a regression test for T-1105.
+//
+// The bug: GroupByOp.Validate checked that aggregate names were non-empty but
+// did not reject nil AggregateFunc values. A GroupByOp such as
+//
+//	NewGroupByOp([]string{"department"}, map[string]AggregateFunc{"count": nil})
+//
+// passed validation, then Apply panicked when it called aggFunc(groupRecords, field).
+//
+// Expected: Validate returns a normal validation error, and the render-time
+// per-content transformation path reports that error instead of panicking.
+func TestGroupByNilAggregateFunc(t *testing.T) {
+	t.Run("Validate rejects a nil aggregate function", func(t *testing.T) {
+		groupByOp := NewGroupByOp([]string{"department"}, map[string]AggregateFunc{
+			"count": nil,
+		})
+
+		err := groupByOp.Validate()
+		if err == nil {
+			t.Fatal("expected validation error for nil aggregate function, got nil")
+		}
+
+		if !strings.Contains(err.Error(), "count") {
+			t.Errorf("expected error to reference the offending aggregate name 'count', got %q", err.Error())
+		}
+		if !strings.Contains(err.Error(), "cannot be nil") {
+			t.Errorf("expected error to explain the function cannot be nil, got %q", err.Error())
+		}
+	})
+
+	t.Run("Validate rejects a nil function among valid functions", func(t *testing.T) {
+		groupByOp := NewGroupByOp([]string{"department"}, map[string]AggregateFunc{
+			"count":        CountAggregate(),
+			"total_salary": nil,
+		})
+
+		err := groupByOp.Validate()
+		if err == nil {
+			t.Fatal("expected validation error for nil aggregate function, got nil")
+		}
+		if !strings.Contains(err.Error(), "total_salary") {
+			t.Errorf("expected error to reference the offending aggregate name 'total_salary', got %q", err.Error())
+		}
+	})
+
+	t.Run("render-time transformation reports nil aggregate as an error not a panic", func(t *testing.T) {
+		// Attach a GroupByOp with a nil aggregate function as a per-content
+		// transformation. Rendering must surface a validation error rather
+		// than panicking inside Apply.
+		doc := New().
+			Table("test", []Record{
+				{"department": "eng", "salary": 100},
+				{"department": "eng", "salary": 120},
+			},
+				WithKeys("department", "salary"),
+				WithTransformations(
+					NewGroupByOp([]string{"department"}, map[string]AggregateFunc{
+						"count": nil,
+					}),
+				),
+			).
+			Build()
+
+		renderer := &tableRenderer{styleName: "Default"}
+		_, err := renderer.Render(context.Background(), doc)
+		if err == nil {
+			t.Fatal("expected render error for nil aggregate function, got nil")
+		}
+		if !strings.Contains(err.Error(), "cannot be nil") {
+			t.Errorf("expected render error to explain the function cannot be nil, got %q", err.Error())
+		}
+	})
+}
