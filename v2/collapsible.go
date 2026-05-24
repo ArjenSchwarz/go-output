@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"sync"
 )
 
 // Constants for repeated strings
@@ -41,10 +42,12 @@ type DefaultCollapsibleValue struct {
 	codeLanguage  string // Language for syntax highlighting (e.g., "json", "yaml", "go")
 	useCodeFences bool   // Whether to wrap details in code fences
 
-	// Performance optimization fields for lazy evaluation (Requirement 10.3, 10.5)
+	// Performance optimization fields for lazy evaluation (Requirement 10.3).
+	// detailsOnce guards the one-time processing of details so that Details() is
+	// safe to call concurrently when a shared value is rendered from multiple
+	// goroutines (T-1233).
+	detailsOnce      sync.Once
 	processedDetails any
-	detailsProcessed bool
-	hintsAccessed    map[string]bool
 	memoryProcessor  *MemoryOptimizedProcessor
 }
 
@@ -60,9 +63,6 @@ func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption)
 		maxDetailLength:   500, // Default from requirements
 		truncateIndicator: truncateIndicatorText,
 		formatHints:       make(map[string]map[string]any),
-		// Initialize performance optimization fields (Requirements 10.3, 10.5)
-		detailsProcessed: false,
-		hintsAccessed:    nil, // Lazy initialized when first accessed
 	}
 
 	for _, opt := range opts {
@@ -141,40 +141,33 @@ func (d *DefaultCollapsibleValue) Details() any {
 		return d.summary // Fallback for nil details
 	}
 
-	// Use cached processed details if available (Requirement 10.3)
-	if d.detailsProcessed {
-		return d.processedDetails
-	}
-
-	// Initialize memory processor if needed for large content processing (Requirement 10.4)
-	if d.memoryProcessor == nil && d.needsMemoryOptimization() {
-		config := RendererConfig{
-			MaxDetailLength:   d.maxDetailLength,
-			TruncateIndicator: d.truncateIndicator,
+	// Process details exactly once and cache the result. sync.Once makes this
+	// safe for concurrent callers (T-1233) while preserving lazy evaluation
+	// (Requirement 10.3).
+	d.detailsOnce.Do(func() {
+		// Initialize memory processor if needed for large content processing (Requirement 10.4)
+		if d.needsMemoryOptimization() {
+			config := RendererConfig{
+				MaxDetailLength:   d.maxDetailLength,
+				TruncateIndicator: d.truncateIndicator,
+			}
+			d.memoryProcessor = NewMemoryOptimizedProcessor(config)
 		}
-		d.memoryProcessor = NewMemoryOptimizedProcessor(config)
-	}
 
-	// Process details once and cache result
-	var result any
-	var err error
-
-	// Use memory-optimized processing for large content (Requirement 10.4)
-	if d.memoryProcessor != nil {
-		result, err = d.memoryProcessor.ProcessLargeDetails(d.details, d.maxDetailLength)
-		if err != nil {
-			// Fallback to simple processing on error
-			result = d.processDetailsSimple()
+		// Use memory-optimized processing for large content (Requirement 10.4)
+		if d.memoryProcessor != nil {
+			result, err := d.memoryProcessor.ProcessLargeDetails(d.details, d.maxDetailLength)
+			if err != nil {
+				// Fallback to simple processing on error
+				result = d.processDetailsSimple()
+			}
+			d.processedDetails = result
+		} else {
+			d.processedDetails = d.processDetailsSimple()
 		}
-	} else {
-		result = d.processDetailsSimple()
-	}
+	})
 
-	// Cache the processed result to avoid redundant processing (Requirement 10.3)
-	d.processedDetails = result
-	d.detailsProcessed = true
-
-	return result
+	return d.processedDetails
 }
 
 // needsMemoryOptimization determines if memory optimization is beneficial
@@ -215,17 +208,10 @@ func (d *DefaultCollapsibleValue) IsExpanded() bool {
 	return d.defaultExpanded
 }
 
-// FormatHint returns renderer-specific hints for the given format
-// Implements lazy evaluation to avoid processing hints when not used (Requirement 10.5)
+// FormatHint returns renderer-specific hints for the given format.
+// It is a pure read of the configured hints, making it safe to call concurrently
+// when a shared value is rendered from multiple goroutines (T-1233).
 func (d *DefaultCollapsibleValue) FormatHint(format string) map[string]any {
-	// Initialize hintsAccessed map if not already done
-	if d.hintsAccessed == nil {
-		d.hintsAccessed = make(map[string]bool)
-	}
-
-	// Mark this format as accessed for performance tracking
-	d.hintsAccessed[format] = true
-
 	if hints, exists := d.formatHints[format]; exists {
 		return hints
 	}
