@@ -227,27 +227,44 @@ func (p *textProgress) IsActive() bool {
 func (p *textProgress) SetContext(ctx context.Context) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.ctx = ctx
 
-	// Cancel any existing context
+	// Cancel any existing context. This releases the previous watcher
+	// goroutine, but that goroutine ignores its own (replacement) cancellation
+	// because the context it watches is no longer p.ctx (see below).
 	if p.cancel != nil {
 		p.cancel()
 	}
 
-	// Create new context with cancellation
-	if ctx != nil {
-		p.ctx, p.cancel = context.WithCancel(ctx)
-
-		// Start goroutine to watch for cancellation
-		go func() {
-			<-p.ctx.Done()
-			p.mu.Lock()
-			if !p.completed && !p.failed {
-				p.failed = true
-				p.err = p.ctx.Err()
-				p.drawFinal()
-			}
-			p.mu.Unlock()
-		}()
+	if ctx == nil {
+		p.ctx = nil
+		p.cancel = nil
+		return
 	}
+
+	// Create a new derived context with cancellation.
+	watchedCtx, cancel := context.WithCancel(ctx)
+	p.ctx = watchedCtx
+	p.cancel = cancel
+
+	// Start a goroutine to watch for cancellation. The watcher captures its
+	// own derived context (watchedCtx) rather than reading the shared p.ctx
+	// field, so a later SetContext call cannot make this watcher read the
+	// wrong context. When this watcher fires it only fails the progress if its
+	// context is still the current one; if it has been replaced, the
+	// completion is stale and ignored.
+	go func() {
+		<-watchedCtx.Done()
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		if p.ctx != watchedCtx {
+			// This context was replaced by a newer SetContext call. Its
+			// cancellation is the result of replacement, not a real failure.
+			return
+		}
+		if !p.completed && !p.failed {
+			p.failed = true
+			p.err = watchedCtx.Err()
+			p.drawFinal()
+		}
+	}()
 }
