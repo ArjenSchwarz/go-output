@@ -338,6 +338,96 @@ func TestOutput_Render_ErrorHandling(t *testing.T) {
 	})
 }
 
+// TestOutput_Render_NilConfigurationEntries verifies that Render returns a
+// normal validation error when the configuration contains nil entries, rather
+// than dereferencing them and producing a recovered PanicError.
+//
+// Regression test for T-1184: previously Render only checked that the formats
+// and writers slices were non-empty, so a Format with a nil Renderer reached
+// f.Renderer.Render, a nil transformer reached transformer.CanTransform, and a
+// nil writer reached writer.Write — each producing a recovered PanicError
+// instead of an up-front validation error.
+func TestOutput_Render_NilConfigurationEntries(t *testing.T) {
+	doc := New().
+		Table("Test", []map[string]any{
+			{"Name": "Alice", "Age": 30},
+		}, WithKeys("Name", "Age")).
+		Build()
+
+	// assertValidationError checks that err is a *ValidationError mentioning the
+	// expected field and "cannot be nil", and that it is not a PanicError.
+	assertValidationError := func(t *testing.T, err error, field string) {
+		t.Helper()
+		if err == nil {
+			t.Fatalf("Render() should fail for nil %s entry", field)
+		}
+
+		var panicErr *PanicError
+		if AsError(err, &panicErr) {
+			t.Fatalf("Render() should return a validation error, not a PanicError, got: %v", err)
+		}
+
+		var validationErr *ValidationError
+		if !AsError(err, &validationErr) {
+			t.Fatalf("error should be a *ValidationError, got %T: %v", err, err)
+		}
+
+		if !strings.Contains(err.Error(), field) || !strings.Contains(err.Error(), "cannot be nil") {
+			t.Errorf("error should mention %q cannot be nil, got: %v", field, err)
+		}
+	}
+
+	t.Run("nil renderer", func(t *testing.T) {
+		var progressBuf bytes.Buffer
+		progress := NewProgress(WithProgressWriter(&progressBuf))
+
+		output := NewOutput(
+			// Format with a nil Renderer field.
+			WithFormat(Format{Name: "json"}),
+			WithWriter(NewStdoutWriter()),
+			WithProgress(progress),
+		)
+
+		err := output.Render(context.Background(), doc)
+		assertValidationError(t, err, "renderer")
+
+		output.Close()
+	})
+
+	t.Run("nil transformer", func(t *testing.T) {
+		var progressBuf bytes.Buffer
+		progress := NewProgress(WithProgressWriter(&progressBuf))
+
+		output := NewOutput(
+			WithFormat(JSON()),
+			WithTransformer(nil),
+			WithWriter(NewStdoutWriter()),
+			WithProgress(progress),
+		)
+
+		err := output.Render(context.Background(), doc)
+		assertValidationError(t, err, "transformer")
+
+		output.Close()
+	})
+
+	t.Run("nil writer", func(t *testing.T) {
+		var progressBuf bytes.Buffer
+		progress := NewProgress(WithProgressWriter(&progressBuf))
+
+		output := NewOutput(
+			WithFormat(JSON()),
+			WithWriter(nil),
+			WithProgress(progress),
+		)
+
+		err := output.Render(context.Background(), doc)
+		assertValidationError(t, err, "writer")
+
+		output.Close()
+	})
+}
+
 func TestOutput_Render_WithTransformers(t *testing.T) {
 	doc := New().
 		Table("Test", []map[string]any{
