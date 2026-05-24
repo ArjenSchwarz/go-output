@@ -82,9 +82,14 @@ type ProgressConfig struct {
 // ProgressOption configures a ProgressConfig
 type ProgressOption func(*ProgressConfig)
 
-// WithProgressWriter sets the output writer for progress display
+// WithProgressWriter sets the output writer for progress display.
+// A nil writer is ignored so the existing (default os.Stderr) writer is kept,
+// preventing a nil pointer dereference when progress output is rendered.
 func WithProgressWriter(w io.Writer) ProgressOption {
 	return func(pc *ProgressConfig) {
+		if w == nil {
+			return
+		}
 		pc.Writer = w
 	}
 }
