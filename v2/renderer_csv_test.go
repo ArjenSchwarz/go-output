@@ -338,3 +338,104 @@ func TestCSVRenderer_RenderToFlushErrorWithSection(t *testing.T) {
 		t.Errorf("error = %v, want it to wrap the underlying %q failure", err, "forced write failure")
 	}
 }
+
+// TestCSVRenderer_DeeplyNestedSectionTables is a regression test for T-1239.
+// The CSV renderer flattens tables inside sections, but the original
+// implementation only handled direct table children plus a single nested
+// SectionContent level. Tables nested 3+ levels deep were silently dropped
+// from the output. This test builds tables at several nesting depths and
+// verifies each one's rows reach the CSV output.
+func TestCSVRenderer_DeeplyNestedSectionTables(t *testing.T) {
+	// newTable builds a single-row table whose only value identifies the depth
+	// at which it lives, so we can assert each table reaches the output.
+	newTable := func(t *testing.T, name string) *TableContent {
+		t.Helper()
+		table, err := NewTableContent(name, []map[string]any{{"name": name}}, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("failed to create table %q: %v", name, err)
+		}
+		return table
+	}
+
+	tests := map[string]struct {
+		// depth is the number of nested sections wrapping the table.
+		// depth=1 -> section -> table (already worked before the fix)
+		// depth=2 -> outer -> inner -> table (already worked before the fix)
+		// depth=3 -> outer -> middle -> inner -> table (regression)
+		depth int
+		row   string
+	}{
+		"one level":    {depth: 1, row: "level-1"},
+		"two levels":   {depth: 2, row: "level-2"},
+		"three levels": {depth: 3, row: "deep-row"},
+		"five levels":  {depth: 5, row: "level-5"},
+	}
+
+	for testName, tt := range tests {
+		t.Run(testName, func(t *testing.T) {
+			// Build the innermost section holding the table, then wrap it in
+			// the requested number of outer sections.
+			innermost := NewSectionContent("section-0")
+			innermost.AddContent(newTable(t, tt.row))
+
+			current := innermost
+			for level := 1; level < tt.depth; level++ {
+				outer := NewSectionContent("section")
+				outer.AddContent(current)
+				current = outer
+			}
+
+			doc := New().AddContent(current).Build()
+
+			result, err := (&csvRenderer{}).Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render failed: %v", err)
+			}
+
+			if !strings.Contains(string(result), tt.row) {
+				t.Errorf("CSV output missing table nested %d level(s) deep: want it to contain %q, got %q",
+					tt.depth, tt.row, string(result))
+			}
+		})
+	}
+}
+
+// TestCSVRenderer_MultipleTablesAcrossNestingLevels verifies that tables at
+// different depths within the same section hierarchy are all rendered, not
+// just the shallowest ones. Regression test for T-1239.
+func TestCSVRenderer_MultipleTablesAcrossNestingLevels(t *testing.T) {
+	makeTable := func(t *testing.T, row string) *TableContent {
+		t.Helper()
+		table, err := NewTableContent(row, []map[string]any{{"name": row}}, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("failed to create table %q: %v", row, err)
+		}
+		return table
+	}
+
+	// Structure: outer{tableA, middle{tableB, inner{tableC}}}
+	inner := NewSectionContent("inner")
+	inner.AddContent(makeTable(t, "row-c"))
+
+	middle := NewSectionContent("middle")
+	middle.AddContent(makeTable(t, "row-b"))
+	middle.AddContent(inner)
+
+	outer := NewSectionContent("outer")
+	outer.AddContent(makeTable(t, "row-a"))
+	outer.AddContent(middle)
+
+	doc := New().AddContent(outer).Build()
+
+	result, err := (&csvRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	out := string(result)
+	for _, want := range []string{"row-a", "row-b", "row-c"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("CSV output missing table row %q across nesting levels, got %q", want, out)
+		}
+	}
+}

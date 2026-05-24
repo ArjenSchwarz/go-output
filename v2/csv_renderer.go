@@ -116,55 +116,12 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 			lastKeyOrder = content.getSchema().GetKeyOrder()
 
 		case *SectionContent:
-			// Extract and render tables from sections
-			// CSV is a flat format, so we flatten the section hierarchy
-			for _, nestedContent := range content.Contents() {
-				// Apply transformations to nested content
-				nestedTransformed, err := applyContentTransformations(ctx, nestedContent)
-				if err != nil {
-					if flushErr := flushCSV(); flushErr != nil {
-						return flushErr
-					}
-					return err
-				}
-
-				if nestedTable, ok := nestedTransformed.(*TableContent); ok {
-					// Add separator between tables
-					if lastKeyOrder != nil {
-						if err := csvWriter.Write([]string{}); err != nil {
-							return fmt.Errorf("failed to write separator row: %w", err)
-						}
-					}
-
-					writeHeaders := !keyOrdersEqual(lastKeyOrder, nestedTable.getSchema().GetKeyOrder())
-					if err := c.renderTableContentCSV(nestedTable, csvWriter, writeHeaders); err != nil {
-						return fmt.Errorf("failed to render table %s: %w", nestedTable.ID(), err)
-					}
-					lastKeyOrder = nestedTable.getSchema().GetKeyOrder()
-				} else if nestedSection, ok := nestedTransformed.(*SectionContent); ok {
-					// Recursively handle nested sections
-					for _, deepContent := range nestedSection.Contents() {
-						deepTransformed, err := applyContentTransformations(ctx, deepContent)
-						if err != nil {
-							if flushErr := flushCSV(); flushErr != nil {
-								return flushErr
-							}
-							return err
-						}
-						if deepTable, ok := deepTransformed.(*TableContent); ok {
-							if lastKeyOrder != nil {
-								if err := csvWriter.Write([]string{}); err != nil {
-									return fmt.Errorf("failed to write separator row: %w", err)
-								}
-							}
-							writeHeaders := !keyOrdersEqual(lastKeyOrder, deepTable.getSchema().GetKeyOrder())
-							if err := c.renderTableContentCSV(deepTable, csvWriter, writeHeaders); err != nil {
-								return fmt.Errorf("failed to render table %s: %w", deepTable.ID(), err)
-							}
-							lastKeyOrder = deepTable.getSchema().GetKeyOrder()
-						}
-					}
-				}
+			// Extract and render tables from sections. CSV is a flat format,
+			// so we recursively flatten the section hierarchy to any depth
+			// (T-1239). renderSectionTablesCSV applies per-content
+			// transformations at every level and renders each nested table.
+			if err := c.renderSectionTablesCSV(ctx, content, csvWriter, &lastKeyOrder, flushCSV); err != nil {
+				return err
 			}
 
 		case *DefaultCollapsibleSection:
@@ -199,6 +156,56 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 	// Flush buffered rows and report any error from the underlying writer
 	// that was deferred until flush time (T-1186).
 	return flushCSV()
+}
+
+// renderSectionTablesCSV recursively flattens a section hierarchy and renders
+// every nested table to CSV (T-1239). It walks the section's contents,
+// applying per-content transformations at each level, rendering any
+// TableContent it finds, and recursing into any nested SectionContent. This
+// replaces an earlier hand-written loop that only reached tables one section
+// level deep, silently dropping tables nested deeper.
+//
+// lastKeyOrder is shared across the whole document so separators and header
+// re-writes behave consistently with top-level tables. flushCSV is the
+// document-level flush used to surface deferred writer errors before returning
+// a transformation error (T-1186).
+func (c *csvRenderer) renderSectionTablesCSV(ctx context.Context, section *SectionContent, csvWriter *csv.Writer, lastKeyOrder *[]string, flushCSV func() error) error {
+	for _, nestedContent := range section.Contents() {
+		// Apply transformations to nested content at this level.
+		transformed, err := applyContentTransformations(ctx, nestedContent)
+		if err != nil {
+			// Flush already-buffered rows; prefer a write error over the
+			// transformation error so a failed destination is not masked.
+			if flushErr := flushCSV(); flushErr != nil {
+				return flushErr
+			}
+			return err
+		}
+
+		switch nested := transformed.(type) {
+		case *TableContent:
+			// Add separator between tables (matches top-level behaviour).
+			if *lastKeyOrder != nil {
+				if err := csvWriter.Write([]string{}); err != nil {
+					return fmt.Errorf("failed to write separator row: %w", err)
+				}
+			}
+
+			writeHeaders := !keyOrdersEqual(*lastKeyOrder, nested.getSchema().GetKeyOrder())
+			if err := c.renderTableContentCSV(nested, csvWriter, writeHeaders); err != nil {
+				return fmt.Errorf("failed to render table %s: %w", nested.ID(), err)
+			}
+			*lastKeyOrder = nested.getSchema().GetKeyOrder()
+
+		case *SectionContent:
+			// Recurse into deeper sections to any depth.
+			if err := c.renderSectionTablesCSV(ctx, nested, csvWriter, lastKeyOrder, flushCSV); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // renderTableContentCSV renders table content to CSV with key order preservation
