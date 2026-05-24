@@ -443,3 +443,118 @@ func TestDrawioRenderer_Render(t *testing.T) {
 		})
 	}
 }
+
+// graphTransformationDoc builds a document with a single edge table that has
+// from/to/label columns and a filter + limit transformation attached.
+//
+// Source rows (in order):
+//   - keep1 -> keep1b   (keep = true)
+//   - drop1 -> drop1b   (keep = false, filtered out)
+//   - keep2 -> keep2b   (keep = true)
+//   - keep3 -> keep3b   (keep = true, removed by limit 2)
+//
+// After the filter (keep == true) and limit (2), only the first two kept rows
+// survive: keep1 -> keep1b and keep2 -> keep2b.
+func graphTransformationDoc() *Document {
+	return New().
+		Table("Edges", []map[string]any{
+			{"from": "keep1", "to": "keep1b", "label": "L1", "keep": true},
+			{"from": "drop1", "to": "drop1b", "label": "L2", "keep": false},
+			{"from": "keep2", "to": "keep2b", "label": "L3", "keep": true},
+			{"from": "keep3", "to": "keep3b", "label": "L4", "keep": true},
+		},
+			WithKeys("from", "to", "label", "keep"),
+			WithTransformations(
+				NewFilterOp(func(r Record) bool {
+					kept, _ := r["keep"].(bool)
+					return kept
+				}),
+				NewLimitOp(2),
+			),
+		).
+		Build()
+}
+
+// TestDOTRenderer_AppliesTableTransformations is a regression test for T-1091:
+// the DOT renderer must apply per-content transformations (filter/limit) before
+// extracting graph data from a table, so filtered/limited rows do not appear.
+func TestDOTRenderer_AppliesTableTransformations(t *testing.T) {
+	ctx := context.Background()
+	renderer := &dotRenderer{}
+
+	got, err := renderer.Render(ctx, graphTransformationDoc())
+	if err != nil {
+		t.Fatalf("DOTRenderer.Render() error = %v", err)
+	}
+	gotStr := string(got)
+
+	wantPresent := []string{"keep1 -> keep1b", "keep2 -> keep2b"}
+	for _, want := range wantPresent {
+		if !strings.Contains(gotStr, want) {
+			t.Errorf("DOTRenderer.Render() missing expected edge %q\nGot:\n%s", want, gotStr)
+		}
+	}
+
+	wantAbsent := []string{"drop1", "keep3"}
+	for _, absent := range wantAbsent {
+		if strings.Contains(gotStr, absent) {
+			t.Errorf("DOTRenderer.Render() included transformed-out row %q\nGot:\n%s", absent, gotStr)
+		}
+	}
+}
+
+// TestMermaidRenderer_AppliesTableTransformations is a regression test for
+// T-1091: the Mermaid renderer must apply per-content transformations before
+// extracting graph data from a table.
+func TestMermaidRenderer_AppliesTableTransformations(t *testing.T) {
+	ctx := context.Background()
+	renderer := &mermaidRenderer{}
+
+	got, err := renderer.Render(ctx, graphTransformationDoc())
+	if err != nil {
+		t.Fatalf("MermaidRenderer.Render() error = %v", err)
+	}
+	gotStr := string(got)
+
+	wantPresent := []string{"keep1 -->|L1| keep1b", "keep2 -->|L3| keep2b"}
+	for _, want := range wantPresent {
+		if !strings.Contains(gotStr, want) {
+			t.Errorf("MermaidRenderer.Render() missing expected edge %q\nGot:\n%s", want, gotStr)
+		}
+	}
+
+	wantAbsent := []string{"drop1", "keep3"}
+	for _, absent := range wantAbsent {
+		if strings.Contains(gotStr, absent) {
+			t.Errorf("MermaidRenderer.Render() included transformed-out row %q\nGot:\n%s", absent, gotStr)
+		}
+	}
+}
+
+// TestDrawioRenderer_AppliesTableTransformations is a regression test for
+// T-1091: the Draw.io renderer must apply per-content transformations before
+// emitting table rows as CSV.
+func TestDrawioRenderer_AppliesTableTransformations(t *testing.T) {
+	ctx := context.Background()
+	renderer := &drawioRenderer{}
+
+	got, err := renderer.Render(ctx, graphTransformationDoc())
+	if err != nil {
+		t.Fatalf("DrawioRenderer.Render() error = %v", err)
+	}
+	gotStr := string(got)
+
+	wantPresent := []string{"keep1", "keep2"}
+	for _, want := range wantPresent {
+		if !strings.Contains(gotStr, want) {
+			t.Errorf("DrawioRenderer.Render() missing expected row %q\nGot:\n%s", want, gotStr)
+		}
+	}
+
+	wantAbsent := []string{"drop1", "keep3"}
+	for _, absent := range wantAbsent {
+		if strings.Contains(gotStr, absent) {
+			t.Errorf("DrawioRenderer.Render() included transformed-out row %q\nGot:\n%s", absent, gotStr)
+		}
+	}
+}
