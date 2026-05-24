@@ -261,24 +261,43 @@ func formatValue(val any) string {
 	return fmt.Sprint(val)
 }
 
-// convertToRecords converts various data types to records
+// copyRecord returns a shallow copy of the given map as a new Record. Copying
+// here ensures TableContent does not retain references to caller-owned maps,
+// which would otherwise allow post-build mutation of the caller's input to
+// change the stored records (violating immutability).
+func copyRecord[M ~map[string]any](m M) Record {
+	r := make(Record, len(m))
+	maps.Copy(r, m)
+	return r
+}
+
+// convertToRecords converts various data types to records.
+//
+// Each input record/map is copied into a freshly allocated Record so the
+// resulting TableContent is independent of the caller's input. Without this,
+// mutating the original data after building a table would change the table's
+// records and renders.
 func convertToRecords(data any) ([]Record, error) {
 	switch v := data.(type) {
 	case []Record:
-		return v, nil
+		records := make([]Record, len(v))
+		for i, m := range v {
+			records[i] = copyRecord(m)
+		}
+		return records, nil
 	case []map[string]any:
 		records := make([]Record, len(v))
 		for i, m := range v {
-			records[i] = Record(m)
+			records[i] = copyRecord(m)
 		}
 		return records, nil
 	case map[string]any:
-		return []Record{Record(v)}, nil
+		return []Record{copyRecord(v)}, nil
 	case []any:
 		records := make([]Record, 0, len(v))
 		for _, item := range v {
 			if m, ok := item.(map[string]any); ok {
-				records = append(records, Record(m))
+				records = append(records, copyRecord(m))
 			} else {
 				return nil, fmt.Errorf("unsupported item type in slice: %T", item)
 			}
