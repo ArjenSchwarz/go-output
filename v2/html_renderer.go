@@ -161,7 +161,7 @@ func (h *htmlRenderer) renderTableContentHTML(table *TableContent) ([]byte, erro
 	result.WriteString("  <table class=\"data-table\">\n")
 
 	// Get key order from schema
-	keyOrder := table.Schema().GetKeyOrder()
+	keyOrder := table.getSchema().GetKeyOrder()
 	if len(keyOrder) == 0 {
 		result.WriteString("  </table>\n</div>\n")
 		return []byte(result.String()), nil // No columns to render
@@ -184,7 +184,7 @@ func (h *htmlRenderer) renderTableContentHTML(table *TableContent) ([]byte, erro
 			var cellValue string
 			if val, exists := record[key]; exists {
 				// Apply field formatter if available
-				field := table.Schema().FindField(key)
+				field := table.getSchema().FindField(key)
 				cellValue = h.formatCellValue(val, field)
 			}
 			fmt.Fprintf(&result, "        <td>%s</td>\n", cellValue)

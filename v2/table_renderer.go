@@ -192,7 +192,7 @@ func (t *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 	}
 
 	// Get key order from schema
-	keyOrder := tableContent.Schema().GetKeyOrder()
+	keyOrder := tableContent.getSchema().GetKeyOrder()
 	if len(keyOrder) == 0 {
 		return tw // Return empty table
 	}
@@ -222,7 +222,7 @@ func (t *tableRenderer) renderTable(tableContent *TableContent) table.Writer {
 		for i, key := range keyOrder {
 			if val, exists := record[key]; exists {
 				// Apply field formatter if available and format cell value
-				field := tableContent.Schema().FindField(key)
+				field := tableContent.getSchema().FindField(key)
 				row[i] = t.formatCellValue(val, field)
 			} else {
 				row[i] = ""

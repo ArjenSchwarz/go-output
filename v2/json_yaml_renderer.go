@@ -203,7 +203,7 @@ func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, erro
 	}
 
 	// Convert records to ordered map preserving key order
-	keyOrder := table.Schema().GetKeyOrder()
+	keyOrder := table.getSchema().GetKeyOrder()
 	var tableData []map[string]any
 
 	for _, record := range table.Records() {
@@ -214,7 +214,7 @@ func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, erro
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
 				// Find field for this key to apply formatter
-				field := table.Schema().FindField(key)
+				field := table.getSchema().FindField(key)
 				// Process field value and handle CollapsibleValue
 				processedVal := j.formatValueForJSON(val, field)
 				orderedRecord[key] = processedVal
@@ -227,7 +227,7 @@ func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, erro
 	result[keyData] = tableData
 	result["schema"] = map[string]any{
 		keyKeys:   keyOrder,
-		keyFields: j.convertFieldsToJSON(table.Schema()),
+		keyFields: j.convertFieldsToJSON(table.getSchema()),
 	}
 
 	return json.MarshalIndent(result, "", "  ")
@@ -334,10 +334,10 @@ func (j *jsonRenderer) renderTableContentJSONStream(table *TableContent, w io.Wr
 	}
 
 	// Add schema information
-	keyOrder := table.Schema().GetKeyOrder()
+	keyOrder := table.getSchema().GetKeyOrder()
 	result["schema"] = map[string]any{
 		keyKeys:   keyOrder,
-		keyFields: j.convertFieldsToJSON(table.Schema()),
+		keyFields: j.convertFieldsToJSON(table.getSchema()),
 	}
 
 	// For streaming, we need to handle data differently
@@ -379,7 +379,7 @@ func (j *jsonRenderer) renderTableContentJSONStream(table *TableContent, w io.Wr
 	if _, err := w.Write([]byte("    \"fields\": [\n")); err != nil {
 		return fmt.Errorf("failed to write fields header: %w", err)
 	}
-	fields := j.convertFieldsToJSON(table.Schema())
+	fields := j.convertFieldsToJSON(table.getSchema())
 	for i, field := range fields {
 		if i > 0 {
 			if _, err := w.Write([]byte(",\n")); err != nil {
@@ -421,7 +421,7 @@ func (j *jsonRenderer) renderTableContentJSONStream(table *TableContent, w io.Wr
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
 				// Find field for this key to apply formatter
-				field := table.Schema().FindField(key)
+				field := table.getSchema().FindField(key)
 				// Process field value and handle CollapsibleValue
 				processedVal := j.formatValueForJSON(val, field)
 				orderedRecord[key] = processedVal
@@ -696,7 +696,7 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 	schemaNode := &yaml.Node{Kind: yaml.MappingNode}
 
 	// Add keys array
-	keyOrder := table.Schema().GetKeyOrder()
+	keyOrder := table.getSchema().GetKeyOrder()
 	keysArrayNode := &yaml.Node{Kind: yaml.SequenceNode}
 	for _, key := range keyOrder {
 		keysArrayNode.Content = append(keysArrayNode.Content,
@@ -711,7 +711,7 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 
 	// Add fields array
 	fieldsArrayNode := &yaml.Node{Kind: yaml.SequenceNode}
-	for _, field := range table.Schema().Fields {
+	for _, field := range table.getSchema().Fields {
 		fieldNode := &yaml.Node{Kind: yaml.MappingNode}
 		fieldNode.Content = append(fieldNode.Content,
 			&yaml.Node{Kind: yaml.ScalarNode, Value: keyName},
@@ -743,7 +743,7 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
 				// Find field for this key to apply formatter
-				field := table.Schema().FindField(key)
+				field := table.getSchema().FindField(key)
 				// Process field value and handle CollapsibleValue
 				processedVal := y.formatValueForYAML(val, field)
 				recordNode.Content = append(recordNode.Content,
@@ -896,9 +896,9 @@ func (y *yamlRenderer) renderTableContentYAMLStream(table *TableContent, w io.Wr
 	}
 
 	// Add schema information
-	keyOrder := table.Schema().GetKeyOrder()
-	fields := make([]map[string]any, 0, len(table.Schema().Fields))
-	for _, field := range table.Schema().Fields {
+	keyOrder := table.getSchema().GetKeyOrder()
+	fields := make([]map[string]any, 0, len(table.getSchema().Fields))
+	for _, field := range table.getSchema().Fields {
 		fieldMap := map[string]any{
 			keyName:   field.Name,
 			keyType:   field.Type,
@@ -921,7 +921,7 @@ func (y *yamlRenderer) renderTableContentYAMLStream(table *TableContent, w io.Wr
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
 				// Find field for this key to apply formatter
-				field := table.Schema().FindField(key)
+				field := table.getSchema().FindField(key)
 				// Process field value and handle CollapsibleValue
 				processedVal := y.formatValueForYAML(val, field)
 				orderedRecord[key] = processedVal

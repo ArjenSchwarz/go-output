@@ -91,12 +91,12 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 			// CSV format doesn't support comments in a standard way
 
 			// Write headers for first table or when schema differs from previous table
-			writeHeaders := !keyOrdersEqual(lastKeyOrder, content.Schema().GetKeyOrder())
+			writeHeaders := !keyOrdersEqual(lastKeyOrder, content.getSchema().GetKeyOrder())
 			if err := c.renderTableContentCSV(content, csvWriter, writeHeaders); err != nil {
 				return fmt.Errorf("failed to render table %s: %w", content.ID(), err)
 			}
 
-			lastKeyOrder = content.Schema().GetKeyOrder()
+			lastKeyOrder = content.getSchema().GetKeyOrder()
 
 		case *SectionContent:
 			// Extract and render tables from sections
@@ -116,11 +116,11 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 						}
 					}
 
-					writeHeaders := !keyOrdersEqual(lastKeyOrder, nestedTable.Schema().GetKeyOrder())
+					writeHeaders := !keyOrdersEqual(lastKeyOrder, nestedTable.getSchema().GetKeyOrder())
 					if err := c.renderTableContentCSV(nestedTable, csvWriter, writeHeaders); err != nil {
 						return fmt.Errorf("failed to render table %s: %w", nestedTable.ID(), err)
 					}
-					lastKeyOrder = nestedTable.Schema().GetKeyOrder()
+					lastKeyOrder = nestedTable.getSchema().GetKeyOrder()
 				} else if nestedSection, ok := nestedTransformed.(*SectionContent); ok {
 					// Recursively handle nested sections
 					for _, deepContent := range nestedSection.Contents() {
@@ -134,11 +134,11 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 									return fmt.Errorf("failed to write separator row: %w", err)
 								}
 							}
-							writeHeaders := !keyOrdersEqual(lastKeyOrder, deepTable.Schema().GetKeyOrder())
+							writeHeaders := !keyOrdersEqual(lastKeyOrder, deepTable.getSchema().GetKeyOrder())
 							if err := c.renderTableContentCSV(deepTable, csvWriter, writeHeaders); err != nil {
 								return fmt.Errorf("failed to render table %s: %w", deepTable.ID(), err)
 							}
-							lastKeyOrder = deepTable.Schema().GetKeyOrder()
+							lastKeyOrder = deepTable.getSchema().GetKeyOrder()
 						}
 					}
 				}
@@ -184,7 +184,7 @@ func (c *csvRenderer) renderTableContentCSV(table *TableContent, csvWriter *csv.
 		return fmt.Errorf("failed to process collapsible fields: %w", err)
 	}
 
-	keyOrder := enhancedTable.Schema().GetKeyOrder()
+	keyOrder := enhancedTable.getSchema().GetKeyOrder()
 	if len(keyOrder) == 0 {
 		return nil // No columns to write
 	}
@@ -265,8 +265,8 @@ func (c *csvRenderer) formatValueForCSV(val any) string {
 // handleCollapsibleFields analyzes table schema and creates additional "_details" columns
 // for fields that produce CollapsibleValue content (Requirement 8.1)
 func (c *csvRenderer) handleCollapsibleFields(table *TableContent) (*TableContent, error) {
-	originalFields := table.Schema().Fields
-	originalKeyOrder := table.Schema().GetKeyOrder()
+	originalFields := table.getSchema().Fields
+	originalKeyOrder := table.getSchema().GetKeyOrder()
 	originalRecords := table.Records()
 
 	// Analyze which fields contain CollapsibleValue content
@@ -312,7 +312,7 @@ func (c *csvRenderer) handleCollapsibleFields(table *TableContent) (*TableConten
 		// Process each original field
 		for _, key := range originalKeyOrder {
 			val := record[key]
-			field := table.Schema().FindField(key)
+			field := table.getSchema().FindField(key)
 
 			// Apply field formatter if present
 			if field != nil && field.Formatter != nil {
@@ -362,7 +362,7 @@ func (c *csvRenderer) detectCollapsibleFields(table *TableContent) map[string]bo
 	}
 
 	// Check each field by applying its formatter to sample data
-	for _, field := range table.Schema().Fields {
+	for _, field := range table.getSchema().Fields {
 		if field.Formatter == nil {
 			continue
 		}

@@ -1,6 +1,9 @@
 package output
 
-import "sort"
+import (
+	"slices"
+	"sort"
+)
 
 // tableConfig holds configuration for table creation
 type tableConfig struct {
@@ -14,21 +17,23 @@ type tableConfig struct {
 // TableOption configures table creation
 type TableOption func(*tableConfig)
 
-// WithSchema explicitly sets the table schema with key order
+// WithSchema explicitly sets the table schema with key order.
+// The fields are cloned so later caller mutations cannot change the schema.
 func WithSchema(fields ...Field) TableOption {
 	return func(tc *tableConfig) {
 		tc.schema = &Schema{
-			Fields:   fields,
+			Fields:   slices.Clone(fields),
 			keyOrder: extractKeyOrder(fields),
 		}
 		tc.autoSchema = false
 	}
 }
 
-// WithKeys sets explicit key ordering (for v1 compatibility)
+// WithKeys sets explicit key ordering (for v1 compatibility).
+// The keys are cloned so later caller mutations cannot change the key order.
 func WithKeys(keys ...string) TableOption {
 	return func(tc *tableConfig) {
-		tc.keys = keys
+		tc.keys = slices.Clone(keys)
 		tc.autoSchema = false
 	}
 }
