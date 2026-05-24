@@ -23,7 +23,7 @@ type Product struct {
 }
 
 func main() {
-	fmt.Println("=== Pipeline API vs Per-Content Transformations ===\n")
+	fmt.Println("=== Pipeline API vs Per-Content Transformations ===")
 
 	// Sample data
 	users := []output.Record{
@@ -58,8 +58,8 @@ func main() {
 
 // oldWay demonstrates the deprecated Pipeline API (REMOVED in v2.4.0)
 func oldWay(users []output.Record) {
-	fmt.Println("The Pipeline API was removed in v2.4.0. Here's what the old code looked like:\n")
-	fmt.Println(`
+	fmt.Println("The Pipeline API was removed in v2.4.0. Here's what the old code looked like:")
+	fmt.Printf("%s", `
 	// Step 1: Build document with table
 	builder := output.New()
 	builder.Table("users", users, output.WithKeys("name", "email", "age"))
@@ -91,7 +91,7 @@ func oldWay(users []output.Record) {
 	fmt.Println("2. Required intermediate 'transformed' document")
 	fmt.Println("3. Could only transform entire documents, not individual tables")
 	fmt.Println("4. Pipeline state management was error-prone")
-	fmt.Println("\nSee the NEW WAY below for the improved approach...\n")
+	fmt.Println("\nSee the NEW WAY below for the improved approach...")
 }
 
 // newWay demonstrates per-content transformations
