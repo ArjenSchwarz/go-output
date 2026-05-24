@@ -438,6 +438,64 @@ func TestProgress_V1Compatibility_SetContext(t *testing.T) {
 	progress.Close()
 }
 
+// TestProgress_SetContext_Replacement_DoesNotFail is a regression test for T-1254.
+//
+// SetContext cancels the previously derived context when a new context is
+// installed. The watcher goroutine for the old context must NOT mark the
+// progress as failed when it is released by that replacement cancellation.
+//
+// Bug: the old watcher read p.ctx (the shared struct field) instead of the
+// context it was created for, so after replacement it saw the new context's
+// error (or none) and set p.failed = true, failing a still-healthy progress.
+//
+// Expected: replacing a progress context leaves the progress active and
+// unfailed; only the live context's cancellation should fail it.
+func TestProgress_SetContext_Replacement_DoesNotFail(t *testing.T) {
+	var buf bytes.Buffer
+	progress := NewProgress(WithProgressWriter(&buf))
+
+	tp, ok := progress.(*textProgress)
+	if !ok {
+		t.Fatalf("NewProgress() returned %T, expected *textProgress", progress)
+	}
+
+	// Install the first context.
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	defer cancel1()
+	progress.SetContext(ctx1)
+
+	// Replace it with a fresh, live context. This cancels the first derived
+	// context internally and releases the first watcher goroutine.
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	defer cancel2()
+	progress.SetContext(ctx2)
+
+	// Give the released first watcher time to (incorrectly) run and fail us.
+	time.Sleep(50 * time.Millisecond)
+
+	// The progress must still be active and unfailed: replacing the context
+	// is not a failure condition.
+	if !progress.IsActive() {
+		t.Error("progress should remain active after the context is replaced")
+	}
+
+	tp.mu.RLock()
+	failed, err := tp.failed, tp.err
+	tp.mu.RUnlock()
+	if failed {
+		t.Errorf("progress should not be marked failed after context replacement, err=%v", err)
+	}
+
+	// The live context must still be able to fail the progress.
+	cancel2()
+	time.Sleep(50 * time.Millisecond)
+	if progress.IsActive() {
+		t.Error("progress should fail when the live (current) context is cancelled")
+	}
+
+	progress.Close()
+}
+
 func TestProgress_V1Compatibility_ProgressOptions(t *testing.T) {
 	var buf bytes.Buffer
 	progress := NewProgress(
