@@ -625,10 +625,14 @@ func (o *GroupByOp) Validate() error {
 		return NewValidationError("aggregates", o.aggregates, "groupBy operation requires at least one aggregate function")
 	}
 
-	// Validate aggregate function names
-	for aggName := range o.aggregates {
+	// Validate aggregate function names and functions
+	for aggName, aggFunc := range o.aggregates {
 		if aggName == "" {
 			return NewValidationError("aggregate_name", aggName, "aggregate function name cannot be empty")
+		}
+		if aggFunc == nil {
+			return NewValidationError("aggregate_function", aggName,
+				fmt.Sprintf("aggregate function for '%s' is required and cannot be nil", aggName))
 		}
 	}
 
