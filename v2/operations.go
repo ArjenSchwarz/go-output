@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -510,20 +511,25 @@ func (o *GroupByOp) Apply(ctx context.Context, content Content) (Content, error)
 	return cloned, nil
 }
 
-// createGroupKey creates a string key from groupBy column values
+// createGroupKey creates a collision-safe string key from groupBy column values.
+//
+// Each value is encoded with an explicit byte length prefix ("<len>:<value>")
+// so the boundary between values is unambiguous. This avoids collisions that a
+// fixed delimiter (e.g. "||") would cause when a value itself contains the
+// delimiter: distinct tuples like {a:"x||y", b:"z"} and {a:"x", b:"y||z"} now
+// produce different keys. A missing value uses a distinct "nil:" marker so it
+// cannot collide with the literal string "<nil>".
 func (o *GroupByOp) createGroupKey(record Record) string {
-	key := ""
-	for i, column := range o.groupBy {
-		if i > 0 {
-			key += "||" // Separator to avoid collisions
-		}
+	var key strings.Builder
+	for _, column := range o.groupBy {
 		if val, exists := record[column]; exists {
-			key += fmt.Sprintf("%v", val)
+			s := fmt.Sprintf("%v", val)
+			fmt.Fprintf(&key, "%d:%s", len(s), s)
 		} else {
-			key += "<nil>"
+			key.WriteString("nil:")
 		}
 	}
-	return key
+	return key.String()
 }
 
 // inferFieldFromAggregateName tries to infer field name from aggregate name

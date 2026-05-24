@@ -1,6 +1,10 @@
 ## Unreleased
 
 ### Fixed
+- **GroupBy Composite Key Collision** - Fixed `GroupByOp.createGroupKey` merging distinct groups when grouped values contain the `||` separator (e.g. `{a:"x||y", b:"z"}` and `{a:"x", b:"y||z"}` both produced key `x||y||z`)
+  - Replaced fixed-delimiter concatenation with a collision-safe length-prefixed encoding (`<len>:<value>` per column)
+  - Missing values now use a distinct `nil:` marker so they no longer collide with the literal string `"<nil>"`
+  - Added regression test `TestGroupByCompositeKeyCollision`
 - **Pretty Progress Signal Context Safety** - Fixed startup panic in `NewPrettyProgress` when `handleSignals` accessed `p.ctx.Done()` before `SetContext` initialized the context
   - Initialize a default cancellable background context before starting signal handling
   - Added nil-safe context channel handling and closed-signal channel exit in `handleSignals`

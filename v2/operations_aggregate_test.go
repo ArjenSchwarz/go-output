@@ -566,3 +566,88 @@ func TestBuiltInAggregateFunctions(t *testing.T) {
 		}
 	})
 }
+
+// TestGroupByCompositeKeyCollision is a regression test for T-1100.
+//
+// The bug: createGroupKey joined grouped column values with the literal
+// separator "||". When a value itself contains "||", distinct value tuples
+// can serialize to the same key and get incorrectly merged into one group.
+//
+// Example collision for groupBy [a, b]:
+//   - record 1: {a: "x||y", b: "z"}  -> "x||y||z"
+//   - record 2: {a: "x", b: "y||z"}  -> "x||y||z"
+//
+// Expected: two distinct groups. Actual (before fix): one merged group.
+func TestGroupByCompositeKeyCollision(t *testing.T) {
+	t.Run("does not merge distinct values that contain the separator", func(t *testing.T) {
+		groupByOp := &GroupByOp{
+			groupBy: []string{"a", "b"},
+			aggregates: map[string]AggregateFunc{
+				"count": CountAggregate(),
+			},
+		}
+
+		doc := New().
+			Table("test", []Record{
+				{"a": "x||y", "b": "z"},
+				{"a": "x", "b": "y||z"},
+			}).
+			Build()
+
+		tableContent := doc.GetContents()[0].(*TableContent)
+		result, err := groupByOp.Apply(context.Background(), tableContent)
+		if err != nil {
+			t.Fatalf("Apply() failed: %v", err)
+		}
+
+		resultTable := result.(*TableContent)
+		if len(resultTable.records) != 2 {
+			t.Fatalf("expected 2 distinct groups, got %d (distinct composite keys were merged)", len(resultTable.records))
+		}
+
+		// Verify each original tuple survives as its own group with count 1.
+		seen := make(map[string]int)
+		for _, record := range resultTable.records {
+			a := record["a"].(string)
+			b := record["b"].(string)
+			count := record["count"].(int)
+			seen[a+"|sep|"+b] = count
+		}
+
+		if seen["x||y|sep|z"] != 1 {
+			t.Errorf("expected group {a:x||y, b:z} with count 1, got %d", seen["x||y|sep|z"])
+		}
+		if seen["x|sep|y||z"] != 1 {
+			t.Errorf("expected group {a:x, b:y||z} with count 1, got %d", seen["x|sep|y||z"])
+		}
+	})
+
+	t.Run("distinguishes nil from the literal nil string", func(t *testing.T) {
+		// A missing value previously serialized to "<nil>", which collides
+		// with a record whose value is literally the string "<nil>".
+		groupByOp := &GroupByOp{
+			groupBy: []string{"a"},
+			aggregates: map[string]AggregateFunc{
+				"count": CountAggregate(),
+			},
+		}
+
+		doc := New().
+			Table("test", []Record{
+				{"a": "<nil>"}, // literal string
+				{"b": "other"}, // "a" is missing -> nil
+			}).
+			Build()
+
+		tableContent := doc.GetContents()[0].(*TableContent)
+		result, err := groupByOp.Apply(context.Background(), tableContent)
+		if err != nil {
+			t.Fatalf("Apply() failed: %v", err)
+		}
+
+		resultTable := result.(*TableContent)
+		if len(resultTable.records) != 2 {
+			t.Fatalf("expected 2 distinct groups (literal \"<nil>\" vs missing), got %d", len(resultTable.records))
+		}
+	})
+}
