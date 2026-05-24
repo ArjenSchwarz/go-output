@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 )
 
@@ -20,12 +21,36 @@ type Edge struct {
 	Label string
 }
 
+// cloneEdges returns a copy of the edges slice. Edge is a value struct with no
+// reference-typed fields, so a shallow element copy is sufficient.
+func cloneEdges(edges []Edge) []Edge {
+	if edges == nil {
+		return nil
+	}
+	return slices.Clone(edges)
+}
+
+// cloneRecords returns a deep copy of a records slice, copying both the slice
+// and each inner Record map so callers cannot mutate stored content.
+func cloneRecords(records []Record) []Record {
+	if records == nil {
+		return nil
+	}
+	out := make([]Record, len(records))
+	for i, record := range records {
+		newRecord := make(Record, len(record))
+		maps.Copy(newRecord, record)
+		out[i] = newRecord
+	}
+	return out
+}
+
 // NewGraphContent creates a new graph content
 func NewGraphContent(title string, edges []Edge) *GraphContent {
 	return &GraphContent{
 		id:    GenerateID(),
 		title: title,
-		edges: edges,
+		edges: cloneEdges(edges),
 	}
 }
 
@@ -112,9 +137,10 @@ func (g *GraphContent) AppendBinary(b []byte) ([]byte, error) {
 	return g.AppendText(b)
 }
 
-// GetEdges returns the graph edges
+// GetEdges returns a copy of the graph edges so callers cannot mutate
+// the content's internal state.
 func (g *GraphContent) GetEdges() []Edge {
-	return g.edges
+	return cloneEdges(g.edges)
 }
 
 // GetTitle returns the graph title
@@ -139,14 +165,10 @@ func (g *GraphContent) GetNodes() []string {
 
 // Clone creates a deep copy of the GraphContent
 func (g *GraphContent) Clone() Content {
-	// Deep copy edges
-	newEdges := make([]Edge, len(g.edges))
-	copy(newEdges, g.edges)
-
 	return &GraphContent{
 		id:    g.id,
 		title: g.title,
-		edges: newEdges,
+		edges: cloneEdges(g.edges),
 	}
 }
 
@@ -361,7 +383,7 @@ func NewDrawIOContent(title string, records []Record, header DrawIOHeader) *Draw
 		id:      GenerateID(),
 		title:   title,
 		header:  header,
-		records: records,
+		records: cloneRecords(records),
 	}
 }
 
@@ -371,7 +393,7 @@ func NewDrawIOContentFromTable(table *TableContent, header DrawIOHeader) *DrawIO
 		id:      GenerateID(),
 		title:   table.title,
 		header:  header,
-		records: table.records,
+		records: cloneRecords(table.records),
 	}
 }
 
@@ -395,9 +417,10 @@ func (d *DrawIOContent) GetHeader() DrawIOHeader {
 	return d.header
 }
 
-// GetRecords returns the data records
+// GetRecords returns a deep copy of the data records so callers cannot
+// mutate the content's internal state.
 func (d *DrawIOContent) GetRecords() []Record {
-	return d.records
+	return cloneRecords(d.records)
 }
 
 // AppendText implements encoding.TextAppender
@@ -429,17 +452,8 @@ func (d *DrawIOContent) AppendBinary(b []byte) ([]byte, error) {
 
 // Clone creates a deep copy of the DrawIOContent
 func (d *DrawIOContent) Clone() Content {
-	// Deep copy records
-	newRecords := make([]Record, len(d.records))
-	for i, record := range d.records {
-		newRecord := make(Record)
-		maps.Copy(newRecord, record)
-		newRecords[i] = newRecord
-	}
-
 	// Deep copy connections
-	newConnections := make([]DrawIOConnection, len(d.header.Connections))
-	copy(newConnections, d.header.Connections)
+	newConnections := slices.Clone(d.header.Connections)
 
 	newHeader := d.header
 	newHeader.Connections = newConnections
@@ -448,7 +462,7 @@ func (d *DrawIOContent) Clone() Content {
 		id:      d.id,
 		title:   d.title,
 		header:  newHeader,
-		records: newRecords,
+		records: cloneRecords(d.records),
 	}
 }
 
