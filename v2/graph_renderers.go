@@ -61,8 +61,15 @@ func (d *dotRenderer) Render(ctx context.Context, doc *Document) ([]byte, error)
 		default:
 		}
 
+		// Apply per-content transformations (filter/sort/limit) before
+		// extracting graph data, so DOT output matches the other formats (T-1091).
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
 		// Handle different content types
-		switch c := content.(type) {
+		switch c := transformed.(type) {
 		case *GraphContent:
 			d.renderGraphContent(&buf, c)
 		case *TableContent:
@@ -170,8 +177,19 @@ func (m *mermaidRenderer) Format() string {
 func (m *mermaidRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
 	var buf bytes.Buffer
 
-	// Process each content item
-	contents := doc.GetContents()
+	// Process each content item. Apply per-content transformations
+	// (filter/sort/limit) up front so both the detection pass and the render
+	// pass operate on the transformed content, matching the other formats (T-1091).
+	rawContents := doc.GetContents()
+	contents := make([]Content, len(rawContents))
+	for i, content := range rawContents {
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+		contents[i] = transformed
+	}
+
 	hasFlowchart := false
 	specializedCharts := []Content{}
 	hasGraphContent := false
@@ -473,8 +491,20 @@ func (d *drawioRenderer) Format() string {
 func (d *drawioRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
 	var buf bytes.Buffer
 
-	// Process each content item
-	contents := doc.GetContents()
+	// Process each content item. Apply per-content transformations
+	// (filter/sort/limit) up front so both the compatibility-detection pass and
+	// the render pass operate on the transformed content, matching the other
+	// formats (T-1091).
+	rawContents := doc.GetContents()
+	contents := make([]Content, len(rawContents))
+	for i, content := range rawContents {
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+		contents[i] = transformed
+	}
+
 	hasDrawIOContent := false
 
 	// Check if we have any Draw.io-compatible content
