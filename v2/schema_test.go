@@ -273,3 +273,65 @@ func TestFormatterFunction(t *testing.T) {
 		t.Errorf("Formatter result = %v, want 123", result)
 	}
 }
+
+// TestSchemaKeyOrderDefensiveCopy verifies that schema/key-order APIs do not leak
+// mutable caller-owned slices, which would break documented immutability of tables
+// (T-1086). Each subtest mutates a caller-owned slice (input or returned) and asserts
+// the schema's internal key order is unaffected.
+func TestSchemaKeyOrderDefensiveCopy(t *testing.T) {
+	t.Run("NewSchemaFromKeys does not retain caller slice", func(t *testing.T) {
+		keys := []string{"a", "b", "c"}
+		schema := NewSchemaFromKeys(keys)
+
+		// Mutate the caller's slice after passing it in.
+		keys[0] = "MUTATED"
+
+		got := schema.GetKeyOrder()
+		want := []string{"a", "b", "c"}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("after mutating input slice, GetKeyOrder() = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("SetKeyOrder does not retain caller slice", func(t *testing.T) {
+		schema := NewSchemaFromKeys([]string{"x"})
+		keys := []string{"a", "b", "c"}
+		schema.SetKeyOrder(keys)
+
+		// Mutate the caller's slice after setting it.
+		keys[1] = "MUTATED"
+
+		got := schema.GetKeyOrder()
+		want := []string{"a", "b", "c"}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("after mutating input slice, GetKeyOrder() = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("GetKeyOrder returns a copy", func(t *testing.T) {
+		schema := NewSchemaFromKeys([]string{"a", "b", "c"})
+
+		// Mutate the returned slice.
+		returned := schema.GetKeyOrder()
+		returned[0] = "MUTATED"
+
+		got := schema.GetKeyOrder()
+		want := []string{"a", "b", "c"}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("after mutating returned slice, GetKeyOrder() = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("NewSchemaFromFields does not retain caller fields slice", func(t *testing.T) {
+		fields := []Field{{Name: "a"}, {Name: "b"}, {Name: "c"}}
+		schema := NewSchemaFromFields(fields)
+
+		// Mutate the caller's slice after passing it in.
+		fields[0] = Field{Name: "MUTATED"}
+
+		if schema.Fields[0].Name != "a" {
+			t.Errorf("after mutating input fields, schema.Fields[0].Name = %q, want %q",
+				schema.Fields[0].Name, "a")
+		}
+	})
+}

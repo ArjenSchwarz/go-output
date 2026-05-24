@@ -274,3 +274,59 @@ func TestOptionsPreserveKeyOrder(t *testing.T) {
 		t.Errorf("WithAutoSchemaOrdered keys = %v, want %v", tc3.keys, orderedKeys)
 	}
 }
+
+// TestTableSchemaDefensiveCopy verifies that table options and built tables do not
+// leak mutable caller-owned slices into the resulting schema, preserving documented
+// table immutability after creation (T-1086).
+func TestTableSchemaDefensiveCopy(t *testing.T) {
+	data := []Record{{"a": 1, "b": 2, "c": 3}}
+
+	t.Run("WithKeys does not retain caller slice", func(t *testing.T) {
+		keys := []string{"a", "b", "c"}
+		table, err := NewTableContent("test", data, WithKeys(keys...))
+		if err != nil {
+			t.Fatalf("NewTableContent() error = %v", err)
+		}
+
+		// Mutate the caller's backing array after building the table.
+		keys[0] = "MUTATED"
+
+		got := table.Schema().GetKeyOrder()
+		want := []string{"a", "b", "c"}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("after mutating WithKeys slice, key order = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("WithSchema does not retain caller fields", func(t *testing.T) {
+		fields := []Field{{Name: "a"}, {Name: "b"}, {Name: "c"}}
+		table, err := NewTableContent("test", data, WithSchema(fields...))
+		if err != nil {
+			t.Fatalf("NewTableContent() error = %v", err)
+		}
+
+		// Mutate the caller's backing array after building the table.
+		fields[0] = Field{Name: "MUTATED"}
+
+		if table.Schema().Fields[0].Name != "a" {
+			t.Errorf("after mutating WithSchema fields, schema.Fields[0].Name = %q, want %q",
+				table.Schema().Fields[0].Name, "a")
+		}
+	})
+
+	t.Run("post-build Schema mutation does not affect table", func(t *testing.T) {
+		table, err := NewTableContent("test", data, WithKeys("a", "b", "c"))
+		if err != nil {
+			t.Fatalf("NewTableContent() error = %v", err)
+		}
+
+		// A caller obtains the schema and attempts to reorder it after Build().
+		table.Schema().SetKeyOrder([]string{"c", "b", "a"})
+
+		got := table.Schema().GetKeyOrder()
+		want := []string{"a", "b", "c"}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("after post-build SetKeyOrder, key order = %v, want %v", got, want)
+		}
+	})
+}
