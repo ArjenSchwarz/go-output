@@ -58,7 +58,14 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 
 	contents := doc.GetContents()
 	csvWriter := csv.NewWriter(w)
-	defer csvWriter.Flush()
+
+	// flushCSV flushes any buffered rows and reports a write error surfaced by
+	// the underlying io.Writer. csv.Writer.Write buffers data, so an underlying
+	// failure may only be reported here via csvWriter.Error() (T-1186).
+	flushCSV := func() error {
+		csvWriter.Flush()
+		return csvWriter.Error()
+	}
 
 	// Track the last written header schema to detect schema changes
 	var lastKeyOrder []string
@@ -67,6 +74,11 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 		// Check for context cancellation
 		select {
 		case <-ctx.Done():
+			// Flush already-buffered rows; prefer a write error over the
+			// context error so a failed destination is not masked.
+			if flushErr := flushCSV(); flushErr != nil {
+				return flushErr
+			}
 			return ctx.Err()
 		default:
 		}
@@ -74,6 +86,11 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 		// Apply per-content transformations before rendering
 		transformed, err := applyContentTransformations(ctx, content)
 		if err != nil {
+			// Flush already-buffered rows; prefer a write error over the
+			// transformation error so a failed destination is not masked.
+			if flushErr := flushCSV(); flushErr != nil {
+				return flushErr
+			}
 			return err
 		}
 
@@ -105,6 +122,9 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 				// Apply transformations to nested content
 				nestedTransformed, err := applyContentTransformations(ctx, nestedContent)
 				if err != nil {
+					if flushErr := flushCSV(); flushErr != nil {
+						return flushErr
+					}
 					return err
 				}
 
@@ -126,6 +146,9 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 					for _, deepContent := range nestedSection.Contents() {
 						deepTransformed, err := applyContentTransformations(ctx, deepContent)
 						if err != nil {
+							if flushErr := flushCSV(); flushErr != nil {
+								return flushErr
+							}
 							return err
 						}
 						if deepTable, ok := deepTransformed.(*TableContent); ok {
@@ -173,7 +196,9 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 		}
 	}
 
-	return nil
+	// Flush buffered rows and report any error from the underlying writer
+	// that was deferred until flush time (T-1186).
+	return flushCSV()
 }
 
 // renderTableContentCSV renders table content to CSV with key order preservation
