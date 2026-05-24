@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Per-Content Transformations Examples ===\n")
+	fmt.Print("=== Per-Content Transformations Examples ===\n\n")
 
 	// Example 1: Basic filter + sort transformations
 	basicFilterAndSort()
@@ -68,7 +68,7 @@ func basicFilterAndSort() {
 		log.Printf("Error rendering: %v\n", err)
 	}
 
-	fmt.Println("\n")
+	fmt.Print("\n\n")
 }
 
 // Example 2: Multiple tables with different transformations
@@ -126,7 +126,7 @@ func multipleTables() {
 		log.Printf("Error rendering: %v\n", err)
 	}
 
-	fmt.Println("\n")
+	fmt.Print("\n\n")
 }
 
 // Example 3: Dynamic transformation construction
@@ -197,7 +197,7 @@ func dynamicTransformations() {
 		log.Printf("Error rendering: %v\n", err)
 	}
 
-	fmt.Println("\n")
+	fmt.Print("\n\n")
 }
 
 // Example 4: Error handling
@@ -231,7 +231,7 @@ func errorHandling() {
 	if err := out.Render(context.Background(), doc); err != nil {
 		fmt.Printf("✓ Expected error caught: %v\n\n", err)
 	} else {
-		fmt.Println("✗ Expected error but got none\n")
+		fmt.Print("✗ Expected error but got none\n\n")
 	}
 
 	// Example 4b: Invalid operation configuration (negative limit)
@@ -240,7 +240,7 @@ func errorHandling() {
 	if err := invalidOp.Validate(); err != nil {
 		fmt.Printf("✓ Validation error caught: %v\n\n", err)
 	} else {
-		fmt.Println("✗ Expected validation error but got none\n")
+		fmt.Print("✗ Expected validation error but got none\n\n")
 	}
 
 	// Example 4c: Successful rendering with proper error checking
