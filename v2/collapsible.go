@@ -58,7 +58,7 @@ func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption)
 		details:           details,
 		defaultExpanded:   false,
 		maxDetailLength:   500, // Default from requirements
-		truncateIndicator: "[...truncated]",
+		truncateIndicator: truncateIndicatorText,
 		formatHints:       make(map[string]map[string]any),
 		// Initialize performance optimization fields (Requirements 10.3, 10.5)
 		detailsProcessed: false,

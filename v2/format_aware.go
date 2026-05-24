@@ -16,32 +16,32 @@ func NewFormatDetector() *FormatDetector {
 
 // IsTextBasedFormat checks if a format supports text-based transformations
 func (fd *FormatDetector) IsTextBasedFormat(format string) bool {
-	textFormats := []string{"table", "markdown", "html", "csv", "yaml"}
+	textFormats := []string{FormatTable, FormatMarkdown, FormatHTML, FormatCSV, FormatYAML}
 	return slices.Contains(textFormats, format)
 }
 
 // IsStructuredFormat checks if a format is structured (like JSON, YAML)
 func (fd *FormatDetector) IsStructuredFormat(format string) bool {
-	structuredFormats := []string{"json", "yaml"}
+	structuredFormats := []string{FormatJSON, FormatYAML}
 	return slices.Contains(structuredFormats, format)
 }
 
 // IsTabularFormat checks if a format represents tabular data
 func (fd *FormatDetector) IsTabularFormat(format string) bool {
-	tabularFormats := []string{"table", "csv", "html", "markdown"}
+	tabularFormats := []string{FormatTable, FormatCSV, FormatHTML, FormatMarkdown}
 	return slices.Contains(tabularFormats, format)
 }
 
 // IsGraphFormat checks if a format is for graph/diagram output
 func (fd *FormatDetector) IsGraphFormat(format string) bool {
-	graphFormats := []string{"dot", "mermaid", "drawio"}
+	graphFormats := []string{FormatDOT, FormatMermaid, FormatDrawIO}
 	return slices.Contains(graphFormats, format)
 }
 
 // SupportsColors checks if a format supports ANSI color codes
 func (fd *FormatDetector) SupportsColors(format string) bool {
 	// Only terminal/console formats support ANSI colors
-	return format == "table"
+	return format == FormatTable
 }
 
 // SupportsEmoji checks if a format supports emoji characters
@@ -53,11 +53,11 @@ func (fd *FormatDetector) SupportsEmoji(format string) bool {
 // RequiresEscaping checks if a format requires special character escaping
 func (fd *FormatDetector) RequiresEscaping(format string) bool {
 	escapingFormats := map[string]bool{
-		"html":     true,
-		"markdown": true,
-		"csv":      true,
-		"json":     true,
-		"yaml":     true,
+		FormatHTML:     true,
+		FormatMarkdown: true,
+		FormatCSV:      true,
+		FormatJSON:     true,
+		FormatYAML:     true,
 	}
 	return escapingFormats[format]
 }
@@ -107,7 +107,7 @@ func (fat *FormatAwareTransformer) CanTransform(format string) bool {
 	switch fat.transformer.Name() {
 	case "emoji":
 		return fat.detector.SupportsEmoji(format)
-	case "color":
+	case transformerNameColor:
 		return fat.detector.SupportsColors(format)
 	case "sort":
 		return fat.detector.SupportsSorting(format)

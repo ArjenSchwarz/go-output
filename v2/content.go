@@ -31,13 +31,13 @@ const (
 func (ct ContentType) String() string {
 	switch ct {
 	case ContentTypeTable:
-		return "table"
+		return FormatTable
 	case ContentTypeText:
-		return "text"
+		return FormatText
 	case ContentTypeRaw:
-		return "raw"
+		return contentTypeNameRaw
 	case ContentTypeSection:
-		return "section"
+		return contentTypeNameSection
 	default:
 		return unknownValue
 	}
@@ -481,19 +481,19 @@ func (r *RawContent) AppendBinary(b []byte) ([]byte, error) {
 func isValidFormat(format string) bool {
 	// Define known valid formats
 	validFormats := map[string]bool{
-		"html":     true,
-		"css":      true,
-		"js":       true,
-		"json":     true,
-		"xml":      true,
-		"yaml":     true,
-		"markdown": true,
-		"text":     true,
-		"csv":      true,
-		"dot":      true,
-		"mermaid":  true,
-		"drawio":   true,
-		"svg":      true,
+		FormatHTML:     true,
+		"css":          true,
+		"js":           true,
+		FormatJSON:     true,
+		"xml":          true,
+		FormatYAML:     true,
+		FormatMarkdown: true,
+		FormatText:     true,
+		FormatCSV:      true,
+		FormatDOT:      true,
+		FormatMermaid:  true,
+		FormatDrawIO:   true,
+		"svg":          true,
 	}
 
 	return validFormats[format]

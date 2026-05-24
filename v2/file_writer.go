@@ -228,16 +228,16 @@ func (fw *FileWriter) validateFilename(filename string) error {
 // defaultExtensions returns the default format to extension mappings
 func defaultExtensions() map[string]string {
 	return map[string]string{
-		FormatJSON:     "json",
-		FormatYAML:     "yaml",
-		"yml":          "yml",
-		FormatCSV:      "csv",
-		FormatHTML:     "html",
+		FormatJSON:     FormatJSON,
+		FormatYAML:     FormatYAML,
+		extYML:         extYML,
+		FormatCSV:      FormatCSV,
+		FormatHTML:     FormatHTML,
 		FormatTable:    "txt",
 		FormatMarkdown: "md",
-		FormatDOT:      "dot",
+		FormatDOT:      FormatDOT,
 		FormatMermaid:  "mmd",
-		FormatDrawIO:   "csv", // Draw.io CSV format
+		FormatDrawIO:   FormatCSV, // Draw.io CSV format
 	}
 }
 

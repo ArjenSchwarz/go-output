@@ -75,18 +75,18 @@ func renderDocumentGeneric(
 // buildTextContentData creates a generic representation of text content
 func buildTextContentData(text *TextContent) map[string]any {
 	result := map[string]any{
-		"type":    FormatText,
-		"content": text.Text(),
+		keyType:    FormatText,
+		keyContent: text.Text(),
 	}
 
 	style := text.Style()
 	if style.Bold || style.Italic || style.Color != "" || style.Size > 0 || style.Header {
 		result["style"] = map[string]any{
-			"bold":   style.Bold,
-			"italic": style.Italic,
-			"color":  style.Color,
-			"size":   style.Size,
-			"header": style.Header,
+			keyBold:   style.Bold,
+			keyItalic: style.Italic,
+			keyColor:  style.Color,
+			keySize:   style.Size,
+			keyHeader: style.Header,
 		}
 	}
 
@@ -96,9 +96,9 @@ func buildTextContentData(text *TextContent) map[string]any {
 // buildRawContentData creates a generic representation of raw content
 func buildRawContentData(raw *RawContent) map[string]any {
 	return map[string]any{
-		"type":   "raw",
-		"format": raw.Format(),
-		"data":   string(raw.Data()),
+		keyType:   contentTypeNameRaw,
+		keyFormat: raw.Format(),
+		keyData:   string(raw.Data()),
 	}
 }
 
@@ -199,7 +199,7 @@ func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, erro
 	result := make(map[string]any)
 
 	if table.Title() != "" {
-		result["title"] = table.Title()
+		result[keyTitle] = table.Title()
 	}
 
 	// Convert records to ordered map preserving key order
@@ -224,10 +224,10 @@ func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, erro
 		tableData = append(tableData, orderedRecord)
 	}
 
-	result["data"] = tableData
+	result[keyData] = tableData
 	result["schema"] = map[string]any{
-		"keys":   keyOrder,
-		"fields": j.convertFieldsToJSON(table.Schema()),
+		keyKeys:   keyOrder,
+		keyFields: j.convertFieldsToJSON(table.Schema()),
 	}
 
 	return json.MarshalIndent(result, "", "  ")
@@ -241,10 +241,10 @@ func (j *jsonRenderer) formatValueForJSON(val any, field *Field) any {
 	// Check if result is CollapsibleValue (Requirement 4.1)
 	if cv, ok := processed.(CollapsibleValue); ok {
 		result := map[string]any{
-			"type":     "collapsible",   // Requirement 4.1: type indication
-			"summary":  cv.Summary(),    // Requirement 4.2: include summary
-			"details":  cv.Details(),    // Requirement 4.2: include details
-			"expanded": cv.IsExpanded(), // Requirement 4.2: include expanded
+			keyType:     "collapsible",   // Requirement 4.1: type indication
+			keySummary:  cv.Summary(),    // Requirement 4.2: include summary
+			keyDetails:  cv.Details(),    // Requirement 4.2: include details
+			keyExpanded: cv.IsExpanded(), // Requirement 4.2: include expanded
 		}
 
 		// Add format-specific hints (Requirement 4.3)
@@ -273,9 +273,9 @@ func (j *jsonRenderer) renderRawContentJSON(raw *RawContent) ([]byte, error) {
 // renderSectionContentJSON renders section content as JSON with nested content
 func (j *jsonRenderer) renderSectionContentJSON(section *SectionContent) ([]byte, error) {
 	result := map[string]any{
-		"type":  "section",
-		"title": section.Title(),
-		"level": section.Level(),
+		keyType:  contentTypeNameSection,
+		keyTitle: section.Title(),
+		keyLevel: section.Level(),
 	}
 
 	var contents []any
@@ -309,9 +309,9 @@ func (j *jsonRenderer) convertFieldsToJSON(schema *Schema) []map[string]any {
 
 	for _, field := range schema.Fields {
 		fieldMap := map[string]any{
-			"name":   field.Name,
-			"type":   field.Type,
-			"hidden": field.Hidden,
+			keyName:   field.Name,
+			keyType:   field.Type,
+			keyHidden: field.Hidden,
 		}
 		fields = append(fields, fieldMap)
 	}
@@ -330,14 +330,14 @@ func (j *jsonRenderer) renderTableContentJSONStream(table *TableContent, w io.Wr
 	result := make(map[string]any)
 
 	if table.Title() != "" {
-		result["title"] = table.Title()
+		result[keyTitle] = table.Title()
 	}
 
 	// Add schema information
 	keyOrder := table.Schema().GetKeyOrder()
 	result["schema"] = map[string]any{
-		"keys":   keyOrder,
-		"fields": j.convertFieldsToJSON(table.Schema()),
+		keyKeys:   keyOrder,
+		keyFields: j.convertFieldsToJSON(table.Schema()),
 	}
 
 	// For streaming, we need to handle data differently
@@ -455,18 +455,18 @@ func (j *jsonRenderer) renderTextContentJSONStream(text *TextContent, w io.Write
 	encoder.SetIndent("", "  ")
 
 	result := map[string]any{
-		"type":    FormatText,
-		"content": text.Text(),
+		keyType:    FormatText,
+		keyContent: text.Text(),
 	}
 
 	style := text.Style()
 	if style.Bold || style.Italic || style.Color != "" || style.Size > 0 || style.Header {
 		result["style"] = map[string]any{
-			"bold":   style.Bold,
-			"italic": style.Italic,
-			"color":  style.Color,
-			"size":   style.Size,
-			"header": style.Header,
+			keyBold:   style.Bold,
+			keyItalic: style.Italic,
+			keyColor:  style.Color,
+			keySize:   style.Size,
+			keyHeader: style.Header,
 		}
 	}
 
@@ -479,9 +479,9 @@ func (j *jsonRenderer) renderRawContentJSONStream(raw *RawContent, w io.Writer) 
 	encoder.SetIndent("", "  ")
 
 	result := map[string]any{
-		"type":   "raw",
-		"format": raw.Format(),
-		"data":   string(raw.Data()),
+		keyType:   contentTypeNameRaw,
+		keyFormat: raw.Format(),
+		keyData:   string(raw.Data()),
 	}
 
 	return encoder.Encode(result)
@@ -558,10 +558,10 @@ func (j *jsonRenderer) renderSectionContentJSONStream(section *SectionContent, w
 // renderChartContentJSON renders ChartContent as JSON
 func (j *jsonRenderer) renderChartContentJSON(content *ChartContent) ([]byte, error) {
 	chartData := map[string]any{
-		"type":       content.Type(),
-		"title":      content.GetTitle(),
+		keyType:      content.Type(),
+		keyTitle:     content.GetTitle(),
 		"chart_type": content.GetChartType(),
-		"data":       content.GetData(),
+		keyData:      content.GetData(),
 	}
 	return json.MarshalIndent(chartData, "", "  ")
 }
@@ -569,10 +569,10 @@ func (j *jsonRenderer) renderChartContentJSON(content *ChartContent) ([]byte, er
 // renderGraphContentJSON renders GraphContent as JSON
 func (j *jsonRenderer) renderGraphContentJSON(content *GraphContent) ([]byte, error) {
 	graphData := map[string]any{
-		"type":  content.Type(),
-		"title": content.GetTitle(),
-		"nodes": content.GetNodes(),
-		"edges": content.GetEdges(),
+		keyType:  content.Type(),
+		keyTitle: content.GetTitle(),
+		"nodes":  content.GetNodes(),
+		"edges":  content.GetEdges(),
 	}
 	return json.MarshalIndent(graphData, "", "  ")
 }
@@ -580,10 +580,10 @@ func (j *jsonRenderer) renderGraphContentJSON(content *GraphContent) ([]byte, er
 // renderDrawIOContentJSON renders DrawIOContent as JSON
 func (j *jsonRenderer) renderDrawIOContentJSON(content *DrawIOContent) ([]byte, error) {
 	drawioData := map[string]any{
-		"type":    content.Type(),
-		"title":   content.GetTitle(),
+		keyType:   content.Type(),
+		keyTitle:  content.GetTitle(),
 		"records": content.GetRecords(),
-		"header":  content.GetHeader(),
+		keyHeader: content.GetHeader(),
 	}
 	return json.MarshalIndent(drawioData, "", "  ")
 }
@@ -687,7 +687,7 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 	// Add title if present
 	if table.Title() != "" {
 		result.Content = append(result.Content,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: "title"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: keyTitle},
 			&yaml.Node{Kind: yaml.ScalarNode, Value: table.Title()},
 		)
 	}
@@ -705,7 +705,7 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 	}
 
 	schemaNode.Content = append(schemaNode.Content,
-		&yaml.Node{Kind: yaml.ScalarNode, Value: "keys"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: keyKeys},
 		keysArrayNode,
 	)
 
@@ -714,18 +714,18 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 	for _, field := range table.Schema().Fields {
 		fieldNode := &yaml.Node{Kind: yaml.MappingNode}
 		fieldNode.Content = append(fieldNode.Content,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: "name"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: keyName},
 			&yaml.Node{Kind: yaml.ScalarNode, Value: field.Name},
-			&yaml.Node{Kind: yaml.ScalarNode, Value: "type"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: keyType},
 			&yaml.Node{Kind: yaml.ScalarNode, Value: field.Type},
-			&yaml.Node{Kind: yaml.ScalarNode, Value: "hidden"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: keyHidden},
 			y.createYAMLValueNode(field.Hidden),
 		)
 		fieldsArrayNode.Content = append(fieldsArrayNode.Content, fieldNode)
 	}
 
 	schemaNode.Content = append(schemaNode.Content,
-		&yaml.Node{Kind: yaml.ScalarNode, Value: "fields"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: keyFields},
 		fieldsArrayNode,
 	)
 
@@ -757,7 +757,7 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 	}
 
 	result.Content = append(result.Content,
-		&yaml.Node{Kind: yaml.ScalarNode, Value: "data"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: keyData},
 		dataArrayNode,
 	)
 
@@ -779,9 +779,9 @@ func (y *yamlRenderer) renderRawContentYAML(raw *RawContent) ([]byte, error) {
 // renderSectionContentYAML renders section content as YAML with nested content
 func (y *yamlRenderer) renderSectionContentYAML(section *SectionContent) ([]byte, error) {
 	result := map[string]any{
-		"type":  "section",
-		"title": section.Title(),
-		"level": section.Level(),
+		keyType:  contentTypeNameSection,
+		keyTitle: section.Title(),
+		keyLevel: section.Level(),
 	}
 
 	var contents []any
@@ -863,9 +863,9 @@ func (y *yamlRenderer) formatValueForYAML(val any, field *Field) any {
 	// Check if result is CollapsibleValue (Requirement 5.1)
 	if cv, ok := processed.(CollapsibleValue); ok {
 		result := map[string]any{
-			"summary":  cv.Summary(), // Requirement 5.1: YAML mapping
-			"details":  cv.Details(), // Requirement 5.1: with these fields
-			"expanded": cv.IsExpanded(),
+			keySummary:  cv.Summary(), // Requirement 5.1: YAML mapping
+			keyDetails:  cv.Details(), // Requirement 5.1: with these fields
+			keyExpanded: cv.IsExpanded(),
 		}
 
 		// YAML-specific formatting hints (Requirement 5.2)
@@ -892,7 +892,7 @@ func (y *yamlRenderer) renderTableContentYAMLStream(table *TableContent, w io.Wr
 	result := make(map[string]any)
 
 	if table.Title() != "" {
-		result["title"] = table.Title()
+		result[keyTitle] = table.Title()
 	}
 
 	// Add schema information
@@ -900,16 +900,16 @@ func (y *yamlRenderer) renderTableContentYAMLStream(table *TableContent, w io.Wr
 	fields := make([]map[string]any, 0, len(table.Schema().Fields))
 	for _, field := range table.Schema().Fields {
 		fieldMap := map[string]any{
-			"name":   field.Name,
-			"type":   field.Type,
-			"hidden": field.Hidden,
+			keyName:   field.Name,
+			keyType:   field.Type,
+			keyHidden: field.Hidden,
 		}
 		fields = append(fields, fieldMap)
 	}
 
 	result["schema"] = map[string]any{
-		"keys":   keyOrder,
-		"fields": fields,
+		keyKeys:   keyOrder,
+		keyFields: fields,
 	}
 
 	// Convert records to ordered maps preserving key order
@@ -931,7 +931,7 @@ func (y *yamlRenderer) renderTableContentYAMLStream(table *TableContent, w io.Wr
 		tableData = append(tableData, orderedRecord)
 	}
 
-	result["data"] = tableData
+	result[keyData] = tableData
 
 	return encoder.Encode(result)
 }
@@ -944,18 +944,18 @@ func (y *yamlRenderer) renderTextContentYAMLStream(text *TextContent, w io.Write
 	}()
 
 	result := map[string]any{
-		"type":    FormatText,
-		"content": text.Text(),
+		keyType:    FormatText,
+		keyContent: text.Text(),
 	}
 
 	style := text.Style()
 	if style.Bold || style.Italic || style.Color != "" || style.Size > 0 || style.Header {
 		result["style"] = map[string]any{
-			"bold":   style.Bold,
-			"italic": style.Italic,
-			"color":  style.Color,
-			"size":   style.Size,
-			"header": style.Header,
+			keyBold:   style.Bold,
+			keyItalic: style.Italic,
+			keyColor:  style.Color,
+			keySize:   style.Size,
+			keyHeader: style.Header,
 		}
 	}
 
@@ -970,9 +970,9 @@ func (y *yamlRenderer) renderRawContentYAMLStream(raw *RawContent, w io.Writer) 
 	}()
 
 	result := map[string]any{
-		"type":   "raw",
-		"format": raw.Format(),
-		"data":   string(raw.Data()),
+		keyType:   contentTypeNameRaw,
+		keyFormat: raw.Format(),
+		keyData:   string(raw.Data()),
 	}
 
 	return encoder.Encode(result)
@@ -986,9 +986,9 @@ func (y *yamlRenderer) renderSectionContentYAMLStream(section *SectionContent, w
 	}()
 
 	result := map[string]any{
-		"type":  "section",
-		"title": section.Title(),
-		"level": section.Level(),
+		keyType:  contentTypeNameSection,
+		keyTitle: section.Title(),
+		keyLevel: section.Level(),
 	}
 
 	var contents []any
@@ -1019,10 +1019,10 @@ func (y *yamlRenderer) renderSectionContentYAMLStream(section *SectionContent, w
 // renderChartContentYAML renders ChartContent as YAML
 func (y *yamlRenderer) renderChartContentYAML(content *ChartContent) ([]byte, error) {
 	chartData := map[string]any{
-		"type":       content.Type(),
-		"title":      content.GetTitle(),
+		keyType:      content.Type(),
+		keyTitle:     content.GetTitle(),
 		"chart_type": content.GetChartType(),
-		"data":       content.GetData(),
+		keyData:      content.GetData(),
 	}
 	return yaml.Marshal(chartData)
 }
@@ -1030,10 +1030,10 @@ func (y *yamlRenderer) renderChartContentYAML(content *ChartContent) ([]byte, er
 // renderGraphContentYAML renders GraphContent as YAML
 func (y *yamlRenderer) renderGraphContentYAML(content *GraphContent) ([]byte, error) {
 	graphData := map[string]any{
-		"type":  content.Type(),
-		"title": content.GetTitle(),
-		"nodes": content.GetNodes(),
-		"edges": content.GetEdges(),
+		keyType:  content.Type(),
+		keyTitle: content.GetTitle(),
+		"nodes":  content.GetNodes(),
+		"edges":  content.GetEdges(),
 	}
 	return yaml.Marshal(graphData)
 }
@@ -1041,10 +1041,10 @@ func (y *yamlRenderer) renderGraphContentYAML(content *GraphContent) ([]byte, er
 // renderDrawIOContentYAML renders DrawIOContent as YAML
 func (y *yamlRenderer) renderDrawIOContentYAML(content *DrawIOContent) ([]byte, error) {
 	drawioData := map[string]any{
-		"type":    content.Type(),
-		"title":   content.GetTitle(),
+		keyType:   content.Type(),
+		keyTitle:  content.GetTitle(),
 		"records": content.GetRecords(),
-		"header":  content.GetHeader(),
+		keyHeader: content.GetHeader(),
 	}
 	return yaml.Marshal(drawioData)
 }
@@ -1052,10 +1052,10 @@ func (y *yamlRenderer) renderDrawIOContentYAML(content *DrawIOContent) ([]byte, 
 // renderCollapsibleSectionJSON renders a CollapsibleSection as structured JSON (Requirement 15.5)
 func (j *jsonRenderer) renderCollapsibleSectionJSON(section *DefaultCollapsibleSection) ([]byte, error) {
 	result := map[string]any{
-		"type":     "collapsible_section", // Requirement 15.5: type indication
-		"title":    section.Title(),       // Requirement 15.5: section metadata
-		"level":    section.Level(),       // Requirement 15.5: section metadata
-		"expanded": section.IsExpanded(),  // Requirement 15.5: section metadata
+		keyType:     "collapsible_section", // Requirement 15.5: type indication
+		keyTitle:    section.Title(),       // Requirement 15.5: section metadata
+		keyLevel:    section.Level(),       // Requirement 15.5: section metadata
+		keyExpanded: section.IsExpanded(),  // Requirement 15.5: section metadata
 	}
 
 	// Render nested content (Requirement 15.5: nested content)
@@ -1073,7 +1073,7 @@ func (j *jsonRenderer) renderCollapsibleSectionJSON(section *DefaultCollapsibleS
 		contentArray = append(contentArray, contentData)
 	}
 
-	result["content"] = contentArray // Requirement 15.5: nested content array
+	result[keyContent] = contentArray // Requirement 15.5: nested content array
 
 	// Add format-specific hints (Requirement 15.5)
 	if hints := section.FormatHint(FormatJSON); hints != nil {
@@ -1086,10 +1086,10 @@ func (j *jsonRenderer) renderCollapsibleSectionJSON(section *DefaultCollapsibleS
 // renderCollapsibleSectionYAML renders a CollapsibleSection as structured YAML (Requirement 15.5)
 func (y *yamlRenderer) renderCollapsibleSectionYAML(section *DefaultCollapsibleSection) ([]byte, error) {
 	result := map[string]any{
-		"type":     "collapsible_section", // Requirement 15.5: type indication
-		"title":    section.Title(),       // Requirement 15.5: section metadata
-		"level":    section.Level(),       // Requirement 15.5: section metadata
-		"expanded": section.IsExpanded(),  // Requirement 15.5: section metadata
+		keyType:     "collapsible_section", // Requirement 15.5: type indication
+		keyTitle:    section.Title(),       // Requirement 15.5: section metadata
+		keyLevel:    section.Level(),       // Requirement 15.5: section metadata
+		keyExpanded: section.IsExpanded(),  // Requirement 15.5: section metadata
 	}
 
 	// Render nested content as YAML structures (Requirement 15.5: nested content)
@@ -1107,7 +1107,7 @@ func (y *yamlRenderer) renderCollapsibleSectionYAML(section *DefaultCollapsibleS
 		contentArray = append(contentArray, contentData)
 	}
 
-	result["content"] = contentArray // Requirement 15.5: nested content array
+	result[keyContent] = contentArray // Requirement 15.5: nested content array
 
 	// Add format-specific hints for YAML structure (Requirement 15.5)
 	if hints := section.FormatHint(FormatYAML); hints != nil {

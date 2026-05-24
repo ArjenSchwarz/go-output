@@ -347,16 +347,16 @@ func (sw *S3Writer) getContentType(format string) string {
 // defaultContentTypes returns default format to content-type mappings
 func defaultContentTypes() map[string]string {
 	return map[string]string{
-		"json":     "application/json",
-		"yaml":     "application/x-yaml",
-		"yml":      "application/x-yaml",
-		"csv":      "text/csv",
-		"html":     "text/html",
-		"table":    "text/plain",
-		"markdown": "text/markdown",
-		"dot":      "text/vnd.graphviz",
-		"mermaid":  "text/plain",
-		"drawio":   "text/csv",
+		FormatJSON:     "application/json",
+		FormatYAML:     "application/x-yaml",
+		extYML:         "application/x-yaml",
+		FormatCSV:      "text/csv",
+		FormatHTML:     "text/html",
+		FormatTable:    "text/plain",
+		FormatMarkdown: "text/markdown",
+		FormatDOT:      "text/vnd.graphviz",
+		FormatMermaid:  "text/plain",
+		FormatDrawIO:   "text/csv",
 	}
 }
 

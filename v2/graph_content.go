@@ -463,7 +463,7 @@ func DefaultDrawIOHeader() DrawIOHeader {
 		Label:        "%Name%",
 		Style:        "%Image%",
 		Ignore:       "Image",
-		Layout:       "auto",
+		Layout:       DrawIOLayoutAuto,
 		NodeSpacing:  40,
 		LevelSpacing: 100,
 		EdgeSpacing:  40,
