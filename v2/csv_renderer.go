@@ -18,7 +18,7 @@ type csvRenderer struct {
 }
 
 func (c *csvRenderer) Format() string {
-	return "csv"
+	return FormatCSV
 }
 
 func (c *csvRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
@@ -161,13 +161,13 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 				contentText, err := content.AppendText(nil)
 				if err == nil && len(contentText) > 0 {
 					// Write simple header and content as CSV
-					if err := csvWriter.Write([]string{"content"}); err != nil {
+					if err := csvWriter.Write([]string{keyContent}); err != nil {
 						return fmt.Errorf("failed to write content header: %w", err)
 					}
 					if err := csvWriter.Write([]string{c.formatValueForCSV(string(contentText))}); err != nil {
 						return fmt.Errorf("failed to write content row: %w", err)
 					}
-					lastKeyOrder = []string{"content"}
+					lastKeyOrder = []string{keyContent}
 				}
 			}
 		}

@@ -9,13 +9,40 @@ import (
 	"strings"
 )
 
+// Capitalised column-header tokens reused across the graph renderers.
+const (
+	colNameFrom        = "From"
+	colNameTo          = "To"
+	colNameLabel       = "Label"
+	colNameName        = "Name"
+	colNameDescription = "Description"
+)
+
+// Common column-name candidates used when extracting graph data from tables.
+// Defined once and shared by the DOT and Mermaid renderers to avoid repeating
+// the same string literals across functions.
+var (
+	graphFromColumns  = []string{"from", colNameFrom, "source", "Source", "start", "Start"}
+	graphToColumns    = []string{"to", colNameTo, "target", "Target", "end", "End", "dest", "Dest"}
+	graphLabelColumns = []string{"label", colNameLabel, "name", colNameName, "description", colNameDescription}
+
+	// Draw.io column-detection candidates extend the common candidates with a
+	// few additional names recognised by the Draw.io renderer.
+	drawioFromColumns  = append(append([]string{}, graphFromColumns...), "parent", "Parent")
+	drawioToColumns    = append(append([]string{}, graphToColumns...), "name", colNameName)
+	drawioLabelColumns = []string{"label", colNameLabel, "description", colNameDescription, "title", "Title"}
+
+	// drawioCSVColumnNames is the header row written for Draw.io CSV output.
+	drawioCSVColumnNames = []string{colNameName, colNameFrom, colNameTo, colNameLabel}
+)
+
 // dotRenderer implements DOT (Graphviz) output format
 type dotRenderer struct {
 	baseRenderer
 }
 
 func (d *dotRenderer) Format() string {
-	return "dot"
+	return FormatDOT
 }
 
 func (d *dotRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
@@ -92,9 +119,9 @@ func (d *dotRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphContent)
 // extractGraphFromTable attempts to extract graph data from a table
 func (d *dotRenderer) extractGraphFromTable(table *TableContent) *GraphContent {
 	// Look for common from/to column names
-	fromColumns := []string{"from", "From", "source", "Source", "start", "Start"}
-	toColumns := []string{"to", "To", "target", "Target", "end", "End", "dest", "Dest"}
-	labelColumns := []string{"label", "Label", "name", "Name", "description", "Description"}
+	fromColumns := graphFromColumns
+	toColumns := graphToColumns
+	labelColumns := graphLabelColumns
 
 	var fromCol, toCol, labelCol string
 
@@ -137,7 +164,7 @@ type mermaidRenderer struct {
 }
 
 func (m *mermaidRenderer) Format() string {
-	return "mermaid"
+	return FormatMermaid
 }
 
 func (m *mermaidRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
@@ -371,9 +398,9 @@ func (m *mermaidRenderer) renderFlowchartContent(buf *bytes.Buffer, chart *Chart
 // extractGraphFromTable attempts to extract graph data from a table
 func (m *mermaidRenderer) extractGraphFromTable(table *TableContent) *GraphContent {
 	// Look for common from/to column names
-	fromColumns := []string{"from", "From", "source", "Source", "start", "Start"}
-	toColumns := []string{"to", "To", "target", "Target", "end", "End", "dest", "Dest"}
-	labelColumns := []string{"label", "Label", "name", "Name", "description", "Description"}
+	fromColumns := graphFromColumns
+	toColumns := graphToColumns
+	labelColumns := graphLabelColumns
 
 	var fromCol, toCol, labelCol string
 
@@ -440,7 +467,7 @@ type drawioRenderer struct {
 }
 
 func (d *drawioRenderer) Format() string {
-	return "drawio"
+	return FormatDrawIO
 }
 
 func (d *drawioRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
@@ -532,14 +559,18 @@ func (d *drawioRenderer) renderGraphAsDrawIO(buf *bytes.Buffer, graph *GraphCont
 	header := DefaultDrawIOHeader()
 	header.Label = "%Name%"
 	header.Connections = []DrawIOConnection{
-		{From: "From", To: "To", Label: "Label", Style: DrawIODefaultConnectionStyle},
+		{
+			From:  drawioCSVColumnNames[1],
+			To:    drawioCSVColumnNames[2],
+			Label: drawioCSVColumnNames[3],
+			Style: DrawIODefaultConnectionStyle,
+		},
 	}
 
 	d.writeDrawIOHeader(buf, header)
 
 	// Convert graph edges to CSV records
-	columnNames := []string{"Name", "From", "To", "Label"}
-	d.writeCSVRow(buf, columnNames)
+	d.writeCSVRow(buf, drawioCSVColumnNames)
 
 	// Write nodes first
 	nodes := graph.GetNodes()
@@ -720,9 +751,9 @@ func (d *drawioRenderer) extractColumnNames(records []Record) []string {
 
 // detectConnectionColumns tries to find from/to columns in table schema
 func (d *drawioRenderer) detectConnectionColumns(table *TableContent) (string, string, string) {
-	fromColumns := []string{"from", "From", "source", "Source", "start", "Start", "parent", "Parent"}
-	toColumns := []string{"to", "To", "target", "Target", "end", "End", "dest", "Dest", "name", "Name"}
-	labelColumns := []string{"label", "Label", "description", "Description", "title", "Title"}
+	fromColumns := drawioFromColumns
+	toColumns := drawioToColumns
+	labelColumns := drawioLabelColumns
 
 	var fromCol, toCol, labelCol string
 

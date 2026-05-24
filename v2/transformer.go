@@ -164,7 +164,7 @@ func (tp *TransformPipeline) Info() []TransformInfo {
 	for _, t := range tp.transformers {
 		// Test common formats to see which ones this transformer supports
 		formats := make([]string, 0)
-		testFormats := []string{"json", "yaml", "csv", "html", "table", "markdown", "dot", "mermaid", "drawio"}
+		testFormats := []string{FormatJSON, FormatYAML, FormatCSV, FormatHTML, FormatTable, FormatMarkdown, FormatDOT, FormatMermaid, FormatDrawIO}
 		for _, format := range testFormats {
 			if t.CanTransform(format) {
 				formats = append(formats, format)

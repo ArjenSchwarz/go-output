@@ -323,24 +323,24 @@ details[open] > *:not(summary) {
 	DefaultHTMLTemplate = &HTMLTemplate{
 		Title:    "Output Report",
 		Language: "en",
-		Charset:  "UTF-8",
-		Viewport: "width=device-width, initial-scale=1.0",
+		Charset:  htmlCharsetUTF8,
+		Viewport: htmlViewport,
 		CSS:      defaultResponsiveCSS,
 	}
 
 	MinimalHTMLTemplate = &HTMLTemplate{
 		Title:    "Output Report",
 		Language: "en",
-		Charset:  "UTF-8",
-		Viewport: "width=device-width, initial-scale=1.0",
+		Charset:  htmlCharsetUTF8,
+		Viewport: htmlViewport,
 		CSS:      "",
 	}
 
 	MermaidHTMLTemplate = &HTMLTemplate{
 		Title:    "Diagram Output",
 		Language: "en",
-		Charset:  "UTF-8",
-		Viewport: "width=device-width, initial-scale=1.0",
+		Charset:  htmlCharsetUTF8,
+		Viewport: htmlViewport,
 		CSS:      mermaidOptimizedCSS,
 	}
 }

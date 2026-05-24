@@ -36,12 +36,12 @@ type RendererConfig struct {
 var DefaultRendererConfig = RendererConfig{
 	ForceExpansion:       false,
 	MaxDetailLength:      500,
-	TruncateIndicator:    "[...truncated]",
+	TruncateIndicator:    truncateIndicatorText,
 	TableHiddenIndicator: "[details hidden - use --expand for full view]",
 	HTMLCSSClasses: map[string]string{
-		"details": "collapsible-cell",
-		"summary": "collapsible-summary",
-		"content": "collapsible-details",
+		keyDetails: "collapsible-cell",
+		keySummary: "collapsible-summary",
+		keyContent: "collapsible-details",
 	},
 	DataTransformers: make([]*TransformerAdapter, 0),
 	ByteTransformers: NewTransformPipeline(),

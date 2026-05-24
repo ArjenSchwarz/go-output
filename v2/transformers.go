@@ -95,7 +95,7 @@ func NewColorTransformerWithScheme(scheme ColorScheme) *ColorTransformer {
 
 // Name returns the transformer name
 func (c *ColorTransformer) Name() string {
-	return "color"
+	return transformerNameColor
 }
 
 // Priority returns the transformer priority (lower = earlier)
