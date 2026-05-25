@@ -665,3 +665,67 @@ func TestJSONRenderer_MixedContentTransformations(t *testing.T) {
 		})
 	}
 }
+
+// TestJSONRenderer_NilTransformation is a regression test for T-1208.
+//
+// WithTransformations(nil) stored a nil Operation in the table's
+// transformation slice. During rendering, applyContentTransformations
+// dereferenced that nil interface value (op.Validate()/op.Name()/op.Apply())
+// and panicked with a nil-pointer segfault.
+//
+// Expected behaviour: nil operations are ignored (consistent with how the rest
+// of the transformation API skips nil inputs, e.g. TransformPipeline.Add), so
+// rendering completes normally and returns the unmodified data without panicking.
+func TestJSONRenderer_NilTransformation(t *testing.T) {
+	tests := map[string]struct {
+		transformations []Operation
+	}{
+		"single nil operation": {
+			transformations: []Operation{nil},
+		},
+		"nil mixed with valid operation": {
+			transformations: []Operation{
+				nil,
+				NewFilterOp(func(r Record) bool {
+					age, ok := r["age"].(int)
+					return ok && age >= 30
+				}),
+			},
+		},
+		"multiple nil operations": {
+			transformations: []Operation{nil, nil},
+		},
+	}
+
+	data := []Record{
+		{"name": "Alice", "age": 30},
+		{"name": "Bob", "age": 25},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			doc := New().
+				Table("test", data,
+					WithKeys("name", "age"),
+					WithTransformations(tc.transformations...),
+				).
+				Build()
+
+			renderer := &jsonRenderer{}
+
+			// Before the fix this panicked instead of returning normally.
+			result, err := renderer.Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render returned error for nil transformation: %v", err)
+			}
+
+			var parsed map[string]any
+			if err := json.Unmarshal(result, &parsed); err != nil {
+				t.Fatalf("Failed to parse JSON: %v", err)
+			}
+			if _, ok := parsed["data"].([]any); !ok {
+				t.Fatalf("Expected data array in JSON output, got: %s", result)
+			}
+		})
+	}
+}
