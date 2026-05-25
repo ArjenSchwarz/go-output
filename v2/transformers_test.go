@@ -423,6 +423,53 @@ func TestSortTransformer_MarkdownSeparatorRow(t *testing.T) {
 	}
 }
 
+// TestSortTransformer_QuotedCSV verifies that quoted CSV fields are parsed with
+// RFC 4180 semantics rather than naive string splitting.
+//
+// Bug T-1269: SortTransformer parsed CSV with strings.Split on a single
+// separator, so a quoted field such as "Smith, Bob" was split into multiple
+// cells. Sorting by a later column then read the wrong value. Embedded newlines
+// inside quoted fields were also broken by splitting the whole payload on "\n".
+// Expected: fields are parsed as whole values and the rows are sorted by the
+// requested column's true value, with the CSV re-emitted using encoding/csv.
+func TestSortTransformer_QuotedCSV(t *testing.T) {
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		transformer *SortTransformer
+		input       string
+		expected    string
+	}{
+		"quoted field with comma sorts by correct column": {
+			// Both name fields contain a comma. Sorting by City must use the
+			// real City value (NY / CA), not a fragment of the quoted name.
+			transformer: NewSortTransformerAscending("City"),
+			input:       "Name,City\n\"Smith, Bob\",NY\n\"Adams, Al\",CA\n",
+			expected:    "Name,City\n\"Adams, Al\",CA\n\"Smith, Bob\",NY\n",
+		},
+		"quoted field with embedded newline stays one record": {
+			// The Address field contains an embedded newline inside quotes. It
+			// must remain a single record while rows sort by Age.
+			transformer: NewSortTransformerAscending("Age"),
+			input:       "Name,Age,Address\nBob,30,\"12 Main St\nApt 4\"\nAlice,25,\"9 Oak Rd\nUnit 1\"\n",
+			expected:    "Name,Age,Address\nAlice,25,\"9 Oak Rd\nUnit 1\"\nBob,30,\"12 Main St\nApt 4\"\n",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := test.transformer.Transform(ctx, []byte(test.input), FormatCSV)
+			if err != nil {
+				t.Fatalf("SortTransformer.Transform() error = %v", err)
+			}
+
+			if string(result) != test.expected {
+				t.Errorf("SortTransformer.Transform()\n got = %q\nwant = %q", string(result), test.expected)
+			}
+		})
+	}
+}
+
 // Test LineSplitTransformer
 
 func TestLineSplitTransformer_Name(t *testing.T) {
@@ -506,6 +553,51 @@ func TestLineSplitTransformer_Transform(t *testing.T) {
 
 			if string(result) != test.expected {
 				t.Errorf("LineSplitTransformer.Transform() = %q, want %q", string(result), test.expected)
+			}
+		})
+	}
+}
+
+// TestLineSplitTransformer_QuotedCSV verifies that quoted CSV fields are parsed
+// with RFC 4180 semantics before being split into rows.
+//
+// Bug T-1269: LineSplitTransformer parsed CSV with strings.Split on a single
+// separator and split the whole payload on "\n". A quoted field containing a
+// comma was broken into the wrong cells, and quoted fields with embedded
+// newlines were torn across records. Expected: fields parse as whole values,
+// only the intended cell is split into rows, and CSV is re-emitted with
+// encoding/csv so commas and newlines stay quoted.
+func TestLineSplitTransformer_QuotedCSV(t *testing.T) {
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		transformer *LineSplitTransformer
+		input       string
+		expected    string
+	}{
+		"quoted field with comma is preserved while splitting another cell": {
+			transformer: NewLineSplitTransformer(";"),
+			input:       "Name,Skills\n\"Smith, Bob\",Java;Go\n",
+			expected:    "Name,Skills\n\"Smith, Bob\",Java\n,Go\n",
+		},
+		"embedded newline in quoted field is not treated as a record boundary": {
+			// The Notes field has an embedded newline; only Skills (separated by
+			// ";") should split into rows. The quoted newline must survive.
+			transformer: NewLineSplitTransformer(";"),
+			input:       "Name,Skills,Notes\nAlice,Java;Go,\"line1\nline2\"\n",
+			expected:    "Name,Skills,Notes\nAlice,Java,\"line1\nline2\"\n,Go,\n",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := test.transformer.Transform(ctx, []byte(test.input), FormatCSV)
+			if err != nil {
+				t.Fatalf("LineSplitTransformer.Transform() error = %v", err)
+			}
+
+			if string(result) != test.expected {
+				t.Errorf("LineSplitTransformer.Transform()\n got = %q\nwant = %q", string(result), test.expected)
 			}
 		})
 	}
