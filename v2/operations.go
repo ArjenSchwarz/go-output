@@ -491,6 +491,12 @@ func (o *GroupByOp) Apply(ctx context.Context, content Content) (Content, error)
 		groups[groupKey] = append(groups[groupKey], record)
 	}
 
+	// Derive a stable aggregate-name order once and reuse it everywhere
+	// (result records, schema keyOrder, and schema fields). Map iteration
+	// order is randomized, so this is the single source of truth for
+	// aggregate column ordering.
+	aggNames := o.sortedAggregateNames()
+
 	// Create result records with aggregated data
 	resultRecords := make([]Record, 0, len(groups))
 
@@ -511,8 +517,10 @@ func (o *GroupByOp) Apply(ctx context.Context, content Content) (Content, error)
 			resultRecord[column] = sampleRecord[column]
 		}
 
-		// Apply aggregate functions
-		for aggName, aggFunc := range o.aggregates {
+		// Apply aggregate functions in a deterministic order so result
+		// records, schema fields, and keyOrder stay consistent across runs.
+		for _, aggName := range aggNames {
+			aggFunc := o.aggregates[aggName]
 			// For count aggregate, field parameter is ignored
 			field := ""
 			if aggName != "count" {
@@ -526,7 +534,7 @@ func (o *GroupByOp) Apply(ctx context.Context, content Content) (Content, error)
 	}
 
 	// Create new schema with preserved key order
-	newSchema := o.createAggregatedSchema(cloned.schema)
+	newSchema := o.createAggregatedSchema(cloned.schema, aggNames)
 
 	// Update the cloned content
 	cloned.records = resultRecords
@@ -588,18 +596,32 @@ func (o *GroupByOp) inferFieldFromAggregateName(aggName string) string {
 	return aggName
 }
 
-// createAggregatedSchema creates a schema for aggregated results
-func (o *GroupByOp) createAggregatedSchema(originalSchema *Schema) *Schema {
-	// Build key order: groupBy columns first, then aggregate columns
-	keyOrder := make([]string, 0, len(o.groupBy)+len(o.aggregates))
+// sortedAggregateNames returns the aggregate result column names in a
+// deterministic order. Aggregates are stored in a map, whose iteration order
+// Go randomizes, so names are sorted alphabetically to guarantee a stable
+// column order across runs.
+func (o *GroupByOp) sortedAggregateNames() []string {
+	names := make([]string, 0, len(o.aggregates))
+	for aggName := range o.aggregates {
+		names = append(names, aggName)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// createAggregatedSchema creates a schema for aggregated results. aggNames is
+// the deterministic aggregate column order (see sortedAggregateNames) and must
+// match the order used when building result records.
+func (o *GroupByOp) createAggregatedSchema(originalSchema *Schema, aggNames []string) *Schema {
+	// Build key order: groupBy columns first, then aggregate columns in the
+	// deterministic order supplied by the caller.
+	keyOrder := make([]string, 0, len(o.groupBy)+len(aggNames))
 
 	// Add groupBy columns
 	keyOrder = append(keyOrder, o.groupBy...)
 
-	// Add aggregate columns (order may vary due to map iteration)
-	for aggName := range o.aggregates {
-		keyOrder = append(keyOrder, aggName)
-	}
+	// Add aggregate columns in deterministic order
+	keyOrder = append(keyOrder, aggNames...)
 
 	// Create fields for the new schema
 	fields := make([]Field, 0, len(keyOrder))
@@ -616,8 +638,8 @@ func (o *GroupByOp) createAggregatedSchema(originalSchema *Schema) *Schema {
 		fields = append(fields, Field{Name: column})
 	}
 
-	// Add fields for aggregate columns
-	for aggName := range o.aggregates {
+	// Add fields for aggregate columns in the same deterministic order
+	for _, aggName := range aggNames {
 		fields = append(fields, Field{Name: aggName})
 	}
 
