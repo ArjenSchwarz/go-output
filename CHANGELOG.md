@@ -1,6 +1,10 @@
 ## Unreleased
 
 ### Fixed
+- **Pretty Progress SetContext Stale Watcher** - Fixed `prettyProgress.SetContext` spuriously marking a healthy progress as failed when the context was replaced (the same stale-watcher defect previously fixed for `textProgress` in T-1254)
+  - The watcher goroutine now captures its own derived context (`watchedCtx`) as a local instead of reading the shared `p.ctx` field, removing a data race and ignoring stale completions when the context has been replaced (`p.ctx != watchedCtx`)
+  - `SetContext(nil)` now clears `p.ctx`/`p.cancel` and returns early
+  - Added regression test `TestPrettyProgress_SetContext_Replacement_DoesNotFail`
 - **GroupBy Composite Key Collision** - Fixed `GroupByOp.createGroupKey` merging distinct groups when grouped values contain the `||` separator (e.g. `{a:"x||y", b:"z"}` and `{a:"x", b:"y||z"}` both produced key `x||y||z`)
   - Replaced fixed-delimiter concatenation with a collision-safe length-prefixed encoding (`<len>:<value>` per column)
   - Missing values now use a distinct `nil:` marker so they no longer collide with the literal string `"<nil>"`
