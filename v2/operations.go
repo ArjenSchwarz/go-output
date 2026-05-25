@@ -840,6 +840,15 @@ func (o *AddColumnOp) Apply(ctx context.Context, content Content) (Content, erro
 	// Clone the content to preserve immutability
 	cloned := tableContent.Clone().(*TableContent)
 
+	// Reject column names that already exist in the schema. Without this guard
+	// Apply would overwrite the existing record value and evolveSchema would
+	// append a duplicate entry to the key order, causing renderers to emit
+	// duplicate headers/columns for the same field (T-1281).
+	if cloned.schema != nil && cloned.schema.HasField(o.name) {
+		return nil, NewValidationError("column_name", o.name,
+			fmt.Sprintf("addColumn cannot add column %q because it already exists in the table schema", o.name))
+	}
+
 	// Add the new column to each record
 	for i, record := range cloned.records {
 		// Check context cancellation

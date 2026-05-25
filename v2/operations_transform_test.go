@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -490,6 +491,102 @@ func TestAddColumnOpApply(t *testing.T) {
 		if len(tableContent.records[0]) != originalRecordFieldCount {
 			t.Errorf("original record was modified: had %d fields, now has %d",
 				originalRecordFieldCount, len(tableContent.records[0]))
+		}
+	})
+}
+
+// TestAddColumnOpDuplicateColumn is a regression test for T-1281.
+//
+// AddColumnOp previously did not reject a column name that already existed in
+// the schema. Apply overwrote the existing record value, and evolveSchema
+// unconditionally appended the name to the key order, producing a duplicate
+// entry. Renderers iterate the key order directly, so the output gained
+// duplicate headers/columns for the same field.
+//
+// Expected behaviour: reject a duplicate column name with a ValidationError and
+// leave the original content untouched.
+func TestAddColumnOpDuplicateColumn(t *testing.T) {
+	t.Run("rejects column name that already exists in schema", func(t *testing.T) {
+		addColumnOp := &AddColumnOp{
+			name: "name",
+			fn:   func(r Record) any { return "overwritten" },
+		}
+
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+				{"id": 2, "name": "Bob"},
+			}).
+			Build()
+
+		tableContent := doc.GetContents()[0].(*TableContent)
+
+		result, err := addColumnOp.Apply(context.Background(), tableContent)
+		if err == nil {
+			t.Fatalf("expected error for duplicate column, got nil (result: %v)", result)
+		}
+
+		var valErr *ValidationError
+		if !errors.As(err, &valErr) {
+			t.Fatalf("expected *ValidationError, got %T: %v", err, err)
+		}
+		if valErr.Field != "column_name" {
+			t.Errorf("expected error field 'column_name', got %q", valErr.Field)
+		}
+	})
+
+	t.Run("does not duplicate schema keys for existing column", func(t *testing.T) {
+		addColumnOp := &AddColumnOp{
+			name: "name",
+			fn:   func(r Record) any { return "overwritten" },
+		}
+
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		tableContent := doc.GetContents()[0].(*TableContent)
+
+		_, err := addColumnOp.Apply(context.Background(), tableContent)
+		if err == nil {
+			t.Fatal("expected error for duplicate column, got nil")
+		}
+
+		// Original schema key order must remain free of duplicates.
+		keyOrder := tableContent.schema.GetKeyOrder()
+		seen := make(map[string]bool, len(keyOrder))
+		for _, key := range keyOrder {
+			if seen[key] {
+				t.Errorf("duplicate key %q in key order %v", key, keyOrder)
+			}
+			seen[key] = true
+		}
+	})
+
+	t.Run("leaves original content unchanged when rejecting", func(t *testing.T) {
+		addColumnOp := &AddColumnOp{
+			name: "name",
+			fn:   func(r Record) any { return "overwritten" },
+		}
+
+		doc := New().
+			Table("test", []Record{
+				{"id": 1, "name": "Alice"},
+			}).
+			Build()
+
+		tableContent := doc.GetContents()[0].(*TableContent)
+
+		_, err := addColumnOp.Apply(context.Background(), tableContent)
+		if err == nil {
+			t.Fatal("expected error for duplicate column, got nil")
+		}
+
+		// The existing value must not be overwritten.
+		if got := tableContent.records[0]["name"]; got != "Alice" {
+			t.Errorf("original record value was modified: expected 'Alice', got %v", got)
 		}
 	})
 }
