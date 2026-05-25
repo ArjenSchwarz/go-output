@@ -46,6 +46,10 @@ func (d *dotRenderer) Format() string {
 }
 
 func (d *dotRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
+	if doc == nil {
+		return nil, fmt.Errorf("document cannot be nil")
+	}
+
 	var buf bytes.Buffer
 
 	// Write DOT header
@@ -176,6 +180,10 @@ func (m *mermaidRenderer) Format() string {
 }
 
 func (m *mermaidRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
+	if doc == nil {
+		return nil, fmt.Errorf("document cannot be nil")
+	}
+
 	var buf bytes.Buffer
 
 	// Process each content item. Apply per-content transformations
@@ -538,6 +546,10 @@ func (d *drawioRenderer) Format() string {
 }
 
 func (d *drawioRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
+	if doc == nil {
+		return nil, fmt.Errorf("document cannot be nil")
+	}
+
 	var buf bytes.Buffer
 
 	// Process each content item. Apply per-content transformations

@@ -1,10 +1,49 @@
 package output
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
 )
+
+// TestGraphRenderers_NilDocument verifies that the DOT, Mermaid, and Draw.io
+// renderers return a "document cannot be nil" error instead of panicking when
+// Render or RenderTo is called directly with a nil document (T-1092). Other
+// renderers (csv_renderer.go, base_renderer.go, table_renderer.go) already
+// guard against nil documents, so these graph renderers should behave the same.
+func TestGraphRenderers_NilDocument(t *testing.T) {
+	renderers := map[string]Renderer{
+		"DOT":     DOT().Renderer,
+		"Mermaid": Mermaid().Renderer,
+		"DrawIO":  DrawIO().Renderer,
+	}
+
+	ctx := context.Background()
+
+	for name, renderer := range renderers {
+		t.Run(name+"/Render", func(t *testing.T) {
+			_, err := renderer.Render(ctx, nil)
+			if err == nil {
+				t.Fatalf("%s.Render(ctx, nil) returned no error, want \"document cannot be nil\"", name)
+			}
+			if !strings.Contains(err.Error(), "document cannot be nil") {
+				t.Errorf("%s.Render(ctx, nil) error = %q, want it to contain \"document cannot be nil\"", name, err.Error())
+			}
+		})
+
+		t.Run(name+"/RenderTo", func(t *testing.T) {
+			var buf bytes.Buffer
+			err := renderer.RenderTo(ctx, nil, &buf)
+			if err == nil {
+				t.Fatalf("%s.RenderTo(ctx, nil, w) returned no error, want \"document cannot be nil\"", name)
+			}
+			if !strings.Contains(err.Error(), "document cannot be nil") {
+				t.Errorf("%s.RenderTo(ctx, nil, w) error = %q, want it to contain \"document cannot be nil\"", name, err.Error())
+			}
+		})
+	}
+}
 
 func TestDOTRenderer_Render(t *testing.T) {
 	tests := map[string]struct {
