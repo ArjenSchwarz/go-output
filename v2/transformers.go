@@ -1,7 +1,9 @@
 package output
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
 	"regexp"
 	"sort"
 	"strconv"
@@ -173,9 +175,16 @@ func (s *SortTransformer) CanTransform(format string) bool {
 }
 
 // Transform sorts the tabular data by the specified key
-func (s *SortTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
+func (s *SortTransformer) Transform(_ context.Context, input []byte, format string) ([]byte, error) {
 	if s.key == "" {
 		return input, nil
+	}
+
+	// CSV is parsed with encoding/csv so quoted fields containing commas,
+	// separators, or embedded newlines are kept intact (T-1269). Other tabular
+	// formats (table/markdown) use line-based splitting below.
+	if format == FormatCSV {
+		return s.transformCSV(input)
 	}
 
 	content := string(input)
@@ -299,6 +308,86 @@ func (s *SortTransformer) Transform(_ context.Context, input []byte, _ string) (
 	return []byte(strings.Join(result, "\n")), nil
 }
 
+// transformCSV sorts CSV input using encoding/csv so that quoted fields with
+// commas, separators, or embedded newlines are parsed and re-emitted correctly.
+// The first record is treated as the header. If the input cannot be parsed as
+// CSV, has no data rows, or the sort key is missing, the input is returned
+// unchanged.
+func (s *SortTransformer) transformCSV(input []byte) ([]byte, error) {
+	records, err := readCSVRecords(input)
+	if err != nil || len(records) < 2 {
+		// Not parseable as CSV or no data rows to sort; leave input untouched.
+		return input, nil
+	}
+
+	header := records[0]
+	sortColumnIndex := -1
+	for i, h := range header {
+		if strings.TrimSpace(h) == s.key {
+			sortColumnIndex = i
+			break
+		}
+	}
+	if sortColumnIndex == -1 {
+		return input, nil // Sort key not found
+	}
+
+	dataRows := records[1:]
+	sort.SliceStable(dataRows, func(i, j int) bool {
+		valueI := cellValue(dataRows[i], sortColumnIndex)
+		valueJ := cellValue(dataRows[j], sortColumnIndex)
+
+		// Try numeric comparison first, mirroring the line-based path.
+		if numI, errI := strconv.ParseFloat(valueI, 64); errI == nil {
+			if numJ, errJ := strconv.ParseFloat(valueJ, 64); errJ == nil {
+				if s.ascending {
+					return numI < numJ
+				}
+				return numI > numJ
+			}
+		}
+
+		if s.ascending {
+			return valueI < valueJ
+		}
+		return valueI > valueJ
+	})
+
+	return writeCSVRecords(records)
+}
+
+// cellValue returns the trimmed value at index from a CSV record, or an empty
+// string when the index is out of range.
+func cellValue(record []string, index int) string {
+	if index < 0 || index >= len(record) {
+		return ""
+	}
+	return strings.TrimSpace(record[index])
+}
+
+// readCSVRecords parses input as CSV, allowing a variable number of fields per
+// record so that malformed or ragged rows do not cause a hard failure.
+func readCSVRecords(input []byte) ([][]string, error) {
+	reader := csv.NewReader(bytes.NewReader(input))
+	reader.FieldsPerRecord = -1 // allow ragged rows
+	return reader.ReadAll()
+}
+
+// writeCSVRecords re-emits records as canonical CSV using encoding/csv, which
+// quotes fields containing commas, quotes, or newlines as required by RFC 4180.
+func writeCSVRecords(records [][]string) ([]byte, error) {
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+	if err := writer.WriteAll(records); err != nil {
+		return nil, err
+	}
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // isMarkdownSeparatorRow reports whether a trimmed line is a Markdown table
 // separator/alignment row, such as "| --- | --- |" or "|:---|---:|". Such rows
 // consist solely of pipes, dashes, colons, and spaces, and contain at least one
@@ -355,7 +444,14 @@ func (l *LineSplitTransformer) CanTransform(format string) bool {
 }
 
 // Transform splits multi-line cells into separate rows
-func (l *LineSplitTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
+func (l *LineSplitTransformer) Transform(_ context.Context, input []byte, format string) ([]byte, error) {
+	// CSV is parsed with encoding/csv so quoted fields containing commas,
+	// separators, or embedded newlines are kept intact (T-1269). Other tabular
+	// formats (table/markdown) use line-based splitting below.
+	if format == FormatCSV {
+		return l.transformCSV(input)
+	}
+
 	content := string(input)
 	lines := strings.Split(content, "\n")
 
@@ -428,6 +524,67 @@ func (l *LineSplitTransformer) Transform(_ context.Context, input []byte, _ stri
 	}
 
 	return []byte(strings.Join(result, "\n")), nil
+}
+
+// transformCSV splits multi-value CSV cells into separate rows using
+// encoding/csv. Records are parsed with full RFC 4180 semantics so quoted
+// commas, separators, and embedded newlines are preserved, and the result is
+// re-emitted as canonical CSV. If the input cannot be parsed as CSV it is
+// returned unchanged.
+func (l *LineSplitTransformer) transformCSV(input []byte) ([]byte, error) {
+	records, err := readCSVRecords(input)
+	if err != nil || len(records) == 0 {
+		return input, nil
+	}
+
+	result := make([][]string, 0, len(records))
+	// The header (first record) is emitted as-is; only data rows are split.
+	result = append(result, records[0])
+
+	for _, row := range records[1:] {
+		result = append(result, l.splitRecord(row)...)
+	}
+
+	return writeCSVRecords(result)
+}
+
+// splitRecord expands a single CSV record into multiple records when any cell
+// contains the line separator. Cells without the separator keep their value in
+// the first emitted row and are blank in subsequent rows, matching the
+// line-based transformer's behaviour. A record with no splittable cell is
+// returned unchanged.
+func (l *LineSplitTransformer) splitRecord(row []string) [][]string {
+	maxSplits := 1
+	for _, cell := range row {
+		if strings.Contains(cell, l.separator) {
+			if n := len(strings.Split(cell, l.separator)); n > maxSplits {
+				maxSplits = n
+			}
+		}
+	}
+
+	if maxSplits == 1 {
+		return [][]string{row}
+	}
+
+	out := make([][]string, 0, maxSplits)
+	for i := range maxSplits {
+		newCells := make([]string, len(row))
+		for c, cell := range row {
+			switch {
+			case strings.Contains(cell, l.separator):
+				splits := strings.Split(cell, l.separator)
+				if i < len(splits) {
+					newCells[c] = strings.TrimSpace(splits[i])
+				}
+			case i == 0:
+				// Non-split cells show their value only in the first row.
+				newCells[c] = cell
+			}
+		}
+		out = append(out, newCells)
+	}
+	return out
 }
 
 // RemoveColorsTransformer removes ANSI color codes from output (for file output)
