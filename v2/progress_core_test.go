@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	ptprogress "github.com/jedib0t/go-pretty/v6/progress"
 )
 
 func TestNewProgress(t *testing.T) {
@@ -770,6 +772,91 @@ func TestPrettyProgress_V1Compatibility_SetContext(t *testing.T) {
 	}
 
 	progress.Close()
+}
+
+// newTestPrettyProgress builds a *prettyProgress directly so the test does not
+// depend on a TTY. NewPrettyProgress falls back to textProgress when stderr is
+// not a terminal (as in CI), which would otherwise make it impossible to
+// exercise the prettyProgress code path.
+func newTestPrettyProgress(w *bytes.Buffer) *prettyProgress {
+	config := defaultProgressConfig()
+	WithProgressWriter(w)(config)
+	WithUpdateInterval(0)(config)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	p := &prettyProgress{
+		config:    config,
+		startTime: time.Now(),
+		active:    true,
+		ctx:       ctx,
+		cancel:    cancel,
+		signals:   make(chan os.Signal, 1),
+	}
+	p.writer = ptprogress.NewWriter()
+	p.writer.SetOutputWriter(config.Writer)
+	p.writer.SetUpdateFrequency(config.UpdateInterval)
+	p.writer.SetStyle(ptprogress.StyleDefault)
+	p.writer.SetNumTrackersExpected(1)
+	return p
+}
+
+// TestPrettyProgress_SetContext_Replacement_DoesNotFail is a regression test for
+// T-1358 (the prettyProgress counterpart of the T-1254 textProgress fix).
+//
+// SetContext cancels the previously derived context when a new context is
+// installed. The watcher goroutine for the old context must NOT mark the
+// progress as failed when it is released by that replacement cancellation.
+//
+// Bug: the old watcher read p.ctx (the shared struct field) instead of the
+// context it was created for, so after replacement it saw the new context's
+// error (or none) and called MarkAsErrored, failing a still-healthy progress.
+//
+// Expected: replacing a progress context leaves the progress active and
+// unfailed; only the live context's cancellation should fail it.
+func TestPrettyProgress_SetContext_Replacement_DoesNotFail(t *testing.T) {
+	var buf bytes.Buffer
+	p := newTestPrettyProgress(&buf)
+
+	// Create a tracker so the watcher's (p.active && p.tracker != nil) guard
+	// is satisfied — otherwise the bug cannot manifest.
+	p.SetTotal(100)
+	p.SetCurrent(50)
+
+	// Install the first context.
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	defer cancel1()
+	p.SetContext(ctx1)
+
+	// Replace it with a fresh, live context. This cancels the first derived
+	// context internally and releases the first watcher goroutine.
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	defer cancel2()
+	p.SetContext(ctx2)
+
+	// Give the released first watcher time to (incorrectly) run and fail us.
+	time.Sleep(50 * time.Millisecond)
+
+	// The progress must still be active and unfailed: replacing the context
+	// is not a failure condition.
+	if !p.IsActive() {
+		t.Error("progress should remain active after the context is replaced")
+	}
+
+	p.mu.RLock()
+	failed, err := p.failed, p.err
+	p.mu.RUnlock()
+	if failed {
+		t.Errorf("progress should not be marked failed after context replacement, err=%v", err)
+	}
+
+	// The live context must still be able to fail the progress.
+	cancel2()
+	time.Sleep(50 * time.Millisecond)
+	if p.IsActive() {
+		t.Error("progress should fail when the live (current) context is cancelled")
+	}
+
+	p.Close()
 }
 
 func TestPrettyProgress_FailureHandling(t *testing.T) {
