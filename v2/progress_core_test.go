@@ -496,6 +496,102 @@ func TestProgress_SetContext_Replacement_DoesNotFail(t *testing.T) {
 	progress.Close()
 }
 
+// TestTextProgress_OverrunDoesNotPanic is a regression test for T-1346.
+//
+// textProgress.renderDefault computed filled := int(progress * float64(barWidth))
+// and then strings.Repeat(" ", barWidth-filled). When current exceeds total
+// (e.g. SetTotal(10) then SetCurrent(11), or Increment past the total),
+// filled > barWidth, so barWidth-filled is negative and strings.Repeat panics.
+//
+// Expected: rendering clamps the bar to a full bar (and never produces a
+// negative repeat count) so the overrun cannot panic.
+func TestTextProgress_OverrunDoesNotPanic(t *testing.T) {
+	t.Run("SetCurrent beyond total does not panic", func(t *testing.T) {
+		var buf bytes.Buffer
+		progress := NewProgress(
+			WithProgressWriter(&buf),
+			WithUpdateInterval(0), // draw on every call
+			WithWidth(10),
+		)
+
+		progress.SetTotal(10)
+		// With the bug present, this overrun makes filled=11 > barWidth=10,
+		// so strings.Repeat(" ", -1) panics inside draw().
+		progress.SetCurrent(11)
+
+		if err := progress.Close(); err != nil {
+			t.Errorf("Close() should not return error, got %v", err)
+		}
+
+		// On overrun the bar should be full (no empty cells, no panic).
+		output := buf.String()
+		if !strings.Contains(output, "[==========]") {
+			t.Errorf("overrun should render a full bar, got %q", output)
+		}
+	})
+
+	t.Run("Increment beyond total does not panic", func(t *testing.T) {
+		var buf bytes.Buffer
+		progress := NewProgress(
+			WithProgressWriter(&buf),
+			WithUpdateInterval(0),
+			WithWidth(10),
+		)
+
+		progress.SetTotal(5)
+		// Increment past the total: 0 -> 7, current(7) > total(5).
+		progress.Increment(7)
+
+		if err := progress.Close(); err != nil {
+			t.Errorf("Close() should not return error, got %v", err)
+		}
+
+		output := buf.String()
+		if !strings.Contains(output, "[==========]") {
+			t.Errorf("overrun should render a full bar, got %q", output)
+		}
+	})
+}
+
+// TestTextProgress_NegativeWidthDoesNotPanic is a regression test for T-1346.
+//
+// WithWidth(-1) / WithTrackerLength(-1) set ProgressConfig.Width to a negative
+// value. renderDefault then computed barWidth = -1, filled = 0, and called
+// strings.Repeat(" ", barWidth-filled) = strings.Repeat(" ", -1), which panics.
+//
+// Expected: a non-positive configured width is guarded so no negative repeat
+// count is produced.
+func TestTextProgress_NegativeWidthDoesNotPanic(t *testing.T) {
+	tests := map[string]struct {
+		opt ProgressOption
+	}{
+		"WithWidth(-1)":         {opt: WithWidth(-1)},
+		"WithTrackerLength(-1)": {opt: WithTrackerLength(-1)},
+		"WithWidth(0)":          {opt: WithWidth(0)},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			progress := NewProgress(
+				WithProgressWriter(&buf),
+				WithUpdateInterval(0),
+				tt.opt,
+			)
+
+			// Any draw with total > 0 reaches the bar math; with the bug present
+			// the negative width causes strings.Repeat to panic.
+			progress.SetTotal(10)
+			progress.SetCurrent(5)
+			progress.Complete()
+
+			if err := progress.Close(); err != nil {
+				t.Errorf("Close() should not return error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestProgress_V1Compatibility_ProgressOptions(t *testing.T) {
 	var buf bytes.Buffer
 	progress := NewProgress(
