@@ -1606,6 +1606,9 @@ doc.Pipeline().
 - **Parameter**: `Record` - Full record with all existing fields
 - **Returns**: `any` - Calculated value for new column
 - **Position**: Use `AddColumnAt()` to specify column position
+- **Duplicate names**: The column name must not already exist in the table
+  schema. Adding a column whose name matches an existing field returns a
+  `ValidationError`; the operation never overwrites existing fields.
 
 #### Pipeline Options
 
