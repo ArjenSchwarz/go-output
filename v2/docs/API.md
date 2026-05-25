@@ -1019,7 +1019,8 @@ func NewFileWriter(rootDir, pattern string) (Writer, error)
 // S3Writer writes to AWS S3 (compatible with AWS SDK v2)
 func NewS3Writer(client S3PutObjectAPI, bucket, keyPattern string) *S3Writer
 
-// MultiWriter writes to multiple destinations
+// MultiWriter writes to multiple destinations.
+// Nil writers passed to NewMultiWriter or AddWriter are ignored.
 func NewMultiWriter(writers ...Writer) Writer
 ```
 

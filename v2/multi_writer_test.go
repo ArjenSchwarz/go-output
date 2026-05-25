@@ -210,6 +210,73 @@ func TestMultiWriterAddRemove(t *testing.T) {
 	}
 }
 
+// TestMultiWriterNilWriterFromConstructor reproduces T-1168.
+//
+// Bug: NewMultiWriter stored nil Writer values as-is. During Write, each
+// writer was handed to a goroutine that called w.Write directly, so a nil
+// interface caused a nil-method-call panic in a child goroutine, crashing
+// the caller instead of returning a normal error.
+//
+// Expected: nil writers are rejected at construction time so they never
+// reach a Write goroutine, and Write completes without panicking.
+func TestMultiWriterNilWriterFromConstructor(t *testing.T) {
+	w1 := &mockWriter{name: "w1"}
+
+	// A nil Writer mixed in with a valid one must not be stored.
+	mw := NewMultiWriter(w1, nil)
+
+	if got := mw.WriterCount(); got != 1 {
+		t.Fatalf("WriterCount() = %d, want 1 (nil writer should be dropped)", got)
+	}
+
+	// Must not panic when writing.
+	if err := mw.Write(context.Background(), FormatText, []byte("data")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := w1.String(); got != "data" {
+		t.Errorf("w1 got %q, want %q", got, "data")
+	}
+}
+
+// TestMultiWriterNilWriterFromAddWriter reproduces T-1168 for the AddWriter path.
+func TestMultiWriterNilWriterFromAddWriter(t *testing.T) {
+	mw := NewMultiWriter()
+
+	mw.AddWriter(nil)
+	if got := mw.WriterCount(); got != 0 {
+		t.Fatalf("after AddWriter(nil): WriterCount() = %d, want 0", got)
+	}
+
+	w1 := &mockWriter{name: "w1"}
+	mw.AddWriter(w1)
+	mw.AddWriter(nil)
+	if got := mw.WriterCount(); got != 1 {
+		t.Fatalf("WriterCount() = %d, want 1 (nil writer should be dropped)", got)
+	}
+
+	if err := mw.Write(context.Background(), FormatText, []byte("data")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := w1.String(); got != "data" {
+		t.Errorf("w1 got %q, want %q", got, "data")
+	}
+}
+
+// TestMultiWriterOnlyNilWriters ensures a MultiWriter built solely from nil
+// writers behaves like one with no writers (error, no panic).
+func TestMultiWriterOnlyNilWriters(t *testing.T) {
+	mw := NewMultiWriter(nil, nil)
+	if got := mw.WriterCount(); got != 0 {
+		t.Fatalf("WriterCount() = %d, want 0", got)
+	}
+
+	err := mw.Write(context.Background(), FormatText, []byte("data"))
+	if err == nil {
+		t.Fatal("expected error for MultiWriter with no usable writers, got nil")
+	}
+}
+
 func TestMultiWriterConcurrency(t *testing.T) {
 	// Create writers that count writes
 	var count1, count2, count3 int32
