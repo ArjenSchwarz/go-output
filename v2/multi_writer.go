@@ -13,11 +13,19 @@ type MultiWriter struct {
 	mu      sync.RWMutex // For concurrent access to writers slice
 }
 
-// NewMultiWriter creates a new MultiWriter with the specified writers
+// NewMultiWriter creates a new MultiWriter with the specified writers.
+// Nil writers are ignored: a nil Writer is never a valid destination, and
+// storing one would cause a nil interface method call (panic) during Write.
 func NewMultiWriter(writers ...Writer) *MultiWriter {
+	valid := make([]Writer, 0, len(writers))
+	for _, w := range writers {
+		if w != nil {
+			valid = append(valid, w)
+		}
+	}
 	return &MultiWriter{
 		baseWriter: baseWriter{name: "multi"},
-		writers:    writers,
+		writers:    valid,
 	}
 }
 
@@ -50,6 +58,12 @@ func (mw *MultiWriter) Write(ctx context.Context, format string, data []byte) er
 	errChan := make(chan error, len(writers))
 
 	for _, writer := range writers {
+		// Defence in depth: NewMultiWriter and AddWriter already drop nil
+		// writers, but skip any that slip through so the goroutine never
+		// calls a method on a nil interface (which would panic).
+		if writer == nil {
+			continue
+		}
 		wg.Add(1)
 		go func(w Writer) {
 			defer wg.Done()
@@ -77,8 +91,12 @@ func (mw *MultiWriter) Write(ctx context.Context, format string, data []byte) er
 	return nil
 }
 
-// AddWriter adds a writer to the multi-writer
+// AddWriter adds a writer to the multi-writer. A nil writer is ignored:
+// it is never a valid destination and would panic during Write.
 func (mw *MultiWriter) AddWriter(w Writer) {
+	if w == nil {
+		return
+	}
 	mw.mu.Lock()
 	defer mw.mu.Unlock()
 	mw.writers = append(mw.writers, w)
