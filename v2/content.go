@@ -564,17 +564,32 @@ func (s *SectionContent) Contents() []Content {
 	return contents
 }
 
-// AddContent adds content to this section
+// AddContent adds content to this section.
+//
+// Nil content is skipped rather than stored: SectionContent's consumers (Clone,
+// AppendText, and the renderers that recurse into Contents()) assume every entry
+// is non-nil, and a nil entry would otherwise cause a nil dereference panic.
+// AddContent returns no value and SectionContent has no error channel, so a nil
+// argument is silently dropped (consistent with Builder.AddContent rejecting nil
+// for top-level content).
 func (s *SectionContent) AddContent(content Content) {
+	if content == nil {
+		return
+	}
 	s.contents = append(s.contents, content)
 }
 
 // Clone creates a deep copy of the SectionContent
 func (s *SectionContent) Clone() Content {
-	// Deep copy the nested contents
-	newContents := make([]Content, len(s.contents))
-	for i, content := range s.contents {
-		newContents[i] = content.Clone()
+	// Deep copy the nested contents. Skip any nil entry defensively so a nil
+	// that reached contents by some route cannot cause a nil dereference (the
+	// primary guard is in AddContent).
+	newContents := make([]Content, 0, len(s.contents))
+	for _, content := range s.contents {
+		if content == nil {
+			continue
+		}
+		newContents = append(newContents, content.Clone())
 	}
 
 	// Shallow copy transformations (share same operation instances)
@@ -618,6 +633,11 @@ func (s *SectionContent) AppendText(b []byte) ([]byte, error) {
 
 	// Render all nested content
 	for i, content := range s.contents {
+		// Skip any nil entry defensively to avoid a nil dereference (the primary
+		// guard is in AddContent).
+		if content == nil {
+			continue
+		}
 		if i > 0 {
 			b = append(b, '\n')
 		}

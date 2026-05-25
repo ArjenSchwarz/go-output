@@ -772,3 +772,110 @@ func TestSectionContent_Clone_NestedContent(t *testing.T) {
 		})
 	}
 }
+
+// TestSectionContent_AddContent_RejectsNil verifies that adding nil content to a
+// section is skipped rather than stored. Before the T-1353 fix, AddContent
+// appended any value including nil, leaving a nil entry in the section's
+// contents slice.
+//
+// Bug: SectionContent.AddContent appended nil without validation.
+// Expected: nil content is skipped; Contents() never returns a nil entry.
+func TestSectionContent_AddContent_RejectsNil(t *testing.T) {
+	section := NewSectionContent("Test Section")
+
+	section.AddContent(nil)
+	section.AddContent(NewTextContent("real content"))
+	section.AddContent(nil)
+
+	contents := section.Contents()
+	if len(contents) != 1 {
+		t.Fatalf("Expected 1 content after skipping nils, got %d", len(contents))
+	}
+	for i, c := range contents {
+		if c == nil {
+			t.Errorf("Contents()[%d] is nil; nil content should never be stored", i)
+		}
+	}
+}
+
+// TestSectionContent_Clone_WithNilContent verifies Clone does not panic when a
+// section somehow holds a nil nested content.
+//
+// Bug: Clone called content.Clone() unconditionally, panicking on a nil entry.
+// Expected: Clone skips nil entries and returns a usable copy.
+func TestSectionContent_Clone_WithNilContent(t *testing.T) {
+	section := NewSectionContent("Test Section")
+	section.AddContent(NewTextContent("real content"))
+	// Force a nil entry directly into the slice to exercise the defensive guard,
+	// bypassing AddContent's validation.
+	section.contents = append(section.contents, nil)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Clone panicked with nil nested content: %v", r)
+		}
+	}()
+
+	cloned := section.Clone()
+	if cloned == nil {
+		t.Fatal("Clone returned nil")
+	}
+	for i, c := range cloned.(*SectionContent).contents {
+		if c == nil {
+			t.Errorf("cloned contents[%d] is nil; nil should be skipped during Clone", i)
+		}
+	}
+}
+
+// TestSectionContent_AppendText_WithNilContent verifies AppendText does not panic
+// when a section holds a nil nested content.
+//
+// Bug: AppendText called content.AppendText(nil) and content.ID() on a nil
+// entry, causing a nil dereference panic.
+// Expected: AppendText skips nil entries and renders the valid content.
+func TestSectionContent_AppendText_WithNilContent(t *testing.T) {
+	section := NewSectionContent("Test Section")
+	section.AddContent(NewTextContent("real content"))
+	section.contents = append(section.contents, nil)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("AppendText panicked with nil nested content: %v", r)
+		}
+	}()
+
+	result, err := section.AppendText(nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if !strings.Contains(string(result), "real content") {
+		t.Errorf("Expected output to contain valid content, got %q", string(result))
+	}
+}
+
+// TestSectionContent_Render_WithNilContent verifies that rendering a document
+// containing a section that a caller tried to populate with nil content does not
+// panic. Renderers recurse into section.Contents() and assume non-nil entries, so
+// AddContent must keep nil out of the slice.
+//
+// Bug: AddContent stored nil, and renderers then dereferenced it.
+// Expected: AddContent skips nil and rendering completes without panicking.
+func TestSectionContent_Render_WithNilContent(t *testing.T) {
+	section := NewSectionContent("Test Section")
+	section.AddContent(nil)
+	section.AddContent(NewTextContent("real content"))
+	section.AddContent(nil)
+
+	doc := New().AddContent(section).Build()
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Render panicked with nil nested content: %v", r)
+		}
+	}()
+
+	renderer := &markdownRenderer{}
+	if _, err := renderer.Render(context.Background(), doc); err != nil {
+		t.Fatalf("Unexpected render error: %v", err)
+	}
+}
