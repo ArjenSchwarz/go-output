@@ -37,8 +37,15 @@ func NewTransformPipeline() *TransformPipeline {
 	}
 }
 
-// Add adds a transformer to the pipeline
+// Add adds a transformer to the pipeline. Nil transformers are ignored so the
+// pipeline never stores a value that would panic when its interface methods are
+// called later (matching how the rest of the transformation API rejects nil
+// inputs rather than crashing).
 func (tp *TransformPipeline) Add(transformer Transformer) {
+	if transformer == nil {
+		return
+	}
+
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
 
@@ -52,6 +59,9 @@ func (tp *TransformPipeline) Remove(name string) bool {
 	defer tp.mu.Unlock()
 
 	for i, t := range tp.transformers {
+		if t == nil {
+			continue
+		}
 		if t.Name() == name {
 			tp.transformers = append(tp.transformers[:i], tp.transformers[i+1:]...)
 			return true
@@ -66,6 +76,9 @@ func (tp *TransformPipeline) Has(name string) bool {
 	defer tp.mu.RUnlock()
 
 	for _, t := range tp.transformers {
+		if t == nil {
+			continue
+		}
 		if t.Name() == name {
 			return true
 		}
@@ -79,6 +92,9 @@ func (tp *TransformPipeline) Get(name string) Transformer {
 	defer tp.mu.RUnlock()
 
 	for _, t := range tp.transformers {
+		if t == nil {
+			continue
+		}
 		if t.Name() == name {
 			return t
 		}
@@ -110,7 +126,16 @@ func (tp *TransformPipeline) sortTransformers() {
 	}
 
 	sort.Slice(tp.transformers, func(i, j int) bool {
-		return tp.transformers[i].Priority() < tp.transformers[j].Priority()
+		// Guard against nil entries so a stray nil cannot panic during sorting.
+		// Nil is treated as lowest priority; iteration methods skip nil anyway.
+		switch {
+		case tp.transformers[i] == nil:
+			return tp.transformers[j] != nil
+		case tp.transformers[j] == nil:
+			return false
+		default:
+			return tp.transformers[i].Priority() < tp.transformers[j].Priority()
+		}
 	})
 	tp.sorted = true
 }
@@ -123,6 +148,9 @@ func (tp *TransformPipeline) Transform(ctx context.Context, input []byte, format
 	// Create a copy of transformers to avoid holding the lock during transformation
 	applicable := make([]Transformer, 0, len(tp.transformers))
 	for _, t := range tp.transformers {
+		if t == nil {
+			continue
+		}
 		if t.CanTransform(format) {
 			applicable = append(applicable, t)
 		}
@@ -162,6 +190,9 @@ func (tp *TransformPipeline) Info() []TransformInfo {
 
 	info := make([]TransformInfo, 0, len(tp.transformers))
 	for _, t := range tp.transformers {
+		if t == nil {
+			continue
+		}
 		// Test common formats to see which ones this transformer supports
 		formats := make([]string, 0)
 		testFormats := []string{FormatJSON, FormatYAML, FormatCSV, FormatHTML, FormatTable, FormatMarkdown, FormatDOT, FormatMermaid, FormatDrawIO}
