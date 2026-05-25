@@ -87,7 +87,7 @@ func (m *markdownRenderer) renderDocumentMarkdown(ctx context.Context, doc *Docu
 			return nil, err
 		}
 
-		contentMD, err := m.renderContent(transformed)
+		contentMD, err := m.renderContent(ctx, transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
 		}
@@ -148,7 +148,7 @@ func (m *markdownRenderer) addSubsectionsToToC(toc *strings.Builder, contents []
 }
 
 // renderContent renders content specifically for Markdown format
-func (m *markdownRenderer) renderContent(content Content) ([]byte, error) {
+func (m *markdownRenderer) renderContent(ctx context.Context, content Content) ([]byte, error) {
 	switch c := content.(type) {
 	case *TableContent:
 		return m.renderTableContentMarkdown(c)
@@ -157,9 +157,9 @@ func (m *markdownRenderer) renderContent(content Content) ([]byte, error) {
 	case *RawContent:
 		return m.renderRawContentMarkdown(c)
 	case *SectionContent:
-		return m.renderSectionContentMarkdown(c)
+		return m.renderSectionContentMarkdown(ctx, c)
 	case *DefaultCollapsibleSection:
-		return m.renderCollapsibleSection(c)
+		return m.renderCollapsibleSection(ctx, c)
 	case *ChartContent:
 		return m.renderChartContentMarkdown(c)
 	default:
@@ -285,8 +285,8 @@ func (m *markdownRenderer) renderRawContentMarkdown(raw *RawContent) ([]byte, er
 }
 
 // renderSectionContentMarkdown renders section content with proper heading levels
-func (m *markdownRenderer) renderSectionContentMarkdown(section *SectionContent) ([]byte, error) {
-	return m.renderSectionContentMarkdownWithDepth(context.Background(), section, m.headingLevel)
+func (m *markdownRenderer) renderSectionContentMarkdown(ctx context.Context, section *SectionContent) ([]byte, error) {
+	return m.renderSectionContentMarkdownWithDepth(ctx, section, m.headingLevel)
 }
 
 // renderSectionContentMarkdownWithDepth renders section content with explicit depth tracking
@@ -318,7 +318,7 @@ func (m *markdownRenderer) renderSectionContentMarkdownWithDepth(ctx context.Con
 			// Increase depth for nested sections
 			contentMD, err = m.renderSectionContentMarkdownWithDepth(ctx, nestedSection, depth+1)
 		} else {
-			contentMD, err = m.renderContent(transformed)
+			contentMD, err = m.renderContent(ctx, transformed)
 		}
 
 		if err != nil {
@@ -751,7 +751,7 @@ func (m *markdownRenderer) getSafeDetailsWithCodeFences(cv CollapsibleValue, lan
 }
 
 // renderCollapsibleSection renders a CollapsibleSection as nested HTML details structure (Requirement 15.4)
-func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleSection) ([]byte, error) {
+func (m *markdownRenderer) renderCollapsibleSection(ctx context.Context, section *DefaultCollapsibleSection) ([]byte, error) {
 	var result strings.Builder
 
 	// Create nested details structure
@@ -771,12 +771,12 @@ func (m *markdownRenderer) renderCollapsibleSection(section *DefaultCollapsibleS
 		}
 
 		// Apply per-content transformations before rendering
-		transformed, err := applyContentTransformations(context.Background(), content)
+		transformed, err := applyContentTransformations(ctx, content)
 		if err != nil {
 			return nil, err
 		}
 
-		contentMD, err := m.renderContent(transformed)
+		contentMD, err := m.renderContent(ctx, transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}
