@@ -188,6 +188,17 @@ func TestFormatAwareTransformer_Wrapping(t *testing.T) {
 	}
 }
 
+// Regression test for T-1131: NewFormatAwareTransformer must not wrap a nil
+// transformer and later panic when its Name/Priority/CanTransform/Transform
+// methods dereference the embedded nil transformer. Expected behaviour: wrapping
+// a nil transformer returns nil so callers can detect the invalid input.
+func TestNewFormatAwareTransformer_Nil(t *testing.T) {
+	wrapper := NewFormatAwareTransformer(nil)
+	if wrapper != nil {
+		t.Fatalf("NewFormatAwareTransformer(nil) = %v, want nil", wrapper)
+	}
+}
+
 func TestFormatAwareTransformer_EmojiCanTransform(t *testing.T) {
 	emojiTransformer := &EmojiTransformer{}
 	wrapper := NewFormatAwareTransformer(emojiTransformer)
