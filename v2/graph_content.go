@@ -148,17 +148,22 @@ func (g *GraphContent) GetTitle() string {
 	return g.title
 }
 
-// GetNodes returns unique nodes from all edges
+// GetNodes returns the unique nodes from all edges in first-seen (insertion)
+// order. Order is derived from the edges rather than a map so output is
+// deterministic: ranging a set map would expose Go's randomized map iteration
+// order to callers such as the Draw.io and JSON/YAML renderers.
 func (g *GraphContent) GetNodes() []string {
-	nodeMap := make(map[string]bool)
-	for _, edge := range g.edges {
-		nodeMap[edge.From] = true
-		nodeMap[edge.To] = true
+	seen := make(map[string]bool)
+	nodes := make([]string, 0, len(g.edges)*2)
+	addNode := func(node string) {
+		if !seen[node] {
+			seen[node] = true
+			nodes = append(nodes, node)
+		}
 	}
-
-	nodes := make([]string, 0, len(nodeMap))
-	for node := range nodeMap {
-		nodes = append(nodes, node)
+	for _, edge := range g.edges {
+		addNode(edge.From)
+		addNode(edge.To)
 	}
 	return nodes
 }
