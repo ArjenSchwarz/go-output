@@ -116,6 +116,9 @@ func (j *jsonRenderer) Render(ctx context.Context, doc *Document) ([]byte, error
 }
 
 func (j *jsonRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	if w == nil {
+		return fmt.Errorf("writer cannot be nil")
+	}
 	data, err := j.renderDocumentJSON(ctx, doc)
 	if err != nil {
 		return err
@@ -602,6 +605,9 @@ func (y *yamlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error
 }
 
 func (y *yamlRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	if w == nil {
+		return fmt.Errorf("writer cannot be nil")
+	}
 	data, err := y.renderDocumentYAML(ctx, doc)
 	if err != nil {
 		return err

@@ -27,6 +27,9 @@ func (m *markdownRenderer) Render(ctx context.Context, doc *Document) ([]byte, e
 }
 
 func (m *markdownRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	if w == nil {
+		return fmt.Errorf("writer cannot be nil")
+	}
 	data, err := m.renderDocumentMarkdown(ctx, doc)
 	if err != nil {
 		return err
