@@ -210,6 +210,54 @@ type PieSlice struct {
 	Value float64
 }
 
+// cloneGanttTasks returns a deep copy of a Gantt task slice. Each task's
+// Dependencies slice is also copied so callers cannot mutate stored content.
+func cloneGanttTasks(tasks []GanttTask) []GanttTask {
+	if tasks == nil {
+		return nil
+	}
+	out := make([]GanttTask, len(tasks))
+	for i, task := range tasks {
+		task.Dependencies = slices.Clone(task.Dependencies)
+		out[i] = task
+	}
+	return out
+}
+
+// clonePieSlices returns a copy of a pie slice slice. PieSlice is a value
+// struct with no reference-typed fields, so a shallow element copy suffices.
+func clonePieSlices(pieSlices []PieSlice) []PieSlice {
+	if pieSlices == nil {
+		return nil
+	}
+	return slices.Clone(pieSlices)
+}
+
+// cloneChartData returns a deep copy of chart-specific data so callers cannot
+// mutate the content's internal state. Known chart types (*GanttData and
+// *PieData) are copied along with their slices; any other payload is returned
+// unchanged since its type is not known to this package.
+func cloneChartData(data any) any {
+	switch d := data.(type) {
+	case *GanttData:
+		if d == nil {
+			return d
+		}
+		clone := *d
+		clone.Tasks = cloneGanttTasks(d.Tasks)
+		return &clone
+	case *PieData:
+		if d == nil {
+			return d
+		}
+		clone := *d
+		clone.Slices = clonePieSlices(d.Slices)
+		return &clone
+	default:
+		return data
+	}
+}
+
 // GanttData represents data for a Gantt chart
 type GanttData struct {
 	DateFormat string
@@ -238,7 +286,7 @@ func NewGanttChart(title string, tasks []GanttTask) *ChartContent {
 	data := &GanttData{
 		DateFormat: "YYYY-MM-DD",
 		AxisFormat: "%Y-%m-%d",
-		Tasks:      tasks,
+		Tasks:      cloneGanttTasks(tasks),
 	}
 	return NewChartContent(title, ChartTypeGantt, data)
 }
@@ -247,7 +295,7 @@ func NewGanttChart(title string, tasks []GanttTask) *ChartContent {
 func NewPieChart(title string, slices []PieSlice, showData bool) *ChartContent {
 	data := &PieData{
 		ShowData: showData,
-		Slices:   slices,
+		Slices:   clonePieSlices(slices),
 	}
 	return NewChartContent(title, ChartTypePie, data)
 }
@@ -272,9 +320,11 @@ func (c *ChartContent) GetTitle() string {
 	return c.title
 }
 
-// GetData returns the chart data
+// GetData returns a copy of the chart data so callers cannot mutate the
+// content's internal state. For known chart types (*GanttData, *PieData) the
+// returned value is an independent deep copy.
 func (c *ChartContent) GetData() any {
-	return c.data
+	return cloneChartData(c.data)
 }
 
 // AppendText implements encoding.TextAppender
@@ -329,7 +379,7 @@ func (c *ChartContent) Clone() Content {
 		id:        c.id,
 		title:     c.title,
 		chartType: c.chartType,
-		data:      c.data, // Shallow copy of data - deep copy would require type-specific logic
+		data:      cloneChartData(c.data),
 	}
 }
 

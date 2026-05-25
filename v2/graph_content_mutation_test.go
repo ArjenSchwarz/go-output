@@ -112,3 +112,153 @@ func TestDrawIOContentFromTable_MutateSourceTableRecords(t *testing.T) {
 		t.Errorf("mutating source table record changed Draw.io content: got %v, want Web", got[0]["Type"])
 	}
 }
+
+// Regression tests for T-1305: ChartContent/GanttData/PieData expose mutable
+// caller-owned data. NewGanttChart and NewPieChart must defensively copy their
+// input slices (including each Gantt task's Dependencies slice), GetData must
+// return an independent copy of the chart data, and Clone must produce a deep
+// copy so the clone is independent of the original.
+
+// TestNewGanttChart_MutateInputTasksAfterCreate verifies that mutating the
+// caller's task slice after NewGanttChart does not affect the stored tasks.
+func TestNewGanttChart_MutateInputTasksAfterCreate(t *testing.T) {
+	tasks := []GanttTask{
+		{ID: "1", Title: "Design", StartDate: "2026-01-01"},
+		{ID: "2", Title: "Build", StartDate: "2026-01-02"},
+	}
+
+	c := NewGanttChart("project", tasks)
+
+	// Mutate the caller-owned slice element after construction.
+	tasks[0] = GanttTask{ID: "X", Title: "mutated"}
+
+	data, ok := c.GetData().(*GanttData)
+	if !ok {
+		t.Fatalf("GetData did not return *GanttData, got %T", c.GetData())
+	}
+	if data.Tasks[0].Title != "Design" {
+		t.Errorf("mutating input slice changed stored task: got %q, want Design", data.Tasks[0].Title)
+	}
+}
+
+// TestNewGanttChart_MutateInputTaskDependencies verifies that mutating a task's
+// Dependencies slice the caller still owns does not affect the stored task.
+func TestNewGanttChart_MutateInputTaskDependencies(t *testing.T) {
+	tasks := []GanttTask{
+		{ID: "1", Title: "Build", Dependencies: []string{"design"}},
+	}
+
+	c := NewGanttChart("project", tasks)
+
+	// Mutate the nested Dependencies slice the caller still owns.
+	tasks[0].Dependencies[0] = "mutated"
+
+	data := c.GetData().(*GanttData)
+	if data.Tasks[0].Dependencies[0] != "design" {
+		t.Errorf("mutating input task dependency changed stored task: got %q, want design", data.Tasks[0].Dependencies[0])
+	}
+}
+
+// TestNewGanttChart_MutateTasksThroughGetData verifies that mutating the tasks
+// reachable through GetData does not affect the chart's internal state.
+func TestNewGanttChart_MutateTasksThroughGetData(t *testing.T) {
+	tasks := []GanttTask{
+		{ID: "1", Title: "Design"},
+	}
+
+	c := NewGanttChart("project", tasks)
+
+	// Mutate the data returned by the getter.
+	returned := c.GetData().(*GanttData)
+	returned.Tasks[0].Title = "mutated"
+
+	again := c.GetData().(*GanttData)
+	if again.Tasks[0].Title != "Design" {
+		t.Errorf("mutating GetData result changed stored task: got %q, want Design", again.Tasks[0].Title)
+	}
+}
+
+// TestNewPieChart_MutateInputSlicesAfterCreate verifies that mutating the
+// caller's slice after NewPieChart does not affect the stored slices.
+func TestNewPieChart_MutateInputSlicesAfterCreate(t *testing.T) {
+	slices := []PieSlice{
+		{Label: "A", Value: 1},
+		{Label: "B", Value: 2},
+	}
+
+	c := NewPieChart("dist", slices, true)
+
+	// Mutate the caller-owned slice element after construction.
+	slices[0] = PieSlice{Label: "mutated", Value: 99}
+
+	data, ok := c.GetData().(*PieData)
+	if !ok {
+		t.Fatalf("GetData did not return *PieData, got %T", c.GetData())
+	}
+	if data.Slices[0].Label != "A" || data.Slices[0].Value != 1 {
+		t.Errorf("mutating input slice changed stored slice: got %+v, want {Label:A Value:1}", data.Slices[0])
+	}
+}
+
+// TestNewPieChart_MutateSlicesThroughGetData verifies that mutating the slices
+// reachable through GetData does not affect the chart's internal state.
+func TestNewPieChart_MutateSlicesThroughGetData(t *testing.T) {
+	slices := []PieSlice{
+		{Label: "A", Value: 1},
+	}
+
+	c := NewPieChart("dist", slices, true)
+
+	// Mutate the data returned by the getter.
+	returned := c.GetData().(*PieData)
+	returned.Slices[0].Label = "mutated"
+
+	again := c.GetData().(*PieData)
+	if again.Slices[0].Label != "A" {
+		t.Errorf("mutating GetData result changed stored slice: got %q, want A", again.Slices[0].Label)
+	}
+}
+
+// TestChartContent_CloneIndependentGantt verifies that mutating a cloned Gantt
+// chart's data does not affect the original chart.
+func TestChartContent_CloneIndependentGantt(t *testing.T) {
+	tasks := []GanttTask{
+		{ID: "1", Title: "Design", Dependencies: []string{"spec"}},
+	}
+
+	c := NewGanttChart("project", tasks)
+	clone := c.Clone().(*ChartContent)
+
+	// Mutate the clone's data.
+	cloneData := clone.GetData().(*GanttData)
+	cloneData.Tasks[0].Title = "mutated"
+	cloneData.Tasks[0].Dependencies[0] = "mutated"
+
+	origData := c.GetData().(*GanttData)
+	if origData.Tasks[0].Title != "Design" {
+		t.Errorf("mutating clone changed original task title: got %q, want Design", origData.Tasks[0].Title)
+	}
+	if origData.Tasks[0].Dependencies[0] != "spec" {
+		t.Errorf("mutating clone changed original task dependency: got %q, want spec", origData.Tasks[0].Dependencies[0])
+	}
+}
+
+// TestChartContent_CloneIndependentPie verifies that mutating a cloned pie
+// chart's data does not affect the original chart.
+func TestChartContent_CloneIndependentPie(t *testing.T) {
+	slices := []PieSlice{
+		{Label: "A", Value: 1},
+	}
+
+	c := NewPieChart("dist", slices, true)
+	clone := c.Clone().(*ChartContent)
+
+	// Mutate the clone's data.
+	cloneData := clone.GetData().(*PieData)
+	cloneData.Slices[0].Label = "mutated"
+
+	origData := c.GetData().(*PieData)
+	if origData.Slices[0].Label != "A" {
+		t.Errorf("mutating clone changed original slice: got %q, want A", origData.Slices[0].Label)
+	}
+}
