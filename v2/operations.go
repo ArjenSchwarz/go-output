@@ -49,6 +49,12 @@ func (o *FilterOp) Name() string {
 
 // Apply filters table records based on the predicate
 func (o *FilterOp) Apply(ctx context.Context, content Content) (Content, error) {
+	// Guard against nil content before dereferencing it for the error message
+	if content == nil {
+		return nil, NewValidationError("content_type", nil,
+			"filter operation requires table content")
+	}
+
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
@@ -102,7 +108,7 @@ func (o *FilterOp) ApplyWithFormat(ctx context.Context, content Content, format 
 // CanTransform checks if filter operation applies to the given content and format
 func (o *FilterOp) CanTransform(content Content, format string) bool {
 	// Filter works with table content in any format
-	return content.Type() == ContentTypeTable
+	return content != nil && content.Type() == ContentTypeTable
 }
 
 // SortOp implements sorting operation using keys or custom comparators
@@ -118,6 +124,12 @@ func (o *SortOp) Name() string {
 
 // Apply sorts table records based on keys or comparator
 func (o *SortOp) Apply(ctx context.Context, content Content) (Content, error) {
+	// Guard against nil content before dereferencing it for the error message
+	if content == nil {
+		return nil, NewValidationError("content_type", nil,
+			"sort operation requires table content")
+	}
+
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
@@ -332,7 +344,7 @@ func (o *SortOp) ApplyWithFormat(ctx context.Context, content Content, format st
 // CanTransform checks if sort operation applies to the given content and format
 func (o *SortOp) CanTransform(content Content, format string) bool {
 	// Sort works with table content in any format
-	return content.Type() == ContentTypeTable
+	return content != nil && content.Type() == ContentTypeTable
 }
 
 // LimitOp implements limit operation to restrict the number of records
@@ -347,6 +359,12 @@ func (o *LimitOp) Name() string {
 
 // Apply limits the number of records in the table
 func (o *LimitOp) Apply(ctx context.Context, content Content) (Content, error) {
+	// Guard against nil content before dereferencing it for the error message
+	if content == nil {
+		return nil, NewValidationError("content_type", nil,
+			"limit operation requires table content")
+	}
+
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
@@ -388,7 +406,7 @@ func (o *LimitOp) ApplyWithFormat(ctx context.Context, content Content, format s
 // CanTransform checks if limit operation applies to the given content and format
 func (o *LimitOp) CanTransform(content Content, format string) bool {
 	// Limit works with table content in any format
-	return content.Type() == ContentTypeTable
+	return content != nil && content.Type() == ContentTypeTable
 }
 
 // NewFilterOp creates a new filter operation with the given predicate
@@ -435,6 +453,12 @@ func (o *GroupByOp) Name() string {
 
 // Apply groups table records and applies aggregate functions
 func (o *GroupByOp) Apply(ctx context.Context, content Content) (Content, error) {
+	// Guard against nil content before dereferencing it for the error message
+	if content == nil {
+		return nil, NewValidationError("content_type", nil,
+			"groupBy operation requires table content")
+	}
+
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
@@ -648,7 +672,7 @@ func (o *GroupByOp) ApplyWithFormat(ctx context.Context, content Content, format
 // CanTransform checks if groupBy operation applies to the given content and format
 func (o *GroupByOp) CanTransform(content Content, format string) bool {
 	// GroupBy works with table content in any format
-	return content.Type() == ContentTypeTable
+	return content != nil && content.Type() == ContentTypeTable
 }
 
 // Built-in aggregate functions
@@ -800,6 +824,12 @@ func (o *AddColumnOp) Name() string {
 
 // Apply adds a calculated column to the table
 func (o *AddColumnOp) Apply(ctx context.Context, content Content) (Content, error) {
+	// Guard against nil content before dereferencing it for the error message
+	if content == nil {
+		return nil, NewValidationError("content_type", nil,
+			"addColumn operation requires table content")
+	}
+
 	// Type check
 	tableContent, ok := content.(*TableContent)
 	if !ok {
@@ -923,7 +953,7 @@ func (o *AddColumnOp) ApplyWithFormat(ctx context.Context, content Content, form
 // CanTransform checks if addColumn operation applies to the given content and format
 func (o *AddColumnOp) CanTransform(content Content, format string) bool {
 	// AddColumn works with table content in any format
-	return content.Type() == ContentTypeTable
+	return content != nil && content.Type() == ContentTypeTable
 }
 
 // NewAddColumnOp creates a new addColumn operation
