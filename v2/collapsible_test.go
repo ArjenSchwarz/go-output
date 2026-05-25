@@ -364,3 +364,49 @@ func TestCollapsibleValue_EdgeCases(t *testing.T) {
 		}
 	})
 }
+
+// TestCollapsibleValueFormatHintInputImmutability verifies that mutating the
+// caller-provided hints map after construction does not affect renderer behavior.
+// Regression test for T-1359: WithFormatHint stored the caller map directly.
+func TestCollapsibleValueFormatHintInputImmutability(t *testing.T) {
+	hints := map[string]any{"class": "expandable"}
+
+	cv := NewCollapsibleValue("summary", "details",
+		WithFormatHint("html", hints))
+
+	// Mutate the caller-owned map after construction.
+	hints["class"] = "mutated"
+	hints["extra"] = "added"
+
+	got := cv.FormatHint("html")
+	if got["class"] != "expandable" {
+		t.Errorf("mutating caller hints map changed stored hints: got %v, want %v", got["class"], "expandable")
+	}
+	if _, exists := got["extra"]; exists {
+		t.Error("adding a key to the caller hints map leaked into stored hints")
+	}
+}
+
+// TestCollapsibleValueFormatHintOutputImmutability verifies that mutating the
+// map returned by FormatHint does not affect the value's internal state.
+// Regression test for T-1359: FormatHint returned the stored map directly.
+func TestCollapsibleValueFormatHintOutputImmutability(t *testing.T) {
+	hints := map[string]any{"class": "expandable"}
+
+	cv := NewCollapsibleValue("summary", "details",
+		WithFormatHint("html", hints))
+
+	// Mutate the returned map.
+	returned := cv.FormatHint("html")
+	returned["class"] = "mutated"
+	returned["extra"] = "added"
+
+	// A fresh read must be unaffected.
+	got := cv.FormatHint("html")
+	if got["class"] != "expandable" {
+		t.Errorf("mutating returned hints map changed stored hints: got %v, want %v", got["class"], "expandable")
+	}
+	if _, exists := got["extra"]; exists {
+		t.Error("adding a key to the returned hints map leaked into stored hints")
+	}
+}
