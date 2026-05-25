@@ -125,13 +125,13 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 			}
 
 		case *DefaultCollapsibleSection:
-			// Handle CollapsibleSection with metadata comments (Requirement 15.8)
-			hasWritten := lastKeyOrder != nil
-			if err := c.renderCollapsibleSectionCSV(content, csvWriter, &hasWritten); err != nil {
+			// Handle CollapsibleSection with metadata comments (Requirement 15.8).
+			// lastKeyOrder is shared so header re-writes and separators stay
+			// consistent with surrounding top-level tables, and so tables inside
+			// the section get their own headers whenever the schema changes
+			// (T-1315).
+			if err := c.renderCollapsibleSectionCSV(content, csvWriter, &lastKeyOrder); err != nil {
 				return fmt.Errorf("failed to render collapsible section %s: %w", content.ID(), err)
-			}
-			if hasWritten && lastKeyOrder == nil {
-				lastKeyOrder = []string{"_collapsible"}
 			}
 
 		default:
@@ -454,8 +454,14 @@ func (c *csvRenderer) flattenDetails(details any) string {
 	}
 }
 
-// renderCollapsibleSectionCSV renders a CollapsibleSection with metadata comments (Requirement 15.8)
-func (c *csvRenderer) renderCollapsibleSectionCSV(section *DefaultCollapsibleSection, csvWriter *csv.Writer, hasWrittenHeaders *bool) error {
+// renderCollapsibleSectionCSV renders a CollapsibleSection with metadata comments (Requirement 15.8).
+//
+// lastKeyOrder is shared with the document-level renderer so that headers are
+// re-written and separators inserted whenever a table's key order changes,
+// mirroring the normal CSV path and renderSectionTablesCSV (T-1315). Tracking a
+// single boolean previously suppressed headers for every table after the first,
+// producing malformed CSV when a section held tables with differing schemas.
+func (c *csvRenderer) renderCollapsibleSectionCSV(section *DefaultCollapsibleSection, csvWriter *csv.Writer, lastKeyOrder *[]string) error {
 	// Add section metadata as CSV comments or special rows (Requirement 15.8)
 
 	// Since CSV doesn't support comments officially, we'll use a special metadata row format
@@ -475,6 +481,14 @@ func (c *csvRenderer) renderCollapsibleSectionCSV(section *DefaultCollapsibleSec
 	for i, content := range section.Content() {
 		switch contentItem := content.(type) {
 		case *TableContent:
+			// Add a blank separator row between tables (matches top-level
+			// behaviour) when a previous table has already been written.
+			if *lastKeyOrder != nil {
+				if err := csvWriter.Write([]string{}); err != nil {
+					return fmt.Errorf("failed to write separator row: %w", err)
+				}
+			}
+
 			// For table content, add section context to CSV (Requirement 15.8)
 			if contentItem.Title() != "" {
 				// Add table title with section context
@@ -484,12 +498,14 @@ func (c *csvRenderer) renderCollapsibleSectionCSV(section *DefaultCollapsibleSec
 				}
 			}
 
-			// Render the table content
-			writeHeaders := !*hasWrittenHeaders
+			// Write headers for the first table or whenever the schema/key
+			// order differs from the previously rendered table (T-1315).
+			keyOrder := contentItem.getSchema().GetKeyOrder()
+			writeHeaders := !keyOrdersEqual(*lastKeyOrder, keyOrder)
 			if err := c.renderTableContentCSV(contentItem, csvWriter, writeHeaders); err != nil {
 				return fmt.Errorf("failed to render section table: %w", err)
 			}
-			*hasWrittenHeaders = true
+			*lastKeyOrder = keyOrder
 
 		default:
 			// For non-table content, add as metadata (Requirement 15.8)
