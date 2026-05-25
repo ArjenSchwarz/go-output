@@ -136,8 +136,24 @@ func (p *textProgress) renderDefault() string {
 	// Add progress bar
 	if p.total > 0 {
 		progress := float64(p.current) / float64(p.total)
+
+		// Guard against a non-positive configured width (e.g. WithWidth(-1) or
+		// WithTrackerLength(-1)); a negative width would otherwise feed a
+		// negative count into strings.Repeat below.
 		barWidth := p.config.Width
+		if barWidth < 0 {
+			barWidth = 0
+		}
+
+		// Clamp filled to [0, barWidth] so an overrun (current > total) renders
+		// a full bar instead of producing a negative empty-cell count, which
+		// would panic in strings.Repeat.
 		filled := int(progress * float64(barWidth))
+		if filled < 0 {
+			filled = 0
+		} else if filled > barWidth {
+			filled = barWidth
+		}
 
 		bar := fmt.Sprintf("[%s%s]",
 			strings.Repeat("=", filled),
