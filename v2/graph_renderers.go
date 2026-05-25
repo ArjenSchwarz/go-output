@@ -103,8 +103,9 @@ func (d *dotRenderer) SupportsStreaming() bool {
 func (d *dotRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphContent) {
 	// Add title as graph label if present
 	if title := graph.GetTitle(); title != "" {
-		// Always quote labels in DOT format
-		fmt.Fprintf(buf, "  label=\"%s\";\n", title)
+		// Always quote labels in DOT format, escaping special characters so the
+		// title cannot break out of the quoted string (T-1292).
+		fmt.Fprintf(buf, "  label=\"%s\";\n", escapeDOTLabel(title))
 	}
 
 	// Render edges
@@ -115,8 +116,8 @@ func (d *dotRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphContent)
 		buf.WriteString(sanitizeDOTID(edge.To))
 
 		if edge.Label != "" {
-			// Always quote edge labels
-			fmt.Fprintf(buf, " [label=\"%s\"]", edge.Label)
+			// Always quote edge labels, escaping special characters (T-1292).
+			fmt.Fprintf(buf, " [label=\"%s\"]", escapeDOTLabel(edge.Label))
 		}
 
 		buf.WriteString(";\n")
@@ -294,7 +295,13 @@ func (m *mermaidRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphCont
 		buf.WriteString(sanitizeMermaidID(edge.From))
 
 		if edge.Label != "" {
-			fmt.Fprintf(buf, " -->|%s| ", edge.Label)
+			if mermaidLabelNeedsQuoting(edge.Label) {
+				// Wrap the edge label in quotes and escape special characters so
+				// pipes, quotes, and newlines cannot break the edge syntax (T-1292).
+				fmt.Fprintf(buf, " -->|\"%s\"| ", escapeMermaidLabel(edge.Label))
+			} else {
+				fmt.Fprintf(buf, " -->|%s| ", edge.Label)
+			}
 		} else {
 			buf.WriteString(" --> ")
 		}
@@ -457,11 +464,53 @@ func (m *mermaidRenderer) extractGraphFromTable(table *TableContent) *GraphConte
 
 // sanitizeMermaidID makes a string safe for use as a Mermaid identifier
 func sanitizeMermaidID(s string) string {
-	// Mermaid uses brackets for node text with special characters
+	// Mermaid uses brackets for node text with special characters.
 	if containsSpecialChars(s) {
+		// Characters that would otherwise break out of the [..] node syntax are
+		// escaped and the text is wrapped in double quotes (T-1292). Plain
+		// special characters such as spaces or dashes keep the simpler [text]
+		// form for readability and backwards compatibility.
+		if mermaidLabelNeedsQuoting(s) {
+			return `["` + escapeMermaidLabel(s) + `"]`
+		}
 		return fmt.Sprintf("[%s]", s)
 	}
 	return s
+}
+
+// escapeDOTLabel escapes a string for safe inclusion inside a quoted DOT label.
+// DOT string rules require escaping the backslash and double-quote characters;
+// literal newlines are converted to the "\n" escape sequence understood by
+// Graphviz so labels cannot break out of the label="..." syntax (T-1292).
+func escapeDOTLabel(s string) string {
+	replacer := strings.NewReplacer(
+		`\`, `\\`,
+		`"`, `\"`,
+		"\n", `\n`,
+		"\r", `\r`,
+	)
+	return replacer.Replace(s)
+}
+
+// mermaidLabelNeedsQuoting reports whether a label contains characters that
+// would break out of Mermaid's node ([..]) or edge (|..|) label syntax and
+// therefore require the quoted, escaped form (T-1292).
+func mermaidLabelNeedsQuoting(s string) bool {
+	return strings.ContainsAny(s, "\"[]|<>\n\r")
+}
+
+// escapeMermaidLabel escapes a string for safe inclusion inside a quoted Mermaid
+// label. Mermaid recommends wrapping label text in double quotes and encoding
+// embedded quotes as the &quot; HTML entity; newlines become <br/> so the label
+// cannot break out of its delimiter (T-1292). Callers are responsible for
+// wrapping the result in the surrounding quotes.
+func escapeMermaidLabel(s string) string {
+	replacer := strings.NewReplacer(
+		`"`, "&quot;",
+		"\n", "<br/>",
+		"\r", "",
+	)
+	return replacer.Replace(s)
 }
 
 // containsSpecialChars checks if a string contains characters that need escaping in Mermaid
