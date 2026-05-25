@@ -349,6 +349,113 @@ func TestBuilder_SectionNilCallback(t *testing.T) {
 	}
 }
 
+// TestBuilder_SectionCallbackCallsBuild verifies that a callback which calls
+// Build() on the sub-builder does not panic the outer Section/CollapsibleSection
+// method. Before the fix, the section methods called subBuilder.Build() a second
+// time after the callback returned; if the callback already finalized the
+// sub-builder, the second Build() returned nil and the subsequent
+// GetContents() call panicked on a nil receiver (nil RWMutex.RLock).
+//
+// The expected behaviour is to not panic: the section is still added and a
+// builder error is recorded so callers can detect the misuse, consistent with
+// the builder's error-accumulation pattern.
+func TestBuilder_SectionCallbackCallsBuild(t *testing.T) {
+	tests := map[string]struct {
+		build func(*Builder) *Builder
+	}{
+		"section": {
+			build: func(b *Builder) *Builder {
+				return b.Section("details", func(sb *Builder) {
+					_ = sb.Build()
+				})
+			},
+		},
+		"collapsible section": {
+			build: func(b *Builder) *Builder {
+				return b.CollapsibleSection("details", func(sb *Builder) {
+					_ = sb.Build()
+				})
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			builder := New()
+
+			// This must not panic.
+			result := tt.build(builder)
+
+			// Fluent API: the method must return the same builder.
+			if result != builder {
+				t.Errorf("expected method to return the same builder for chaining")
+			}
+
+			// The misuse should be recorded as a builder error.
+			if !builder.HasErrors() {
+				t.Errorf("expected a builder error to be recorded when the callback finalizes the sub-builder")
+			}
+
+			// The section should still be added (as an empty section).
+			doc := builder.Build()
+			if len(doc.contents) != 1 {
+				t.Fatalf("expected 1 content (empty section), got %d", len(doc.contents))
+			}
+		})
+	}
+}
+
+// TestBuilder_SectionCallbackBuildsAfterAddingContent verifies that when a
+// callback adds content and then calls Build() on the sub-builder, the outer
+// section method still does not panic. The previously added content may be lost
+// (the callback consumed the document), but the operation must remain safe and
+// record an error rather than crash.
+func TestBuilder_SectionCallbackBuildsAfterAddingContent(t *testing.T) {
+	tests := map[string]struct {
+		build func(*Builder) *Builder
+	}{
+		"section": {
+			build: func(b *Builder) *Builder {
+				return b.Section("details", func(sb *Builder) {
+					sb.Text("some content")
+					_ = sb.Build()
+				})
+			},
+		},
+		"collapsible section": {
+			build: func(b *Builder) *Builder {
+				return b.CollapsibleSection("details", func(sb *Builder) {
+					sb.Text("some content")
+					_ = sb.Build()
+				})
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			builder := New()
+
+			// This must not panic.
+			result := tt.build(builder)
+
+			if result != builder {
+				t.Errorf("expected method to return the same builder for chaining")
+			}
+
+			if !builder.HasErrors() {
+				t.Errorf("expected a builder error to be recorded when the callback finalizes the sub-builder")
+			}
+
+			// The section should still be added.
+			doc := builder.Build()
+			if len(doc.contents) != 1 {
+				t.Fatalf("expected 1 content (section), got %d", len(doc.contents))
+			}
+		})
+	}
+}
+
 func TestBuilder_NestedSectionErrorsArePropagated(t *testing.T) {
 	tests := map[string]func(*Builder){
 		"section": func(builder *Builder) {
