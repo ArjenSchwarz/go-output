@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"sort"
 	"sync"
 )
 
@@ -321,9 +322,18 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 
 // processFormatData applies transformers and writes the data to all configured writers
 func (o *Output) processFormatData(ctx context.Context, format Format, data []byte, transformers []Transformer, writers []Writer, progress Progress, workDone *int, workMu *sync.Mutex) error {
-	// Apply transformers to the rendered data
+	// Apply transformers to the rendered data in priority order (lower priority
+	// runs first), matching the TransformPipeline contract. Sort a local copy so
+	// the caller's slice is not mutated; SliceStable keeps insertion order for
+	// transformers that share a priority.
+	ordered := make([]Transformer, len(transformers))
+	copy(ordered, transformers)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return ordered[i].Priority() < ordered[j].Priority()
+	})
+
 	transformedData := data
-	for _, transformer := range transformers {
+	for _, transformer := range ordered {
 		if transformer.CanTransform(format.Name) {
 			GlobalTrace("transform", "applying %s transformer to %s format", transformer.Name(), format.Name)
 			progress.SetStatus(fmt.Sprintf("Applying %s transformer to %s", transformer.Name(), format.Name))
