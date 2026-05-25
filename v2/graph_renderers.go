@@ -348,8 +348,12 @@ func (m *mermaidRenderer) renderGanttChart(buf *bytes.Buffer, chart *ChartConten
 		fmt.Fprintf(buf, "    axisFormat %s\n", ganttData.AxisFormat)
 	}
 
-	// Group tasks by section
+	// Group tasks by section, tracking first-seen section order separately so
+	// rendering is deterministic. Ranging the section map directly would expose
+	// Go's randomized map iteration order, reordering section blocks even when
+	// the input task order is stable.
 	sections := make(map[string][]GanttTask)
+	sectionOrder := make([]string, 0, len(ganttData.Tasks))
 	defaultSection := "Tasks"
 
 	for _, task := range ganttData.Tasks {
@@ -357,11 +361,15 @@ func (m *mermaidRenderer) renderGanttChart(buf *bytes.Buffer, chart *ChartConten
 		if section == "" {
 			section = defaultSection
 		}
+		if _, exists := sections[section]; !exists {
+			sectionOrder = append(sectionOrder, section)
+		}
 		sections[section] = append(sections[section], task)
 	}
 
-	// Render sections and tasks
-	for sectionName, tasks := range sections {
+	// Render sections and tasks in first-seen order
+	for _, sectionName := range sectionOrder {
+		tasks := sections[sectionName]
 		if sectionName != defaultSection || len(sections) > 1 {
 			fmt.Fprintf(buf, "    section %s\n", sectionName)
 		}

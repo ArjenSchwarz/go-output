@@ -746,3 +746,45 @@ func TestDrawioRenderer_AppliesTableTransformations(t *testing.T) {
 		}
 	}
 }
+
+// TestDrawioRenderer_StableNodeOrder is a regression test for T-1339: the
+// Draw.io graph renderer emitted node rows via GraphContent.GetNodes, which
+// ranged a map and therefore produced node rows in randomized order. Node rows
+// must appear in first-seen (insertion) order so generated diagrams are
+// deterministic.
+//
+// The assertion runs many times because a single map-range may coincidentally
+// produce the expected order; repeated runs reliably surface the regression.
+func TestDrawioRenderer_StableNodeOrder(t *testing.T) {
+	ctx := context.Background()
+	renderer := &drawioRenderer{}
+
+	doc := New().
+		Graph("Workflow", []Edge{
+			{From: "Start", To: "Process"},
+			{From: "Process", To: "Review"},
+			{From: "Review", To: "Deploy"},
+			{From: "Deploy", To: "End"},
+		}).
+		Build()
+
+	// Node rows are written before edge rows, each as "<node>,,," in first-seen
+	// order across the edges.
+	wantNodeBlock := strings.Join([]string{
+		"Start,,,",
+		"Process,,,",
+		"Review,,,",
+		"Deploy,,,",
+		"End,,,",
+	}, "\n")
+
+	for i := 0; i < 100; i++ {
+		got, err := renderer.Render(ctx, doc)
+		if err != nil {
+			t.Fatalf("DrawioRenderer.Render() error = %v", err)
+		}
+		if !strings.Contains(string(got), wantNodeBlock) {
+			t.Fatalf("DrawioRenderer.Render() node rows out of order on iteration %d:\nwant node block:\n%s\n\ngot:\n%s", i, wantNodeBlock, string(got))
+		}
+	}
+}

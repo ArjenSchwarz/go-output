@@ -195,6 +195,56 @@ func TestMermaidRenderer_GanttSections(t *testing.T) {
 	}
 }
 
+// TestMermaidRenderer_GanttSectionOrder is a regression test for T-1339: the
+// Gantt renderer grouped tasks into a map keyed by section and ranged that map,
+// so section blocks were emitted in randomized order even when the input task
+// order was stable. Section blocks must appear in first-seen order based on the
+// input task order.
+//
+// The assertion runs many times because a single map-range may coincidentally
+// produce the expected order; repeated runs reliably surface the regression.
+func TestMermaidRenderer_GanttSectionOrder(t *testing.T) {
+	tasks := []GanttTask{
+		{Title: "A1", StartDate: "2024-01-01", Duration: "1d", Section: "Alpha"},
+		{Title: "B1", StartDate: "2024-01-02", Duration: "1d", Section: "Beta"},
+		{Title: "G1", StartDate: "2024-01-03", Duration: "1d", Section: "Gamma"},
+		{Title: "D1", StartDate: "2024-01-04", Duration: "1d", Section: "Delta"},
+		{Title: "A2", StartDate: "2024-01-05", Duration: "1d", Section: "Alpha"}, // section seen again
+	}
+
+	chart := NewGanttChart("Ordered Project", tasks)
+	doc := New().AddContent(chart).Build()
+	renderer := &mermaidRenderer{}
+
+	// First-seen section order from the task list.
+	wantOrder := []string{
+		"section Alpha",
+		"section Beta",
+		"section Gamma",
+		"section Delta",
+	}
+
+	for iter := 0; iter < 100; iter++ {
+		result, err := renderer.Render(context.Background(), doc)
+		if err != nil {
+			t.Fatalf("Render() error = %v", err)
+		}
+		output := string(result)
+
+		prev := -1
+		for _, section := range wantOrder {
+			idx := strings.Index(output, section)
+			if idx == -1 {
+				t.Fatalf("iteration %d: output missing %q\ngot:\n%s", iter, section, output)
+			}
+			if idx <= prev {
+				t.Fatalf("iteration %d: sections out of first-seen order; %q at %d not after previous section at %d\ngot:\n%s", iter, section, idx, prev, output)
+			}
+			prev = idx
+		}
+	}
+}
+
 func TestMermaidRenderer_GanttTaskProperties(t *testing.T) {
 	tasks := []GanttTask{
 		{

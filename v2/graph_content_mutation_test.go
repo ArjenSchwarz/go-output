@@ -1,6 +1,9 @@
 package output
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // Regression tests for T-1295: Graph and Draw.io content expose mutable
 // caller-owned data. Constructors and getters must defensively copy slices
@@ -282,5 +285,33 @@ func TestChartContent_CloneIndependentPie(t *testing.T) {
 	origData := c.GetData().(*PieData)
 	if origData.Slices[0].Label != "A" {
 		t.Errorf("mutating clone changed original slice: got %q, want A", origData.Slices[0].Label)
+	}
+}
+
+// TestGraphContent_GetNodesStableOrder is a regression test for T-1339: GetNodes
+// built a set as a map and ranged it to produce the result, so node order was
+// derived from Go's randomized map iteration. GetNodes must instead return nodes
+// in first-seen (insertion) order across the edges, deduplicated.
+//
+// The assertion runs many times because a single map-range may coincidentally
+// produce the expected order; repeated runs make the randomized iteration
+// reliably surface the regression.
+func TestGraphContent_GetNodesStableOrder(t *testing.T) {
+	g := NewGraphContent("Workflow", []Edge{
+		{From: "Start", To: "Process"},
+		{From: "Process", To: "Review"},
+		{From: "Review", To: "Deploy"},
+		{From: "Deploy", To: "End"},
+		{From: "Process", To: "Rollback"}, // From already seen; To is new
+	})
+
+	// First-seen order across (From, To) pairs, deduplicated.
+	want := []string{"Start", "Process", "Review", "Deploy", "End", "Rollback"}
+
+	for i := 0; i < 100; i++ {
+		got := g.GetNodes()
+		if !slices.Equal(got, want) {
+			t.Fatalf("GetNodes() returned unstable/unexpected order on iteration %d:\ngot:  %v\nwant: %v", i, got, want)
+		}
 	}
 }
