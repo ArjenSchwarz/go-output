@@ -41,6 +41,10 @@ func (m *markdownRenderer) SupportsStreaming() bool {
 
 // renderDocumentMarkdown renders the entire document as Markdown with front matter and ToC support
 func (m *markdownRenderer) renderDocumentMarkdown(ctx context.Context, doc *Document) ([]byte, error) {
+	if doc == nil {
+		return nil, fmt.Errorf("document cannot be nil")
+	}
+
 	var result strings.Builder
 
 	// Add front matter if configured

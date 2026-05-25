@@ -780,3 +780,62 @@ func TestMarkdownRenderer_TransformationIntegration(t *testing.T) {
 		t.Error("Bob should be filtered out")
 	}
 }
+
+// TestMarkdownRenderer_NilDocument is a regression test for T-1119.
+// Render must return a "document cannot be nil" error rather than panicking
+// when passed a nil document, matching the behaviour of the other renderers.
+func TestMarkdownRenderer_NilDocument(t *testing.T) {
+	renderer := &markdownRenderer{headingLevel: 1}
+	ctx := context.Background()
+
+	// Expected: an error is returned. Actual (before fix): a nil pointer panic
+	// from doc.GetContents() inside renderDocumentMarkdown.
+	result, err := renderer.Render(ctx, nil)
+	if err == nil {
+		t.Fatal("expected error for nil document, got nil")
+	}
+	if result != nil {
+		t.Errorf("expected nil result for nil document, got %q", string(result))
+	}
+	if !strings.Contains(err.Error(), "document cannot be nil") {
+		t.Errorf("expected %q error, got %q", "document cannot be nil", err.Error())
+	}
+}
+
+// TestMarkdownRenderer_NilDocumentWithToC is a regression test for T-1119.
+// When the ToC is enabled the nil document reaches generateTableOfContents(doc)
+// before the main render loop, so the guard must also cover that path.
+func TestMarkdownRenderer_NilDocumentWithToC(t *testing.T) {
+	renderer := &markdownRenderer{headingLevel: 1, includeToC: true}
+	ctx := context.Background()
+
+	result, err := renderer.Render(ctx, nil)
+	if err == nil {
+		t.Fatal("expected error for nil document with ToC, got nil")
+	}
+	if result != nil {
+		t.Errorf("expected nil result for nil document, got %q", string(result))
+	}
+	if !strings.Contains(err.Error(), "document cannot be nil") {
+		t.Errorf("expected %q error, got %q", "document cannot be nil", err.Error())
+	}
+}
+
+// TestMarkdownRenderer_RenderToNilDocument is a regression test for T-1119.
+// RenderTo must surface the nil-document error rather than panicking.
+func TestMarkdownRenderer_RenderToNilDocument(t *testing.T) {
+	renderer := &markdownRenderer{headingLevel: 1}
+	ctx := context.Background()
+
+	var buf strings.Builder
+	err := renderer.RenderTo(ctx, nil, &buf)
+	if err == nil {
+		t.Fatal("expected error for nil document, got nil")
+	}
+	if !strings.Contains(err.Error(), "document cannot be nil") {
+		t.Errorf("expected %q error, got %q", "document cannot be nil", err.Error())
+	}
+	if buf.Len() != 0 {
+		t.Errorf("expected no output for nil document, got %q", buf.String())
+	}
+}
