@@ -183,10 +183,22 @@ func (b *Builder) Section(title string, fn func(*Builder), opts ...SectionOption
 		b.mu.Unlock()
 	}
 
-	// Add all contents from sub-builder to this section
+	// Add all contents from sub-builder to this section.
+	//
+	// The callback may have already finalized the sub-builder by calling its
+	// Build() method, in which case the sub-builder's document is nil and our
+	// Build() call returns nil. Guard against that to avoid a nil dereference,
+	// recording a builder error so callers can detect the misuse. The section is
+	// still added (as an empty section), keeping the fluent API non-panicking.
 	subDoc := subBuilder.Build()
-	for _, content := range subDoc.GetContents() {
-		section.AddContent(content)
+	if subDoc == nil {
+		b.mu.Lock()
+		b.addError(fmt.Errorf("Section %q: callback finalized the sub-builder by calling Build()", title))
+		b.mu.Unlock()
+	} else {
+		for _, content := range subDoc.GetContents() {
+			section.AddContent(content)
+		}
 	}
 
 	return b.AddContent(section)
@@ -258,9 +270,21 @@ func (b *Builder) CollapsibleSection(title string, fn func(*Builder), opts ...Co
 		b.mu.Unlock()
 	}
 
-	// Add all contents from sub-builder to collapsible section
-	subDoc := subBuilder.Build()
-	contents := subDoc.GetContents()
+	// Add all contents from sub-builder to collapsible section.
+	//
+	// The callback may have already finalized the sub-builder by calling its
+	// Build() method, in which case the sub-builder's document is nil and our
+	// Build() call returns nil. Guard against that to avoid a nil dereference,
+	// recording a builder error so callers can detect the misuse. The section is
+	// still added (as an empty section), keeping the fluent API non-panicking.
+	var contents []Content
+	if subDoc := subBuilder.Build(); subDoc != nil {
+		contents = subDoc.GetContents()
+	} else {
+		b.mu.Lock()
+		b.addError(fmt.Errorf("CollapsibleSection %q: callback finalized the sub-builder by calling Build()", title))
+		b.mu.Unlock()
+	}
 
 	section := NewCollapsibleSection(title, contents, opts...)
 	return b.AddContent(section)
