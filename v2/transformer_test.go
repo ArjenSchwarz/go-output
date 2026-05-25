@@ -162,6 +162,60 @@ func TestTransformPipeline_Clear(t *testing.T) {
 	}
 }
 
+// Regression test for T-1131: TransformPipeline must not panic when a nil
+// transformer is added. Previously Add appended nil directly and the pipeline
+// methods (Info, Transform, Has, Get, Remove, sortTransformers) dereferenced it,
+// causing a nil-interface panic. Expected behaviour: nil transformers are
+// rejected at insertion time and never stored, so subsequent calls are safe.
+func TestTransformPipeline_AddNil(t *testing.T) {
+	pipeline := NewTransformPipeline()
+
+	// Add a nil transformer alongside a valid one.
+	pipeline.Add(nil)
+	pipeline.Add(newMockTransformer("real", 100, []string{FormatJSON}, ""))
+	pipeline.Add(nil)
+
+	// nil transformers must not be stored.
+	if got := pipeline.Count(); got != 1 {
+		t.Errorf("Count() = %d, want 1 (nil transformers should be skipped)", got)
+	}
+
+	// Each of these previously panicked when a nil transformer was stored.
+	t.Run("Info", func(t *testing.T) {
+		info := pipeline.Info()
+		if len(info) != 1 {
+			t.Errorf("Info() length = %d, want 1", len(info))
+		}
+	})
+
+	t.Run("Transform", func(t *testing.T) {
+		if _, err := pipeline.Transform(context.Background(), []byte("input"), FormatJSON); err != nil {
+			t.Errorf("Transform() error = %v, want nil", err)
+		}
+	})
+
+	t.Run("Has", func(t *testing.T) {
+		if pipeline.Has("nonexistent") {
+			t.Error("Has() = true, want false")
+		}
+		if !pipeline.Has("real") {
+			t.Error("Has(\"real\") = false, want true")
+		}
+	})
+
+	t.Run("Get", func(t *testing.T) {
+		if got := pipeline.Get("real"); got == nil {
+			t.Error("Get(\"real\") = nil, want transformer")
+		}
+	})
+
+	t.Run("Remove", func(t *testing.T) {
+		if pipeline.Remove("nonexistent") {
+			t.Error("Remove() = true, want false")
+		}
+	})
+}
+
 // Test priority-based ordering
 
 func TestTransformPipeline_PriorityOrdering(t *testing.T) {
