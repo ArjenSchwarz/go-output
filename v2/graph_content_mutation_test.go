@@ -113,6 +113,28 @@ func TestDrawIOContentFromTable_MutateSourceTableRecords(t *testing.T) {
 	}
 }
 
+// Regression test for T-1304: NewDrawIOContentFromTable panics on nil table.
+// Passing a nil *TableContent must not panic; the constructor must return
+// safe, empty content instead of dereferencing the nil table.
+func TestDrawIOContentFromTable_NilTable(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("NewDrawIOContentFromTable panicked on nil table: %v", r)
+		}
+	}()
+
+	d := NewDrawIOContentFromTable(nil, DefaultDrawIOHeader())
+	if d == nil {
+		t.Fatal("NewDrawIOContentFromTable(nil, ...) returned nil, want non-nil empty content")
+	}
+	if got := d.GetRecords(); len(got) != 0 {
+		t.Errorf("nil table produced %d records, want 0", len(got))
+	}
+	if got := d.GetTitle(); got != "" {
+		t.Errorf("nil table produced title %q, want empty", got)
+	}
+}
+
 // Regression tests for T-1305: ChartContent/GanttData/PieData expose mutable
 // caller-owned data. NewGanttChart and NewPieChart must defensively copy their
 // input slices (including each Gantt task's Dependencies slice), GetData must

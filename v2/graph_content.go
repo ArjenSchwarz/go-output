@@ -437,8 +437,17 @@ func NewDrawIOContent(title string, records []Record, header DrawIOHeader) *Draw
 	}
 }
 
-// NewDrawIOContentFromTable creates Draw.io content from table data
+// NewDrawIOContentFromTable creates Draw.io content from table data.
+// A nil table yields safe, empty content rather than a panic, since this
+// constructor returns no error to report the invalid input.
 func NewDrawIOContentFromTable(table *TableContent, header DrawIOHeader) *DrawIOContent {
+	if table == nil {
+		return &DrawIOContent{
+			id:     GenerateID(),
+			header: header,
+		}
+	}
+
 	return &DrawIOContent{
 		id:      GenerateID(),
 		title:   table.title,
