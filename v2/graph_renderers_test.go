@@ -325,7 +325,7 @@ func TestSanitizeMermaidID(t *testing.T) {
 		{"with-dash", "[with-dash]"},
 		{"with:colon", "[with:colon]"},
 		{"with/slash", "[with/slash]"},
-		{"with\"quote", "[with\"quote]"},
+		{"with\"quote", "[\"with&quot;quote\"]"},
 		{"a.b.c", "[a.b.c]"},
 		{"normal_underscore", "normal_underscore"},
 		{"CamelCase", "CamelCase"},
@@ -337,6 +337,155 @@ func TestSanitizeMermaidID(t *testing.T) {
 			got := sanitizeMermaidID(tt.input)
 			if got != tt.want {
 				t.Errorf("sanitizeMermaidID(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDOTRenderer_EscapesLabels is a regression test for T-1292.
+//
+// Bug: the DOT renderer wrote user-controlled title and edge label text
+// directly into label="%s" via Fprintf without escaping. Labels containing
+// double quotes, backslashes, or newlines broke the generated DOT syntax
+// (e.g. a label of `say "hi"` produced label="say "hi"" which is invalid).
+//
+// Expected: special characters are escaped per DOT string rules — `"` becomes
+// `\"`, `\` becomes `\\`, and newlines become the literal `\n` sequence.
+func TestDOTRenderer_EscapesLabels(t *testing.T) {
+	tests := map[string]struct {
+		doc  *Document
+		want string
+	}{
+		"title with quotes": {
+			doc: New().
+				Graph(`say "hi"`, []Edge{
+					{From: "A", To: "B"},
+				}).
+				Build(),
+			want: `digraph {
+  label="say \"hi\"";
+  A -> B;
+}
+`,
+		},
+		"edge label with quotes": {
+			doc: New().
+				Graph("", []Edge{
+					{From: "A", To: "B", Label: `weight "5"`},
+				}).
+				Build(),
+			want: `digraph {
+  A -> B [label="weight \"5\""];
+}
+`,
+		},
+		"edge label with backslash": {
+			doc: New().
+				Graph("", []Edge{
+					{From: "A", To: "B", Label: `path\to`},
+				}).
+				Build(),
+			want: `digraph {
+  A -> B [label="path\\to"];
+}
+`,
+		},
+		"edge label with newline": {
+			doc: New().
+				Graph("", []Edge{
+					{From: "A", To: "B", Label: "line1\nline2"},
+				}).
+				Build(),
+			want: `digraph {
+  A -> B [label="line1\nline2"];
+}
+`,
+		},
+	}
+
+	ctx := context.Background()
+	renderer := &dotRenderer{}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := renderer.Render(ctx, tt.doc)
+			if err != nil {
+				t.Fatalf("DOTRenderer.Render() error = %v", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("DOTRenderer.Render() = %q, want %q", string(got), tt.want)
+			}
+		})
+	}
+}
+
+// TestMermaidRenderer_EscapesLabels is a regression test for T-1292.
+//
+// Bug: the Mermaid renderer wrote user-controlled edge label text directly into
+// -->|%s| and node text into [%s] without escaping. Labels containing double
+// quotes, pipes, or newlines broke the generated Mermaid syntax (e.g. a label
+// containing `|` prematurely closed the edge-label delimiter).
+//
+// Expected: label text is wrapped in double quotes and quote characters are
+// HTML-entity-encoded (&quot;) so Mermaid renders the literal text safely.
+func TestMermaidRenderer_EscapesLabels(t *testing.T) {
+	tests := map[string]struct {
+		doc  *Document
+		want string
+	}{
+		"edge label with quotes": {
+			doc: New().
+				Graph("", []Edge{
+					{From: "A", To: "B", Label: `weight "5"`},
+				}).
+				Build(),
+			want: `graph TD
+  A -->|"weight &quot;5&quot;"| B
+`,
+		},
+		"edge label with pipe": {
+			doc: New().
+				Graph("", []Edge{
+					{From: "A", To: "B", Label: "a|b"},
+				}).
+				Build(),
+			want: `graph TD
+  A -->|"a|b"| B
+`,
+		},
+		"edge label with newline": {
+			doc: New().
+				Graph("", []Edge{
+					{From: "A", To: "B", Label: "line1\nline2"},
+				}).
+				Build(),
+			want: `graph TD
+  A -->|"line1<br/>line2"| B
+`,
+		},
+		"node text with quotes": {
+			doc: New().
+				Graph("", []Edge{
+					{From: `node "x"`, To: "B"},
+				}).
+				Build(),
+			want: `graph TD
+  ["node &quot;x&quot;"] --> B
+`,
+		},
+	}
+
+	ctx := context.Background()
+	renderer := &mermaidRenderer{}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := renderer.Render(ctx, tt.doc)
+			if err != nil {
+				t.Fatalf("MermaidRenderer.Render() error = %v", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("MermaidRenderer.Render() = %q, want %q", string(got), tt.want)
 			}
 		})
 	}
