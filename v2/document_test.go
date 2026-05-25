@@ -138,6 +138,62 @@ func TestBuilder_AddContent(t *testing.T) {
 	}
 }
 
+// TestBuilder_AddContent_Nil is a regression test for T-1209.
+//
+// Bug: Builder.AddContent appended a nil Content value to the document
+// without validation. A nil entry in doc.contents causes nil dereferences
+// later during rendering/transformation, where code assumes contents are
+// non-nil.
+//
+// Expected behaviour: AddContent must skip nil content and record an error
+// using the builder's error-accumulation pattern (consistent with Table and
+// Raw), so the resulting document contains no nil entries.
+func TestBuilder_AddContent_Nil(t *testing.T) {
+	builder := New()
+
+	// Add a valid content, then a nil, then another valid content.
+	builder.AddContent(&testContent{id: "before", contentType: ContentTypeText})
+	builder.AddContent(nil)
+	builder.AddContent(&testContent{id: "after", contentType: ContentTypeText})
+
+	// The nil should have been rejected and recorded as an error.
+	if !builder.HasErrors() {
+		t.Error("expected builder to record an error after AddContent(nil)")
+	}
+
+	errors := builder.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error after AddContent(nil), got %d: %v", len(errors), errors)
+	}
+	if !strings.Contains(errors[0].Error(), "nil content") {
+		t.Errorf("expected error message to mention %q, got %q", "nil content", errors[0].Error())
+	}
+
+	// The document must contain only the two valid contents, no nil entries.
+	doc := builder.Build()
+	contents := doc.GetContents()
+	if len(contents) != 2 {
+		t.Fatalf("expected 2 contents (nil skipped), got %d", len(contents))
+	}
+	for i, c := range contents {
+		if c == nil {
+			t.Errorf("content at index %d is nil; nil content should never be stored", i)
+		}
+	}
+	if contents[0].ID() != "before" || contents[1].ID() != "after" {
+		t.Errorf("unexpected content order: got [%s, %s], want [before, after]", contents[0].ID(), contents[1].ID())
+	}
+}
+
+// TestBuilder_AddContent_Nil_Fluent verifies AddContent still returns the
+// builder for chaining when given nil content (regression for T-1209).
+func TestBuilder_AddContent_Nil_Fluent(t *testing.T) {
+	builder := New()
+	if got := builder.AddContent(nil); got != builder {
+		t.Error("AddContent(nil) should return the same builder instance (fluent API)")
+	}
+}
+
 func TestDocument_GetContents(t *testing.T) {
 	builder := New()
 	content := &testContent{id: "test1", contentType: ContentTypeText}
