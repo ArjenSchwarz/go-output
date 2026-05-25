@@ -49,7 +49,9 @@ func (h *htmlRenderer) Format() string {
 
 func (h *htmlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
 	// Render the document
-	result, err := h.renderDocumentWithFormat(ctx, doc, h.renderContent, FormatHTML)
+	result, err := h.renderDocumentWithFormat(ctx, doc, func(content Content) ([]byte, error) {
+		return h.renderContent(ctx, content)
+	}, FormatHTML)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +88,9 @@ func (h *htmlRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer)
 	}
 
 	// Render document content
-	if err := h.renderDocumentTo(ctx, doc, w, h.renderContentTo); err != nil {
+	if err := h.renderDocumentTo(ctx, doc, w, func(content Content, w io.Writer) error {
+		return h.renderContentTo(ctx, content, w)
+	}); err != nil {
 		return err
 	}
 
@@ -117,7 +121,7 @@ func (h *htmlRenderer) SupportsStreaming() bool {
 }
 
 // renderContent renders content specifically for HTML format
-func (h *htmlRenderer) renderContent(content Content) ([]byte, error) {
+func (h *htmlRenderer) renderContent(ctx context.Context, content Content) ([]byte, error) {
 	switch c := content.(type) {
 	case *TableContent:
 		return h.renderTableContentHTML(c)
@@ -126,9 +130,9 @@ func (h *htmlRenderer) renderContent(content Content) ([]byte, error) {
 	case *RawContent:
 		return h.renderRawContentHTML(c)
 	case *SectionContent:
-		return h.renderSectionContentHTML(c)
+		return h.renderSectionContentHTML(ctx, c)
 	case *DefaultCollapsibleSection:
-		return h.renderCollapsibleSection(c)
+		return h.renderCollapsibleSection(ctx, c)
 	case *ChartContent:
 		return h.renderChartContentHTML(c)
 	default:
@@ -143,8 +147,8 @@ func (h *htmlRenderer) renderContent(content Content) ([]byte, error) {
 }
 
 // renderContentTo renders content to a writer for HTML format
-func (h *htmlRenderer) renderContentTo(content Content, w io.Writer) error {
-	data, err := h.renderContent(content)
+func (h *htmlRenderer) renderContentTo(ctx context.Context, content Content, w io.Writer) error {
+	data, err := h.renderContent(ctx, content)
 	if err != nil {
 		return err
 	}
@@ -262,7 +266,7 @@ func (h *htmlRenderer) renderRawContentHTML(raw *RawContent) ([]byte, error) {
 }
 
 // renderSectionContentHTML renders section content as HTML with nested content
-func (h *htmlRenderer) renderSectionContentHTML(section *SectionContent) ([]byte, error) {
+func (h *htmlRenderer) renderSectionContentHTML(ctx context.Context, section *SectionContent) ([]byte, error) {
 	var result strings.Builder
 
 	// Create section with appropriate heading level
@@ -275,12 +279,12 @@ func (h *htmlRenderer) renderSectionContentHTML(section *SectionContent) ([]byte
 	// Render nested content
 	for _, content := range section.Contents() {
 		// Apply per-content transformations before rendering
-		transformed, err := applyContentTransformations(context.Background(), content)
+		transformed, err := applyContentTransformations(ctx, content)
 		if err != nil {
 			return nil, err
 		}
 
-		contentHTML, err := h.renderContent(transformed)
+		contentHTML, err := h.renderContent(ctx, transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}
@@ -505,7 +509,7 @@ func (h *htmlRenderer) formatDetailsAsHTMLWithCodeFences(details any, language s
 }
 
 // renderCollapsibleSection renders a CollapsibleSection as semantic HTML5 elements (Requirement 15.6)
-func (h *htmlRenderer) renderCollapsibleSection(section *DefaultCollapsibleSection) ([]byte, error) {
+func (h *htmlRenderer) renderCollapsibleSection(ctx context.Context, section *DefaultCollapsibleSection) ([]byte, error) {
 	var result strings.Builder
 
 	openAttr := ""
@@ -529,7 +533,14 @@ func (h *htmlRenderer) renderCollapsibleSection(section *DefaultCollapsibleSecti
 
 	// Render all nested content with indentation (Requirement 15.6)
 	for _, content := range section.Content() {
-		contentHTML, err := h.renderContent(content)
+		// Apply per-content transformations before rendering so nested
+		// content observes the caller's context (cancellation/deadlines).
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentHTML, err := h.renderContent(ctx, transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}

@@ -133,13 +133,15 @@ func (j *jsonRenderer) SupportsStreaming() bool {
 
 // renderDocumentJSON renders entire document as a single JSON structure
 func (j *jsonRenderer) renderDocumentJSON(ctx context.Context, doc *Document) ([]byte, error) {
-	return renderDocumentGeneric(ctx, doc, "JSON", j.renderContent, json.Unmarshal, func(v any) ([]byte, error) {
+	return renderDocumentGeneric(ctx, doc, "JSON", func(content Content) ([]byte, error) {
+		return j.renderContent(ctx, content)
+	}, json.Unmarshal, func(v any) ([]byte, error) {
 		return json.MarshalIndent(v, "", "  ")
 	})
 }
 
 // renderContent renders content specifically for JSON format
-func (j *jsonRenderer) renderContent(content Content) ([]byte, error) {
+func (j *jsonRenderer) renderContent(ctx context.Context, content Content) ([]byte, error) {
 	switch c := content.(type) {
 	case *TableContent:
 		return j.renderTableContentJSON(c)
@@ -148,9 +150,9 @@ func (j *jsonRenderer) renderContent(content Content) ([]byte, error) {
 	case *RawContent:
 		return j.renderRawContentJSON(c)
 	case *SectionContent:
-		return j.renderSectionContentJSON(c)
+		return j.renderSectionContentJSON(ctx, c)
 	case *DefaultCollapsibleSection:
-		return j.renderCollapsibleSectionJSON(c)
+		return j.renderCollapsibleSectionJSON(ctx, c)
 	case *ChartContent:
 		return j.renderChartContentJSON(c)
 	case *GraphContent:
@@ -168,7 +170,7 @@ func (j *jsonRenderer) renderContent(content Content) ([]byte, error) {
 }
 
 // renderContentTo renders content to a writer for JSON format with streaming support
-func (j *jsonRenderer) renderContentTo(content Content, w io.Writer) error {
+func (j *jsonRenderer) renderContentTo(ctx context.Context, content Content, w io.Writer) error {
 	switch c := content.(type) {
 	case *TableContent:
 		return j.renderTableContentJSONStream(c, w)
@@ -177,10 +179,10 @@ func (j *jsonRenderer) renderContentTo(content Content, w io.Writer) error {
 	case *RawContent:
 		return j.renderRawContentJSONStream(c, w)
 	case *SectionContent:
-		return j.renderSectionContentJSONStream(c, w)
+		return j.renderSectionContentJSONStream(ctx, c, w)
 	case *ChartContent, *GraphContent, *DrawIOContent:
 		// These complex types fall back to buffered rendering
-		data, err := j.renderContent(content)
+		data, err := j.renderContent(ctx, content)
 		if err != nil {
 			return err
 		}
@@ -188,7 +190,7 @@ func (j *jsonRenderer) renderContentTo(content Content, w io.Writer) error {
 		return err
 	default:
 		// Fallback to buffered rendering
-		data, err := j.renderContent(content)
+		data, err := j.renderContent(ctx, content)
 		if err != nil {
 			return err
 		}
@@ -274,7 +276,7 @@ func (j *jsonRenderer) renderRawContentJSON(raw *RawContent) ([]byte, error) {
 }
 
 // renderSectionContentJSON renders section content as JSON with nested content
-func (j *jsonRenderer) renderSectionContentJSON(section *SectionContent) ([]byte, error) {
+func (j *jsonRenderer) renderSectionContentJSON(ctx context.Context, section *SectionContent) ([]byte, error) {
 	result := map[string]any{
 		keyType:  contentTypeNameSection,
 		keyTitle: section.Title(),
@@ -284,12 +286,12 @@ func (j *jsonRenderer) renderSectionContentJSON(section *SectionContent) ([]byte
 	var contents []any
 	for _, content := range section.Contents() {
 		// Apply per-content transformations before rendering
-		transformed, err := applyContentTransformations(context.Background(), content)
+		transformed, err := applyContentTransformations(ctx, content)
 		if err != nil {
 			return nil, err
 		}
 
-		contentJSON, err := j.renderContent(transformed)
+		contentJSON, err := j.renderContent(ctx, transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}
@@ -491,7 +493,7 @@ func (j *jsonRenderer) renderRawContentJSONStream(raw *RawContent, w io.Writer) 
 }
 
 // renderSectionContentJSONStream renders section content as JSON to writer
-func (j *jsonRenderer) renderSectionContentJSONStream(section *SectionContent, w io.Writer) error {
+func (j *jsonRenderer) renderSectionContentJSONStream(ctx context.Context, section *SectionContent, w io.Writer) error {
 	// For sections with nested content, we need a more complex streaming approach
 	if _, err := w.Write([]byte("{\n")); err != nil {
 		return fmt.Errorf("failed to write opening brace: %w", err)
@@ -518,14 +520,14 @@ func (j *jsonRenderer) renderSectionContentJSONStream(section *SectionContent, w
 		}
 
 		// Apply per-content transformations before rendering
-		transformed, err := applyContentTransformations(context.Background(), content)
+		transformed, err := applyContentTransformations(ctx, content)
 		if err != nil {
 			return err
 		}
 
 		// Create a buffer for the nested content
 		var buf bytes.Buffer
-		if err := j.renderContentTo(transformed, &buf); err != nil {
+		if err := j.renderContentTo(ctx, transformed, &buf); err != nil {
 			return fmt.Errorf("failed to render nested content: %w", err)
 		}
 
@@ -622,11 +624,13 @@ func (y *yamlRenderer) SupportsStreaming() bool {
 
 // renderDocumentYAML renders entire document as a single YAML structure
 func (y *yamlRenderer) renderDocumentYAML(ctx context.Context, doc *Document) ([]byte, error) {
-	return renderDocumentGeneric(ctx, doc, "YAML", y.renderContent, yaml.Unmarshal, yaml.Marshal)
+	return renderDocumentGeneric(ctx, doc, "YAML", func(content Content) ([]byte, error) {
+		return y.renderContent(ctx, content)
+	}, yaml.Unmarshal, yaml.Marshal)
 }
 
 // renderContent renders content specifically for YAML format
-func (y *yamlRenderer) renderContent(content Content) ([]byte, error) {
+func (y *yamlRenderer) renderContent(ctx context.Context, content Content) ([]byte, error) {
 	switch c := content.(type) {
 	case *TableContent:
 		return y.renderTableContentYAML(c)
@@ -635,9 +639,9 @@ func (y *yamlRenderer) renderContent(content Content) ([]byte, error) {
 	case *RawContent:
 		return y.renderRawContentYAML(c)
 	case *SectionContent:
-		return y.renderSectionContentYAML(c)
+		return y.renderSectionContentYAML(ctx, c)
 	case *DefaultCollapsibleSection:
-		return y.renderCollapsibleSectionYAML(c)
+		return y.renderCollapsibleSectionYAML(ctx, c)
 	case *ChartContent:
 		return y.renderChartContentYAML(c)
 	case *GraphContent:
@@ -655,7 +659,7 @@ func (y *yamlRenderer) renderContent(content Content) ([]byte, error) {
 }
 
 // renderContentTo renders content to a writer for YAML format with streaming support
-func (y *yamlRenderer) renderContentTo(content Content, w io.Writer) error {
+func (y *yamlRenderer) renderContentTo(ctx context.Context, content Content, w io.Writer) error {
 	switch c := content.(type) {
 	case *TableContent:
 		return y.renderTableContentYAMLStream(c, w)
@@ -664,10 +668,10 @@ func (y *yamlRenderer) renderContentTo(content Content, w io.Writer) error {
 	case *RawContent:
 		return y.renderRawContentYAMLStream(c, w)
 	case *SectionContent:
-		return y.renderSectionContentYAMLStream(c, w)
+		return y.renderSectionContentYAMLStream(ctx, c, w)
 	case *ChartContent, *GraphContent, *DrawIOContent:
 		// These complex types fall back to buffered rendering
-		data, err := y.renderContent(content)
+		data, err := y.renderContent(ctx, content)
 		if err != nil {
 			return err
 		}
@@ -675,7 +679,7 @@ func (y *yamlRenderer) renderContentTo(content Content, w io.Writer) error {
 		return err
 	default:
 		// Fallback to buffered rendering
-		data, err := y.renderContent(content)
+		data, err := y.renderContent(ctx, content)
 		if err != nil {
 			return err
 		}
@@ -783,7 +787,7 @@ func (y *yamlRenderer) renderRawContentYAML(raw *RawContent) ([]byte, error) {
 }
 
 // renderSectionContentYAML renders section content as YAML with nested content
-func (y *yamlRenderer) renderSectionContentYAML(section *SectionContent) ([]byte, error) {
+func (y *yamlRenderer) renderSectionContentYAML(ctx context.Context, section *SectionContent) ([]byte, error) {
 	result := map[string]any{
 		keyType:  contentTypeNameSection,
 		keyTitle: section.Title(),
@@ -793,12 +797,12 @@ func (y *yamlRenderer) renderSectionContentYAML(section *SectionContent) ([]byte
 	var contents []any
 	for _, content := range section.Contents() {
 		// Apply per-content transformations before rendering
-		transformed, err := applyContentTransformations(context.Background(), content)
+		transformed, err := applyContentTransformations(ctx, content)
 		if err != nil {
 			return nil, err
 		}
 
-		contentYAML, err := y.renderContent(transformed)
+		contentYAML, err := y.renderContent(ctx, transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}
@@ -985,7 +989,7 @@ func (y *yamlRenderer) renderRawContentYAMLStream(raw *RawContent, w io.Writer) 
 }
 
 // renderSectionContentYAMLStream renders section content as YAML to writer
-func (y *yamlRenderer) renderSectionContentYAMLStream(section *SectionContent, w io.Writer) error {
+func (y *yamlRenderer) renderSectionContentYAMLStream(ctx context.Context, section *SectionContent, w io.Writer) error {
 	encoder := yaml.NewEncoder(w)
 	defer func() {
 		_ = encoder.Close()
@@ -1000,12 +1004,12 @@ func (y *yamlRenderer) renderSectionContentYAMLStream(section *SectionContent, w
 	var contents []any
 	for _, content := range section.Contents() {
 		// Apply per-content transformations before rendering
-		transformed, err := applyContentTransformations(context.Background(), content)
+		transformed, err := applyContentTransformations(ctx, content)
 		if err != nil {
 			return err
 		}
 
-		contentYAML, err := y.renderContent(transformed)
+		contentYAML, err := y.renderContent(ctx, transformed)
 		if err != nil {
 			return fmt.Errorf("failed to render nested content: %w", err)
 		}
@@ -1056,7 +1060,7 @@ func (y *yamlRenderer) renderDrawIOContentYAML(content *DrawIOContent) ([]byte, 
 }
 
 // renderCollapsibleSectionJSON renders a CollapsibleSection as structured JSON (Requirement 15.5)
-func (j *jsonRenderer) renderCollapsibleSectionJSON(section *DefaultCollapsibleSection) ([]byte, error) {
+func (j *jsonRenderer) renderCollapsibleSectionJSON(ctx context.Context, section *DefaultCollapsibleSection) ([]byte, error) {
 	result := map[string]any{
 		keyType:     "collapsible_section", // Requirement 15.5: type indication
 		keyTitle:    section.Title(),       // Requirement 15.5: section metadata
@@ -1067,7 +1071,14 @@ func (j *jsonRenderer) renderCollapsibleSectionJSON(section *DefaultCollapsibleS
 	// Render nested content (Requirement 15.5: nested content)
 	var contentArray []any
 	for _, content := range section.Content() {
-		contentJSON, err := j.renderContent(content)
+		// Apply per-content transformations before rendering so nested
+		// content observes the caller's context (cancellation/deadlines).
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentJSON, err := j.renderContent(ctx, transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}
@@ -1090,7 +1101,7 @@ func (j *jsonRenderer) renderCollapsibleSectionJSON(section *DefaultCollapsibleS
 }
 
 // renderCollapsibleSectionYAML renders a CollapsibleSection as structured YAML (Requirement 15.5)
-func (y *yamlRenderer) renderCollapsibleSectionYAML(section *DefaultCollapsibleSection) ([]byte, error) {
+func (y *yamlRenderer) renderCollapsibleSectionYAML(ctx context.Context, section *DefaultCollapsibleSection) ([]byte, error) {
 	result := map[string]any{
 		keyType:     "collapsible_section", // Requirement 15.5: type indication
 		keyTitle:    section.Title(),       // Requirement 15.5: section metadata
@@ -1101,7 +1112,14 @@ func (y *yamlRenderer) renderCollapsibleSectionYAML(section *DefaultCollapsibleS
 	// Render nested content as YAML structures (Requirement 15.5: nested content)
 	var contentArray []any
 	for _, content := range section.Content() {
-		contentYAML, err := y.renderContent(content)
+		// Apply per-content transformations before rendering so nested
+		// content observes the caller's context (cancellation/deadlines).
+		transformed, err := applyContentTransformations(ctx, content)
+		if err != nil {
+			return nil, err
+		}
+
+		contentYAML, err := y.renderContent(ctx, transformed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}
