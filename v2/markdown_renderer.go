@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -50,11 +52,13 @@ func (m *markdownRenderer) renderDocumentMarkdown(ctx context.Context, doc *Docu
 
 	var result strings.Builder
 
-	// Add front matter if configured
+	// Add front matter if configured. frontMatter is a map, so iterate over
+	// sorted keys to ensure deterministic output across renders and processes
+	// (see T-1338).
 	if len(m.frontMatter) > 0 {
 		result.WriteString("---\n")
-		for key, value := range m.frontMatter {
-			fmt.Fprintf(&result, "%s: %s\n", key, m.escapeYAMLValue(value))
+		for _, key := range slices.Sorted(maps.Keys(m.frontMatter)) {
+			fmt.Fprintf(&result, "%s: %s\n", key, m.escapeYAMLValue(m.frontMatter[key]))
 		}
 		result.WriteString("---\n\n")
 	}
