@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -838,4 +839,81 @@ func TestMarkdownRenderer_RenderToNilDocument(t *testing.T) {
 	if buf.Len() != 0 {
 		t.Errorf("expected no output for nil document, got %q", buf.String())
 	}
+}
+
+// TestMarkdownRenderer_FrontMatterDeterministicOrder is a regression test for T-1338.
+// Front matter is stored in a map, so iterating it directly produces a
+// nondeterministic key order. The renderer must emit keys in a stable
+// (sorted) order so Markdown output is reproducible across renders and
+// processes (avoiding golden/snapshot churn).
+func TestMarkdownRenderer_FrontMatterDeterministicOrder(t *testing.T) {
+	// Use enough keys that map iteration order is overwhelmingly unlikely
+	// to coincidentally match the sorted order.
+	frontMatter := map[string]string{
+		"zeta":    "1",
+		"author":  "Test Author",
+		"title":   "Test Document",
+		"date":    "2024-01-01",
+		"beta":    "2",
+		"gamma":   "3",
+		"alpha":   "4",
+		"version": "5",
+	}
+
+	doc := New().Text("Document Content").Build()
+	ctx := context.Background()
+
+	// Expected sorted key order.
+	wantKeyOrder := []string{"alpha", "author", "beta", "date", "gamma", "title", "version", "zeta"}
+
+	// Render many times; every render must produce the same, sorted order.
+	var first string
+	for i := range 50 {
+		renderer := NewMarkdownRendererWithFrontMatter(frontMatter)
+		result, err := renderer.Render(ctx, doc)
+		if err != nil {
+			t.Fatalf("render %d failed: %v", i, err)
+		}
+		out := string(result)
+
+		// Extract front matter key order from the rendered output.
+		gotKeyOrder := frontMatterKeyOrder(t, out)
+		if !slices.Equal(gotKeyOrder, wantKeyOrder) {
+			t.Fatalf("render %d: front matter key order = %v, want %v", i, gotKeyOrder, wantKeyOrder)
+		}
+
+		// Output must be byte-for-byte identical across renders.
+		if i == 0 {
+			first = out
+		} else if out != first {
+			t.Fatalf("render %d output differs from first render:\nfirst:\n%s\ngot:\n%s", i, first, out)
+		}
+	}
+}
+
+// frontMatterKeyOrder extracts the ordered list of YAML keys from the front
+// matter block at the start of a rendered Markdown document.
+func frontMatterKeyOrder(t *testing.T, out string) []string {
+	t.Helper()
+	if !strings.HasPrefix(out, "---\n") {
+		t.Fatalf("output missing front matter delimiter, got: %q", out)
+	}
+	body := strings.TrimPrefix(out, "---\n")
+	end := strings.Index(body, "---\n")
+	if end == -1 {
+		t.Fatalf("front matter block not terminated, got: %q", out)
+	}
+	lines := strings.Split(strings.TrimRight(body[:end], "\n"), "\n")
+	keys := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		key, _, found := strings.Cut(line, ":")
+		if !found {
+			t.Fatalf("malformed front matter line: %q", line)
+		}
+		keys = append(keys, key)
+	}
+	return keys
 }
