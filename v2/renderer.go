@@ -187,6 +187,13 @@ func applyContentTransformations(ctx context.Context, content Content) (Content,
 
 	// Apply each transformation in sequence
 	for i, op := range transformations {
+		// Skip nil operations defensively. WithTransformations already filters
+		// nil at config time, but content can be constructed by other paths; a
+		// nil Operation would panic when its interface methods are called.
+		if op == nil {
+			continue
+		}
+
 		// Check context cancellation before operation
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("content %s transformation cancelled: %w",

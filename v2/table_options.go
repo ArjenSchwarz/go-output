@@ -85,7 +85,18 @@ func WithAutoSchemaOrdered(keys ...string) TableOption {
 // for examples migrating from the deprecated Pipeline API.
 func WithTransformations(ops ...Operation) TableOption {
 	return func(tc *tableConfig) {
-		tc.transformations = ops
+		// Filter out nil operations so they are never stored. A nil Operation
+		// would panic when its interface methods (Validate/Name/Apply) are
+		// called during rendering. Skipping nil matches how the rest of the
+		// transformation API handles nil inputs (e.g. TransformPipeline.Add).
+		filtered := make([]Operation, 0, len(ops))
+		for _, op := range ops {
+			if op == nil {
+				continue
+			}
+			filtered = append(filtered, op)
+		}
+		tc.transformations = filtered
 	}
 }
 
