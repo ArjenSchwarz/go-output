@@ -191,6 +191,11 @@ func (s *SortTransformer) Transform(_ context.Context, input []byte, _ string) (
 	var beforeHeader []string
 	var afterData []string
 
+	// separatorRow holds the Markdown alignment row (e.g. "| --- | --- |") so it
+	// can be reinserted directly under the header rather than being sorted as a
+	// data row.
+	var separatorRow string
+
 	headerFound := false
 	for i, line := range lines {
 		line = strings.TrimSpace(line)
@@ -211,6 +216,13 @@ func (s *SortTransformer) Transform(_ context.Context, input []byte, _ string) (
 		}
 
 		if headerFound {
+			// The Markdown separator row immediately follows the header and must
+			// never be sorted; hold it aside for reinsertion after the header.
+			if separatorRow == "" && len(dataLines) == 0 && isMarkdownSeparatorRow(line) {
+				separatorRow = lines[i]
+				continue
+			}
+
 			if strings.Contains(line, "\t") || strings.Contains(line, ",") || strings.Contains(line, "|") {
 				dataLines = append(dataLines, lines[i])
 			} else {
@@ -278,10 +290,32 @@ func (s *SortTransformer) Transform(_ context.Context, input []byte, _ string) (
 	var result []string
 	result = append(result, beforeHeader...)
 	result = append(result, headerLine)
+	if separatorRow != "" {
+		result = append(result, separatorRow)
+	}
 	result = append(result, dataLines...)
 	result = append(result, afterData...)
 
 	return []byte(strings.Join(result, "\n")), nil
+}
+
+// isMarkdownSeparatorRow reports whether a trimmed line is a Markdown table
+// separator/alignment row, such as "| --- | --- |" or "|:---|---:|". Such rows
+// consist solely of pipes, dashes, colons, and spaces, and contain at least one
+// dash so plain data rows are not misidentified.
+func isMarkdownSeparatorRow(line string) bool {
+	if !strings.Contains(line, "|") || !strings.Contains(line, "-") {
+		return false
+	}
+	for _, r := range line {
+		switch r {
+		case '|', '-', ':', ' ', '\t':
+			// allowed separator characters
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // LineSplitTransformer splits cells containing multiple values into separate rows

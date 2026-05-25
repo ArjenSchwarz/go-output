@@ -372,6 +372,57 @@ func TestSortTransformer_Transform(t *testing.T) {
 	}
 }
 
+// TestSortTransformer_MarkdownSeparatorRow verifies that the Markdown separator
+// row (e.g. "| --- | --- |") stays directly under the header after sorting.
+//
+// Bug T-1221: SortTransformer treated every pipe-delimited post-header line as a
+// sortable data row, including the required Markdown separator. Descending and
+// string sorts could move the separator below real rows, producing invalid
+// Markdown. Expected: the separator always remains immediately after the header.
+func TestSortTransformer_MarkdownSeparatorRow(t *testing.T) {
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		transformer *SortTransformer
+		input       string
+		expected    string
+	}{
+		"descending numeric sort keeps separator under header": {
+			transformer: NewSortTransformer("Age", false),
+			input:       "| Name | Age |\n| --- | --- |\n| Charlie | 30 |\n| Alice | 25 |\n| Bob | 35 |",
+			expected:    "| Name | Age |\n| --- | --- |\n| Bob | 35 |\n| Charlie | 30 |\n| Alice | 25 |",
+		},
+		"ascending string sort keeps separator under header": {
+			transformer: NewSortTransformerAscending("Name"),
+			input:       "| Name | Age |\n| --- | --- |\n| Charlie | 30 |\n| Alice | 25 |\n| Bob | 35 |",
+			expected:    "| Name | Age |\n| --- | --- |\n| Alice | 25 |\n| Bob | 35 |\n| Charlie | 30 |",
+		},
+		"descending string sort keeps separator under header": {
+			transformer: NewSortTransformer("Name", false),
+			input:       "| Name | Age |\n| --- | --- |\n| Alice | 25 |\n| Bob | 35 |\n| Charlie | 30 |",
+			expected:    "| Name | Age |\n| --- | --- |\n| Charlie | 30 |\n| Bob | 35 |\n| Alice | 25 |",
+		},
+		"aligned separator row with colons is preserved": {
+			transformer: NewSortTransformer("Age", false),
+			input:       "| Name | Age |\n|:---|---:|\n| Charlie | 30 |\n| Alice | 25 |\n| Bob | 35 |",
+			expected:    "| Name | Age |\n|:---|---:|\n| Bob | 35 |\n| Charlie | 30 |\n| Alice | 25 |",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := test.transformer.Transform(ctx, []byte(test.input), FormatMarkdown)
+			if err != nil {
+				t.Fatalf("SortTransformer.Transform() error = %v", err)
+			}
+
+			if string(result) != test.expected {
+				t.Errorf("SortTransformer.Transform()\n got = %q\nwant = %q", string(result), test.expected)
+			}
+		})
+	}
+}
+
 // Test LineSplitTransformer
 
 func TestLineSplitTransformer_Name(t *testing.T) {
