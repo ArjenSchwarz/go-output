@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 )
 
@@ -106,7 +107,9 @@ func WithFormatHint(format string, hints map[string]any) CollapsibleOption {
 		if cv.formatHints == nil {
 			cv.formatHints = make(map[string]map[string]any)
 		}
-		cv.formatHints[format] = hints
+		// Defensively copy the hints map so later mutation of the caller's
+		// map cannot alter renderer behavior (T-1359, matching T-1317).
+		cv.formatHints[format] = maps.Clone(hints)
 	}
 }
 
@@ -213,7 +216,8 @@ func (d *DefaultCollapsibleValue) IsExpanded() bool {
 // when a shared value is rendered from multiple goroutines (T-1233).
 func (d *DefaultCollapsibleValue) FormatHint(format string) map[string]any {
 	if hints, exists := d.formatHints[format]; exists {
-		return hints
+		// Return a copy so callers cannot mutate the stored hints (T-1359, matching T-1317).
+		return maps.Clone(hints)
 	}
 	return nil
 }
