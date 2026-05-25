@@ -27,6 +27,9 @@ func (t *tableRenderer) Render(ctx context.Context, doc *Document) ([]byte, erro
 }
 
 func (t *tableRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	if w == nil {
+		return fmt.Errorf("writer cannot be nil")
+	}
 	data, err := t.renderDocumentTable(ctx, doc)
 	if err != nil {
 		return err

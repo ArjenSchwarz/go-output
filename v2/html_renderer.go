@@ -69,6 +69,10 @@ func (h *htmlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error
 }
 
 func (h *htmlRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	if w == nil {
+		return fmt.Errorf("writer cannot be nil")
+	}
+
 	// Write template header if needed
 	if h.useTemplate {
 		tmpl := h.template

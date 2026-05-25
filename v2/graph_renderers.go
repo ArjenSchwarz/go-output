@@ -91,6 +91,9 @@ func (d *dotRenderer) Render(ctx context.Context, doc *Document) ([]byte, error)
 }
 
 func (d *dotRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	if w == nil {
+		return fmt.Errorf("writer cannot be nil")
+	}
 	data, err := d.Render(ctx, doc)
 	if err != nil {
 		return err
@@ -278,6 +281,9 @@ func (m *mermaidRenderer) Render(ctx context.Context, doc *Document) ([]byte, er
 }
 
 func (m *mermaidRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	if w == nil {
+		return fmt.Errorf("writer cannot be nil")
+	}
 	data, err := m.Render(ctx, doc)
 	if err != nil {
 		return err
@@ -606,6 +612,9 @@ func (d *drawioRenderer) Render(ctx context.Context, doc *Document) ([]byte, err
 }
 
 func (d *drawioRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	if w == nil {
+		return fmt.Errorf("writer cannot be nil")
+	}
 	data, err := d.Render(ctx, doc)
 	if err != nil {
 		return err
