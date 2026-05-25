@@ -301,6 +301,54 @@ func TestBuilder_CollapsibleSection_Mixed_Content(t *testing.T) {
 	}
 }
 
+// TestBuilder_SectionNilCallback verifies that passing a nil callback to
+// Section and CollapsibleSection does not panic. Before the fix, both methods
+// called fn(subBuilder) unconditionally, which panicked on a nil fn. The
+// expected behaviour is to record a builder error and still produce an empty
+// section, keeping the fluent API non-panicking and consistent with the
+// builder's error-accumulation pattern used by other methods.
+func TestBuilder_SectionNilCallback(t *testing.T) {
+	tests := map[string]struct {
+		build func(*Builder) *Builder
+	}{
+		"section": {
+			build: func(b *Builder) *Builder {
+				return b.Section("empty", nil)
+			},
+		},
+		"collapsible section": {
+			build: func(b *Builder) *Builder {
+				return b.CollapsibleSection("empty", nil)
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			builder := New()
+
+			// This must not panic.
+			result := tt.build(builder)
+
+			// Fluent API: the method must return the same builder.
+			if result != builder {
+				t.Errorf("expected method to return the same builder for chaining")
+			}
+
+			// A nil callback should be recorded as a builder error.
+			if !builder.HasErrors() {
+				t.Errorf("expected a builder error to be recorded for a nil callback")
+			}
+
+			// The section should still be added as an empty section.
+			doc := builder.Build()
+			if len(doc.contents) != 1 {
+				t.Fatalf("expected 1 content (empty section), got %d", len(doc.contents))
+			}
+		})
+	}
+}
+
 func TestBuilder_NestedSectionErrorsArePropagated(t *testing.T) {
 	tests := map[string]func(*Builder){
 		"section": func(builder *Builder) {

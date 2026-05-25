@@ -163,7 +163,17 @@ func (b *Builder) Section(title string, fn func(*Builder), opts ...SectionOption
 
 	// Create sub-builder for section contents
 	subBuilder := &Builder{doc: &Document{metadata: make(map[string]any)}}
-	fn(subBuilder)
+
+	// A nil callback is invalid input: record a builder error and skip invoking
+	// it. The section is still added as an empty section, keeping the fluent API
+	// non-panicking and consistent with the builder's error-accumulation pattern.
+	if fn == nil {
+		b.mu.Lock()
+		b.addError(fmt.Errorf("Section %q: callback function is nil", title))
+		b.mu.Unlock()
+	} else {
+		fn(subBuilder)
+	}
 
 	if subErrors := subBuilder.Errors(); len(subErrors) > 0 {
 		b.mu.Lock()
@@ -228,7 +238,17 @@ func (b *Builder) AddCollapsibleTable(title string, table *TableContent, opts ..
 func (b *Builder) CollapsibleSection(title string, fn func(*Builder), opts ...CollapsibleSectionOption) *Builder {
 	// Create sub-builder for section contents
 	subBuilder := &Builder{doc: &Document{metadata: make(map[string]any)}}
-	fn(subBuilder)
+
+	// A nil callback is invalid input: record a builder error and skip invoking
+	// it. The section is still added as an empty section, keeping the fluent API
+	// non-panicking and consistent with the builder's error-accumulation pattern.
+	if fn == nil {
+		b.mu.Lock()
+		b.addError(fmt.Errorf("CollapsibleSection %q: callback function is nil", title))
+		b.mu.Unlock()
+	} else {
+		fn(subBuilder)
+	}
 
 	if subErrors := subBuilder.Errors(); len(subErrors) > 0 {
 		b.mu.Lock()
