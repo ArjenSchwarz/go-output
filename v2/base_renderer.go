@@ -563,14 +563,22 @@ func (mop *MemoryOptimizedProcessor) processMap(content map[string]any, maxLengt
 // NewMarkdownRendererWithCollapsible creates a markdown renderer with collapsible configuration
 func NewMarkdownRendererWithCollapsible(config RendererConfig) Renderer {
 	return &markdownRenderer{
-		baseRenderer:      baseRenderer{},
+		// RendererConfig is the single renderer config: it must also populate
+		// baseRenderer.config so the embedded renderDocumentWithFormat path
+		// honours the configured DataTransformers/ByteTransformers (T-1223).
+		baseRenderer:      baseRenderer{config: config},
 		includeToC:        false,
 		headingLevel:      1,
 		collapsibleConfig: config,
 	}
 }
 
-// NewTableRendererWithCollapsible creates a table renderer with collapsible configuration
+// NewTableRendererWithCollapsible creates a table renderer with collapsible configuration.
+//
+// Note: tableRenderer does not embed baseRenderer and renders through its own
+// path that never invokes renderDocumentWithFormat, so the config's
+// DataTransformers/ByteTransformers are not applied here. Only the collapsible
+// settings take effect for the table format.
 func NewTableRendererWithCollapsible(styleName string, config RendererConfig) Renderer {
 	return &tableRenderer{
 		styleName:         styleName,
@@ -581,12 +589,21 @@ func NewTableRendererWithCollapsible(styleName string, config RendererConfig) Re
 // NewHTMLRendererWithCollapsible creates an HTML renderer with collapsible configuration
 func NewHTMLRendererWithCollapsible(config RendererConfig) Renderer {
 	return &htmlRenderer{
-		baseRenderer:      baseRenderer{},
+		// RendererConfig is the single renderer config: it must also populate
+		// baseRenderer.config because htmlRenderer.Render routes through
+		// renderDocumentWithFormat, which reads the configured
+		// DataTransformers/ByteTransformers from baseRenderer.config (T-1223).
+		baseRenderer:      baseRenderer{config: config},
 		collapsibleConfig: config,
 	}
 }
 
-// NewCSVRendererWithCollapsible creates a CSV renderer with collapsible configuration
+// NewCSVRendererWithCollapsible creates a CSV renderer with collapsible configuration.
+//
+// Note: csvRenderer does not embed baseRenderer and renders through its own
+// path that never invokes renderDocumentWithFormat, so the config's
+// DataTransformers/ByteTransformers are not applied here. Only the collapsible
+// settings take effect for the CSV format.
 func NewCSVRendererWithCollapsible(config RendererConfig) Renderer {
 	return &csvRenderer{
 		collapsibleConfig: config,
