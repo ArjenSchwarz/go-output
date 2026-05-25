@@ -471,6 +471,67 @@ func TestOutput_Render_WithTransformers(t *testing.T) {
 	})
 }
 
+// TestOutput_Render_TransformerPriorityOrder is a regression test for T-1183.
+//
+// Bug: processFormatData applied transformers in caller-argument (insertion)
+// order instead of Transformer.Priority() order. The transformer pipeline
+// contract requires lower-priority transformers to run first, regardless of the
+// order in which they were registered.
+//
+// Expected: transformers run in ascending Priority() order even when passed to
+// WithTransformers in the reverse order.
+func TestOutput_Render_TransformerPriorityOrder(t *testing.T) {
+	doc := New().
+		Text("seed").
+		Build()
+
+	// Each transformer appends its name to the byte stream when it runs, so the
+	// final output records the exact execution order.
+	low := &orderRecordingTransformer{name: "low", priority: 10}
+	high := &orderRecordingTransformer{name: "high", priority: 100}
+
+	// Register in reverse priority order (high first) to prove that argument
+	// order does NOT determine execution order.
+	testWriter := &testStdoutWriter{}
+	output := NewOutput(
+		WithFormat(JSON()),
+		WithTransformers(high, low),
+		WithWriter(testWriter),
+	)
+
+	if err := output.Render(context.Background(), doc); err != nil {
+		t.Fatalf("Render() failed: %v", err)
+	}
+	output.Close()
+
+	got := testWriter.GetOutput()
+
+	// The "low" priority transformer (10) must run before "high" (100),
+	// so its marker must appear earlier in the output.
+	lowIdx := strings.Index(got, "[low]")
+	highIdx := strings.Index(got, "[high]")
+	if lowIdx == -1 || highIdx == -1 {
+		t.Fatalf("expected both transformer markers in output, got: %q", got)
+	}
+	if lowIdx > highIdx {
+		t.Errorf("transformers applied in wrong order: want low (priority 10) before high (priority 100), got order %q", got)
+	}
+}
+
+// orderRecordingTransformer appends a marker so tests can observe the order in
+// which transformers were applied.
+type orderRecordingTransformer struct {
+	name     string
+	priority int
+}
+
+func (t *orderRecordingTransformer) Name() string                    { return t.name }
+func (t *orderRecordingTransformer) Priority() int                   { return t.priority }
+func (t *orderRecordingTransformer) CanTransform(format string) bool { return true }
+func (t *orderRecordingTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
+	return append(input, []byte("["+t.name+"]")...), nil
+}
+
 func TestOutput_RenderTo(t *testing.T) {
 	doc := New().
 		Table("Test", []map[string]any{
