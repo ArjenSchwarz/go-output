@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -724,4 +725,75 @@ func TestGroupByNilAggregateFunc(t *testing.T) {
 			t.Errorf("expected render error to explain the function cannot be nil, got %q", err.Error())
 		}
 	})
+}
+
+// TestAggregateColumnOrderDeterministic is a regression test for T-1337.
+//
+// GroupByOp previously stored aggregates in a map and ranged that map when
+// building result records, schema keyOrder, and schema fields. Go randomizes
+// map iteration order, so aggregate columns (e.g. count, total_salary) could
+// render in different orders across runs, conflicting with v2's key-order
+// preservation goals.
+//
+// Expected behaviour: aggregate columns follow a deterministic order
+// (groupBy columns first, then aggregate names sorted alphabetically) and that
+// order is identical on every Apply, regardless of map iteration randomization.
+func TestAggregateColumnOrderDeterministic(t *testing.T) {
+	records := []Record{
+		{"name": "Alice", "department": "HR", "salary": 50000},
+		{"name": "Bob", "department": "IT", "salary": 75000},
+		{"name": "Charlie", "department": "HR", "salary": 60000},
+		{"name": "David", "department": "IT", "salary": 80000},
+	}
+
+	// groupBy column first, then aggregate names sorted alphabetically:
+	// avg_salary, count, max_salary, min_salary, total_salary.
+	wantOrder := []string{
+		"department",
+		"avg_salary",
+		"count",
+		"max_salary",
+		"min_salary",
+		"total_salary",
+	}
+
+	// Run many times: a freshly constructed map is re-ranged each iteration,
+	// so any reliance on map iteration order surfaces as an order mismatch.
+	const iterations = 200
+	for i := range iterations {
+		groupByOp := &GroupByOp{
+			groupBy: []string{"department"},
+			aggregates: map[string]AggregateFunc{
+				"count":        CountAggregate(),
+				"total_salary": SumAggregate("salary"),
+				"avg_salary":   AverageAggregate("salary"),
+				"min_salary":   MinAggregate("salary"),
+				"max_salary":   MaxAggregate("salary"),
+			},
+		}
+
+		doc := New().Table("test", records).Build()
+		tableContent := doc.GetContents()[0].(*TableContent)
+
+		result, err := groupByOp.Apply(context.Background(), tableContent)
+		if err != nil {
+			t.Fatalf("iteration %d: Apply() failed: %v", i, err)
+		}
+		resultTable := result.(*TableContent)
+
+		// Schema keyOrder must match the deterministic order every run.
+		gotKeyOrder := resultTable.schema.GetKeyOrder()
+		if !slices.Equal(gotKeyOrder, wantOrder) {
+			t.Fatalf("iteration %d: keyOrder = %v, want %v", i, gotKeyOrder, wantOrder)
+		}
+
+		// Schema field order must match keyOrder.
+		gotFieldOrder := make([]string, len(resultTable.schema.Fields))
+		for j, f := range resultTable.schema.Fields {
+			gotFieldOrder[j] = f.Name
+		}
+		if !slices.Equal(gotFieldOrder, wantOrder) {
+			t.Fatalf("iteration %d: field order = %v, want %v", i, gotFieldOrder, wantOrder)
+		}
+	}
 }
