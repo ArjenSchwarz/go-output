@@ -416,6 +416,21 @@ func TestFileWriterCSVHeaderSkipping(t *testing.T) {
 			wantCombined: "Name,Age\r\nAlice,30\r\n",
 			wantErr:      false,
 		},
+		// Regression for T-1109: existing CSV without a trailing newline must
+		// not merge the first appended data row onto the last existing row.
+		// Want: "a,b\n1,2\n3,4\n" (not "a,b\n1,23,4\n").
+		"existing CSV without trailing newline": {
+			initialData:  "a,b\n1,2",
+			appendData:   "a,b\n3,4\n",
+			wantCombined: "a,b\n1,2\n3,4\n",
+			wantErr:      false,
+		},
+		"existing CSV without trailing newline multiple rows": {
+			initialData:  "a,b\n1,2",
+			appendData:   "a,b\n3,4\n5,6\n",
+			wantCombined: "a,b\n1,2\n3,4\n5,6\n",
+			wantErr:      false,
+		},
 	}
 
 	for name, tc := range tests {

@@ -421,7 +421,48 @@ func (fw *FileWriter) appendCSVWithoutHeaders(ctx context.Context, fullPath stri
 	}
 
 	dataWithoutHeader := lines[1]
+
+	// Ensure the existing file ends with a newline before appending the
+	// stripped data rows. Without this, a file that lacks a trailing newline
+	// (e.g. "a,b\n1,2") would have its last row merged with the first appended
+	// row (yielding "a,b\n1,23,4\n" instead of "a,b\n1,2\n3,4\n"). Mirrors the
+	// S3Writer combineCSVData fix.
+	if needsSeparator, err := fw.fileNeedsRowSeparator(fullPath); err != nil {
+		return fw.wrapError(FormatCSV, err)
+	} else if needsSeparator {
+		dataWithoutHeader = append([]byte("\n"), dataWithoutHeader...)
+	}
+
 	return fw.appendByteLevel(ctx, fullPath, dataWithoutHeader)
+}
+
+// fileNeedsRowSeparator reports whether the existing file is non-empty and does
+// not end with a newline, meaning a separator must be inserted before appending
+// new CSV data rows.
+func (fw *FileWriter) fileNeedsRowSeparator(fullPath string) (bool, error) {
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to stat file %q: %w", fullPath, err)
+	}
+	if info.Size() == 0 {
+		return false, nil
+	}
+
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to open file %q: %w", fullPath, err)
+	}
+	defer func() { _ = file.Close() }()
+
+	lastByte := make([]byte, 1)
+	if _, err := file.ReadAt(lastByte, info.Size()-1); err != nil {
+		return false, fmt.Errorf("failed to read file %q: %w", fullPath, err)
+	}
+
+	return lastByte[0] != '\n', nil
 }
 
 // FileWriterOption configures a FileWriter
