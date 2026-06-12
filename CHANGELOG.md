@@ -1,5 +1,13 @@
 ## Unreleased
 
+### Added
+- **Draw.io CSV Writer Round-Trip Support** (drawio-csv-reader phase 1) - Writer changes so draw.io CSV output can round-trip through the upcoming parser
+  - `DrawIOContent` gains an explicit column order: new `DrawIOOption` type with `WithDrawIOColumns()`, variadic options on `NewDrawIOContent`, `NewDrawIOContentFromTable`, and `Builder.DrawIO`, plus a `GetColumns()` accessor (backward compatible)
+  - `NewDrawIOContentFromTable` now captures the table schema's field order instead of leaving columns to be alphabetized at render time
+  - The renderer uses the explicit column order when set (including the header row with zero records); record keys outside the column list are not rendered
+  - `# connect:` directives are now emitted via `json.Encoder` with HTML escaping disabled: quotes/backslashes escaped per JSON, `&`/`<`/`>` verbatim, `invert` always present, byte-identical to the previous output for escape-free values
+  - Data fields starting with `#` and single-empty-field rows are now quoted so they cannot be mistaken for comments, directives, or blank lines
+
 ### Fixed
 - **Pretty Progress SetContext Stale Watcher** - Fixed `prettyProgress.SetContext` spuriously marking a healthy progress as failed when the context was replaced (the same stale-watcher defect previously fixed for `textProgress` in T-1254)
   - The watcher goroutine now captures its own derived context (`watchedCtx`) as a local instead of reading the shared `p.ctx` field, removing a data race and ignoring stale completions when the context has been replaced (`p.ctx != watchedCtx`)
