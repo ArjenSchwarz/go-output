@@ -308,7 +308,7 @@ func TestGraphContent_GetNodesStableOrder(t *testing.T) {
 	// First-seen order across (From, To) pairs, deduplicated.
 	want := []string{"Start", "Process", "Review", "Deploy", "End", "Rollback"}
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		got := g.GetNodes()
 		if !slices.Equal(got, want) {
 			t.Fatalf("GetNodes() returned unstable/unexpected order on iteration %d:\ngot:  %v\nwant: %v", i, got, want)

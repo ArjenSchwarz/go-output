@@ -140,10 +140,7 @@ func (p *textProgress) renderDefault() string {
 		// Guard against a non-positive configured width (e.g. WithWidth(-1) or
 		// WithTrackerLength(-1)); a negative width would otherwise feed a
 		// negative count into strings.Repeat below.
-		barWidth := p.config.Width
-		if barWidth < 0 {
-			barWidth = 0
-		}
+		barWidth := max(p.config.Width, 0)
 
 		// Clamp filled to [0, barWidth] so an overrun (current > total) renders
 		// a full bar instead of producing a negative empty-cell count, which

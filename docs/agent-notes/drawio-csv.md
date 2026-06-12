@@ -1,6 +1,6 @@
 # draw.io CSV (v2 writer/reader)
 
-Spec: `specs/drawio-csv-reader/` (T-1539). Writer-changes phase (tasks 1-4) and parser phase (tasks 5-8, `ParseDrawIOCSV`/`ParseDrawIOFile` in `v2/drawio_reader.go`) implemented; round-trip/property tests (tasks 9-10) remain.
+Spec: `specs/drawio-csv-reader/` (T-1539). All phases implemented: writer changes (tasks 1-4), parser (tasks 5-8, `ParseDrawIOCSV`/`ParseDrawIOFile` in `v2/drawio_reader.go`), and round-trip property tests + validation (tasks 9-10, `v2/drawio_roundtrip_test.go`).
 
 ## Parser (`v2/drawio_reader.go`)
 
@@ -33,6 +33,16 @@ Spec: `specs/drawio-csv-reader/` (T-1539). Writer-changes phase (tasks 1-4) and 
 ## CSV quoting (requirement 3.6)
 
 `writeCSVRow` (`v2/graph_renderers.go`) quotes a field when it contains `,"\n\r`, **starts with `#`** (would look like a comment/directive), or is the **single empty sole field of a row** (would render as a blank line CSV readers skip). Empty fields in multi-field rows stay unquoted.
+
+## Round-trip property tests (`v2/drawio_roundtrip_test.go`)
+
+- Uses `pgregory.net/rapid` v1.3.0 (direct test-only require in `v2/go.mod`; example go.sum files gained its hashes via the local `replace`). Run more cases with `go test -rapid.checks=20000 -run TestProperty`.
+- Four properties: idempotency (3.1, renders 2 and 3 byte-equal), byte-identity (3.2, CR-free values, render 1 == render 2), no-panic on arbitrary bytes, and no-panic on directive-biased input (`# connect:`/`# padding:` with malformed JSON/non-integer tokens so the unmarshal/Atoi paths are hit). Plus `TestDrawIORoundTripGoldenFile`, an awstools-style literal asserting field values, first-re-render byte identity, and idempotency.
+- No implementation bugs surfaced at 20k checks per property — phases 1-2 (quoting rules, connect JSON encoder, explicit columns) already closed the gaps.
+- Generator gotcha found while writing the tests: column names must be distinct **after** CRLF normalization, not just as raw strings. Parsing turns `\r\n` into `\n` inside quoted fields, so columns `"a\r\nb"` and `"a\nb"` collide on re-parse and correctly trigger `ErrDrawIODuplicateColumn`. The columns generator uses `strings.ReplaceAll(s, "\r\n", "\n")` as its distinctness key.
+- Known theoretical edge, not covered by generators (spec says printable strings): a fully zero-value header plus a first column name starting with U+FEFF puts a BOM at file start; the parser strips it (req 1.6), so the column name loses its BOM prefix and 3.2 byte-identity fails for that pathological file. Idempotency (3.1) still holds. Inherent ambiguity of BOM tolerance; deliberately not "fixed".
+- Round-trip render helper contract: `New().AddContent(NewDrawIOContent(title, records, header, WithDrawIOColumns(parsed.Columns...))).Build()` rendered via `&drawioRenderer{}`. Writer suppressions (parentstyle without parent, left/top without `layout: none`, non-positive numerics) are symmetric across renders, so they never break either property.
+- Golden-file note: directive lines must follow the writer's emission order (label, style, identity, parent, parentstyle, namespace, connects, height, width, ignore, nodespacing, levelspacing, edgespacing, padding, link, left, top, layout) or byte-identity assertions fail.
 
 ## Gotchas
 

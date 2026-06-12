@@ -462,8 +462,7 @@ func TestProgress_SetContext_Replacement_DoesNotFail(t *testing.T) {
 	}
 
 	// Install the first context.
-	ctx1, cancel1 := context.WithCancel(context.Background())
-	defer cancel1()
+	ctx1 := t.Context()
 	progress.SetContext(ctx1)
 
 	// Replace it with a fresh, live context. This cancels the first derived
@@ -919,8 +918,7 @@ func TestPrettyProgress_SetContext_Replacement_DoesNotFail(t *testing.T) {
 	p.SetCurrent(50)
 
 	// Install the first context.
-	ctx1, cancel1 := context.WithCancel(context.Background())
-	defer cancel1()
+	ctx1 := t.Context()
 	p.SetContext(ctx1)
 
 	// Replace it with a fresh, live context. This cancels the first derived

@@ -79,7 +79,7 @@ references:
 
 ## Round-trip and validation
 
-- [ ] 9. Add property-based round-trip tests and golden example <!-- id:ih3bs73 -->
+- [x] 9. Add property-based round-trip tests and golden example <!-- id:ih3bs73 -->
   - Add pgregory.net/rapid as test-only dependency (go.mod via make mod-tidy)
   - Idempotency property (3.1): render-parse-render-parse-render; second and third renders byte-equal
   - Byte-identity property (3.2): CR-free generated content; first re-render equals first render
@@ -91,7 +91,7 @@ references:
   - Stream: 1
   - Requirements: [3.1](requirements.md#3.1), [3.2](requirements.md#3.2), [4.7](requirements.md#4.7)
 
-- [ ] 10. Run full validation pipeline and fix findings <!-- id:ih3bs74 -->
+- [x] 10. Run full validation pipeline and fix findings <!-- id:ih3bs74 -->
   - make check (fmt + lint + tests) and make modernize; fix all findings
   - Verify existing drawio and JSON/YAML renderer tests still pass unchanged (byte-compat and key-casing guards)
   - Blocked-by: ih3bs73 (Add property-based round-trip tests and golden example)

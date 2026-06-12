@@ -778,7 +778,7 @@ func TestDrawioRenderer_StableNodeOrder(t *testing.T) {
 		"End,,,",
 	}, "\n")
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		got, err := renderer.Render(ctx, doc)
 		if err != nil {
 			t.Fatalf("DrawioRenderer.Render() error = %v", err)
