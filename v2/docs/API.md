@@ -419,8 +419,69 @@ func (b *Builder) GanttChart(title string, tasks []GanttTask) *Builder
 // PieChart adds a pie chart with slices
 func (b *Builder) PieChart(title string, slices []PieSlice, showData bool) *Builder
 
-// DrawIO adds Draw.io diagram content
-func (b *Builder) DrawIO(title string, records []Record, header DrawIOHeader) *Builder
+// DrawIO adds Draw.io diagram content. Options configure the content, e.g.
+// WithDrawIOColumns sets an explicit CSV column order.
+func (b *Builder) DrawIO(title string, records []Record, header DrawIOHeader, opts ...DrawIOOption) *Builder
+```
+
+#### Draw.io CSV Parsing
+
+Parse draw.io CSV files (as written by the Draw.io renderer) back into header
+directives, column order, and records — for example to append rows to an
+existing diagram file:
+
+```go
+// ParsedDrawIO holds the result of parsing a draw.io CSV file
+type ParsedDrawIO struct {
+    Header  DrawIOHeader // zero-valued fields for absent directives
+    Columns []string     // column header row, file order
+    Records []Record     // file order; every column present, "" for empty cells
+}
+
+// ParseDrawIOCSV parses draw.io CSV from a reader
+func ParseDrawIOCSV(r io.Reader) (*ParsedDrawIO, error)
+
+// ParseDrawIOFile opens path and parses it with ParseDrawIOCSV
+func ParseDrawIOFile(path string) (*ParsedDrawIO, error)
+
+// DrawIOOption configures DrawIOContent during construction
+type DrawIOOption func(*DrawIOContent)
+
+// WithDrawIOColumns sets an explicit column order for draw.io CSV rendering.
+// Record keys absent from columns are not rendered; columns missing from a
+// record render as the empty string.
+func WithDrawIOColumns(columns ...string) DrawIOOption
+
+// GetColumns returns a copy of the explicit column order, or nil when unset
+func (d *DrawIOContent) GetColumns() []string
+```
+
+Parse errors are discriminable with `errors.Is`:
+
+```go
+var (
+    ErrDrawIONoColumnHeader    // no column header row (empty or comments-only input)
+    ErrDrawIOTrailingDirective // directive after the column header row (second diagram block)
+    ErrDrawIODuplicateColumn   // duplicate name in the column header row
+    ErrDrawIODirective         // invalid directive value (connect JSON or non-integer numeric)
+)
+```
+
+Round-trip example:
+
+```go
+parsed, err := output.ParseDrawIOFile("diagram.csv")
+if err != nil {
+    return err
+}
+parsed.Records = append(parsed.Records, output.Record{"Name": "new-node"})
+
+doc := output.New().
+    DrawIO("diagram", parsed.Records, parsed.Header,
+        output.WithDrawIOColumns(parsed.Columns...)).
+    Build()
+// Rendering with output.DrawIO() reproduces the file with the new row,
+// preserving directive order, column order, and quoting.
 ```
 
 ### Schema System
@@ -2604,7 +2665,7 @@ The v2 API is designed for extensibility:
 | `Graph(title, edges)` | Add graph diagram | `Graph("Flow", edges)` |
 | `GanttChart(title, tasks)` | Add Gantt chart | `GanttChart("Timeline", tasks)` |
 | `PieChart(title, slices, show)` | Add pie chart | `PieChart("Stats", slices, true)` |
-| `DrawIO(title, records, header)` | Add Draw.io diagram | `DrawIO("Architecture", records, header)` |
+| `DrawIO(title, records, header, opts...)` | Add Draw.io diagram | `DrawIO("Architecture", records, header)` |
 | `SetMetadata(key, value)` | Set metadata | `SetMetadata("author", "AI Agent")` |
 | `HasErrors()` | Check for errors | `if builder.HasErrors() {...}` |
 | `Errors()` | Get all errors | `for _, err := range builder.Errors()` |

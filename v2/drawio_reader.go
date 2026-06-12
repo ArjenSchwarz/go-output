@@ -1,6 +1,7 @@
 package output
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -41,36 +42,60 @@ type ParsedDrawIO struct {
 // drawioUTF8BOM is the UTF-8 byte order mark tolerated at the start of input.
 const drawioUTF8BOM = "\xef\xbb\xbf"
 
-// Directive keys referenced from more than one place in the parser.
+// Directive keys of the draw.io CSV wire format, shared by the writer
+// (writeDrawIOHeader) and the parser so both sides stay in sync.
 const (
 	drawioKeyLabel        = "label"
+	drawioKeyStyle        = "style"
+	drawioKeyIdentity     = "identity"
+	drawioKeyParent       = "parent"
+	drawioKeyParentStyle  = "parentstyle"
+	drawioKeyNamespace    = "namespace"
+	drawioKeyConnect      = "connect"
+	drawioKeyHeight       = "height"
+	drawioKeyWidth        = "width"
+	drawioKeyIgnore       = "ignore"
 	drawioKeyNodeSpacing  = "nodespacing"
 	drawioKeyLevelSpacing = "levelspacing"
 	drawioKeyEdgeSpacing  = "edgespacing"
 	drawioKeyPadding      = "padding"
+	drawioKeyLink         = "link"
+	drawioKeyLeft         = "left"
+	drawioKeyTop          = "top"
+	drawioKeyLayout       = "layout"
 )
 
 // drawioDirectiveKeys is the set of directive keys the v2 renderer emits,
 // matched case-sensitively (requirement 2.1).
 var drawioDirectiveKeys = map[string]bool{
 	drawioKeyLabel:        true,
-	"style":               true,
-	"identity":            true,
-	"parent":              true,
-	"parentstyle":         true,
-	"namespace":           true,
-	"connect":             true,
-	"height":              true,
-	"width":               true,
-	"ignore":              true,
+	drawioKeyStyle:        true,
+	drawioKeyIdentity:     true,
+	drawioKeyParent:       true,
+	drawioKeyParentStyle:  true,
+	drawioKeyNamespace:    true,
+	drawioKeyConnect:      true,
+	drawioKeyHeight:       true,
+	drawioKeyWidth:        true,
+	drawioKeyIgnore:       true,
 	drawioKeyNodeSpacing:  true,
 	drawioKeyLevelSpacing: true,
 	drawioKeyEdgeSpacing:  true,
 	drawioKeyPadding:      true,
-	"link":                true,
-	"left":                true,
-	"top":                 true,
-	"layout":              true,
+	drawioKeyLink:         true,
+	drawioKeyLeft:         true,
+	drawioKeyTop:          true,
+	drawioKeyLayout:       true,
+}
+
+// writeDrawIODirective writes one directive line in the exact grammar the
+// parser recognizes: "# " + key + ": " + value + "\n".
+func writeDrawIODirective(buf *bytes.Buffer, key, value string) {
+	buf.WriteString("# ")
+	buf.WriteString(key)
+	buf.WriteString(": ")
+	buf.WriteString(value)
+	buf.WriteByte('\n')
 }
 
 // ParseDrawIOCSV parses draw.io CSV (as written by the drawio renderer) from
@@ -226,27 +251,27 @@ func applyDrawIODirective(h *DrawIOHeader, line string, lineNum int) error {
 	switch key {
 	case drawioKeyLabel:
 		h.Label = value
-	case "style":
+	case drawioKeyStyle:
 		h.Style = value
-	case "identity":
+	case drawioKeyIdentity:
 		h.Identity = value
-	case "parent":
+	case drawioKeyParent:
 		h.Parent = value
-	case "parentstyle":
+	case drawioKeyParentStyle:
 		h.ParentStyle = value
-	case "namespace":
+	case drawioKeyNamespace:
 		h.Namespace = value
-	case "connect":
+	case drawioKeyConnect:
 		var conn drawioConnectionJSON
 		if err := json.Unmarshal([]byte(value), &conn); err != nil {
 			return fmt.Errorf("%w: line %d: connect: %v", ErrDrawIODirective, lineNum, err)
 		}
 		h.Connections = append(h.Connections, DrawIOConnection(conn))
-	case "height":
+	case drawioKeyHeight:
 		h.Height = value
-	case "width":
+	case drawioKeyWidth:
 		h.Width = value
-	case "ignore":
+	case drawioKeyIgnore:
 		h.Ignore = value
 	case drawioKeyNodeSpacing, drawioKeyLevelSpacing, drawioKeyEdgeSpacing, drawioKeyPadding:
 		n, err := strconv.Atoi(value)
@@ -263,13 +288,13 @@ func applyDrawIODirective(h *DrawIOHeader, line string, lineNum int) error {
 		case drawioKeyPadding:
 			h.Padding = n
 		}
-	case "link":
+	case drawioKeyLink:
 		h.Link = value
-	case "left":
+	case drawioKeyLeft:
 		h.Left = value
-	case "top":
+	case drawioKeyTop:
 		h.Top = value
-	case "layout":
+	case drawioKeyLayout:
 		h.Layout = value
 	}
 	return nil

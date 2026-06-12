@@ -11,6 +11,7 @@ The v2 library can write draw.io CSV output (via `DrawIOContent` and the drawio 
 - Fidelity guarantees for files not produced by the v2 drawio renderer (hand-written or v1-written files parse on a best-effort basis under the tolerance rules below).
 - Recovering records that pre-feature renderer output stored as bare blank lines (a single-column table row with an empty cell); CSV parsing cannot distinguish these from blank separator lines, so they are lost on read.
 - Header directive values containing line breaks; the draw.io CSV header format cannot represent them, and the writer's behavior for such values is unchanged by this feature.
+- Byte identity ([3.2](#3.2)) for a directive-less file whose first column name starts with U+FEFF: BOM tolerance ([1.6](#1.6)) strips that prefix on re-parse, so the leading U+FEFF is lost. Idempotency ([3.1](#3.1)) still holds.
 - Parsing draw.io XML (`.drawio`) files.
 - Semantic validation of parsed values (e.g. whether `%Name%` placeholders match actual columns).
 - Changes to the v1 `drawio` package.

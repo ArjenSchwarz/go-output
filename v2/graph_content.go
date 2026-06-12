@@ -438,7 +438,8 @@ type DrawIOOption func(*DrawIOContent)
 
 // WithDrawIOColumns sets an explicit column order for draw.io CSV rendering.
 // Record keys absent from columns are not rendered; columns missing from a
-// record render as the empty string.
+// record render as the empty string. Calling it with no columns is equivalent
+// to not setting an order: the renderer falls back to auto-detection.
 func WithDrawIOColumns(columns ...string) DrawIOOption {
 	return func(d *DrawIOContent) {
 		d.columns = slices.Clone(columns)
