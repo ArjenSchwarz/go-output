@@ -46,7 +46,7 @@ references:
 
 ## Parser
 
-- [ ] 5. Define parser API surface and write failing core parser tests <!-- id:ih3bs6z -->
+- [x] 5. Define parser API surface and write failing core parser tests <!-- id:ih3bs6z -->
   - v2/drawio_reader.go: ParsedDrawIO struct; ParseDrawIOCSV/ParseDrawIOFile stubs; sentinel error vars (types/wiring exempt from TDD)
   - v2/drawio_reader_test.go map-based table tests: all 18 directive keys map to DrawIOHeader fields; grammar is case-sensitive exact-prefix with verbatim untrimmed values; CRLF handling (\r\n stripped / lone \r kept)
   - Tolerance: unknown directives and non-directive comments ignored; scalar duplicates last-wins; connect append-all preserving order with unknown JSON keys ignored
@@ -54,7 +54,7 @@ references:
   - Stream: 1
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.3](requirements.md#1.3), [1.4](requirements.md#1.4), [1.6](requirements.md#1.6), [2.1](requirements.md#2.1), [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4), [2.5](requirements.md#2.5)
 
-- [ ] 6. Implement ParseDrawIOCSV/ParseDrawIOFile core pipeline <!-- id:ih3bs70 -->
+- [x] 6. Implement ParseDrawIOCSV/ParseDrawIOFile core pipeline <!-- id:ih3bs70 -->
   - Pipeline per design: BOM strip, directive pre-pass, quote-parity scan seeded at the column header line, csv.Reader with no Comment mode and FieldsPerRecord enforcement, empty-string fill
   - Connect unmarshal via drawioConnectionJSON (from task 4)
   - TrimLeadingSpace stays false
@@ -62,7 +62,7 @@ references:
   - Stream: 1
   - Requirements: [1.1](requirements.md#1.1), [1.2](requirements.md#1.2), [1.3](requirements.md#1.3), [1.4](requirements.md#1.4), [1.6](requirements.md#1.6), [2.1](requirements.md#2.1), [2.2](requirements.md#2.2), [2.3](requirements.md#2.3), [2.4](requirements.md#2.4), [2.5](requirements.md#2.5)
 
-- [ ] 7. Write failing error-handling and edge-case parser tests <!-- id:ih3bs71 -->
+- [x] 7. Write failing error-handling and edge-case parser tests <!-- id:ih3bs71 -->
   - Per-sentinel tests asserting errors.Is plus directive/line context: connect unparseable (4.1); non-integer numeric incl. superseded occurrence (4.2); field-count mismatch with line context (4.3); empty/comment-only input (4.4); trailing directive after data incl. precedence over field-count on the same line (4.5); duplicate column names (4.6)
   - Edge cases: leading-# data row parses as data (1.5); quoted fields with commas/quotes/newlines (3.4); multi-line quoted column header name; parity-scan-vs-csv quote-model disagreement case pinning which error fires
   - 4.7: error-returning io.Reader (mid-stream non-EOF) surfaces as error; ParseDrawIOFile wraps os.Open errors; nothing panics
@@ -70,7 +70,7 @@ references:
   - Stream: 1
   - Requirements: [1.5](requirements.md#1.5), [3.4](requirements.md#3.4), [4.1](requirements.md#4.1), [4.2](requirements.md#4.2), [4.3](requirements.md#4.3), [4.4](requirements.md#4.4), [4.5](requirements.md#4.5), [4.6](requirements.md#4.6), [4.7](requirements.md#4.7)
 
-- [ ] 8. Implement parser error handling and edge cases <!-- id:ih3bs72 -->
+- [x] 8. Implement parser error handling and edge cases <!-- id:ih3bs72 -->
   - Sentinels: ErrDrawIONoColumnHeader, ErrDrawIOTrailingDirective, ErrDrawIODuplicateColumn, ErrDrawIODirective (per design Error Handling table)
   - Whole-section parity scan runs before csv parsing so 4.5 wins over 4.3
   - Blocked-by: ih3bs71 (Write failing error-handling and edge-case parser tests)

@@ -1,6 +1,19 @@
 # draw.io CSV (v2 writer/reader)
 
-Spec: `specs/drawio-csv-reader/` (T-1539). Writer-changes phase (tasks 1-4) implemented; parser (`ParseDrawIOCSV`/`ParseDrawIOFile` in `v2/drawio_reader.go`) comes in later tasks.
+Spec: `specs/drawio-csv-reader/` (T-1539). Writer-changes phase (tasks 1-4) and parser phase (tasks 5-8, `ParseDrawIOCSV`/`ParseDrawIOFile` in `v2/drawio_reader.go`) implemented; round-trip/property tests (tasks 9-10) remain.
+
+## Parser (`v2/drawio_reader.go`)
+
+- `ParseDrawIOCSV(io.Reader) (*ParsedDrawIO, error)`; `ParsedDrawIO{Header DrawIOHeader, Columns []string, Records []Record}`. `ParseDrawIOFile` is `os.Open` + parse, open error wrapped with `%w`.
+- Pipeline: read-all → strip UTF-8 BOM → line split (`\r\n` stripped, lone `\r` kept — matches encoding/csv so directives/data normalize identically) → directive pre-pass → quote-parity scan → `csv.Reader` over header+data → duplicate-column check → record fill.
+- Directive grammar: exact prefix `"# "` + case-sensitive key + `": "`, value verbatim untrimmed to EOL (`matchDrawIODirective`). 18 keys. Anything else `#`-leading before the column header is silently ignored; after the header it is **data** (no `Comment` mode on csv.Reader, Decision 8).
+- Scalars last-wins; `connect` append-all (order preserved), unmarshaled via `drawioConnectionJSON` (unknown JSON keys ignored). Numeric keys (`nodespacing`/`levelspacing`/`edgespacing`/`padding`) `strconv.Atoi`-validated on **every** occurrence — a malformed superseded value still errors (intentional asymmetry, req 2.5/4.2).
+- Absent directives → zero values, never `DefaultDrawIOHeader()` (Decision 11; absent-vs-0 for ints is accepted ambiguity).
+- Quote-parity scan: seeded at the **header line start** (so multi-line quoted column names work — continuation lines aren't record boundaries); toggles on odd `"` count per physical line; only boundary lines after the header are tested for trailing directives. Runs over the whole section before csv, so `ErrDrawIOTrailingDirective` beats field-count errors anywhere (multi-block detection, Decision 9).
+- Parity-vs-csv quote-model disagreement (bare quote mid-field, e.g. `x"q,b`): parity scan thinks following lines are quoted → trailing directive not flagged → csv bare-quote `ParseError` fires instead. Pinned by `TestParseDrawIOCSV_ParityVsCSVQuoteDisagreement`.
+- Sentinels: `ErrDrawIONoColumnHeader` (4.4), `ErrDrawIOTrailingDirective` (4.5), `ErrDrawIODuplicateColumn` (4.6), `ErrDrawIODirective` (4.1/4.2 — connect JSON + non-integer numerics). All wrapped via `fmt.Errorf("%w: line %d: ...")`. CSV structural errors pass through as `*csv.ParseError` with `Line`/`StartLine` shifted by `headerIdx` (`adjustDrawIOCSVError`) so they're file-relative, not section-relative.
+- `TrimLeadingSpace` stays false; `FieldsPerRecord` default enforces field counts; blank lines skipped by csv (and the pre-pass); empty cells become `""`, every column present in every record; zero data rows → `Records` is empty non-nil.
+- goconst gotcha: directive keys used in both the key set and switch need consts (`drawioKeyLabel` etc.) or lint fails.
 
 ## Column-order plumbing
 
