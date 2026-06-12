@@ -1,6 +1,10 @@
 ## Unreleased
 
 ### Added
+- **Draw.io CSV Parser** (drawio-csv-reader phase 2) - New `ParseDrawIOCSV(io.Reader)` and `ParseDrawIOFile(path)` functions parse draw.io CSV (as written by the drawio renderer) into a `ParsedDrawIO` struct with header directives, column order, and records
+  - All 18 directive keys map onto `DrawIOHeader` fields; grammar is case-sensitive `# key: ` exact-prefix with verbatim untrimmed values; unknown directives and comments are ignored; scalar directives are last-wins while `# connect:` appends all occurrences in order
+  - Handles UTF-8 BOM, CRLF line endings, blank lines, quoted fields containing commas/quotes/newlines, data rows starting with `#`, and multi-line quoted column names; empty cells materialize as empty strings; absent directives leave header fields zero-valued
+  - New sentinel errors (`ErrDrawIONoColumnHeader`, `ErrDrawIOTrailingDirective`, `ErrDrawIODuplicateColumn`, `ErrDrawIODirective`) discriminable via `errors.Is`, wrapped with line/directive context; trailing-directive detection takes precedence over CSV field-count errors; CSV parse errors report whole-file line numbers
 - **Draw.io CSV Writer Round-Trip Support** (drawio-csv-reader phase 1) - Writer changes so draw.io CSV output can round-trip through the upcoming parser
   - `DrawIOContent` gains an explicit column order: new `DrawIOOption` type with `WithDrawIOColumns()`, variadic options on `NewDrawIOContent`, `NewDrawIOContentFromTable`, and `Builder.DrawIO`, plus a `GetColumns()` accessor (backward compatible)
   - `NewDrawIOContentFromTable` now captures the table schema's field order instead of leaving columns to be alphabetized at render time
