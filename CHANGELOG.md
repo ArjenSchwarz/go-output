@@ -1,6 +1,11 @@
 ## Unreleased
 
 ### Added
+- **Draw.io CSV Round-Trip Guarantees** (drawio-csv-reader phase 3) - Property-based tests (via new test-only dependency `pgregory.net/rapid`) verifying the writer/parser round-trip contracts
+  - Idempotency: render → parse → render → parse → render stabilizes from the first re-render onward for arbitrary headers, columns, and records
+  - Byte identity: for CR-free content, the first re-render is byte-identical to the original render
+  - No-panic: the parser returns a result or an error (never panics) for arbitrary byte input, including malformed `# connect:` JSON and non-integer numeric directives
+  - Example-based golden round-trip with a realistic awstools-style file as an anchor against generator blind spots
 - **Draw.io CSV Parser** (drawio-csv-reader phase 2) - New `ParseDrawIOCSV(io.Reader)` and `ParseDrawIOFile(path)` functions parse draw.io CSV (as written by the drawio renderer) into a `ParsedDrawIO` struct with header directives, column order, and records
   - All 18 directive keys map onto `DrawIOHeader` fields; grammar is case-sensitive `# key: ` exact-prefix with verbatim untrimmed values; unknown directives and comments are ignored; scalar directives are last-wins while `# connect:` appends all occurrences in order
   - Handles UTF-8 BOM, CRLF line endings, blank lines, quoted fields containing commas/quotes/newlines, data rows starting with `#`, and multi-line quoted column names; empty cells materialize as empty strings; absent directives leave header fields zero-valued
