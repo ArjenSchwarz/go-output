@@ -8,7 +8,7 @@ references:
 
 ## Writer changes
 
-- [ ] 1. Write failing tests for DrawIOContent column-order plumbing <!-- id:ih3bs6v -->
+- [x] 1. Write failing tests for DrawIOContent column-order plumbing <!-- id:ih3bs6v -->
   - Test WithDrawIOColumns option sets column order on NewDrawIOContent and Builder.DrawIO (forwarding)
   - Test GetColumns returns a defensive copy (mutating the result does not affect content)
   - Test Clone deep-copies the columns slice
@@ -17,7 +17,7 @@ references:
   - Stream: 1
   - Requirements: [3.3](requirements.md#3.3)
 
-- [ ] 2. Implement columns field, DrawIOOption, and constructor/builder plumbing <!-- id:ih3bs6w -->
+- [x] 2. Implement columns field, DrawIOOption, and constructor/builder plumbing <!-- id:ih3bs6w -->
   - v2/graph_content.go: columns []string on DrawIOContent; variadic opts on NewDrawIOContent and NewDrawIOContentFromTable; slices.Clone in Clone(); GetColumns accessor
   - v2/document.go:232: Builder.DrawIO gains opts ...DrawIOOption and forwards them
   - Backward compatible: no existing caller passes options (verified in design parity audit)
@@ -25,7 +25,7 @@ references:
   - Stream: 1
   - Requirements: [3.3](requirements.md#3.3)
 
-- [ ] 3. Write failing tests for drawio renderer output changes <!-- id:ih3bs6x -->
+- [x] 3. Write failing tests for drawio renderer output changes <!-- id:ih3bs6x -->
   - Explicit column order used by renderDrawIOContent; column header row written even with zero records
   - Record keys outside the column list are not rendered (pins WithDrawIOColumns silent-drop contract)
   - Connect JSON: byte-identical to old Sprintf output for escape-free values; quotes/backslashes escaped per JSON; ampersand/angle-brackets verbatim (proves SetEscapeHTML(false)); invert:false always present
@@ -35,7 +35,7 @@ references:
   - Stream: 1
   - Requirements: [3.3](requirements.md#3.3), [3.5](requirements.md#3.5), [3.6](requirements.md#3.6)
 
-- [ ] 4. Implement renderer changes: explicit columns, connect JSON encoder, quoting rules <!-- id:ih3bs6y -->
+- [x] 4. Implement renderer changes: explicit columns, connect JSON encoder, quoting rules <!-- id:ih3bs6y -->
   - v2/graph_renderers.go renderDrawIOContent: use GetColumns() when non-empty; fall back to extractColumnNames
   - writeDrawIOHeader: emit connect via drawioConnectionJSON mirror struct (json tags from/to/invert/label/style; no omitempty on Invert) with json.Encoder + SetEscapeHTML(false); Encode trailing newline is the line terminator
   - writeCSVRow: also quote fields starting with # and a single empty sole field

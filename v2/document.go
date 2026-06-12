@@ -229,8 +229,8 @@ func (b *Builder) PieChart(title string, slices []PieSlice, showData bool) *Buil
 }
 
 // DrawIO adds Draw.io diagram content with CSV configuration
-func (b *Builder) DrawIO(title string, records []Record, header DrawIOHeader) *Builder {
-	drawioContent := NewDrawIOContent(title, records, header)
+func (b *Builder) DrawIO(title string, records []Record, header DrawIOHeader, opts ...DrawIOOption) *Builder {
+	drawioContent := NewDrawIOContent(title, records, header, opts...)
 	return b.AddContent(drawioContent)
 }
 

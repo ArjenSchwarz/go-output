@@ -399,6 +399,7 @@ type DrawIOContent struct {
 	title   string
 	header  DrawIOHeader
 	records []Record
+	columns []string // explicit column order; nil means auto-detect
 }
 
 // DrawIOHeader configures Draw.io CSV import behavior (v1 compatibility)
@@ -432,33 +433,49 @@ type DrawIOConnection struct {
 	Style  string // Connection style (curved, straight, etc.)
 }
 
+// DrawIOOption configures a DrawIOContent during construction.
+type DrawIOOption func(*DrawIOContent)
+
+// WithDrawIOColumns sets an explicit column order for draw.io CSV rendering.
+// Record keys absent from columns are not rendered; columns missing from a
+// record render as the empty string.
+func WithDrawIOColumns(columns ...string) DrawIOOption {
+	return func(d *DrawIOContent) {
+		d.columns = slices.Clone(columns)
+	}
+}
+
 // NewDrawIOContent creates a new Draw.io content
-func NewDrawIOContent(title string, records []Record, header DrawIOHeader) *DrawIOContent {
-	return &DrawIOContent{
+func NewDrawIOContent(title string, records []Record, header DrawIOHeader, opts ...DrawIOOption) *DrawIOContent {
+	content := &DrawIOContent{
 		id:      GenerateID(),
 		title:   title,
 		header:  header,
 		records: cloneRecords(records),
 	}
+	for _, opt := range opts {
+		opt(content)
+	}
+	return content
 }
 
 // NewDrawIOContentFromTable creates Draw.io content from table data.
 // A nil table yields safe, empty content rather than a panic, since this
 // constructor returns no error to report the invalid input.
-func NewDrawIOContentFromTable(table *TableContent, header DrawIOHeader) *DrawIOContent {
-	if table == nil {
-		return &DrawIOContent{
-			id:     GenerateID(),
-			header: header,
-		}
+func NewDrawIOContentFromTable(table *TableContent, header DrawIOHeader, opts ...DrawIOOption) *DrawIOContent {
+	content := &DrawIOContent{
+		id:     GenerateID(),
+		header: header,
 	}
-
-	return &DrawIOContent{
-		id:      GenerateID(),
-		title:   table.title,
-		header:  header,
-		records: cloneRecords(table.records),
+	if table != nil {
+		content.title = table.title
+		content.records = cloneRecords(table.records)
+		content.columns = table.schema.GetFieldNames()
 	}
+	for _, opt := range opts {
+		opt(content)
+	}
+	return content
 }
 
 // Type returns the content type
@@ -485,6 +502,12 @@ func (d *DrawIOContent) GetHeader() DrawIOHeader {
 // mutate the content's internal state.
 func (d *DrawIOContent) GetRecords() []Record {
 	return cloneRecords(d.records)
+}
+
+// GetColumns returns a copy of the explicit column order, or nil when no
+// explicit order has been set.
+func (d *DrawIOContent) GetColumns() []string {
+	return slices.Clone(d.columns)
 }
 
 // AppendText implements encoding.TextAppender
@@ -527,6 +550,7 @@ func (d *DrawIOContent) Clone() Content {
 		title:   d.title,
 		header:  newHeader,
 		records: cloneRecords(d.records),
+		columns: slices.Clone(d.columns),
 	}
 }
 

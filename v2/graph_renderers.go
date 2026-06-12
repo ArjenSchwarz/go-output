@@ -3,6 +3,7 @@ package output
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
@@ -643,8 +644,12 @@ func (d *drawioRenderer) renderDrawIOContent(buf *bytes.Buffer, content *DrawIOC
 	// Generate CSV header based on DrawIOHeader configuration
 	d.writeDrawIOHeader(buf, header)
 
-	// Extract column names from records
-	columnNames := d.extractColumnNames(records)
+	// Use the explicit column order when set; otherwise fall back to
+	// alphabetized auto-detection from the records.
+	columnNames := content.GetColumns()
+	if len(columnNames) == 0 {
+		columnNames = d.extractColumnNames(records)
+	}
 
 	// Write CSV header row
 	d.writeCSVRow(buf, columnNames)
@@ -761,11 +766,15 @@ func (d *drawioRenderer) writeDrawIOHeader(buf *bytes.Buffer, header DrawIOHeade
 		fmt.Fprintf(buf, "# namespace: %s\n", header.Namespace)
 	}
 
-	// Connections
+	// Connections: encode through the drawioConnectionJSON mirror struct so
+	// values are escaped per JSON rules while &, <, and > stay verbatim
+	// (requirement 3.5). Encode's trailing newline terminates the line.
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
 	for _, conn := range header.Connections {
-		connJSON := fmt.Sprintf(`{"from":"%s","to":"%s","invert":%t,"label":"%s","style":"%s"}`,
-			conn.From, conn.To, conn.Invert, conn.Label, conn.Style)
-		fmt.Fprintf(buf, "# connect: %s\n", connJSON)
+		buf.WriteString("# connect: ")
+		// Encoding a struct of strings and a bool cannot fail.
+		_ = enc.Encode(drawioConnectionJSON(conn))
 	}
 
 	// Dimensions
@@ -825,8 +834,14 @@ func (d *drawioRenderer) writeCSVRow(buf *bytes.Buffer, row []string) {
 			buf.WriteByte(',')
 		}
 
-		// Escape field if it contains comma, quote, or newline
-		if strings.ContainsAny(field, ",\"\n\r") {
+		// Quote fields containing comma, quote, or newline; fields starting
+		// with '#' (which would otherwise look like a comment or directive);
+		// and a single empty sole field (which would otherwise render as a
+		// blank line that CSV readers silently skip). Requirement 3.6.
+		needsQuoting := strings.ContainsAny(field, ",\"\n\r") ||
+			strings.HasPrefix(field, "#") ||
+			(len(row) == 1 && field == "")
+		if needsQuoting {
 			escaped := strings.ReplaceAll(field, "\"", "\"\"")
 			fmt.Fprintf(buf, "\"%s\"", escaped)
 		} else {

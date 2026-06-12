@@ -275,6 +275,186 @@ func TestDrawIOBuilder_Integration(t *testing.T) {
 	}
 }
 
+func TestDrawIORenderer_ExplicitColumnOrder(t *testing.T) {
+	tests := map[string]struct {
+		content *DrawIOContent
+		want    string
+	}{
+		"explicit columns override alphabetical order": {
+			content: NewDrawIOContent("ordered", []Record{
+				{"Alpha": "1", "Beta": "2"},
+			}, DrawIOHeader{}, WithDrawIOColumns("Beta", "Alpha")),
+			want: "Beta,Alpha\n2,1\n",
+		},
+		"column header row written with zero records": {
+			content: NewDrawIOContent("empty", nil, DrawIOHeader{}, WithDrawIOColumns("Beta", "Alpha")),
+			want:    "Beta,Alpha\n",
+		},
+		"record keys outside column list are dropped": {
+			content: NewDrawIOContent("dropped", []Record{
+				{"Alpha": "1", "Hidden": "secret"},
+			}, DrawIOHeader{}, WithDrawIOColumns("Alpha")),
+			want: "Alpha\n1\n",
+		},
+		"columns missing from a record render empty": {
+			content: NewDrawIOContent("missing", []Record{
+				{"Beta": "2"},
+			}, DrawIOHeader{}, WithDrawIOColumns("Beta", "Alpha")),
+			want: "Beta,Alpha\n2,\n",
+		},
+		"no explicit columns falls back to alphabetical": {
+			content: NewDrawIOContent("fallback", []Record{
+				{"Beta": "2", "Alpha": "1"},
+			}, DrawIOHeader{}),
+			want: "Alpha,Beta\n1,2\n",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			doc := New().AddContent(tt.content).Build()
+			renderer := &drawioRenderer{}
+
+			result, err := renderer.Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+
+			if got := string(result); got != tt.want {
+				t.Errorf("Render() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDrawIORenderer_ConnectJSON(t *testing.T) {
+	tests := map[string]struct {
+		conn DrawIOConnection
+		want string
+	}{
+		// Byte-identical to the previous Sprintf-based output for values
+		// that need no escaping.
+		"escape-free values byte-compatible with previous output": {
+			conn: DrawIOConnection{From: "Service", To: "Backend", Label: "Port", Style: DrawIODefaultConnectionStyle},
+			want: `# connect: {"from":"Service","to":"Backend","invert":false,"label":"Port","style":"curved=1;endArrow=blockThin;endFill=1;fontSize=11;"}` + "\n",
+		},
+		"quotes and backslashes escaped per JSON": {
+			conn: DrawIOConnection{From: `a"b`, To: `c\d`},
+			want: `# connect: {"from":"a\"b","to":"c\\d","invert":false,"label":"","style":""}` + "\n",
+		},
+		// Proves SetEscapeHTML(false) is wired: the default encoder would
+		// emit &, <, and > instead.
+		"ampersand and angle brackets verbatim": {
+			conn: DrawIOConnection{From: "a&b", To: "c<d>e"},
+			want: `# connect: {"from":"a&b","to":"c<d>e","invert":false,"label":"","style":""}` + "\n",
+		},
+		"invert true rendered": {
+			conn: DrawIOConnection{From: "x", To: "y", Invert: true},
+			want: `# connect: {"from":"x","to":"y","invert":true,"label":"","style":""}` + "\n",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			content := NewDrawIOContent("connect", nil, DrawIOHeader{
+				Connections: []DrawIOConnection{tt.conn},
+			}, WithDrawIOColumns("Name"))
+			doc := New().AddContent(content).Build()
+			renderer := &drawioRenderer{}
+
+			result, err := renderer.Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+
+			want := tt.want + "Name\n"
+			if got := string(result); got != want {
+				t.Errorf("Render() = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestDrawIORenderer_QuotingRules(t *testing.T) {
+	tests := map[string]struct {
+		content *DrawIOContent
+		want    string
+	}{
+		"field starting with hash is quoted": {
+			content: NewDrawIOContent("hash", []Record{
+				{"Name": "# label: x"},
+			}, DrawIOHeader{}, WithDrawIOColumns("Name")),
+			want: "Name\n\"# label: x\"\n",
+		},
+		"single empty sole field quoted instead of blank line": {
+			content: NewDrawIOContent("empty", []Record{
+				{"Name": ""},
+			}, DrawIOHeader{}, WithDrawIOColumns("Name")),
+			want: "Name\n\"\"\n",
+		},
+		"empty field among multiple fields stays unquoted": {
+			content: NewDrawIOContent("multi", []Record{
+				{"Alpha": "", "Beta": "x"},
+			}, DrawIOHeader{}, WithDrawIOColumns("Alpha", "Beta")),
+			want: "Alpha,Beta\n,x\n",
+		},
+		"hash in the middle of a field stays unquoted": {
+			content: NewDrawIOContent("mid", []Record{
+				{"Name": "a#b"},
+			}, DrawIOHeader{}, WithDrawIOColumns("Name")),
+			want: "Name\na#b\n",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			doc := New().AddContent(tt.content).Build()
+			renderer := &drawioRenderer{}
+
+			result, err := renderer.Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+
+			if got := string(result); got != tt.want {
+				t.Errorf("Render() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestJSONRenderer_DrawIOConnectionKeyCasing guards Decision 14: the drawio
+// CSV wire format uses a private mirror struct, so DrawIOConnection stays
+// untagged and JSON document output keeps its exported-field key casing.
+func TestJSONRenderer_DrawIOConnectionKeyCasing(t *testing.T) {
+	content := NewDrawIOContent("casing", []Record{
+		{"Name": "Server1"},
+	}, DrawIOHeader{
+		Connections: []DrawIOConnection{
+			{From: "Service", To: "Backend", Label: "Port", Style: "curved=1;"},
+		},
+	})
+	doc := New().AddContent(content).Build()
+	renderer := &jsonRenderer{}
+
+	result, err := renderer.Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	output := string(result)
+	for _, expected := range []string{`"From": "Service"`, `"To": "Backend"`, `"Invert": false`, `"Label": "Port"`, `"Style": "curved=1;"`} {
+		if !strings.Contains(output, expected) {
+			t.Errorf("JSON output should contain %q, got:\n%s", expected, output)
+		}
+	}
+	for _, unexpected := range []string{`"from"`, `"to"`, `"invert"`, `"label"`, `"style"`} {
+		if strings.Contains(output, unexpected) {
+			t.Errorf("JSON output should not contain lowercase key %q, got:\n%s", unexpected, output)
+		}
+	}
+}
+
 func TestDefaultDrawIOHeader(t *testing.T) {
 	header := DefaultDrawIOHeader()
 
