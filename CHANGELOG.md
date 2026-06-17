@@ -1,5 +1,22 @@
 ## Unreleased
 
+### Added
+- **Draw.io CSV Round-Trip Guarantees** (drawio-csv-reader phase 3) - Property-based tests (via new test-only dependency `pgregory.net/rapid`) verifying the writer/parser round-trip contracts
+  - Idempotency: render → parse → render → parse → render stabilizes from the first re-render onward for arbitrary headers, columns, and records
+  - Byte identity: for CR-free content, the first re-render is byte-identical to the original render
+  - No-panic: the parser returns a result or an error (never panics) for arbitrary byte input, including malformed `# connect:` JSON and non-integer numeric directives
+  - Example-based golden round-trip with a realistic awstools-style file as an anchor against generator blind spots
+- **Draw.io CSV Parser** (drawio-csv-reader phase 2) - New `ParseDrawIOCSV(io.Reader)` and `ParseDrawIOFile(path)` functions parse draw.io CSV (as written by the drawio renderer) into a `ParsedDrawIO` struct with header directives, column order, and records
+  - All 18 directive keys map onto `DrawIOHeader` fields; grammar is case-sensitive `# key: ` exact-prefix with verbatim untrimmed values; unknown directives and comments are ignored; scalar directives are last-wins while `# connect:` appends all occurrences in order
+  - Handles UTF-8 BOM, CRLF line endings, blank lines, quoted fields containing commas/quotes/newlines, data rows starting with `#`, and multi-line quoted column names; empty cells materialize as empty strings; absent directives leave header fields zero-valued
+  - New sentinel errors (`ErrDrawIONoColumnHeader`, `ErrDrawIOTrailingDirective`, `ErrDrawIODuplicateColumn`, `ErrDrawIODirective`) discriminable via `errors.Is`, wrapped with line/directive context; trailing-directive detection takes precedence over CSV field-count errors; CSV parse errors report whole-file line numbers
+- **Draw.io CSV Writer Round-Trip Support** (drawio-csv-reader phase 1) - Writer changes so draw.io CSV output can round-trip through the upcoming parser
+  - `DrawIOContent` gains an explicit column order: new `DrawIOOption` type with `WithDrawIOColumns()`, variadic options on `NewDrawIOContent`, `NewDrawIOContentFromTable`, and `Builder.DrawIO`, plus a `GetColumns()` accessor (backward compatible)
+  - `NewDrawIOContentFromTable` now captures the table schema's field order instead of leaving columns to be alphabetized at render time
+  - The renderer uses the explicit column order when set (including the header row with zero records); record keys outside the column list are not rendered
+  - `# connect:` directives are now emitted via `json.Encoder` with HTML escaping disabled: quotes/backslashes escaped per JSON, `&`/`<`/`>` verbatim, `invert` always present, byte-identical to the previous output for escape-free values
+  - Data fields starting with `#` and single-empty-field rows are now quoted so they cannot be mistaken for comments, directives, or blank lines
+
 ### Fixed
 - **Pretty Progress SetContext Stale Watcher** - Fixed `prettyProgress.SetContext` spuriously marking a healthy progress as failed when the context was replaced (the same stale-watcher defect previously fixed for `textProgress` in T-1254)
   - The watcher goroutine now captures its own derived context (`watchedCtx`) as a local instead of reading the shared `p.ctx` field, removing a data race and ignoring stale completions when the context has been replaced (`p.ctx != watchedCtx`)

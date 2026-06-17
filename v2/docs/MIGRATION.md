@@ -558,14 +558,36 @@ drawio.SetHeaderValues(drawio.Header{
 
 // v2
 doc := output.New().
-    DrawIO("Architecture", data,
-        output.WithDrawIOLayout("horizontalflow"),
-        output.WithDrawIOLabel("%Name%"),
-        output.WithDrawIOStyle("%Image%"),
-    ).
+    DrawIO("Architecture", data, output.DrawIOHeader{
+        Label:  "%Name%",
+        Style:  "%Image%",
+        Layout: "horizontalflow",
+    }).
     Build()
 
 out := output.NewOutput(output.WithFormat(output.DrawIO))
+```
+
+#### Draw.io CSV Parsing
+
+v1's `drawio.GetHeaderAndContentsFromFile` is replaced by `output.ParseDrawIOFile`
+(or `output.ParseDrawIOCSV` for an `io.Reader`):
+
+```go
+// v1
+header, contents, err := drawio.GetHeaderAndContentsFromFile("diagram.csv")
+
+// v2
+parsed, err := output.ParseDrawIOFile("diagram.csv")
+// parsed.Header  - DrawIOHeader with the file's directives
+// parsed.Columns - column order as it appears in the file
+// parsed.Records - data rows in file order
+
+// Re-render (round-trip) with the parsed column order preserved:
+doc := output.New().
+    DrawIO("diagram", parsed.Records, parsed.Header,
+        output.WithDrawIOColumns(parsed.Columns...)).
+    Build()
 ```
 
 #### AWS Icons for Draw.io

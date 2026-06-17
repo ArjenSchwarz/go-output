@@ -224,7 +224,7 @@ func TestMermaidRenderer_GanttSectionOrder(t *testing.T) {
 		"section Delta",
 	}
 
-	for iter := 0; iter < 100; iter++ {
+	for iter := range 100 {
 		result, err := renderer.Render(context.Background(), doc)
 		if err != nil {
 			t.Fatalf("Render() error = %v", err)

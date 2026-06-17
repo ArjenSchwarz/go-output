@@ -9,6 +9,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.9
 	github.com/mattn/go-isatty v0.0.20
 	gopkg.in/yaml.v3 v3.0.1
+	pgregory.net/rapid v1.3.0
 )
 
 require (

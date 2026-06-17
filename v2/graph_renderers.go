@@ -3,9 +3,11 @@ package output
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -643,8 +645,12 @@ func (d *drawioRenderer) renderDrawIOContent(buf *bytes.Buffer, content *DrawIOC
 	// Generate CSV header based on DrawIOHeader configuration
 	d.writeDrawIOHeader(buf, header)
 
-	// Extract column names from records
-	columnNames := d.extractColumnNames(records)
+	// Use the explicit column order when set; otherwise fall back to
+	// alphabetized auto-detection from the records.
+	columnNames := content.GetColumns()
+	if len(columnNames) == 0 {
+		columnNames = d.extractColumnNames(records)
+	}
 
 	// Write CSV header row
 	d.writeCSVRow(buf, columnNames)
@@ -731,90 +737,98 @@ func (d *drawioRenderer) renderTableAsDrawIO(buf *bytes.Buffer, table *TableCont
 	}
 }
 
-// writeDrawIOHeader writes the Draw.io CSV header comments
+// writeDrawIOHeader writes the Draw.io CSV header comments. All lines go
+// through writeDrawIODirective and the drawioKey* constants so the writer and
+// the parser share one definition of the directive grammar.
 func (d *drawioRenderer) writeDrawIOHeader(buf *bytes.Buffer, header DrawIOHeader) {
 	// Label
 	if header.Label != "" {
-		fmt.Fprintf(buf, "# label: %s\n", header.Label)
+		writeDrawIODirective(buf, drawioKeyLabel, header.Label)
 	}
 
 	// Style
 	if header.Style != "" {
-		fmt.Fprintf(buf, "# style: %s\n", header.Style)
+		writeDrawIODirective(buf, drawioKeyStyle, header.Style)
 	}
 
 	// Identity
 	if header.Identity != "" {
-		fmt.Fprintf(buf, "# identity: %s\n", header.Identity)
+		writeDrawIODirective(buf, drawioKeyIdentity, header.Identity)
 	}
 
 	// Parent
 	if header.Parent != "" {
-		fmt.Fprintf(buf, "# parent: %s\n", header.Parent)
+		writeDrawIODirective(buf, drawioKeyParent, header.Parent)
 		if header.ParentStyle != "" {
-			fmt.Fprintf(buf, "# parentstyle: %s\n", header.ParentStyle)
+			writeDrawIODirective(buf, drawioKeyParentStyle, header.ParentStyle)
 		}
 	}
 
 	// Namespace
 	if header.Namespace != "" {
-		fmt.Fprintf(buf, "# namespace: %s\n", header.Namespace)
+		writeDrawIODirective(buf, drawioKeyNamespace, header.Namespace)
 	}
 
-	// Connections
-	for _, conn := range header.Connections {
-		connJSON := fmt.Sprintf(`{"from":"%s","to":"%s","invert":%t,"label":"%s","style":"%s"}`,
-			conn.From, conn.To, conn.Invert, conn.Label, conn.Style)
-		fmt.Fprintf(buf, "# connect: %s\n", connJSON)
+	// Connections: encode through the drawioConnectionJSON mirror struct so
+	// values are escaped per JSON rules while &, <, and > stay verbatim
+	// (requirement 3.5). Encode's trailing newline terminates the line.
+	if len(header.Connections) > 0 {
+		enc := json.NewEncoder(buf)
+		enc.SetEscapeHTML(false)
+		for _, conn := range header.Connections {
+			buf.WriteString("# " + drawioKeyConnect + ": ")
+			// Encoding a struct of strings and a bool cannot fail.
+			_ = enc.Encode(drawioConnectionJSON(conn))
+		}
 	}
 
 	// Dimensions
 	if header.Height != "" {
-		fmt.Fprintf(buf, "# height: %s\n", header.Height)
+		writeDrawIODirective(buf, drawioKeyHeight, header.Height)
 	}
 	if header.Width != "" {
-		fmt.Fprintf(buf, "# width: %s\n", header.Width)
+		writeDrawIODirective(buf, drawioKeyWidth, header.Width)
 	}
 
 	// Ignore
 	if header.Ignore != "" {
-		fmt.Fprintf(buf, "# ignore: %s\n", header.Ignore)
+		writeDrawIODirective(buf, drawioKeyIgnore, header.Ignore)
 	}
 
 	// Spacing
 	if header.NodeSpacing > 0 {
-		fmt.Fprintf(buf, "# nodespacing: %d\n", header.NodeSpacing)
+		writeDrawIODirective(buf, drawioKeyNodeSpacing, strconv.Itoa(header.NodeSpacing))
 	}
 	if header.LevelSpacing > 0 {
-		fmt.Fprintf(buf, "# levelspacing: %d\n", header.LevelSpacing)
+		writeDrawIODirective(buf, drawioKeyLevelSpacing, strconv.Itoa(header.LevelSpacing))
 	}
 	if header.EdgeSpacing > 0 {
-		fmt.Fprintf(buf, "# edgespacing: %d\n", header.EdgeSpacing)
+		writeDrawIODirective(buf, drawioKeyEdgeSpacing, strconv.Itoa(header.EdgeSpacing))
 	}
 
 	// Padding
 	if header.Padding > 0 {
-		fmt.Fprintf(buf, "# padding: %d\n", header.Padding)
+		writeDrawIODirective(buf, drawioKeyPadding, strconv.Itoa(header.Padding))
 	}
 
 	// Link
 	if header.Link != "" {
-		fmt.Fprintf(buf, "# link: %s\n", header.Link)
+		writeDrawIODirective(buf, drawioKeyLink, header.Link)
 	}
 
 	// Position columns (only for layout=none)
 	if header.Layout == DrawIOLayoutNone {
 		if header.Left != "" {
-			fmt.Fprintf(buf, "# left: %s\n", header.Left)
+			writeDrawIODirective(buf, drawioKeyLeft, header.Left)
 		}
 		if header.Top != "" {
-			fmt.Fprintf(buf, "# top: %s\n", header.Top)
+			writeDrawIODirective(buf, drawioKeyTop, header.Top)
 		}
 	}
 
 	// Layout
 	if header.Layout != "" {
-		fmt.Fprintf(buf, "# layout: %s\n", header.Layout)
+		writeDrawIODirective(buf, drawioKeyLayout, header.Layout)
 	}
 }
 
@@ -825,8 +839,14 @@ func (d *drawioRenderer) writeCSVRow(buf *bytes.Buffer, row []string) {
 			buf.WriteByte(',')
 		}
 
-		// Escape field if it contains comma, quote, or newline
-		if strings.ContainsAny(field, ",\"\n\r") {
+		// Quote fields containing comma, quote, or newline; fields starting
+		// with '#' (which would otherwise look like a comment or directive);
+		// and a single empty sole field (which would otherwise render as a
+		// blank line that CSV readers silently skip). Requirement 3.6.
+		needsQuoting := strings.ContainsAny(field, ",\"\n\r") ||
+			strings.HasPrefix(field, "#") ||
+			(len(row) == 1 && field == "")
+		if needsQuoting {
 			escaped := strings.ReplaceAll(field, "\"", "\"\"")
 			fmt.Fprintf(buf, "\"%s\"", escaped)
 		} else {
