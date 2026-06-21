@@ -51,7 +51,7 @@ func main() {
 ✅ **Key Order Preservation**: Exact preservation of user-specified column ordering  
 ✅ **Multiple Output Formats**: JSON, YAML, CSV, HTML, Tables, Markdown, DOT, Mermaid, Draw.io  
 ✅ **Document-Builder Pattern**: Clean separation of content building and rendering  
-✅ **Modern Go**: Uses Go 1.24+ features with `any` instead of `interface{}`  
+✅ **Modern Go**: Uses Go 1.25+ features with `any` instead of `interface{}`  
 ✅ **No Global State**: Complete elimination of global state from v1  
 
 ## Common Use Cases

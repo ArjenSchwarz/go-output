@@ -22,7 +22,7 @@ go get github.com/ArjenSchwarz/go-output/v2@latest
 ```
 
 Requirements:
-- Go 1.24 or later
+- Go 1.25 or later
 - No global state dependencies
 - Thread-safe by design
 

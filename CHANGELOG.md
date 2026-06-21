@@ -1,46 +1,43 @@
-## Unreleased
+## 2.7.0 / 2026-06-21
+
+This release adds a draw.io CSV reader so draw.io output can be read back into structured data (a full write/read round-trip), along with a set of robustness and correctness fixes across rendering, transformations, progress, and concurrency.
 
 ### Added
-- **Draw.io CSV Round-Trip Guarantees** (drawio-csv-reader phase 3) - Property-based tests (via new test-only dependency `pgregory.net/rapid`) verifying the writer/parser round-trip contracts
-  - Idempotency: render → parse → render → parse → render stabilizes from the first re-render onward for arbitrary headers, columns, and records
-  - Byte identity: for CR-free content, the first re-render is byte-identical to the original render
-  - No-panic: the parser returns a result or an error (never panics) for arbitrary byte input, including malformed `# connect:` JSON and non-integer numeric directives
-  - Example-based golden round-trip with a realistic awstools-style file as an anchor against generator blind spots
-- **Draw.io CSV Parser** (drawio-csv-reader phase 2) - New `ParseDrawIOCSV(io.Reader)` and `ParseDrawIOFile(path)` functions parse draw.io CSV (as written by the drawio renderer) into a `ParsedDrawIO` struct with header directives, column order, and records
-  - All 18 directive keys map onto `DrawIOHeader` fields; grammar is case-sensitive `# key: ` exact-prefix with verbatim untrimmed values; unknown directives and comments are ignored; scalar directives are last-wins while `# connect:` appends all occurrences in order
-  - Handles UTF-8 BOM, CRLF line endings, blank lines, quoted fields containing commas/quotes/newlines, data rows starting with `#`, and multi-line quoted column names; empty cells materialize as empty strings; absent directives leave header fields zero-valued
-  - New sentinel errors (`ErrDrawIONoColumnHeader`, `ErrDrawIOTrailingDirective`, `ErrDrawIODuplicateColumn`, `ErrDrawIODirective`) discriminable via `errors.Is`, wrapped with line/directive context; trailing-directive detection takes precedence over CSV field-count errors; CSV parse errors report whole-file line numbers
-- **Draw.io CSV Writer Round-Trip Support** (drawio-csv-reader phase 1) - Writer changes so draw.io CSV output can round-trip through the upcoming parser
-  - `DrawIOContent` gains an explicit column order: new `DrawIOOption` type with `WithDrawIOColumns()`, variadic options on `NewDrawIOContent`, `NewDrawIOContentFromTable`, and `Builder.DrawIO`, plus a `GetColumns()` accessor (backward compatible)
-  - `NewDrawIOContentFromTable` now captures the table schema's field order instead of leaving columns to be alphabetized at render time
-  - The renderer uses the explicit column order when set (including the header row with zero records); record keys outside the column list are not rendered
-  - `# connect:` directives are now emitted via `json.Encoder` with HTML escaping disabled: quotes/backslashes escaped per JSON, `&`/`<`/`>` verbatim, `invert` always present, byte-identical to the previous output for escape-free values
-  - Data fields starting with `#` and single-empty-field rows are now quoted so they cannot be mistaken for comments, directives, or blank lines
+- **Draw.io CSV round-trip** - draw.io CSV produced by the renderer can now be parsed back into structured data:
+  - `ParseDrawIOCSV(io.Reader)` and `ParseDrawIOFile(path)` return a `ParsedDrawIO` holding the header directives, column order, and records. All 18 header directives are recognized; UTF-8 BOM, CRLF line endings, blank lines, quoted fields, and `#`-prefixed data are handled; unknown directives and comments are ignored; absent directives leave header fields zero-valued.
+  - Discriminable sentinel errors (`ErrDrawIONoColumnHeader`, `ErrDrawIOTrailingDirective`, `ErrDrawIODuplicateColumn`, `ErrDrawIODirective`) work with `errors.Is` and carry line/directive context.
+  - Writer support for stable round-trips: explicit column ordering via the new `DrawIOOption`/`WithDrawIOColumns()` (on `NewDrawIOContent`, `NewDrawIOContentFromTable`, and `Builder.DrawIO`) plus a `GetColumns()` accessor; `NewDrawIOContentFromTable` preserves the table's schema field order; `# connect:` directives emit deterministic JSON. These additions are backward compatible.
+
+### Changed
+- **Minimum Go version is now 1.25** (raised from 1.24). This pulls in the fix for [GO-2026-5024](https://pkg.go.dev/vuln/GO-2026-5024) in the indirect `golang.org/x/sys` dependency (a Windows-only issue in code go-output does not call). Upgrade your toolchain to Go 1.25 or newer before updating.
+- Added test-only dependency `pgregory.net/rapid` for property-based round-trip tests. It is not required by library consumers.
 
 ### Fixed
-- **Pretty Progress SetContext Stale Watcher** - Fixed `prettyProgress.SetContext` spuriously marking a healthy progress as failed when the context was replaced (the same stale-watcher defect previously fixed for `textProgress` in T-1254)
-  - The watcher goroutine now captures its own derived context (`watchedCtx`) as a local instead of reading the shared `p.ctx` field, removing a data race and ignoring stale completions when the context has been replaced (`p.ctx != watchedCtx`)
-  - `SetContext(nil)` now clears `p.ctx`/`p.cancel` and returns early
-  - Added regression test `TestPrettyProgress_SetContext_Replacement_DoesNotFail`
-- **GroupBy Composite Key Collision** - Fixed `GroupByOp.createGroupKey` merging distinct groups when grouped values contain the `||` separator (e.g. `{a:"x||y", b:"z"}` and `{a:"x", b:"y||z"}` both produced key `x||y||z`)
-  - Replaced fixed-delimiter concatenation with a collision-safe length-prefixed encoding (`<len>:<value>` per column)
-  - Missing values now use a distinct `nil:` marker so they no longer collide with the literal string `"<nil>"`
-  - Added regression test `TestGroupByCompositeKeyCollision`
-- **Pretty Progress Signal Context Safety** - Fixed startup panic in `NewPrettyProgress` when `handleSignals` accessed `p.ctx.Done()` before `SetContext` initialized the context
-  - Initialize a default cancellable background context before starting signal handling
-  - Added nil-safe context channel handling and closed-signal channel exit in `handleSignals`
-  - Added regression test `TestPrettyProgress_HandleSignals_NilContext_DoesNotPanic`
-- **S3 Output Panic Prevention** - Fixed panic in `PrintByteSlice` when S3Output has Bucket set but S3Client is nil
-  - Added validation guard clause to return clear error message instead of panicking
-  - Error message guides users to use `SetS3Bucket()` for proper S3 configuration
-  - Added regression test to prevent future occurrences
-- **S3Writer Append Size Validation** - Fixed bug where append operations could exceed maxAppendSize limit
-  - Now validates new data size before making API calls
-  - Validates combined size (existing + new data) to prevent memory exhaustion
-  - Provides specific error messages for different size limit violations
-  - Prevents operations that would exceed the intended size guard
-- **Draw.io CSV Output Buffer Flushing** - Fixed issue where `drawio.CreateCSV` function did not flush the underlying `bufio.Writer`, potentially causing data loss when writing to files with small datasets
-- **CI Lint Compliance** - Replaced `WriteString(fmt.Sprintf(...))` with `fmt.Fprintf(...)` across `html_renderer.go`, `markdown_renderer.go`, and `table_renderer.go` to satisfy staticcheck QF1012
+
+**Robustness** — operations that previously panicked now return an error or no-op safely:
+- Renderers no longer panic on nil documents or nil writers (Markdown, graph/DOT/Mermaid renderers, every `RenderTo` implementation, and `MultiWriter`).
+- Builder methods reject or safely ignore nil inputs: `AddContent` (on both `Builder` and `SectionContent`), `Section` and nested-section callbacks, and table operations on nil content.
+- Transformation handling no longer panics on nil operations or transformers; `GroupByOp.Validate` rejects nil aggregate functions; `Output.Render` validates nil configuration entries.
+- `NewDrawIOContentFromTable` guards against a nil table; S3 output returns a clear error instead of panicking when a bucket is set without a client.
+- Progress: fixed a startup context panic, a nil-writer panic on draw, and a progress-bar overflow panic.
+
+**Deterministic output:**
+- Stable row order in graph renderers, deterministic GroupBy aggregate column order, and deterministic Markdown front-matter order.
+- `GenerateID` no longer returns a constant fallback; GroupBy no longer merges distinct rows whose composite keys collide; transformers now run in priority order; `SortTransformer` keeps the Markdown separator row directly under the header.
+
+**Data integrity** — caller-owned data is now defensively copied so later caller mutations cannot corrupt output:
+- Table records, schema key order, chart data, graph/Draw.io data, collapsible values and sections, and CollapsibleValue format hints.
+- Fixed a race in `DefaultCollapsibleValue` lazy caching during concurrent rendering.
+
+**Rendering correctness:**
+- CSV: headers are retained for later tables and for schema changes inside collapsible/nested sections; append no longer merges rows when the existing file lacks a trailing newline; flush errors are surfaced; tabular transformers parse quoted CSV correctly; draw.io CSV output is flushed.
+- Graph renderers now apply table transformations; DOT and Mermaid labels are escaped; HTML charts render Mermaid correctly instead of emitting raw text; Mermaid pie charts accept all numeric types.
+- The emoji transformer no longer corrupts words that contain emoji-indicator substrings.
+- Caller context is threaded through nested renderers; `prettyProgress.SetContext` no longer marks a healthy progress as failed when the context is replaced.
+
+**Other:**
+- `AddColumn` rejects duplicate column names; the Builder surfaces previously dropped nested-section errors; the S3 append size limit now accounts for the size of the new data.
+
 ## 2.6.0 / 2025-11-07
 
 ### Added

@@ -49,7 +49,7 @@ make test-coverage
   - Makefile targets and commands
   - Testing philosophy and organization  
   - Code architecture and patterns
-  - Modernization details (Go 1.24+ features)
+  - Modernization details (Go 1.25+ features)
 
 ### Testing Strategy
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the **v2** directory of the go-output library, representing a complete redesign of the original library. This is a major version bump (v2.0.0) with **no backward compatibility** with v1. The v2 redesign eliminates global state, provides thread-safe operations, and uses modern Go 1.24+ features.
+This is the **v2** directory of the go-output library, representing a complete redesign of the original library. This is a major version bump (v2.0.0) with **no backward compatibility** with v1. The v2 redesign eliminates global state, provides thread-safe operations, and uses modern Go 1.25+ features.
 
 ## Development Commands
 
@@ -117,7 +117,7 @@ Major components are interfaces to support extensibility:
 
 ### Type Safety with Modern Go
 - Uses `any` instead of `interface{}` (enforced by golangci-lint)
-- Leverages Go 1.24+ features including new testing.B.Loop for benchmarks
+- Leverages Go 1.25+ features including new testing.B.Loop for benchmarks
 - Proper error handling with wrapped errors and context
 
 ## Development Notes
@@ -153,7 +153,7 @@ The v2 codebase follows modern Go 2025 testing best practices:
 #### Test Categories
 - **Unit Tests**: Run by default with `make test` or `go test ./...`
 - **Integration Tests**: Require `INTEGRATION=1`, run with `make test-integration`
-- **Benchmark Tests**: Use modern `b.Loop()` pattern (Go 1.24+)
+- **Benchmark Tests**: Use modern `b.Loop()` pattern (Go 1.25+)
 - **Key Order Tests**: Extensive testing of key preservation across scenarios
 - **Thread Safety**: Concurrent operation tests with multiple goroutines
 - **Immutability**: Tests ensuring documents cannot be modified after Build()

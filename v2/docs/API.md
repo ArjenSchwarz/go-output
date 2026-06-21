@@ -4,8 +4,8 @@
 
 Go-Output v2 is a complete redesign of the library providing thread-safe document generation with preserved key ordering and multiple output formats. This API documentation covers all public interfaces and methods.
 
-**Version**: v2.5.0
-**Go Version**: 1.24+
+**Version**: v2.7.0
+**Go Version**: 1.25+
 **Import Path**: `github.com/ArjenSchwarz/go-output/v2`
 
 > **Breaking Change in v2.5.0**: Format variables have been converted to functions to ensure thread safety and support for parallel tests. See [Migration Guide](#migration-from-v24x-to-v25x) for details.
