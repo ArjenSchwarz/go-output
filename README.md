@@ -2,7 +2,7 @@
 
 A comprehensive Go library for outputting structured data in multiple formats with thread-safe operations and preserved key ordering. This library provides a unified interface to convert your data into JSON, YAML, CSV, HTML, tables, markdown, DOT graphs, Mermaid diagrams, and Draw.io files.
 
-**Version 2.0** represents a complete redesign with no backward compatibility, eliminating global state and providing modern Go 1.24+ features.
+**Version 2.0** represents a complete redesign with no backward compatibility, eliminating global state and providing modern Go 1.25+ features.
 
 ## Features
 
@@ -16,6 +16,7 @@ A comprehensive Go library for outputting structured data in multiple formats wi
 - **Multiple Writers**: Output to stdout, files, S3, or multiple destinations simultaneously
 - **Progress Indicators**: Visual progress bars for long-running operations
 - **Chart Generation**: Gantt charts, pie charts, and flow diagrams
+- **Draw.io CSV Round-Trip**: Parse generated draw.io CSV back into structured data with `ParseDrawIOCSV`/`ParseDrawIOFile`
 
 ## Supported Output Formats
 
@@ -211,7 +212,7 @@ This library uses several excellent external packages:
 
 ## Requirements
 
-- **Go 1.24+** - Uses modern Go features including `any` type and latest testing patterns
+- **Go 1.25+** - Uses modern Go features including `any` type and latest testing patterns
 - **Thread-safe usage** - All components designed for concurrent operations
 
 ## Usage in Projects
@@ -288,7 +289,7 @@ The Makefile automatically handles both the v2 library code and all example dire
 - Add unit tests with concurrent operation coverage
 - Test key order preservation for table functionality
 - Include integration tests for complex scenarios
-- Test with Go 1.24+ features
+- Test with Go 1.25+ features
 
 ## License
 

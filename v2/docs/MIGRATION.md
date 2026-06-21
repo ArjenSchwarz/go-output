@@ -2,7 +2,7 @@
 
 This guide provides comprehensive instructions for migrating between go-output versions. It covers both v1→v2 migration and intra-v2 breaking changes.
 
-**Current Version**: v2.5.0
+**Current Version**: v2.7.0
 
 **Breaking Changes in v2.5.0**:
 - **Format variables converted to functions** - For thread safety and parallel test support

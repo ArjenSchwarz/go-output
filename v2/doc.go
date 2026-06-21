@@ -13,7 +13,7 @@ Key features:
   - Exact preservation of user-specified column ordering
   - Multiple output formats (JSON, YAML, CSV, HTML, Tables, Markdown, DOT, Mermaid, Draw.io)
   - Document-Builder pattern with clean separation of concerns
-  - Modern Go 1.24+ features with 'any' instead of 'interface{}'
+  - Modern Go 1.25+ features with 'any' instead of 'interface{}'
   - No global state - complete elimination from v1
   - Per-content transformations for filtering, sorting, limiting, and more
 
