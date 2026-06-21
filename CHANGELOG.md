@@ -10,6 +10,7 @@ This release adds a draw.io CSV reader so draw.io output can be read back into s
 
 ### Changed
 - **Minimum Go version is now 1.25** (raised from 1.24). This pulls in the fix for [GO-2026-5024](https://pkg.go.dev/vuln/GO-2026-5024) in the indirect `golang.org/x/sys` dependency (a Windows-only issue in code go-output does not call). Upgrade your toolchain to Go 1.25 or newer before updating.
+- Added test-only dependency `pgregory.net/rapid` for property-based round-trip tests. It is not required by library consumers.
 
 ### Fixed
 

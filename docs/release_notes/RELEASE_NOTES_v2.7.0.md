@@ -136,7 +136,7 @@ go get github.com/ArjenSchwarz/go-output/v2@v2.7.0
 ## ⬆️ Upgrade Notes
 
 - **Requires Go 1.25 or newer.** Update your toolchain before upgrading (see Breaking Changes).
-- **No code changes required.** Aside from the toolchain bump, this is a drop-in upgrade from any v2.x release.
+- **No code changes required.** Aside from the toolchain bump, this is a drop-in upgrade from v2.6.x. Upgrading from v2.5.x or earlier additionally involves the breaking changes introduced in those releases (see the v2.4.0 and v2.5.0 changelog entries).
 - Applications relying on the previous (incorrect) behaviors fixed above — for example, code that depended on alphabetized draw.io columns, or that passed nil values expecting a panic — should review the Bug Fixes section.
 - Output that was previously nondeterministic (graph row order, GroupBy aggregate columns, Markdown front matter) is now stable; update any golden-file fixtures accordingly.
 
