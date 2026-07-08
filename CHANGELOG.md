@@ -1,3 +1,10 @@
+## Unreleased
+
+### Fixed
+- The Builder now records an error when content or metadata is added after `Build()` has finalized the document; previously such mutations vanished silently with `HasErrors()` returning false (T-1689). The built document remains unchanged and the fluent API remains non-panicking.
+- The DOT and Mermaid renderers now propagate `NewGraphContentFromTable` errors instead of discarding them (T-1689). No behavior change today — the only current error condition is unreachable at those call sites — but future error conditions will surface through `Render`.
+- The godoc for `Builder`, `Build`, `Table`, and `Raw` now documents the fluent-chain error contract: failures are recorded on the builder, the affected content is omitted from the document, and callers should check `HasErrors()`/`Errors()` after building (T-1689).
+
 ## 2.7.0 / 2026-06-21
 
 This release adds a draw.io CSV reader so draw.io output can be read back into structured data (a full write/read round-trip), along with a set of robustness and correctness fixes across rendering, transformations, progress, and concurrency.

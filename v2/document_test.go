@@ -486,3 +486,70 @@ func TestBuilder_ErrorHandling_ThreadSafety(t *testing.T) {
 		t.Errorf("Expected %d valid contents, got %d", numGoroutines, len(contents))
 	}
 }
+
+// TestBuilder_PostBuildMutationsRecordErrors is a regression test for T-1689.
+// Content and metadata added after Build() finalizes the builder used to
+// vanish silently with HasErrors() == false. The builder must record an error
+// for post-Build mutations so the misuse is detectable via HasErrors() and
+// Errors(), consistent with the finalized-sub-builder errors recorded by
+// Section and CollapsibleSection.
+func TestBuilder_PostBuildMutationsRecordErrors(t *testing.T) {
+	tests := map[string]struct {
+		mutate  func(b *Builder)
+		wantErr string
+	}{
+		"AddContent after Build records error": {
+			mutate: func(b *Builder) {
+				b.AddContent(&testContent{id: "post-build", contentType: ContentTypeText})
+			},
+			wantErr: "AddContent",
+		},
+		"SetMetadata after Build records error": {
+			mutate: func(b *Builder) {
+				b.SetMetadata("key", "value")
+			},
+			wantErr: "SetMetadata",
+		},
+		"Table after Build records error": {
+			mutate: func(b *Builder) {
+				b.Table("PostBuildTable", []map[string]any{{"k": "v"}}, WithKeys("k"))
+			},
+			wantErr: "AddContent",
+		},
+		"Text after Build records error": {
+			mutate: func(b *Builder) {
+				b.Text("post-build text")
+			},
+			wantErr: "AddContent",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			builder := New()
+			doc := builder.Build()
+
+			tc.mutate(builder)
+
+			if !builder.HasErrors() {
+				t.Fatal("HasErrors() = false, want true after post-Build mutation")
+			}
+			errs := builder.Errors()
+			if len(errs) != 1 {
+				t.Fatalf("len(Errors()) = %d, want 1", len(errs))
+			}
+			got := errs[0].Error()
+			if !strings.Contains(got, tc.wantErr) || !strings.Contains(got, "Build()") {
+				t.Errorf("error = %q, want mention of %q and \"Build()\"", got, tc.wantErr)
+			}
+
+			// The already-built document must remain unchanged.
+			if len(doc.GetContents()) != 0 {
+				t.Errorf("len(doc.GetContents()) = %d, want 0 (document modified after Build())", len(doc.GetContents()))
+			}
+			if len(doc.GetMetadata()) != 0 {
+				t.Errorf("len(doc.GetMetadata()) = %d, want 0 (metadata modified after Build())", len(doc.GetMetadata()))
+			}
+		})
+	}
+}

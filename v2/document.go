@@ -35,7 +35,19 @@ func (d *Document) GetMetadata() map[string]any {
 	return metadata
 }
 
-// Builder constructs documents with a fluent API
+// Builder constructs documents with a fluent API.
+//
+// Fluent methods never return errors mid-chain. Failures — such as a Table or
+// Raw constructor error, or any mutation after Build() — are recorded on the
+// builder and the offending content is omitted from the document. A document
+// with recorded errors still builds and renders successfully with that
+// content missing, so check HasErrors or Errors after building:
+//
+//	builder := output.New().Table("data", rows).Text("note")
+//	doc := builder.Build()
+//	if builder.HasErrors() {
+//		// handle builder.Errors()
+//	}
 type Builder struct {
 	doc    *Document
 	mu     sync.Mutex // Ensure thread-safe building
@@ -51,7 +63,15 @@ func New() *Builder {
 	}
 }
 
-// Build finalizes and returns the document
+// Build finalizes and returns the document.
+//
+// Build is one-shot: it clears the builder's document reference to enforce
+// immutability. Any later mutation (SetMetadata, AddContent, or the content
+// helpers that route through them) records a builder error and leaves the
+// built document unchanged; a second Build call returns nil. Errors
+// accumulated during building remain available via HasErrors and Errors —
+// check them after Build, because content that failed to construct is
+// silently absent from the returned document.
 func (b *Builder) Build() *Document {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -90,14 +110,19 @@ func (b *Builder) addError(err error) {
 	}
 }
 
-// SetMetadata sets a metadata key-value pair
+// SetMetadata sets a metadata key-value pair.
+//
+// Calling SetMetadata after Build() records a builder error and leaves the
+// built document unchanged (T-1689).
 func (b *Builder) SetMetadata(key string, value any) *Builder {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if b.doc != nil {
-		b.doc.metadata[key] = value
+	if b.doc == nil {
+		b.addError(fmt.Errorf("SetMetadata %q: cannot set metadata after Build() has been called", key))
+		return b
 	}
+	b.doc.metadata[key] = value
 	return b
 }
 
@@ -107,6 +132,9 @@ func (b *Builder) SetMetadata(key string, value any) *Builder {
 // error is recorded instead (consistent with Table and Raw). This prevents nil
 // entries in the document's contents, which would otherwise cause nil
 // dereferences during rendering and transformation.
+//
+// Calling AddContent after Build() records a builder error and leaves the
+// built document unchanged (T-1689).
 func (b *Builder) AddContent(content Content) *Builder {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -116,13 +144,20 @@ func (b *Builder) AddContent(content Content) *Builder {
 		return b
 	}
 
-	if b.doc != nil {
-		b.doc.contents = append(b.doc.contents, content)
+	if b.doc == nil {
+		b.addError(fmt.Errorf("AddContent: cannot add content after Build() has been called"))
+		return b
 	}
+
+	b.doc.contents = append(b.doc.contents, content)
 	return b
 }
 
-// Table adds a table with preserved key ordering
+// Table adds a table with preserved key ordering.
+//
+// If table construction fails, the error is recorded on the builder, no
+// content is added, and the chain continues; the built document renders
+// without the failed table. Check HasErrors or Errors after building.
 func (b *Builder) Table(title string, data any, opts ...TableOption) *Builder {
 	table, err := NewTableContent(title, data, opts...)
 	if err != nil {
@@ -145,7 +180,11 @@ func (b *Builder) Header(text string) *Builder {
 	return b.Text(text, WithHeader(true))
 }
 
-// Raw adds format-specific raw content
+// Raw adds format-specific raw content.
+//
+// If content construction fails, the error is recorded on the builder, no
+// content is added, and the chain continues; the built document renders
+// without the failed content. Check HasErrors or Errors after building.
 func (b *Builder) Raw(format string, data []byte, opts ...RawOption) *Builder {
 	rawContent, err := NewRawContent(format, data, opts...)
 	if err != nil {
