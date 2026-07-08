@@ -80,7 +80,11 @@ func (d *dotRenderer) Render(ctx context.Context, doc *Document) ([]byte, error)
 			d.renderGraphContent(&buf, c)
 		case *TableContent:
 			// Try to extract graph from table if it has from/to columns
-			if graph := d.extractGraphFromTable(c); graph != nil {
+			graph, err := d.extractGraphFromTable(c)
+			if err != nil {
+				return nil, err
+			}
+			if graph != nil {
 				d.renderGraphContent(&buf, graph)
 			}
 		}
@@ -133,8 +137,11 @@ func (d *dotRenderer) renderGraphContent(buf *bytes.Buffer, graph *GraphContent)
 	}
 }
 
-// extractGraphFromTable attempts to extract graph data from a table
-func (d *dotRenderer) extractGraphFromTable(table *TableContent) *GraphContent {
+// extractGraphFromTable attempts to extract graph data from a table. A nil
+// graph with nil error means the table has no recognizable from/to columns
+// and should be rendered as a regular table; an error means the table matched
+// the graph column heuristics but graph construction failed (T-1689).
+func (d *dotRenderer) extractGraphFromTable(table *TableContent) (*GraphContent, error) {
 	// Look for common from/to column names
 	fromColumns := graphFromColumns
 	toColumns := graphToColumns
@@ -168,11 +175,10 @@ func (d *dotRenderer) extractGraphFromTable(table *TableContent) *GraphContent {
 
 	// If we found both from and to columns, extract graph
 	if fromCol != "" && toCol != "" {
-		graph, _ := NewGraphContentFromTable(table, fromCol, toCol, labelCol)
-		return graph
+		return NewGraphContentFromTable(table, fromCol, toCol, labelCol)
 	}
 
-	return nil
+	return nil, nil
 }
 
 // mermaidRenderer implements Mermaid diagram output format
@@ -272,7 +278,11 @@ func (m *mermaidRenderer) Render(ctx context.Context, doc *Document) ([]byte, er
 				m.renderGraphContent(&buf, c)
 			case *TableContent:
 				// Try to extract graph from table if it has from/to columns
-				if graph := m.extractGraphFromTable(c); graph != nil {
+				graph, err := m.extractGraphFromTable(c)
+				if err != nil {
+					return nil, err
+				}
+				if graph != nil {
 					m.renderGraphContent(&buf, graph)
 				}
 			}
@@ -444,8 +454,11 @@ func (m *mermaidRenderer) renderFlowchartContent(buf *bytes.Buffer, chart *Chart
 	}
 }
 
-// extractGraphFromTable attempts to extract graph data from a table
-func (m *mermaidRenderer) extractGraphFromTable(table *TableContent) *GraphContent {
+// extractGraphFromTable attempts to extract graph data from a table. A nil
+// graph with nil error means the table has no recognizable from/to columns
+// and should be rendered as a regular table; an error means the table matched
+// the graph column heuristics but graph construction failed (T-1689).
+func (m *mermaidRenderer) extractGraphFromTable(table *TableContent) (*GraphContent, error) {
 	// Look for common from/to column names
 	fromColumns := graphFromColumns
 	toColumns := graphToColumns
@@ -479,11 +492,10 @@ func (m *mermaidRenderer) extractGraphFromTable(table *TableContent) *GraphConte
 
 	// If we found both from and to columns, extract graph
 	if fromCol != "" && toCol != "" {
-		graph, _ := NewGraphContentFromTable(table, fromCol, toCol, labelCol)
-		return graph
+		return NewGraphContentFromTable(table, fromCol, toCol, labelCol)
 	}
 
-	return nil
+	return nil, nil
 }
 
 // sanitizeMermaidID makes a string safe for use as a Mermaid identifier

@@ -1,7 +1,7 @@
 # Bugfix Report: Builder Silently Drops Failed and Post-Build Content
 
 **Date:** 2026-07-08
-**Status:** In Progress
+**Status:** Fixed
 **Ticket:** T-1689
 
 ## Description of the Issue
@@ -37,7 +37,17 @@ Systematic (Fagan-style) inspection of `v2/document.go`, `v2/graph_content.go`, 
 
 ## Resolution for the Issue
 
-_To be completed after the fix is implemented._
+**Changes made:**
+- `v2/document.go` (`SetMetadata`, `AddContent`) — the `if b.doc != nil` silent no-op guards now record a builder error when called after `Build()`: `"SetMetadata %q: cannot set metadata after Build() has been called"` / `"AddContent: cannot add content after Build() has been called"`. All fluent content helpers (`Table`, `Text`, `Section`, …) route through `AddContent`, so every post-Build mutation is now detectable via `HasErrors()`/`Errors()`. The built document remains unchanged, preserving immutability.
+- `v2/document.go` (godoc on `Builder`, `Build`, `Table`, `Raw`) — documents the fluent-chain error contract: fluent methods never return errors mid-chain; failures are recorded on the builder and the offending content is omitted from the rendered output; `Build` is one-shot; check `HasErrors()`/`Errors()` after building.
+- `v2/graph_renderers.go` (both `extractGraphFromTable` implementations and their `Render` callers) — the methods now return `(*GraphContent, error)` and the DOT/Mermaid `Render` methods propagate the error instead of discarding it with `graph, _ :=`. A `(nil, nil)` return still means "not a graph table, render normally".
+
+**Approach rationale:** mirrors the error-accumulation pattern the builder already uses for constructor failures and finalized-sub-builder misuse (Section/CollapsibleSection), removing the internal inconsistency without any breaking API change. The graph fix propagates rather than re-hides the error so any future error condition in `NewGraphContentFromTable` surfaces through `Render`.
+
+**Alternatives considered:**
+- Panic on post-Build mutation — rejected: the fluent API is deliberately non-panicking, and existing (buggy but tolerated) callers would start crashing.
+- Change `Build()` to return `(*Document, error)` now — rejected: breaking change; queued for v3 on T-1697 (Build is chain-terminal, so the fluent style survives that change).
+- Keep `extractGraphFromTable`'s single-return signature and just drop the error explicitly — rejected: the error would remain unobservable; propagation costs only two small caller changes.
 
 ## Regression Test
 
@@ -52,17 +62,21 @@ The discarded graph error has no failing test because the error path is unreacha
 
 ## Affected Files
 
-_To be completed after the fix is implemented._
+| File | Change |
+|------|--------|
+| `v2/document.go` | `SetMetadata`/`AddContent` record errors post-Build; godoc for the error contract on `Builder`, `Build`, `Table`, `Raw` |
+| `v2/graph_renderers.go` | Both `extractGraphFromTable` methods return `(*GraphContent, error)`; DOT/Mermaid `Render` propagate the error |
+| `v2/document_test.go` | Regression test `TestBuilder_PostBuildMutationsRecordErrors` |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (`TestBuilder_PostBuildMutationsRecordErrors`, 4 subtests)
+- [x] Full test suite passes (`make test` and `make test-integration`)
+- [x] Linters/validators pass (`golangci-lint run`: 0 issues; `gofmt` clean)
 
 **Manual verification:**
-- _To be completed._
+- Confirmed `TestBuilder_NilSafety` still passes: post-Build mutations remain non-panicking and the built document remains unchanged; only the error recording is new.
 
 ## Prevention
 
