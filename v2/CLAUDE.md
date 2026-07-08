@@ -161,17 +161,10 @@ The v2 codebase follows modern Go 2025 testing best practices:
 
 #### Test File Organization
 Large test files have been split for maintainability:
-- `pipeline_*.go` - Split by operation type (filter, sort, limit, etc.)
 - `renderer_*.go` - Split by renderer type (JSON, YAML, CSV, etc.)
 - `operations_*.go` - Split by operation category
 - `errors_*.go` - Split by error type
 - `progress_*.go` - Split by progress feature
-
-#### Test Conversion Tools
-The `v2/test-conversion/` directory contains tools for modernizing test patterns:
-- Converts slice-based to map-based table tests
-- Updates for loop patterns to use map keys
-- Maintains test functionality while improving organization
 
 ### Future Implementation Areas
 Based on the task breakdown in agents/v2-redesign/tasks.md, the following major components are planned:

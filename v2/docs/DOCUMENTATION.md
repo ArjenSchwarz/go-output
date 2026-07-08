@@ -2,6 +2,12 @@
 
 A comprehensive Go library for outputting structured data in multiple formats. Version 2 provides a complete redesign with a Document-Builder pattern, thread-safe operations, and guaranteed key order preservation.
 
+> **⚠️ Accuracy note:** Sections of this reference below the Quick Start still
+> describe an older, pre-release API (`NewBuilder`, `AddTable`, `doc.Render(...)`,
+> `NewSchema`, `RenderOptions`, and similar) that does **not** match the shipped v2
+> package and is being revised. For verified, compiling examples use
+> [GETTING-STARTED.md](GETTING-STARTED.md) and [API.md](API.md).
+
 ## Table of Contents
 
 - [Installation](#installation)
@@ -34,32 +40,32 @@ Here's a simple example demonstrating the v2 Document-Builder pattern:
 package main
 
 import (
+    "context"
     "fmt"
+    "os"
+
     output "github.com/ArjenSchwarz/go-output/v2"
 )
 
 func main() {
-    // Create a builder
-    builder := output.NewBuilder()
-    
-    // Add a table with preserved key ordering
-    builder.AddTable(
-        []map[string]any{
+    // Build an immutable document with a table.
+    // Keys are rendered in the exact order you list them.
+    doc := output.New().
+        Table("People", []map[string]any{
             {"Name": "Alice", "Age": 30, "City": "New York"},
             {"Name": "Bob", "Age": 25, "City": "London"},
-        },
-        output.WithKeys("Name", "Age", "City"), // Exact order preserved
+        }, output.WithKeys("Name", "Age", "City")).
+        Build()
+
+    // Render to JSON and a console table on stdout
+    out := output.NewOutput(
+        output.WithFormats(output.JSON(), output.Table()),
+        output.WithWriter(output.NewStdoutWriter()),
     )
-    
-    // Build immutable document
-    doc := builder.Build()
-    
-    // Render to different formats
-    json, _ := doc.Render("json")
-    fmt.Println(json)
-    
-    table, _ := doc.Render("table")
-    fmt.Println(table)
+    if err := out.Render(context.Background(), doc); err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
 }
 ```
 

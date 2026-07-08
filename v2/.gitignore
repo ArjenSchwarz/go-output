@@ -22,3 +22,6 @@ examples/*/transformations
 # Coverage files
 *.out
 coverage.html
+
+# Temp build dirs from scripts/doccheck.go
+.doccheck*

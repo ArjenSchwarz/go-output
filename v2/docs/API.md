@@ -740,38 +740,47 @@ Collapsible content adapts automatically to each output format:
 
 #### Renderer Configuration
 
-Control collapsible behavior globally per renderer:
+Collapsible behavior is configured **per renderer** via `RendererConfig`. Build a
+renderer with the desired configuration, wrap it in a `Format`, and pass that
+`Format` to the `Output`:
 
 ```go
-type CollapsibleConfig struct {
-    GlobalExpansion      bool              // Override all IsExpanded() settings
+type RendererConfig struct {
+    ForceExpansion       bool              // Override all IsExpanded() settings
     MaxDetailLength      int               // Character limit for details (default: 500)
     TruncateIndicator    string            // Truncation suffix (default: "[...truncated]")
     TableHiddenIndicator string            // Table collapse indicator
     HTMLCSSClasses       map[string]string // Custom CSS classes for HTML
 }
 
-// Apply configuration to renderers
+// Table renderer with custom collapsible configuration
+tableRenderer := output.NewTableRendererWithCollapsible("Default", output.RendererConfig{
+    ForceExpansion:       false,
+    TableHiddenIndicator: "[click to expand]",
+    MaxDetailLength:      200,
+})
 tableOutput := output.NewOutput(
-    output.WithFormat(output.Table()),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        GlobalExpansion:      false,
-        TableHiddenIndicator: "[click to expand]",
-        MaxDetailLength:      200,
-    }),
+    output.WithFormat(output.Format{Name: output.FormatTable, Renderer: tableRenderer}),
 )
 
+// HTML renderer with custom CSS classes
+htmlRenderer := output.NewHTMLRendererWithCollapsible(output.RendererConfig{
+    HTMLCSSClasses: map[string]string{
+        "details": "my-collapsible",
+        "summary": "my-summary",
+        "content": "my-details",
+    },
+})
 htmlOutput := output.NewOutput(
-    output.WithFormat(output.HTML()),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        HTMLCSSClasses: map[string]string{
-            "details": "my-collapsible",
-            "summary": "my-summary",
-            "content": "my-details",
-        },
-    }),
+    output.WithFormat(output.Format{Name: output.FormatHTML, Renderer: htmlRenderer}),
 )
 ```
+
+> **Note:** There is no `Output`-level collapsible option. Renderer constructors —
+> `NewTableRendererWithCollapsible`, `NewMarkdownRendererWithCollapsible`,
+> `NewHTMLRendererWithCollapsible`, `NewCSVRendererWithCollapsible` — each accept a
+> `RendererConfig`. Formats created with `output.Table()`, `output.HTML()`, etc. use
+> the default configuration.
 
 #### Complete Example
 
@@ -803,7 +812,7 @@ func main() {
     }
     
     // Create table with collapsible formatters
-    table := output.NewTableContent("Code Analysis", analysisData,
+    table, err := output.NewTableContent("Code Analysis", analysisData,
         output.WithSchema(
             output.Field{
                 Name: "file",
@@ -821,6 +830,9 @@ func main() {
                 Formatter: output.JSONFormatter(50, output.WithCollapsibleExpanded(false)),
             },
         ))
+    if err != nil {
+        panic(err)
+    }
     
     // Wrap in collapsible section
     section := output.NewCollapsibleTable(
@@ -833,17 +845,23 @@ func main() {
     doc := output.New().
         Header("Project Analysis Report").
         Text("Analysis completed successfully. Click sections to expand details.").
-        Add(section).
+        AddContent(section).
         Build()
     
+    // Table renderer with a custom collapse indicator (collapsible config is per renderer)
+    tableRenderer := output.NewTableRendererWithCollapsible("Default", output.RendererConfig{
+        TableHiddenIndicator: "[expand for details]",
+        MaxDetailLength:      100,
+    })
+
     // Render with custom configuration
     out := output.NewOutput(
-        output.WithFormats(output.Markdown(), output.JSON(), output.Table()),
+        output.WithFormats(
+            output.Markdown(),
+            output.JSON(),
+            output.Format{Name: output.FormatTable, Renderer: tableRenderer},
+        ),
         output.WithWriter(output.NewStdoutWriter()),
-        output.WithCollapsibleConfig(output.CollapsibleConfig{
-            TableHiddenIndicator: "[expand for details]",
-            MaxDetailLength:      100,
-        }),
     )
     
     if err := out.Render(context.Background(), doc); err != nil {
@@ -1108,15 +1126,13 @@ The HTML renderer can wrap content in complete HTML document templates with resp
 
 ```go
 // Use built-in responsive template
-htmlFormat := output.HTML.WithOptions(
-    output.WithHTMLTemplate(output.DefaultHTMLTemplate),
-)
+htmlFormat := output.HTMLWithTemplate(output.DefaultHTMLTemplate)
 
-// Or create custom template
+// Or create custom template. Customize theming via ThemeOverrides rather
+// than replacing the whole CSS block.
 customTemplate := &output.HTMLTemplate{
     Title:       "My Report",
     Description: "Analysis Results",
-    CSS:         output.DefaultResponsiveCSS,
     Author:      "AI Agent",
     Viewport:    "width=device-width, initial-scale=1.0",
     ThemeOverrides: map[string]string{
@@ -1125,9 +1141,7 @@ customTemplate := &output.HTMLTemplate{
     },
 }
 
-htmlFormat = output.HTML.WithOptions(
-    output.WithHTMLTemplate(customTemplate),
-)
+htmlFormat = output.HTMLWithTemplate(customTemplate)
 ```
 
 **Built-in Templates**:
@@ -1138,19 +1152,20 @@ htmlFormat = output.HTML.WithOptions(
 **Template Fields**:
 ```go
 type HTMLTemplate struct {
-    Title          string            // Page title
+    Title          string            // Page title (default: "Output Report")
+    Language       string            // HTML lang attribute (default: "en")
+    Charset        string            // Character encoding (default: "UTF-8")
+    Viewport       string            // Viewport meta tag
     Description    string            // Meta description
     Author         string            // Meta author
-    Keywords       string            // Meta keywords
-    Viewport       string            // Viewport meta tag
-    Charset        string            // Character encoding (default: utf-8)
-    CSS            string            // Embedded CSS styles
+    MetaTags       map[string]string // Additional custom meta tags
+    CSS            string            // Embedded CSS styles (unescaped)
     ExternalCSS    []string          // External stylesheet URLs
     ThemeOverrides map[string]string // CSS custom property overrides
     HeadExtra      string            // Additional head content (unescaped)
     BodyClass      string            // Body element class
-    BodyAttributes string            // Additional body attributes
-    BodyExtra      string            // Content after main (unescaped)
+    BodyAttrs      map[string]string // Additional body attributes
+    BodyExtra      string            // Content before </body> (unescaped)
 }
 ```
 
@@ -1159,9 +1174,10 @@ type HTMLTemplate struct {
 The default template uses CSS custom properties for easy theming:
 
 ```go
+// DefaultHTMLTemplate already supplies the responsive CSS; override individual
+// custom properties with ThemeOverrides instead of replacing the whole stylesheet.
 template := &output.HTMLTemplate{
     Title: "Report",
-    CSS:   output.DefaultResponsiveCSS,
     ThemeOverrides: map[string]string{
         "--primary-color":   "#0066cc",
         "--secondary-color": "#6c757d",
@@ -1452,446 +1468,12 @@ doc := output.New().
 
 For detailed migration guidance, see [PIPELINE_MIGRATION.md](PIPELINE_MIGRATION.md).
 
-### Data Transformation Pipeline System (REMOVED in v2.4.0)
-
-**⚠️ Deprecated**: The Pipeline API was removed in v2.4.0. Use per-content transformations instead (see above).
-
-The Pipeline API previously provided a fluent interface for performing data-level transformations on structured table content before rendering. This has been replaced with the more flexible per-content transformations system.
-
-#### Key Features
-
-- **Data-Level Operations**: Transform structured data before rendering
-- **Fluent API**: Chain operations with method chaining
-- **Format-Aware**: Operations can adapt behavior based on target output format
-- **Performance Optimized**: Operations are reordered for optimal execution
-- **Immutable**: Returns new transformed documents without modifying originals
-- **Error Handling**: Fail-fast with detailed context information
-
-#### Pipeline Interface
-
-```go
-// Create a pipeline from any document
-pipeline := doc.Pipeline()
-
-// Chain operations fluently
-transformedDoc := doc.Pipeline().
-    Filter(func(r Record) bool { return r["status"] == "active" }).
-    Sort(SortKey{Column: "timestamp", Direction: Descending}).
-    Limit(100).
-    AddColumn("age_days", func(r Record) any {
-        return time.Since(r["created"].(time.Time)).Hours() / 24
-    }).
-    Execute()
-```
-
-#### Core Operations
-
-##### Filter Operation
-
-Filters table records based on predicate functions:
-
-```go
-// Basic filtering
-doc.Pipeline().
-    Filter(func(r Record) bool {
-        return r["status"] == "active"
-    }).
-    Execute()
-
-// Complex filtering with type assertions
-doc.Pipeline().
-    Filter(func(r Record) bool {
-        score, ok := r["score"].(float64)
-        return ok && score > 85.0
-    }).
-    Execute()
-
-// Multiple filters (combined with AND logic)
-doc.Pipeline().
-    Filter(func(r Record) bool { return r["category"] == "premium" }).
-    Filter(func(r Record) bool { return r["verified"].(bool) }).
-    Execute()
-```
-
-**Filter Function Signature**: `func(Record) bool`
-- **Parameter**: `Record` (map[string]any) - Full record data
-- **Returns**: `bool` - true to keep record, false to filter out
-- **Type Assertions**: Use type assertions for type-safe access to record fields
-
-##### Sort Operations
-
-Sort table data by one or more columns:
-
-```go
-// Single column sort
-doc.Pipeline().
-    SortBy("name", Ascending).
-    Execute()
-
-// Multi-column sort with different directions
-doc.Pipeline().
-    Sort(
-        SortKey{Column: "category", Direction: Ascending},
-        SortKey{Column: "score", Direction: Descending},
-        SortKey{Column: "name", Direction: Ascending},
-    ).
-    Execute()
-
-// Custom comparator function
-doc.Pipeline().
-    SortWith(func(a, b Record) int {
-        // Custom comparison logic
-        aVal := a["priority"].(string)
-        bVal := b["priority"].(string)
-        priorities := map[string]int{"high": 3, "medium": 2, "low": 1}
-        return priorities[bVal] - priorities[aVal] // Reverse order
-    }).
-    Execute()
-```
-
-**Sort Types**:
-- `SortDirection`: `Ascending` or `Descending`
-- `SortKey`: `{Column: string, Direction: SortDirection}`
-- **Custom Comparator**: `func(a, b Record) int` - return -1, 0, or 1
-
-##### Limit Operation
-
-Restricts output to first N records:
-
-```go
-// Get top 10 records
-doc.Pipeline().
-    SortBy("score", Descending).
-    Limit(10).
-    Execute()
-
-// Pagination-style limiting
-doc.Pipeline().
-    Filter(func(r Record) bool { return r["category"] == "premium" }).
-    Limit(50).
-    Execute()
-```
-
-##### GroupBy and Aggregation
-
-Group records by columns and apply aggregate functions:
-
-```go
-// Basic grouping with count
-doc.Pipeline().
-    GroupBy(
-        []string{"category", "status"},
-        map[string]AggregateFunc{
-            "count":       CountAggregate,
-            "total_score": SumAggregate("score"),
-            "avg_score":   AverageAggregate("score"),
-            "max_score":   MaxAggregate("score"),
-            "min_score":   MinAggregate("score"),
-        },
-    ).
-    Execute()
-
-// Custom aggregate function
-customAggregate := func(records []Record) any {
-    var uniqueUsers []string
-    seen := make(map[string]bool)
-    for _, r := range records {
-        user := r["user"].(string)
-        if !seen[user] {
-            uniqueUsers = append(uniqueUsers, user)
-            seen[user] = true
-        }
-    }
-    return len(uniqueUsers)
-}
-
-doc.Pipeline().
-    GroupBy(
-        []string{"department"},
-        map[string]AggregateFunc{
-            "unique_users": customAggregate,
-        },
-    ).
-    Execute()
-```
-
-**Built-in Aggregate Functions**:
-- `CountAggregate`: Count records in group
-- `SumAggregate(column)`: Sum numeric values
-- `AverageAggregate(column)`: Average numeric values
-- `MinAggregate(column)`: Minimum value
-- `MaxAggregate(column)`: Maximum value
-- **Custom Function**: `func([]Record) any`
-
-##### AddColumn (Calculated Fields)
-
-Add calculated columns based on existing data:
-
-```go
-// Simple calculated field
-doc.Pipeline().
-    AddColumn("full_name", func(r Record) any {
-        return fmt.Sprintf("%s %s", r["first_name"], r["last_name"])
-    }).
-    Execute()
-
-// Complex calculations with type assertions
-doc.Pipeline().
-    AddColumn("duration_hours", func(r Record) any {
-        start := r["start_time"].(time.Time)
-        end := r["end_time"].(time.Time)
-        return end.Sub(start).Hours()
-    }).
-    AddColumn("status_icon", func(r Record) any {
-        switch r["status"].(string) {
-        case "completed":
-            return "✅"
-        case "failed":
-            return "❌"
-        case "pending":
-            return "⏳"
-        default:
-            return "❓"
-        }
-    }).
-    Execute()
-
-// Add column at specific position
-doc.Pipeline().
-    AddColumnAt("id", func(r Record) any {
-        return fmt.Sprintf("ID_%d", r["index"].(int))
-    }, 0). // Insert at beginning
-    Execute()
-```
-
-**Calculation Function**: `func(Record) any`
-- **Parameter**: `Record` - Full record with all existing fields
-- **Returns**: `any` - Calculated value for new column
-- **Position**: Use `AddColumnAt()` to specify column position
-- **Duplicate names**: The column name must not already exist in the table
-  schema. Adding a column whose name matches an existing field returns a
-  `ValidationError`; the operation never overwrites existing fields.
-
-#### Pipeline Options
-
-Configure pipeline behavior and resource limits:
-
-```go
-// Custom pipeline options
-options := PipelineOptions{
-    MaxOperations:    50,              // Max operations allowed
-    MaxExecutionTime: 10 * time.Second, // Execution timeout
-}
-
-doc.Pipeline().
-    WithOptions(options).
-    Filter(func(r Record) bool { return r["active"].(bool) }).
-    Execute()
-
-// Default options
-// MaxOperations: 100
-// MaxExecutionTime: 30 seconds
-```
-
-#### Format-Aware Transformations
-
-Operations can adapt behavior based on target output format:
-
-```go
-// Execute with specific format context
-transformedDoc := doc.Pipeline().
-    Filter(func(r Record) bool { return r["visible"].(bool) }).
-    ExecuteWithFormat(context.Background(), "json")
-
-// Operations can check format and adapt behavior
-// (Advanced usage - most operations work across all formats)
-```
-
-#### Error Handling
-
-Pipeline operations use fail-fast error handling with detailed context:
-
-```go
-transformedDoc, err := doc.Pipeline().
-    Filter(func(r Record) bool {
-        // This could panic if "score" field doesn't exist
-        return r["score"].(float64) > 50.0
-    }).
-    Execute()
-
-if err != nil {
-    var pipelineErr *PipelineError
-    if errors.As(err, &pipelineErr) {
-        fmt.Printf("Pipeline failed at operation: %s\n", pipelineErr.Operation)
-        fmt.Printf("Stage: %d\n", pipelineErr.Stage)
-        fmt.Printf("Cause: %v\n", pipelineErr.Cause)
-        // Access additional context
-        fmt.Printf("Context: %+v\n", pipelineErr.Context)
-    }
-}
-```
-
-**Error Types**:
-- `PipelineError`: Detailed pipeline execution error
-- `ValidationError`: Pre-execution validation error
-- **Context Information**: Operation name, stage, input sample, context data
-
-#### Performance Optimization
-
-Pipeline automatically optimizes operation order:
-
-```go
-// User-defined order (potentially inefficient)
-doc.Pipeline().
-    Sort("name", Ascending).        // Expensive operation first
-    Filter(func(r Record) bool {    // Filter after sort
-        return r["active"].(bool)
-    }).
-    Limit(10)                       // Limit after operations
-
-// Automatically optimized to:
-// 1. Filter (reduces dataset size)
-// 2. Sort (operates on smaller dataset)  
-// 3. Limit (gets top N of final results)
-```
-
-**Optimization Strategy**:
-1. **Filter**: Applied first to reduce data size
-2. **AddColumn**: Added next (may be needed for sorting/grouping)
-3. **GroupBy**: Applied to further reduce data
-4. **Sort**: Applied to smaller datasets
-5. **Limit**: Applied last to get top N results
-
-#### Complete Pipeline Example
-
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "time"
-    
-    output "github.com/ArjenSchwarz/go-output/v2"
-)
-
-func main() {
-    // Create sample data
-    salesData := []map[string]any{
-        {
-            "salesperson": "Alice",
-            "region":      "North",
-            "amount":      15000.50,
-            "date":        time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
-            "status":      "completed",
-        },
-        {
-            "salesperson": "Bob",
-            "region":      "South",
-            "amount":      22000.75,
-            "date":        time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC),
-            "status":      "completed",
-        },
-        {
-            "salesperson": "Carol",
-            "region":      "North",
-            "amount":      8000.25,
-            "date":        time.Date(2024, 1, 20, 0, 0, 0, 0, time.UTC),
-            "status":      "pending",
-        },
-        // ... more data
-    }
-
-    // Create document
-    doc := output.New().
-        Table("Sales Data", salesData, 
-            output.WithKeys("salesperson", "region", "amount", "date", "status")).
-        Build()
-
-    // Transform data with pipeline
-    transformedDoc, err := doc.Pipeline().
-        // Filter completed sales only
-        Filter(func(r output.Record) bool {
-            return r["status"] == "completed"
-        }).
-        // Add calculated commission field
-        AddColumn("commission", func(r output.Record) any {
-            amount := r["amount"].(float64)
-            return amount * 0.05 // 5% commission
-        }).
-        // Add days since sale
-        AddColumn("days_ago", func(r output.Record) any {
-            saleDate := r["date"].(time.Time)
-            return int(time.Since(saleDate).Hours() / 24)
-        }).
-        // Sort by amount (highest first)
-        SortBy("amount", output.Descending).
-        // Limit to top 10
-        Limit(10).
-        Execute()
-
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Output results
-    out := output.NewOutput(
-        output.WithFormats(output.Table(), output.JSON()),
-        output.WithWriter(output.NewStdoutWriter()),
-    )
-
-    if err := out.Render(context.Background(), transformedDoc); err != nil {
-        log.Fatal(err)
-    }
-
-    // Access transformation statistics
-    if stats := transformedDoc.GetTransformStats(); stats != nil {
-        fmt.Printf("\nTransformation Stats:\n")
-        fmt.Printf("Input Records: %d\n", stats.InputRecords)
-        fmt.Printf("Output Records: %d\n", stats.OutputRecords)
-        fmt.Printf("Filtered Count: %d\n", stats.FilteredCount)
-        fmt.Printf("Duration: %v\n", stats.Duration)
-        
-        for _, opStat := range stats.Operations {
-            fmt.Printf("Operation %s: %v (%d records)\n", 
-                opStat.Name, opStat.Duration, opStat.RecordsProcessed)
-        }
-    }
-}
-```
-
-#### Best Practices
-
-1. **Type Safety**: Always use type assertions when accessing record fields
-2. **Error Handling**: Handle pipeline errors with proper context checking
-3. **Performance**: Let pipeline optimize operation order automatically
-4. **Immutability**: Pipeline returns new documents, preserving originals
-5. **Resource Limits**: Use appropriate pipeline options for large datasets
-6. **Schema Preservation**: Pipeline maintains table schema and key ordering
-
-#### Migration from Byte Transformers
-
-**Old Approach** (byte transformers):
-```go
-// Post-rendering text manipulation
-transformer := &output.SortTransformer{Key: "name", Ascending: true}
-out := output.NewOutput(
-    output.WithTransformer(transformer),
-)
-```
-
-**New Approach** (data pipeline):
-```go
-// Pre-rendering data transformation
-transformedDoc := doc.Pipeline().
-    SortBy("name", output.Ascending).
-    Execute()
-```
-
-**When to Use Each**:
-- **Data Pipeline**: For data operations (filter, sort, aggregate, calculate fields)
-- **Byte Transformers**: For presentation styling (colors, emoji, formatting)
+### Data Transformation Pipeline System (Removed in v2.4.0)
+
+The fluent `doc.Pipeline()` API (`Filter`, `Sort`, `Limit`, `AddColumn`, `SortBy`,
+`Execute`, …) was removed in v2.4.0. Use the per-content transformations described
+above instead. For upgrade steps and before/after examples, see
+[PIPELINE_MIGRATION.md](PIPELINE_MIGRATION.md).
 
 ### Progress System
 
@@ -2468,9 +2050,9 @@ securitySection := output.NewCollapsibleReport(
 doc := output.New().
     Header("System Analysis Report").
     Text("Generated on " + time.Now().Format("2006-01-02 15:04:05")).
-    Add(userSection).
-    Add(performanceSection).
-    Add(securitySection).
+    AddContent(userSection).
+    AddContent(performanceSection).
+    AddContent(securitySection).
     Build()
 ```
 
@@ -2503,7 +2085,7 @@ mainSection := output.NewCollapsibleReport(
     output.WithSectionExpanded(true),
 )
 
-doc := output.New().Add(mainSection).Build()
+doc := output.New().AddContent(mainSection).Build()
 ```
 
 #### Cross-Format Collapsible Rendering
@@ -2514,15 +2096,15 @@ data := []map[string]any{
     {"errors": []string{"Error 1", "Error 2", "Error 3"}},
 }
 
-table := output.NewTableContent("Issues", data, output.WithSchema(
-    output.Field{
-        Name: "errors",
-        Type: "array",
-        Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false)),
-    },
-))
-
-doc := output.New().Add(table).Build()
+doc := output.New().
+    Table("Issues", data, output.WithSchema(
+        output.Field{
+            Name: "errors",
+            Type: "array",
+            Formatter: output.ErrorListFormatter(output.WithCollapsibleExpanded(false)),
+        },
+    )).
+    Build()
 
 // Markdown: GitHub <details> elements
 markdownOut := output.NewOutput(
@@ -2536,13 +2118,13 @@ jsonOut := output.NewOutput(
     output.WithWriter(output.NewFileWriter(".", "report.json")),
 )
 
-// Table: Terminal-friendly with expansion indicators
+// Table: Terminal-friendly with expansion indicators (collapsible config is per renderer)
+tableRenderer := output.NewTableRendererWithCollapsible("Default", output.RendererConfig{
+    TableHiddenIndicator: "[expand to view all errors]",
+})
 tableOut := output.NewOutput(
-    output.WithFormat(output.Table()),
+    output.WithFormat(output.Format{Name: output.FormatTable, Renderer: tableRenderer}),
     output.WithWriter(output.NewStdoutWriter()),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        TableHiddenIndicator: "[expand to view all errors]",
-    }),
 )
 
 // CSV: Automatic detail columns for spreadsheet analysis
@@ -2563,22 +2145,22 @@ csvOut.Render(ctx, doc)       // Creates: errors, errors_details columns
 
 ```go
 // Development/debug mode: expand all content
+debugRenderer := output.NewTableRendererWithCollapsible("Default", output.RendererConfig{
+    ForceExpansion: true, // Override all IsExpanded() settings
+})
 debugOut := output.NewOutput(
-    output.WithFormat(output.Table()),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        GlobalExpansion: true, // Override all IsExpanded() settings
-    }),
+    output.WithFormat(output.Format{Name: output.FormatTable, Renderer: debugRenderer}),
     output.WithWriter(output.NewStdoutWriter()),
 )
 
 // Production mode: respect individual expansion settings
+prodRenderer := output.NewMarkdownRendererWithCollapsible(output.RendererConfig{
+    ForceExpansion:    false, // Use individual IsExpanded() values
+    MaxDetailLength:   500,   // Limit detail length
+    TruncateIndicator: "... (truncated)",
+})
 prodOut := output.NewOutput(
-    output.WithFormat(output.Markdown()),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        GlobalExpansion: false, // Use individual IsExpanded() values
-        MaxDetailLength: 500,   // Limit detail length
-        TruncateIndicator: "... (truncated)",
-    }),
+    output.WithFormat(output.Format{Name: output.FormatMarkdown, Renderer: prodRenderer}),
     output.WithWriter(output.NewStdoutWriter()),
 )
 ```
@@ -2587,26 +2169,26 @@ prodOut := output.NewOutput(
 
 ```go
 // Custom HTML output with branded styling
+htmlRenderer := output.NewHTMLRendererWithCollapsible(output.RendererConfig{
+    HTMLCSSClasses: map[string]string{
+        "details": "company-collapsible",
+        "summary": "company-summary",
+        "content": "company-details",
+    },
+})
 htmlOut := output.NewOutput(
-    output.WithFormat(output.HTML()),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        HTMLCSSClasses: map[string]string{
-            "details": "company-collapsible",
-            "summary": "company-summary",
-            "content": "company-details",
-        },
-    }),
+    output.WithFormat(output.Format{Name: output.FormatHTML, Renderer: htmlRenderer}),
     output.WithWriter(output.NewFileWriter(".", "report.html")),
 )
 
 // Custom table output with branded indicators
+tableRenderer := output.NewTableRendererWithCollapsible("Default", output.RendererConfig{
+    TableHiddenIndicator: "📋 Click to expand detailed information",
+    MaxDetailLength:      150,
+    TruncateIndicator:    "... [see full details in expanded view]",
+})
 tableOut := output.NewOutput(
-    output.WithFormat(output.Table()),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        TableHiddenIndicator: "📋 Click to expand detailed information",
-        MaxDetailLength:      150,
-        TruncateIndicator:    "... [see full details in expanded view]",
-    }),
+    output.WithFormat(output.Format{Name: output.FormatTable, Renderer: tableRenderer}),
     output.WithWriter(output.NewStdoutWriter()),
 )
 ```
@@ -2697,14 +2279,13 @@ The v2 API is designed for extensibility:
 ### Output Configuration
 | Method | Purpose | Example |
 |--------|---------|---------|
-| `NewOutput(opts...)` | Create output instance | `NewOutput(WithFormat(Table))` |
+| `NewOutput(opts...)` | Create output instance | `NewOutput(WithFormat(output.Table()))` |
 | `WithFormat(format)` | Set single format | `WithFormat(output.JSON())` |
-| `WithFormats(formats...)` | Set multiple formats | `WithFormats(JSON, CSV, Table)` |
+| `WithFormats(formats...)` | Set multiple formats | `WithFormats(output.JSON(), output.CSV(), output.Table())` |
 | `WithWriter(writer)` | Set output destination | `WithWriter(NewStdoutWriter())` |
 | `WithWriters(writers...)` | Multiple destinations | `WithWriters(stdout, file)` |
-| `WithTransformer(t)` | Add transformer | `WithTransformer(&EmojiTransformer{})` |
+| `WithTransformer(t)` | Add transformer | `WithTransformer(output.NewColorTransformer())` |
 | `WithProgress(p)` | Add progress tracking | `WithProgress(progress)` |
-| `WithCollapsibleConfig(cfg)` | Configure collapsibles | `WithCollapsibleConfig(config)` |
 
 ### Writer Constructors
 | Constructor | Purpose | Example |
