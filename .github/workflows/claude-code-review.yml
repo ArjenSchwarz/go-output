@@ -39,6 +39,10 @@ jobs:
 
           # Pinned explicitly: the action's default model (Claude Sonnet 4) was
           # retired and returns 404, which failed every review run (T-1707).
+          # "claude-sonnet-5" is the dateless alias that tracks the Sonnet 5
+          # line (not a dated snapshot), so it only breaks if the whole line is
+          # retired — check the model deprecations page on platform.claude.com
+          # if reviews 404 again.
           model: "claude-sonnet-5"
 
           # Direct prompt for automated review (no @claude mention needed)
