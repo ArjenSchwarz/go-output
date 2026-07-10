@@ -96,7 +96,12 @@ func (p *prettyProgress) handleSignals() {
 	}
 }
 
+// contextDone returns the current context's done channel, or nil when no
+// context is set. It takes p.mu because it is called from the signal-handling
+// goroutine while SetContext may concurrently replace p.ctx.
 func (p *prettyProgress) contextDone() <-chan struct{} {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	if p.ctx == nil {
 		return nil
 	}
