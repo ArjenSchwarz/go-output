@@ -1,7 +1,7 @@
 # Bugfix Report: Shared Writer Order
 
 **Date:** 2026-07-10
-**Status:** In Progress
+**Status:** Fixed
 **Ticket:** T-1524
 
 ## Description of the Issue
@@ -58,7 +58,47 @@ only checked output content and progress totals, never cross-format order.
 
 ## Resolution for the Issue
 
-_To be completed once the fix is implemented._
+**Changes made:**
+- `v2/output.go` (`renderWithConfig`) — split into two phases. Phase 1:
+  renders and transforms still run concurrently (one goroutine per format,
+  each storing its transformed bytes and error into its own slot of a results
+  slice — no shared-state races). Phase 2: after `wg.Wait()`, writes are
+  performed sequentially in declared format order, each format's write pass
+  wrapped in its own `SafeExecuteWithTracer` for panic recovery.
+- `v2/output.go` — `processFormatData` split into `transformFormatData`
+  (concurrent phase) and `writeFormatData` (sequential phase). The shared
+  `workDone`/`workMu` counter pointers and the error channel were removed
+  since the write phase is single-threaded; errors are collected into a slice
+  in deterministic order.
+- `v2/output.go` — doc comments on `Render` and `renderWithConfig` now state
+  the ordering guarantee.
+- `v2/docs/API.md` — performance section documents that writes are serialized
+  in declared format order.
+
+**Approach rationale:** this is the API-compatible fix proposed in the ticket:
+rendering stays concurrent (no throughput loss for the expensive stage), while
+writes become strictly ordered. Error-aggregation semantics are preserved: a
+format that fails to render is reported but does not block other formats, and
+a write failure stops only that format's remaining writers.
+
+**Alternatives considered:**
+- Fully sequential pipeline (render and write one format at a time) — simpler,
+  but gives up render concurrency for no benefit.
+- Documenting the nondeterminism instead of fixing it — rejected; stable output
+  order is the behaviour users of a CLI output library expect.
+- Per-writer ordering locks — more machinery, same result, harder to reason
+  about.
+
+**Behavioural notes for reviewers:**
+- Progress: `SetCurrent` now remains at 0 until all renders complete, because
+  writes happen after the concurrent phase. Total work units
+  (formats × writers), the increment-per-write behaviour, and all status
+  messages are unchanged, so existing progress expectations hold.
+- Error aggregation: `MultiError` membership is unchanged, but error ordering
+  is now deterministic (declared format order) instead of scheduler order.
+- Latency: the first byte is not written until the slowest format has finished
+  rendering. Renders remain concurrent, so total wall time is essentially
+  unchanged.
 
 ## Regression Test
 
@@ -76,21 +116,30 @@ _To be completed once the fix is implemented._
 
 **Run command:** `go test -run 'TestOutput_Render_WriteOrder' -count=1` (in `v2/`)
 
-All three tests fail before the fix (observed order `[third second first]`).
+All three tests failed before the fix (observed order `[third second first]`)
+and pass after it.
 
 ## Affected Files
 
 | File | Change |
 |------|--------|
-| `v2/output.go` | Two-phase pipeline: concurrent render/transform, sequential ordered writes (pending) |
+| `v2/output.go` | Two-phase pipeline: concurrent render/transform, sequential ordered writes |
 | `v2/output_write_order_test.go` | New regression tests for write ordering |
+| `v2/docs/API.md` | Documented the ordered-write guarantee |
+| `specs/bugfixes/shared-writer-order/report.md` | This report |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes (including `-race`)
-- [ ] Linters/validators pass (`make lint`)
+- [x] Regression tests pass (`go test -run 'TestOutput_Render_WriteOrder' -count=3`)
+- [x] Full unit test suite passes (`make test`)
+- [x] Integration tests pass (`make test-integration`)
+- [x] Race detector clean (`go test -race -count=1` in `v2/`)
+- [x] Linter passes (`golangci-lint run` — 0 issues); `gofmt -l` clean; `go vet` clean
+
+**Manual verification:**
+- Confirmed pre-fix failure output shows goroutine-completion ordering
+  (`[third second first]`, `[second first]`, `[third first]`).
 
 ## Prevention
 

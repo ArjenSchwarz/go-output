@@ -2205,7 +2205,7 @@ All v2 components are designed to be thread-safe:
 ## Performance Considerations
 
 - **Memory Efficiency**: Uses encoding.TextAppender and encoding.BinaryAppender interfaces
-- **Concurrent Rendering**: Processes multiple formats in parallel
+- **Concurrent Rendering**: Processes multiple formats in parallel; writes are serialized in declared format order, so shared writers (e.g. a single stdout writer) receive output deterministically
 - **Streaming Support**: Large datasets can be streamed to avoid memory issues
 - **Key Ordering**: No performance penalty - preserves user order without sorting
 
