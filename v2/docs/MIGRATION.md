@@ -1448,7 +1448,8 @@ htmlOut := output.NewOutput(
 > (`output.WithTransformations(...)` passed to `Table`, etc.). For the current,
 > verified migration path see [PIPELINE_MIGRATION.md](PIPELINE_MIGRATION.md). The
 > `doc.Pipeline()` examples below are retained only to illustrate the old shape you
-> are migrating *away from* — do not copy them into new code.
+> are migrating *away from* — do not copy them into new code. Shrinking this section
+> to a pointer is tracked in T-1729.
 
 ### Overview: Two Transformation Systems
 

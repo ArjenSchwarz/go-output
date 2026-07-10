@@ -5,8 +5,8 @@ A comprehensive Go library for outputting structured data in multiple formats. V
 > **⚠️ Accuracy note:** Sections of this reference below the Quick Start still
 > describe an older, pre-release API (`NewBuilder`, `AddTable`, `doc.Render(...)`,
 > `NewSchema`, `RenderOptions`, and similar) that does **not** match the shipped v2
-> package and is being revised. For verified, compiling examples use
-> [GETTING-STARTED.md](GETTING-STARTED.md) and [API.md](API.md).
+> package and is being revised (tracked in T-1728). For verified, compiling examples
+> use [GETTING-STARTED.md](GETTING-STARTED.md) and [API.md](API.md).
 
 ## Table of Contents
 
