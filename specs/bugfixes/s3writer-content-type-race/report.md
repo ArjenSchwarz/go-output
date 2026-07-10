@@ -66,7 +66,24 @@ called after writes begin.
 
 ## Resolution for the Issue
 
-_To be filled in after the fix is implemented._
+**Changes made:**
+- `v2/s3_writer.go` - Added a `sync.RWMutex` (`mu`) to `S3Writer` guarding
+  `contentTypes`. `SetContentType` and `WithContentTypes` take the write
+  lock; `getContentType` takes the read lock. `SetContentType`'s godoc now
+  states it is safe to call concurrently with `Write`.
+
+**Approach rationale:** An RWMutex gives every map access a happens-before
+edge with minimal code. Reads happen on every upload while writes are rare
+configuration changes, so a read/write lock fits the access pattern. An
+uncontended `RLock` per upload is negligible next to an S3 network call, and
+the approach matches existing conventions (`FileWriter` uses `sync.Mutex`,
+`Document` uses `sync.RWMutex`).
+
+**Alternatives considered:**
+- Copy-on-write via `atomic.Pointer` to an immutable map - Lock-free reads,
+  but more code and subtlety for a config map that changes rarely; overkill.
+- Removing `SetContentType` / making configuration immutable after
+  construction - Breaking API change; rejected.
 
 ## Regression Test
 
@@ -84,19 +101,19 @@ the race detector, and all writes still succeed with the expected number of
 
 | File | Change |
 |------|--------|
-| `v2/s3_writer.go` | Synchronize access to `contentTypes` (fix pending) |
+| `v2/s3_writer.go` | Added `sync.RWMutex`; locked `SetContentType`, `getContentType`, and `WithContentTypes` |
 | `v2/s3_writer_test.go` | Added regression test `TestS3WriterSetContentTypeConcurrentWithWrite` |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes under `go test -race`
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes under `go test -race`
+- [x] Full test suite passes (`make test` and `go test -race ./...` in `v2/`)
+- [x] Linters/validators pass (`make lint`, 0 issues)
 
 **Manual verification:**
 - Confirmed the regression test fails with the documented race reports before
-  the fix.
+  the fix and passes after.
 
 ## Prevention
 

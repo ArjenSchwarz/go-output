@@ -9,6 +9,7 @@ import (
 	"maps"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -66,6 +67,7 @@ type S3Writer struct {
 	client        S3PutObjectAPI
 	bucket        string
 	keyPattern    string            // e.g., "reports/{format}/output.{ext}"
+	mu            sync.RWMutex      // guards contentTypes
 	contentTypes  map[string]string // format to content-type mapping
 	appendMode    bool              // enable append mode (download-modify-upload pattern)
 	maxAppendSize int64             // maximum object size for append operations (default 100MB)
@@ -309,8 +311,11 @@ func (sw *S3Writer) combineCSVData(existing, new []byte) ([]byte, error) {
 	return append(existing, dataWithoutHeader...), nil
 }
 
-// SetContentType sets a custom content type for a format
+// SetContentType sets a custom content type for a format.
+// It is safe to call concurrently with Write and other SetContentType calls.
 func (sw *S3Writer) SetContentType(format, contentType string) {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
 	sw.contentTypes[format] = contentType
 }
 
@@ -338,6 +343,8 @@ func (sw *S3Writer) generateKey(format string) (string, error) {
 
 // getContentType returns the content type for a format
 func (sw *S3Writer) getContentType(format string) string {
+	sw.mu.RLock()
+	defer sw.mu.RUnlock()
 	if ct, ok := sw.contentTypes[format]; ok {
 		return ct
 	}
@@ -397,6 +404,8 @@ func WithMaxAppendSize(maxSize int64) S3WriterOption {
 // WithContentTypes sets custom content types
 func WithContentTypes(contentTypes map[string]string) S3WriterOption {
 	return func(sw *S3Writer) {
+		sw.mu.Lock()
+		defer sw.mu.Unlock()
 		maps.Copy(sw.contentTypes, contentTypes)
 	}
 }
