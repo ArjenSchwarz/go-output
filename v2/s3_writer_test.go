@@ -378,6 +378,53 @@ func TestS3WriterConcurrency(t *testing.T) {
 	}
 }
 
+// TestS3WriterSetContentTypeConcurrentWithWrite is a regression test for
+// T-1583: SetContentType mutated the shared contentTypes map without
+// synchronization while Write read it through getContentType.
+//
+// Expected behaviour: concurrent configuration updates and writes are safe.
+// Actual behaviour before the fix: `go test -race` reported a data race
+// between the map write in SetContentType and the map read in getContentType,
+// plus write/write races between concurrent SetContentType calls, risking a
+// concurrent map read/write panic.
+func TestS3WriterSetContentTypeConcurrentWithWrite(t *testing.T) {
+	client := &mockS3Client{}
+	sw := NewS3Writer(client, "test-bucket", "race/{format}.{ext}")
+	ctx := context.Background()
+
+	const iterations = 100
+	var wg sync.WaitGroup
+
+	// Concurrent configuration updates (map writes). Two goroutines also
+	// exercise the SetContentType/SetContentType write-write race.
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range iterations {
+				sw.SetContentType(FormatJSON, "application/json")
+			}
+		}()
+	}
+
+	// Concurrent writes (map reads via getContentType).
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for range iterations {
+			if err := sw.Write(ctx, FormatJSON, []byte("{}")); err != nil {
+				t.Errorf("concurrent write failed: %v", err)
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	if got := len(client.getCalls()); got != iterations {
+		t.Errorf("PutObject call count = %d, want %d", got, iterations)
+	}
+}
+
 func TestGenerateKey(t *testing.T) {
 	sw := &S3Writer{
 		keyPattern: "reports/{format}/output.{ext}",
