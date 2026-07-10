@@ -26,7 +26,7 @@ This guide provides comprehensive instructions for migrating between go-output v
 
 - [Overview](#overview)
 - [Breaking Changes](#breaking-changes)
-- [Automated Migration](#automated-migration)
+- [Migration Approach](#migration-approach)
 - [Migration Patterns](#migration-patterns)
   - [Basic Output](#basic-output)
   - [Multiple Tables](#multiple-tables)
@@ -117,28 +117,11 @@ output.WithSchema(
 )
 ```
 
-## Automated Migration
+## Migration Approach
 
-Use the included migration tool to automatically convert most v1 code:
-
-```bash
-# Install the migration tool
-go install github.com/ArjenSchwarz/go-output/v2/migrate/cmd/migrate@latest
-
-# Migrate a single file
-migrate -file main.go
-
-# Migrate an entire directory
-migrate -source ./myproject
-
-# Dry run to see changes without applying them
-migrate -source ./myproject -dry-run
-
-# Verbose mode for detailed information
-migrate -source ./myproject -verbose
-```
-
-The migration tool handles approximately 80% of common v1 usage patterns. Manual adjustments may be needed for complex scenarios.
+Migration to v2 is manual — there is no automated migration tool. Work through the
+patterns below to convert your v1 code; see
+[MIGRATION_QUICK_REFERENCE.md](MIGRATION_QUICK_REFERENCE.md) for a condensed lookup.
 
 ## Migration Patterns
 
@@ -698,9 +681,7 @@ output.Write()
 #### v2 HTML with Templates
 ```go
 // v2 - Full HTML document with responsive template
-htmlFormat := output.HTML.WithOptions(
-    output.WithHTMLTemplate(output.DefaultHTMLTemplate),
-)
+htmlFormat := output.HTMLWithTemplate(output.DefaultHTMLTemplate)
 
 out := output.NewOutput(
     output.WithFormat(htmlFormat),
@@ -717,19 +698,13 @@ v2 provides three built-in templates:
 
 ```go
 // 1. DefaultHTMLTemplate - Responsive design with mobile-first CSS
-htmlFormat := output.HTML.WithOptions(
-    output.WithHTMLTemplate(output.DefaultHTMLTemplate),
-)
+htmlFormat := output.HTMLWithTemplate(output.DefaultHTMLTemplate)
 
 // 2. MinimalHTMLTemplate - Clean HTML with no styling
-htmlFormat := output.HTML.WithOptions(
-    output.WithHTMLTemplate(output.MinimalHTMLTemplate),
-)
+htmlFormat := output.HTMLWithTemplate(output.MinimalHTMLTemplate)
 
 // 3. MermaidHTMLTemplate - Optimized for Mermaid diagrams
-htmlFormat := output.HTML.WithOptions(
-    output.WithHTMLTemplate(output.MermaidHTMLTemplate),
-)
+htmlFormat := output.HTMLWithTemplate(output.MermaidHTMLTemplate)
 ```
 
 #### Custom Templates
@@ -741,7 +716,6 @@ customTemplate := &output.HTMLTemplate{
     Title:       "Sales Report Q4 2024",
     Description: "Quarterly sales analysis",
     Author:      "Analytics Team",
-    CSS:         output.DefaultResponsiveCSS,
     ThemeOverrides: map[string]string{
         "--primary-color":   "#0066cc",
         "--bg-color":        "#f8f9fa",
@@ -753,9 +727,7 @@ customTemplate := &output.HTMLTemplate{
     },
 }
 
-htmlFormat := output.HTML.WithOptions(
-    output.WithHTMLTemplate(customTemplate),
-)
+htmlFormat := output.HTMLWithTemplate(customTemplate)
 ```
 
 #### Template Features
@@ -770,7 +742,6 @@ htmlFormat := output.HTML.WithOptions(
 ```go
 template := &output.HTMLTemplate{
     Title: "Report",
-    CSS:   output.DefaultResponsiveCSS,
     ThemeOverrides: map[string]string{
         "--primary-color":   "#007bff",
         "--secondary-color": "#6c757d",
@@ -784,7 +755,7 @@ template := &output.HTMLTemplate{
 template := &output.HTMLTemplate{
     HeadExtra: `<script src="analytics.js"></script>`,
     BodyClass: "report-page",
-    BodyAttributes: `data-theme="dark"`,
+    BodyAttrs: map[string]string{"data-theme": "dark"},
     BodyExtra: `<footer>© 2024 Company</footer>`,
 }
 ```
@@ -801,9 +772,7 @@ fw, _ := output.NewFileWriterWithOptions(
     output.WithAppendMode(),
 )
 
-htmlFormat := output.HTML.WithOptions(
-    output.WithHTMLTemplate(output.DefaultHTMLTemplate),
-)
+htmlFormat := output.HTMLWithTemplate(output.DefaultHTMLTemplate)
 
 out := output.NewOutput(
     output.WithFormat(htmlFormat),
@@ -1121,18 +1090,24 @@ func main() {
         Table("Statistics", stats, output.WithKeys("Metric", "Value")).
         Build()
     
+    // File writer creation can fail (e.g. invalid directory)
+    fileWriter, err := output.NewFileWriter(".", "report.json")
+    if err != nil {
+        log.Fatalf("Failed to create file writer: %v", err)
+    }
+
     // Configure output
     out := output.NewOutput(
         // Multiple formats
-        output.WithFormat(output.Table),
-        output.WithFormat(output.JSON),
+        output.WithFormat(output.Table()),
+        output.WithFormat(output.JSON()),
         
         // Multiple destinations
-        output.WithWriter(&output.StdoutWriter{}),
-        output.WithWriter(output.NewFileWriter(".", "report.json")),
+        output.WithWriter(output.NewStdoutWriter()),
+        output.WithWriter(fileWriter),
         
         // Transformers
-        output.WithTransformer(&output.ColorTransformer{}),
+        output.WithTransformer(output.NewColorTransformer()),
         
         // Table styling
         output.WithTableStyle("ColoredBright"),
@@ -1151,6 +1126,7 @@ package main
 
 import (
     "context"
+    "fmt"
     "time"
     
     "github.com/ArjenSchwarz/go-output/v2"
@@ -1158,7 +1134,7 @@ import (
 
 func processData(ctx context.Context) {
     // Create progress indicator
-    progress := output.NewProgress(output.Table,
+    progress := output.NewProgressForFormat(output.Table(),
         output.WithProgressColor(output.ProgressColorGreen),
         output.WithProgressStatus("Processing records"),
     )
@@ -1167,7 +1143,7 @@ func processData(ctx context.Context) {
     progress.SetTotal(100)
     
     // Process data
-    for i := 0; i < 100; i++ {
+    for i := range 100 {
         // Simulate work
         time.Sleep(50 * time.Millisecond)
         
@@ -1186,6 +1162,10 @@ func processData(ctx context.Context) {
     
     // Complete
     progress.Complete()
+}
+
+func main() {
+    processData(context.Background())
 }
 ```
 
@@ -1322,12 +1302,12 @@ data := []map[string]any{
     },
 }
 
-table := output.NewTableContent("Issues", data, output.WithSchema(
-    output.Field{Name: "file", Type: "string", Formatter: output.FilePathFormatter(25)},
-    output.Field{Name: "errors", Type: "array", Formatter: output.ErrorListFormatter()},
-))
-
-doc := output.New().Add(table).Build()
+doc := output.New().
+    Table("Issues", data, output.WithSchema(
+        output.Field{Name: "file", Type: "string", Formatter: output.FilePathFormatter(25)},
+        output.Field{Name: "errors", Type: "array", Formatter: output.ErrorListFormatter()},
+    )).
+    Build()
 
 // Markdown: Creates GitHub-compatible <details> elements
 output.NewOutput(output.WithFormat(output.Markdown)).Render(ctx, doc)
@@ -1427,8 +1407,8 @@ reportSection := output.NewCollapsibleReport(
 )
 
 doc := output.New().
-    Add(analysisSection).
-    Add(reportSection).
+    AddContent(analysisSection).
+    AddContent(reportSection).
     Build()
 ```
 
@@ -1437,33 +1417,39 @@ doc := output.New().
 **Control collapsible behavior globally:**
 
 ```go
-// Table renderer with custom expansion settings
-tableRenderer := output.NewOutput(
-    output.WithFormat(output.Table),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        GlobalExpansion:      false,
-        TableHiddenIndicator: "[click to expand]",
-        MaxDetailLength:      200,
-        TruncateIndicator:    "...",
-    }),
+// Table renderer with custom expansion settings (collapsible config is per renderer)
+tableRenderer := output.NewTableRendererWithCollapsible("Default", output.RendererConfig{
+    ForceExpansion:       false,
+    TableHiddenIndicator: "[click to expand]",
+    MaxDetailLength:      200,
+    TruncateIndicator:    "...",
+})
+tableOut := output.NewOutput(
+    output.WithFormat(output.Format{Name: output.FormatTable, Renderer: tableRenderer}),
 )
 
 // HTML renderer with custom CSS classes
-htmlRenderer := output.NewOutput(
-    output.WithFormat(output.HTML),
-    output.WithCollapsibleConfig(output.CollapsibleConfig{
-        HTMLCSSClasses: map[string]string{
-            "details": "my-collapsible",
-            "summary": "my-summary",
-            "content": "my-details",
-        },
-    }),
+htmlRenderer := output.NewHTMLRendererWithCollapsible(output.RendererConfig{
+    HTMLCSSClasses: map[string]string{
+        "details": "my-collapsible",
+        "summary": "my-summary",
+        "content": "my-details",
+    },
+})
+htmlOut := output.NewOutput(
+    output.WithFormat(output.Format{Name: output.FormatHTML, Renderer: htmlRenderer}),
 )
 ```
 
 ## Data Transformation Pipeline Migration
 
-Version 2 introduces a powerful **Data Transformation Pipeline** system that operates on structured data before rendering, providing significant advantages over the traditional byte-based transformers. This section explains how to migrate from byte transformers to data pipelines and when to use each approach.
+> **⚠️ Removed in v2.4.0:** The fluent `doc.Pipeline()` API shown throughout this
+> section no longer exists. It was replaced by **per-content transformations**
+> (`output.WithTransformations(...)` passed to `Table`, etc.). For the current,
+> verified migration path see [PIPELINE_MIGRATION.md](PIPELINE_MIGRATION.md). The
+> `doc.Pipeline()` examples below are retained only to illustrate the old shape you
+> are migrating *away from* — do not copy them into new code. Shrinking this section
+> to a pointer is tracked in T-1729.
 
 ### Overview: Two Transformation Systems
 
@@ -2205,4 +2191,4 @@ For complete migration examples and best practices, see:
 - Read [PIPELINE_MIGRATION.md](PIPELINE_MIGRATION.md) for Pipeline API migration
 - Report issues at [GitHub Issues](https://github.com/ArjenSchwarz/go-output/issues)
 
-The migration tool can handle most common patterns automatically. For complex migrations, refer to this guide and the API documentation.
+For complex migrations, refer to this guide and the API documentation.

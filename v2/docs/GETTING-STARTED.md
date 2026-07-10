@@ -18,29 +18,32 @@ go get github.com/ArjenSchwarz/go-output/v2@latest
 package main
 
 import (
+    "context"
     "fmt"
+    "os"
+
     output "github.com/ArjenSchwarz/go-output/v2"
 )
 
 func main() {
-    // Create a builder
-    builder := output.NewBuilder()
-    
-    // Add a table with explicit key ordering
-    builder.AddTable(
-        []map[string]any{
+    // Build an immutable document with a table.
+    // Keys are rendered in the exact order you list them.
+    doc := output.New().
+        Table("Users", []map[string]any{
             {"Name": "Alice", "Age": 30, "Active": true},
             {"Name": "Bob", "Age": 25, "Active": false},
-        },
-        output.WithKeys("Name", "Age", "Active"), // Preserve exact key order
+        }, output.WithKeys("Name", "Age", "Active")).
+        Build()
+
+    // Render as a console table to stdout
+    out := output.NewOutput(
+        output.WithFormat(output.Table()),
+        output.WithWriter(output.NewStdoutWriter()),
     )
-    
-    // Build immutable document
-    doc := builder.Build()
-    
-    // Render as table
-    result, _ := doc.Render("table")
-    fmt.Print(result)
+    if err := out.Render(context.Background(), doc); err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(1)
+    }
 }
 ```
 
@@ -68,10 +71,12 @@ func main() {
 ### Document-Builder Pattern
 ```go
 // v2: Clean separation of building and rendering
-builder := output.NewBuilder()
-builder.AddTable(data, output.WithKeys("col1", "col2"))
-doc := builder.Build()
-result, _ := doc.Render("json")
+doc := output.New().
+    Table("", data, output.WithKeys("col1", "col2")).
+    Build()
+
+out := output.NewOutput(output.WithFormat(output.JSON()))
+_ = out.Render(context.Background(), doc)
 
 // v1: Mixed concerns with global state
 output := format.OutputArray{Settings: settings}
@@ -82,7 +87,8 @@ output.Write()
 ### Key Order Preservation
 ```go
 // v2: Keys are preserved in exact order specified
-builder.AddTable(data, output.WithKeys("Name", "Age", "City"))
+builder := output.New()
+builder.Table("", data, output.WithKeys("Name", "Age", "City"))
 // Output will ALWAYS be Name, Age, City - never alphabetized
 
 // v1: Keys could be reordered unpredictably
@@ -94,13 +100,13 @@ output.Keys = []string{"Name", "Age", "City"}
 ```go
 // v2: Safe concurrent operations
 var wg sync.WaitGroup
-builder := output.NewBuilder()
+builder := output.New()
 
-for i := 0; i < 10; i++ {
+for i := range 10 {
     wg.Add(1)
     go func(id int) {
         defer wg.Done()
-        builder.AddText(fmt.Sprintf("Worker %d", id))
+        builder.Text(fmt.Sprintf("Worker %d", id))
     }(i)
 }
 wg.Wait()
@@ -132,16 +138,18 @@ doc := builder.Build()
 
 ## Quick Format Reference
 
-| Format | Use Case | Render Command |
-|--------|----------|----------------|
-| `json` | APIs, data exchange | `doc.Render("json")` |
-| `yaml` | Configuration files | `doc.Render("yaml")` |
-| `csv` | Spreadsheets | `doc.Render("csv")` |
-| `html` | Web reports | `doc.Render("html")` |
-| `table` | Console output | `doc.Render("table")` |
-| `markdown` | Documentation | `doc.Render("markdown")` |
-| `mermaid` | Diagrams | `doc.Render("mermaid")` |
-| `dot` | GraphViz graphs | `doc.Render("dot")` |
-| `drawio` | Draw.io import | `doc.Render("drawio")` |
+Select a format by passing its constructor to `output.WithFormat`:
+
+| Format | Use Case | Format Constructor |
+|--------|----------|--------------------|
+| JSON | APIs, data exchange | `output.JSON()` |
+| YAML | Configuration files | `output.YAML()` |
+| CSV | Spreadsheets | `output.CSV()` |
+| HTML | Web reports | `output.HTML()` |
+| Table | Console output | `output.Table()` |
+| Markdown | Documentation | `output.Markdown()` |
+| Mermaid | Diagrams | `output.Mermaid()` |
+| DOT | GraphViz graphs | `output.DOT()` |
+| Draw.io | Draw.io import | `output.DrawIO()` |
 
 Start with the Document-Builder pattern for clean, maintainable code that leverages v2's thread-safe, immutable design!

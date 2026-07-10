@@ -17,7 +17,7 @@ help: ## Show available make targets and their descriptions
 	@awk 'BEGIN {FS = ":.*##"} /^test.*:.*##/ { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Code quality targets:"
-	@awk 'BEGIN {FS = ":.*##"} /^(lint|fmt|modernize):.*##/ { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"} /^(lint|fmt|modernize|doc-examples):.*##/ { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Development targets:"
 	@awk 'BEGIN {FS = ":.*##"} /^(mod-tidy|benchmark|clean):.*##/ { printf "  %-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -76,6 +76,11 @@ fmt: ## Format all Go code in v2 and example directories
 		fi; \
 	done
 
+.PHONY: doc-examples
+doc-examples: ## Compile-check complete Go examples embedded in the docs
+	@echo "Checking documentation examples compile..."
+	@cd v2 && go test -run '^TestDocumentationExamplesCompile$$' ./...
+
 .PHONY: modernize
 modernize: ## Apply modernize tool fixes to v2 and example directories
 	@echo "Running modernize on v2 code..."
@@ -123,5 +128,5 @@ clean: ## Remove generated files and test caches
 
 # Composite targets
 .PHONY: check
-check: fmt lint test ## Run complete validation: format, lint, and test
+check: fmt lint test ## Run complete validation: format, lint, and test (test includes doc-example compilation)
 	@echo "All checks completed successfully!"

@@ -325,19 +325,10 @@ p.SetColor(output.ProgressColorGreen)
 5. **Add context**: All rendering now requires context
 6. **Test thoroughly**: Ensure output matches expectations
 
-## Automated Migration
+## Migration Approach
 
-Use the migration tool for automated conversion:
-
-```bash
-# Install migration tool
-go install github.com/ArjenSchwarz/go-output/v2/migrate/cmd/migrate@latest
-
-# Run migration
-migrate -source ./myproject -verbose
-```
-
-The tool handles most common patterns but manual review is recommended.
+There is no automated migration tool — convert v1 code manually using the patterns in
+the [Full Migration Guide](./MIGRATION.md).
 
 ## Additional Resources
 
