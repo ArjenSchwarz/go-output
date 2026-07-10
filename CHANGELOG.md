@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Fixed
+- Fixed a data race in `prettyProgress` between `SetContext` and the signal-handling goroutine: `contextDone()` now reads the shared context under the mutex (T-1429). Previously, calling `SetContext` on a TTY-backed progress indicator while the signal goroutine was running failed `go test -race`.
 - The Builder now records an error when content or metadata is added after `Build()` has finalized the document; previously such mutations vanished silently with `HasErrors()` returning false (T-1689). The built document remains unchanged and the fluent API remains non-panicking.
 - The DOT and Mermaid renderers now propagate `NewGraphContentFromTable` errors instead of discarding them (T-1689). No behavior change today — the only current error condition is unreachable at those call sites — but future error conditions will surface through `Render`.
 - The godoc for `Builder`, `Build`, `Table`, and `Raw` now documents the fluent-chain error contract: failures are recorded on the builder, the affected content is omitted from the document, and callers should check `HasErrors()`/`Errors()` after building (T-1689).
