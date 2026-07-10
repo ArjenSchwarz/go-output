@@ -97,9 +97,22 @@ type TransformFunc func(data any) (any, error)
 // Ensure TableContent implements TransformableContent
 var _ TransformableContent = (*TableContent)(nil)
 
-// Transform applies a transformation function to the table's records
+// Transform applies a transformation function to the table's records.
+//
+// The function receives a deep copy of the records, so mutations of the
+// passed-in data never alias the table's internal state and a failed
+// transformation leaves the table unchanged; the table is only updated
+// when fn succeeds and returns a []Record.
+//
+// Tables attached to a document are sealed and cannot be transformed,
+// because documents are immutable after Build() (T-1677). Call Clone()
+// and transform the copy instead.
 func (tc *TableContent) Transform(fn TransformFunc) error {
-	result, err := fn(tc.records)
+	if tc.sealed.Load() {
+		return fmt.Errorf("cannot transform table content %q: it belongs to a document and documents are immutable after Build(); call Clone() and transform the copy instead", tc.title)
+	}
+
+	result, err := fn(tc.Records())
 	if err != nil {
 		return fmt.Errorf("transformation failed: %w", err)
 	}
@@ -111,4 +124,26 @@ func (tc *TableContent) Transform(fn TransformFunc) error {
 
 	tc.records = records
 	return nil
+}
+
+// sealContents recursively seals every TableContent reachable from content.
+// The builder calls this when content is attached to a document: from that
+// moment the document shares the exact content pointers and must remain
+// immutable after Build(), so in-place mutation through Transform is
+// refused (T-1677). Recursion covers tables nested in sections and
+// collapsible sections, including sections the caller constructed directly
+// (e.g. via NewCollapsibleSection or NewCollapsibleTable).
+func sealContents(content Content) {
+	switch c := content.(type) {
+	case *TableContent:
+		c.seal()
+	case *SectionContent:
+		for _, child := range c.contents {
+			sealContents(child)
+		}
+	case *DefaultCollapsibleSection:
+		for _, child := range c.content {
+			sealContents(child)
+		}
+	}
 }
