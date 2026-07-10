@@ -2,6 +2,7 @@
 
 **Date:** 2026-07-10
 **Status:** Fixed
+**Ticket:** T-1629
 
 ## Description of the Issue
 
@@ -84,3 +85,5 @@ Inspected the locking discipline of every `fw.extensions` access in `v2/file_wri
 ## Related
 
 - Transit ticket T-1629
+- T-1583 / PR #99 — the same defect class in `S3Writer` (`SetContentType` mutating `contentTypes` while `getContentType` reads it during `Write`, with no lock at all), fixed in parallel with a `sync.RWMutex`
+- T-1727 — remaining `S3Writer` races when option funcs (`appendMode`/`maxAppendSize`) are applied to a live writer
