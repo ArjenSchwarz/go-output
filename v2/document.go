@@ -13,7 +13,10 @@ type Document struct {
 	mu       sync.RWMutex // For thread-safety
 }
 
-// GetContents returns a copy of the document's contents to prevent external modification
+// GetContents returns a copy of the document's contents to prevent external
+// modification of the slice. The elements are the document's actual Content
+// values; sections among them are frozen at Build() so they cannot be mutated
+// either (T-1543) — Clone a content value to get a mutable copy.
 func (d *Document) GetContents() []Content {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
@@ -72,6 +75,13 @@ func New() *Builder {
 // accumulated during building remain available via HasErrors and Errors —
 // check them after Build, because content that failed to construct is
 // silently absent from the returned document.
+//
+// Build also freezes every section reachable from the document (T-1543):
+// GetContents exposes the document's actual content pointers, so without
+// freezing, a caller could type-assert a *SectionContent and mutate the built
+// document via AddContent — changing rendered output after build or racing
+// with concurrent renders. Post-build SectionContent.AddContent calls are
+// silently ignored; Clone a section to get a mutable copy.
 func (b *Builder) Build() *Document {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -79,7 +89,40 @@ func (b *Builder) Build() *Document {
 	// Return the document, preventing further modifications through this builder
 	doc := b.doc
 	b.doc = nil // Clear the reference to prevent further modifications
+
+	// Freeze section contents so the built document cannot be mutated through
+	// the content pointers it exposes (doc is nil on a second Build call).
+	if doc != nil {
+		for _, content := range doc.contents {
+			freezeSectionContents(content)
+		}
+	}
 	return doc
+}
+
+// freezeSectionContents recursively marks every *SectionContent reachable from
+// content as frozen so post-build AddContent calls cannot mutate a built
+// document (T-1543). It recurses through both regular and collapsible
+// sections, since both expose their nested content pointers to callers. Other
+// content types hold no nested Content values.
+func freezeSectionContents(content Content) {
+	switch c := content.(type) {
+	case *SectionContent:
+		if c == nil {
+			return
+		}
+		c.frozen.Store(true)
+		for _, nested := range c.contents {
+			freezeSectionContents(nested)
+		}
+	case *DefaultCollapsibleSection:
+		if c == nil {
+			return
+		}
+		for _, nested := range c.content {
+			freezeSectionContents(nested)
+		}
+	}
 }
 
 // HasErrors returns true if any errors occurred during building

@@ -1,7 +1,7 @@
 # Bugfix Report: Built Documents Expose Mutable Section Contents
 
 **Date:** 2026-07-10
-**Status:** In progress
+**Status:** Fixed
 **Ticket:** T-1543
 
 ## Description of the Issue
@@ -44,7 +44,20 @@ The immutability boundary is enforced on the **Builder**, not on the **content g
 
 ## Resolution for the Issue
 
-_To be filled in after the fix is implemented._
+Sections are now frozen when the document is built.
+
+**Changes made:**
+- `v2/content.go` — Added a `frozen atomic.Bool` field to `SectionContent`. `AddContent` is a no-op once frozen (documented; consistent with the existing silent nil-drop, since `SectionContent` has no error channel). `Clone` is documented as the escape hatch: clones are never frozen, so callers can still obtain a mutable copy of a built section.
+- `v2/document.go` — `Builder.Build()` now calls the new `freezeSectionContents` helper on every top-level content value. The helper recursively freezes every `*SectionContent` reachable through nested sections and through `*DefaultCollapsibleSection` contents. `Build` and `GetContents` godoc updated to state the guarantee.
+
+The atomic flag makes the fix race-free: `Build()` completes (and thus the `Store(true)`) before the document is shared, so any post-build `AddContent` reliably observes `frozen == true` and returns without touching the slice — no write ever races with renderer reads.
+
+**Approach rationale:** Freezing at `Build()` enforces immutability on the object graph itself, matching the existing builder-surface guards from T-1689, at near-zero cost (one atomic load per `AddContent`, one tree walk per `Build`). It was verified safe: the only production caller of `SectionContent.AddContent` is `Builder.Section` (runs before freeze), and the render/transform pipeline clones content before applying operations and constructs new `Document` values rather than mutating sections in place.
+
+**Alternatives considered:**
+- **Deep-clone in `GetContents`** — correct but expensive: `baseRenderer` calls `GetContents` several times per render, so every render of every format would deep-copy the whole document (including large tables); it also changes pointer-identity semantics for existing callers.
+- **Mutex on `SectionContent`** — fixes the data race but not the immutability violation: rendered output could still change after build, which is the primary bug.
+- **Recording an error or panicking on post-build `AddContent`** — `SectionContent` has no error channel, and the v2 fluent API is deliberately non-panicking; a documented no-op matches the established convention.
 
 ## Regression Test
 
@@ -64,14 +77,18 @@ _To be filled in after the fix is implemented._
 
 ## Affected Files
 
-_To be finalized with the fix._
+| File | Change |
+|------|--------|
+| `v2/content.go` | `frozen` flag on `SectionContent`; `AddContent` no-ops when frozen; `Clone`/`AddContent` godoc |
+| `v2/document.go` | `Build()` freezes reachable sections via new `freezeSectionContents`; `Build`/`GetContents` godoc |
+| `v2/section_content_immutability_test.go` | New regression and race coverage (6 tests) |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes — all 6 tests in `section_content_immutability_test.go` pass, including `TestSectionContent_ConcurrentRenderAndPostBuildMutation` under `-race`
+- [x] Full test suite passes — `make test` and `make test-integration` green; full `go test -race` on `v2` and `v2/icons` green
+- [x] Linters/validators pass — `golangci-lint run`: 0 issues; `gofmt -l`: clean
 
 ## Prevention
 

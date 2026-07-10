@@ -536,6 +536,13 @@ type SectionContent struct {
 	level           int
 	contents        []Content
 	transformations []Operation
+
+	// frozen is set when the owning document is built (T-1543). Once set,
+	// AddContent becomes a no-op so a built document's sections cannot be
+	// mutated through pointers exposed by Document.GetContents,
+	// SectionContent.Contents, or CollapsibleSection.Content. Atomic so a
+	// post-build AddContent attempt cannot race with concurrent renders.
+	frozen atomic.Bool
 }
 
 // NewSectionContent creates a new section content with the given title and options
@@ -586,14 +593,20 @@ func (s *SectionContent) Contents() []Content {
 // AddContent returns no value and SectionContent has no error channel, so a nil
 // argument is silently dropped (consistent with Builder.AddContent rejecting nil
 // for top-level content).
+//
+// Once the owning document has been built, the section is frozen and AddContent
+// is a no-op (T-1543): built documents are immutable, and renderers read
+// section contents concurrently. Use Clone to obtain a mutable copy.
 func (s *SectionContent) AddContent(content Content) {
-	if content == nil {
+	if content == nil || s.frozen.Load() {
 		return
 	}
 	s.contents = append(s.contents, content)
 }
 
-// Clone creates a deep copy of the SectionContent
+// Clone creates a deep copy of the SectionContent. The copy is not frozen,
+// even when cloned from a built document, so it is the escape hatch for
+// callers that need a mutable copy of a built section (T-1543).
 func (s *SectionContent) Clone() Content {
 	// Deep copy the nested contents. Skip any nil entry defensively so a nil
 	// that reached contents by some route cannot cause a nil dereference (the
