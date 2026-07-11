@@ -3,6 +3,7 @@ package output
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -106,6 +107,74 @@ func (r *failingDelayedRenderer) RenderTo(_ context.Context, _ *Document, _ io.W
 }
 
 func (r *failingDelayedRenderer) SupportsStreaming() bool { return false }
+
+// spyProgress is a Progress test double that records every SetCurrent value,
+// so tests can assert when progress advances relative to the render and write
+// phases.
+type spyProgress struct {
+	mu       sync.Mutex
+	currents []int
+}
+
+func (p *spyProgress) SetTotal(int) {}
+
+func (p *spyProgress) SetCurrent(current int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.currents = append(p.currents, current)
+}
+
+func (p *spyProgress) Increment(int)              {}
+func (p *spyProgress) SetStatus(string)           {}
+func (p *spyProgress) Complete()                  {}
+func (p *spyProgress) Fail(error)                 {}
+func (p *spyProgress) SetColor(ProgressColor)     {}
+func (p *spyProgress) IsActive() bool             { return false }
+func (p *spyProgress) SetContext(context.Context) {}
+func (p *spyProgress) Close() error               { return nil }
+
+// Currents returns a copy of every value passed to SetCurrent so far.
+func (p *spyProgress) Currents() []int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	currents := make([]int, len(p.currents))
+	copy(currents, p.currents)
+	return currents
+}
+
+// progressSnapshotRenderer wraps a delayedRenderer and records how many
+// SetCurrent calls the spy had observed at the moment its render completed.
+type progressSnapshotRenderer struct {
+	inner *delayedRenderer
+	spy   *spyProgress
+
+	mu   sync.Mutex
+	snap int
+}
+
+func (r *progressSnapshotRenderer) Format() string { return r.inner.Format() }
+
+func (r *progressSnapshotRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
+	data, err := r.inner.Render(ctx, doc)
+	r.mu.Lock()
+	r.snap = len(r.spy.Currents())
+	r.mu.Unlock()
+	return data, err
+}
+
+func (r *progressSnapshotRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
+	return r.inner.RenderTo(ctx, doc, w)
+}
+
+func (r *progressSnapshotRenderer) SupportsStreaming() bool { return false }
+
+// Snapshot returns the number of SetCurrent calls observed when the render
+// completed.
+func (r *progressSnapshotRenderer) Snapshot() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.snap
+}
 
 // TestOutput_Render_WriteOrderMatchesFormatOrder verifies that when multiple
 // formats share a single writer, their output is written in declared format
@@ -217,6 +286,96 @@ func TestOutput_Render_WriteOrderSkipsFailedFormats(t *testing.T) {
 	for j := range want {
 		if got[j] != want[j] {
 			t.Fatalf("writes in wrong order: got %v, want %v", got, want)
+		}
+	}
+}
+
+// TestOutput_Render_ProgressAdvancesOnlyDuringWritePhase verifies the
+// documented progress side effect of ordered writes: SetCurrent is never
+// called while any format is still rendering — progress stays at 0 until the
+// write phase starts — and then advances once per completed write, in write
+// order. Under the pre-fix behaviour the fast format wrote (and advanced
+// progress) while the slow format was still rendering.
+func TestOutput_Render_ProgressAdvancesOnlyDuringWritePhase(t *testing.T) {
+	doc := New().Text("irrelevant").Build()
+
+	spy := &spyProgress{}
+	fast := &progressSnapshotRenderer{inner: &delayedRenderer{name: "fast", output: []byte("AAA\n")}, spy: spy}
+	slow := &progressSnapshotRenderer{inner: &delayedRenderer{name: "slow", output: []byte("BBB\n"), delay: 30 * time.Millisecond}, spy: spy}
+
+	writer := &orderTrackingWriter{}
+	out := NewOutput(
+		WithFormats(
+			Format{Name: "fast", Renderer: fast},
+			Format{Name: "slow", Renderer: slow},
+		),
+		WithWriter(writer),
+		WithProgress(spy),
+	)
+
+	if err := out.Render(context.Background(), doc); err != nil {
+		t.Fatalf("Render() failed: %v", err)
+	}
+
+	// No render may observe an earlier SetCurrent call: the slow format is
+	// still rendering when the fast one finishes, so any progress advance
+	// before its snapshot would mean a write happened during the render phase.
+	for name, r := range map[string]*progressSnapshotRenderer{"fast": fast, "slow": slow} {
+		if snap := r.Snapshot(); snap != 0 {
+			t.Errorf("%s: observed %d SetCurrent call(s) before render completed, want 0", name, snap)
+		}
+	}
+
+	// Once the write phase runs, progress advances one unit per completed
+	// write, in write order.
+	want := []int{1, 2}
+	got := spy.Currents()
+	if len(got) != len(want) {
+		t.Fatalf("got %d SetCurrent calls, want %d: %v", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("SetCurrent values in wrong order: got %v, want %v", got, want)
+		}
+	}
+}
+
+// TestOutput_Render_MultiErrorOrderMatchesFormatOrder verifies the documented
+// error-aggregation side effect of ordered writes: when multiple formats fail,
+// their errors appear in declared format order, not goroutine completion
+// order.
+func TestOutput_Render_MultiErrorOrderMatchesFormatOrder(t *testing.T) {
+	doc := New().Text("irrelevant").Build()
+
+	// The first-declared failing format is deliberately the slowest, so under
+	// the pre-fix completion-order aggregation its error would come last.
+	writer := &orderTrackingWriter{}
+	out := NewOutput(
+		WithFormats(
+			Format{Name: "brokenA", Renderer: &failingDelayedRenderer{name: "brokenA", delay: 30 * time.Millisecond}},
+			Format{Name: "ok", Renderer: &delayedRenderer{name: "ok", output: []byte("AAA\n")}},
+			Format{Name: "brokenB", Renderer: &failingDelayedRenderer{name: "brokenB"}},
+		),
+		WithWriter(writer),
+	)
+
+	err := out.Render(context.Background(), doc)
+	if err == nil {
+		t.Fatal("Render() should return an error when formats fail to render")
+	}
+
+	var multiErr *MultiError
+	if !errors.As(err, &multiErr) {
+		t.Fatalf("Render() error should be a *MultiError, got %T: %v", err, err)
+	}
+	if len(multiErr.Errors) != 2 {
+		t.Fatalf("got %d errors, want 2: %v", len(multiErr.Errors), multiErr.Errors)
+	}
+
+	wantOrder := []string{"brokenA", "brokenB"}
+	for i, name := range wantOrder {
+		if !strings.Contains(multiErr.Errors[i].Error(), name) {
+			t.Errorf("Errors[%d] should be the %s failure, got: %v", i, name, multiErr.Errors[i])
 		}
 	}
 }

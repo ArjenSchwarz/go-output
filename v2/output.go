@@ -293,10 +293,9 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 			continue
 		}
 
-		f := format
 		data := results[i]
-		err := SafeExecuteWithTracer(GetGlobalDebugTracer(), fmt.Sprintf("write-%s", f.Name), func() error {
-			return o.writeFormatData(ctx, f, data, writers, progress, &workDone)
+		err := SafeExecuteWithTracer(GetGlobalDebugTracer(), fmt.Sprintf("write-%s", format.Name), func() error {
+			return o.writeFormatData(ctx, format, data, writers, progress, &workDone)
 		})
 		if err != nil {
 			errs = append(errs, err)
