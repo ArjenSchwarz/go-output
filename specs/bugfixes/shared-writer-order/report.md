@@ -113,11 +113,20 @@ a write failure stops only that format's remaining writers.
 - `TestOutput_Render_WriteOrderSkipsFailedFormats` — a failing format is
   reported as an error but does not prevent the remaining formats from being
   written in order.
+- `TestOutput_Render_ProgressAdvancesOnlyDuringWritePhase` — added after
+  review: a spy `Progress` asserts `SetCurrent` is never called while any
+  format is still rendering and then advances once per write, in write order.
+- `TestOutput_Render_MultiErrorOrderMatchesFormatOrder` — added after review:
+  with two failing formats (slowest declared first), `MultiError.Errors`
+  follows declared format order rather than goroutine completion order.
 
-**Run command:** `go test -run 'TestOutput_Render_WriteOrder' -count=1` (in `v2/`)
+**Run command:**
+`go test -run 'TestOutput_Render_WriteOrder|TestOutput_Render_ProgressAdvancesOnlyDuringWritePhase|TestOutput_Render_MultiErrorOrderMatchesFormatOrder' -count=1`
+(in `v2/`)
 
-All three tests failed before the fix (observed order `[third second first]`)
-and pass after it.
+The first three tests failed before the fix (observed order
+`[third second first]`) and pass after it; the last two lock in the
+progress-timing and error-ordering side effects of the fix.
 
 ## Affected Files
 

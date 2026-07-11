@@ -304,7 +304,7 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 
 	// Collect all errors using the enhanced error handling system
 	multiErr := NewMultiError("render")
-	multiErr.AddContext("total_formats", len(o.formats))
+	multiErr.AddContext("total_formats", len(formats))
 	multiErr.AddContext("document_contents", len(doc.GetContents()))
 	for _, err := range errs {
 		// Add error with source tracking - determine source component from error type
