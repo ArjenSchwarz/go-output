@@ -135,6 +135,63 @@ func TestSectionContent_PreBuildAddContentStillWorks(t *testing.T) {
 	}
 }
 
+// TestSectionContent_SectionCallbackDoesNotFreezeCallerHeldSection verifies
+// that the Section() helper's internal harvest of its sub-builder does not
+// freeze a caller-held section prematurely.
+//
+// Bug: Section() harvested its sub-builder via the public Build(), which
+// freezes every reachable section. A *SectionContent the caller held and added
+// via AddContent inside the callback froze the moment the callback returned,
+// so content added before the outer document's real Build() was silently
+// dropped — contradicting the documented contract that freezing happens when
+// the owning document is built.
+// Expected: the section stays mutable until the outer Build(), then freezes.
+func TestSectionContent_SectionCallbackDoesNotFreezeCallerHeldSection(t *testing.T) {
+	inner := NewSectionContent("Inner")
+
+	builder := New().Section("Outer", func(b *Builder) {
+		b.AddContent(inner)
+	})
+
+	// The outer document has not been built yet, so the caller-held section
+	// must still accept content.
+	inner.AddContent(NewTextContent("added before outer Build()"))
+	if got, want := len(inner.Contents()), 1; got != want {
+		t.Fatalf("section frozen before outer Build(): got %d entries, want %d", got, want)
+	}
+
+	builder.Build()
+
+	// After the real Build() the section is frozen as documented.
+	inner.AddContent(NewTextContent("added after outer Build()"))
+	if got, want := len(inner.Contents()), 1; got != want {
+		t.Errorf("section mutated after outer Build(): got %d entries, want %d", got, want)
+	}
+}
+
+// TestSectionContent_CollapsibleSectionCallbackDoesNotFreezeCallerHeldSection
+// verifies the same pre-build composition pattern through the
+// CollapsibleSection() helper, which harvests its sub-builder the same way.
+func TestSectionContent_CollapsibleSectionCallbackDoesNotFreezeCallerHeldSection(t *testing.T) {
+	inner := NewSectionContent("Inner")
+
+	builder := New().CollapsibleSection("Outer", func(b *Builder) {
+		b.AddContent(inner)
+	})
+
+	inner.AddContent(NewTextContent("added before outer Build()"))
+	if got, want := len(inner.Contents()), 1; got != want {
+		t.Fatalf("section frozen before outer Build(): got %d entries, want %d", got, want)
+	}
+
+	builder.Build()
+
+	inner.AddContent(NewTextContent("added after outer Build()"))
+	if got, want := len(inner.Contents()), 1; got != want {
+		t.Errorf("section mutated after outer Build(): got %d entries, want %d", got, want)
+	}
+}
+
 // TestSectionContent_CloneOfBuiltSectionIsMutable verifies the documented
 // escape hatch: Clone() of a frozen section returns a caller-owned copy that
 // can be mutated without affecting the built document.
@@ -154,6 +211,33 @@ func TestSectionContent_CloneOfBuiltSectionIsMutable(t *testing.T) {
 	}
 	if got, want := len(section.Contents()), 1; got != want {
 		t.Errorf("mutating clone affected built section: got %d entries, want %d", got, want)
+	}
+}
+
+// TestSectionContent_FrozenPredicate verifies the exported Frozen() predicate:
+// false while building (including inside Section() callbacks), true once the
+// owning document is built, and false again on a Clone() of a frozen section.
+func TestSectionContent_FrozenPredicate(t *testing.T) {
+	section := NewSectionContent("Report")
+	if section.Frozen() {
+		t.Error("new section reports Frozen() = true, want false")
+	}
+
+	builder := New().Section("Outer", func(b *Builder) {
+		b.AddContent(section)
+	})
+	if section.Frozen() {
+		t.Error("section reports Frozen() = true before Build(), want false")
+	}
+
+	builder.Build()
+	if !section.Frozen() {
+		t.Error("section reports Frozen() = false after Build(), want true")
+	}
+
+	clone := section.Clone().(*SectionContent)
+	if clone.Frozen() {
+		t.Error("clone of frozen section reports Frozen() = true, want false")
 	}
 }
 

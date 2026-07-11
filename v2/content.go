@@ -596,12 +596,21 @@ func (s *SectionContent) Contents() []Content {
 //
 // Once the owning document has been built, the section is frozen and AddContent
 // is a no-op (T-1543): built documents are immutable, and renderers read
-// section contents concurrently. Use Clone to obtain a mutable copy.
+// section contents concurrently. Use Frozen to check for this state up front,
+// and Clone to obtain a mutable copy.
 func (s *SectionContent) AddContent(content Content) {
 	if content == nil || s.frozen.Load() {
 		return
 	}
 	s.contents = append(s.contents, content)
+}
+
+// Frozen reports whether the section belongs to a built document (T-1543).
+// Once frozen, AddContent is a silent no-op; this predicate lets callers guard
+// against that instead of detecting it after the fact by comparing Contents()
+// lengths. Use Clone to obtain a mutable, unfrozen copy.
+func (s *SectionContent) Frozen() bool {
+	return s.frozen.Load()
 }
 
 // Clone creates a deep copy of the SectionContent. The copy is not frozen,

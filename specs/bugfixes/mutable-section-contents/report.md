@@ -47,8 +47,8 @@ The immutability boundary is enforced on the **Builder**, not on the **content g
 Sections are now frozen when the document is built.
 
 **Changes made:**
-- `v2/content.go` — Added a `frozen atomic.Bool` field to `SectionContent`. `AddContent` is a no-op once frozen (documented; consistent with the existing silent nil-drop, since `SectionContent` has no error channel). `Clone` is documented as the escape hatch: clones are never frozen, so callers can still obtain a mutable copy of a built section.
-- `v2/document.go` — `Builder.Build()` now calls the new `freezeSectionContents` helper on every top-level content value. The helper recursively freezes every `*SectionContent` reachable through nested sections and through `*DefaultCollapsibleSection` contents. `Build` and `GetContents` godoc updated to state the guarantee.
+- `v2/content.go` — Added a `frozen atomic.Bool` field to `SectionContent`. `AddContent` is a no-op once frozen (documented; consistent with the existing silent nil-drop, since `SectionContent` has no error channel). An exported `Frozen()` predicate lets callers guard against the no-op up front. `Clone` is documented as the escape hatch: clones are never frozen, so callers can still obtain a mutable copy of a built section.
+- `v2/document.go` — `Builder.Build()` now calls the new `freezeSectionContents` helper on every top-level content value. The helper recursively freezes every `*SectionContent` reachable through nested sections and through `*DefaultCollapsibleSection` contents. `Build` and `GetContents` godoc updated to state the guarantee. Freezing happens only in the user-facing `Build()`: `Section()` and `CollapsibleSection()` harvest their sub-builders through an internal non-freezing `build()` method, so a caller-held section added inside a callback stays mutable until the outer document is actually built (found in PR review; the original fix routed the harvest through the public `Build()`, freezing such sections prematurely).
 
 The atomic flag makes the fix race-free: `Build()` completes (and thus the `Store(true)`) before the document is shared, so any post-build `AddContent` reliably observes `frozen == true` and returns without touching the slice — no write ever races with renderer reads.
 
@@ -68,20 +68,23 @@ The atomic flag makes the fix race-free: `Build()` completes (and thus the `Stor
 - `TestSectionContent_PostBuildMutation_NestedSectionAlsoFrozen` — nested sections obtained via `Contents()` cannot be mutated post-build.
 - `TestSectionContent_PostBuildMutation_SectionInCollapsibleFrozen` — sections reachable through `DefaultCollapsibleSection.Content()` cannot be mutated post-build.
 - `TestSectionContent_PreBuildAddContentStillWorks` — the legitimate building phase is unaffected.
+- `TestSectionContent_SectionCallbackDoesNotFreezeCallerHeldSection` — a caller-held section added via `AddContent` inside a `Section()` callback stays mutable until the outer `Build()`, then freezes (regression test for the premature-freeze issue found in PR review).
+- `TestSectionContent_CollapsibleSectionCallbackDoesNotFreezeCallerHeldSection` — same pattern through `CollapsibleSection()`.
+- `TestSectionContent_FrozenPredicate` — `Frozen()` is false while building, true after `Build()`, and false on a `Clone()` of a frozen section.
 - `TestSectionContent_CloneOfBuiltSectionIsMutable` — `Clone()` remains the escape hatch for a caller-owned mutable copy.
 - `TestSectionContent_ConcurrentRenderAndPostBuildMutation` — concurrent render + attempted mutation is race-free (run with `-race`).
 
-**Run command:** `cd v2 && go test -race -run 'TestSectionContent_PostBuildMutation|TestSectionContent_PreBuild|TestSectionContent_CloneOfBuilt|TestSectionContent_ConcurrentRenderAndPostBuildMutation' .`
+**Run command:** `cd v2 && go test -race -run 'TestSectionContent_' .`
 
-**Pre-fix results (red):** the three PostBuildMutation tests fail (output changes, contents grow), and the concurrent test reports data races under `-race`.
+**Pre-fix results (red):** the three PostBuildMutation tests fail (output changes, contents grow), the two callback tests fail (sections freeze before the outer `Build()`), and the concurrent test reports data races under `-race`.
 
 ## Affected Files
 
 | File | Change |
 |------|--------|
-| `v2/content.go` | `frozen` flag on `SectionContent`; `AddContent` no-ops when frozen; `Clone`/`AddContent` godoc |
-| `v2/document.go` | `Build()` freezes reachable sections via new `freezeSectionContents`; `Build`/`GetContents` godoc |
-| `v2/section_content_immutability_test.go` | New regression and race coverage (6 tests) |
+| `v2/content.go` | `frozen` flag on `SectionContent`; `AddContent` no-ops when frozen; exported `Frozen()` predicate; `Clone`/`AddContent` godoc |
+| `v2/document.go` | `Build()` freezes reachable sections via new `freezeSectionContents`; internal non-freezing `build()` harvest for `Section`/`CollapsibleSection`; `Build`/`GetContents` godoc |
+| `v2/section_content_immutability_test.go` | New regression and race coverage (9 tests) |
 
 ## Verification
 

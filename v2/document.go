@@ -81,17 +81,16 @@ func New() *Builder {
 // freezing, a caller could type-assert a *SectionContent and mutate the built
 // document via AddContent — changing rendered output after build or racing
 // with concurrent renders. Post-build SectionContent.AddContent calls are
-// silently ignored; Clone a section to get a mutable copy.
+// silently ignored; Clone a section to get a mutable copy. Freezing happens
+// only at this user-facing Build: sections composed through Section or
+// CollapsibleSection callbacks stay mutable until the outer document is built.
 func (b *Builder) Build() *Document {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	// Return the document, preventing further modifications through this builder
-	doc := b.doc
-	b.doc = nil // Clear the reference to prevent further modifications
+	doc := b.build()
 
 	// Freeze section contents so the built document cannot be mutated through
 	// the content pointers it exposes (doc is nil on a second Build call).
+	// The document is already detached from the builder and frozen is atomic,
+	// so this is safe outside the builder mutex.
 	if doc != nil {
 		for _, content := range doc.contents {
 			freezeSectionContents(content)
@@ -100,11 +99,32 @@ func (b *Builder) Build() *Document {
 	return doc
 }
 
+// build finalizes the builder — detaching and returning its document so no
+// further mutation is possible through this builder — without freezing
+// sections. It is the harvest path for Section and CollapsibleSection, whose
+// sub-builders are an implementation detail of composing one document:
+// routing their harvest through the public Build() would freeze a caller-held
+// section as soon as the callback returned, before the outer document's real
+// Build() (T-1543).
+func (b *Builder) build() *Document {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// Return the document, preventing further modifications through this builder
+	doc := b.doc
+	b.doc = nil // Clear the reference to prevent further modifications
+	return doc
+}
+
 // freezeSectionContents recursively marks every *SectionContent reachable from
 // content as frozen so post-build AddContent calls cannot mutate a built
 // document (T-1543). It recurses through both regular and collapsible
 // sections, since both expose their nested content pointers to callers. Other
 // content types hold no nested Content values.
+//
+// Maintenance note: T-1677 introduces a second walker over the same content
+// graph (sealing *TableContent at Builder.AddContent time). If a new content
+// type ever holds nested Content values, both walkers must learn about it.
 func freezeSectionContents(content Content) {
 	switch c := content.(type) {
 	case *SectionContent:
@@ -270,14 +290,16 @@ func (b *Builder) Section(title string, fn func(*Builder), opts ...SectionOption
 		b.mu.Unlock()
 	}
 
-	// Add all contents from sub-builder to this section.
+	// Add all contents from sub-builder to this section. Harvest through the
+	// internal build() — not Build() — so caller-held sections added inside the
+	// callback are not frozen before the outer document is built (T-1543).
 	//
 	// The callback may have already finalized the sub-builder by calling its
 	// Build() method, in which case the sub-builder's document is nil and our
-	// Build() call returns nil. Guard against that to avoid a nil dereference,
+	// build() call returns nil. Guard against that to avoid a nil dereference,
 	// recording a builder error so callers can detect the misuse. The section is
 	// still added (as an empty section), keeping the fluent API non-panicking.
-	subDoc := subBuilder.Build()
+	subDoc := subBuilder.build()
 	if subDoc == nil {
 		b.mu.Lock()
 		b.addError(fmt.Errorf("Section %q: callback finalized the sub-builder by calling Build()", title))
@@ -357,15 +379,17 @@ func (b *Builder) CollapsibleSection(title string, fn func(*Builder), opts ...Co
 		b.mu.Unlock()
 	}
 
-	// Add all contents from sub-builder to collapsible section.
+	// Add all contents from sub-builder to collapsible section. Harvest through
+	// the internal build() — not Build() — so caller-held sections added inside
+	// the callback are not frozen before the outer document is built (T-1543).
 	//
 	// The callback may have already finalized the sub-builder by calling its
 	// Build() method, in which case the sub-builder's document is nil and our
-	// Build() call returns nil. Guard against that to avoid a nil dereference,
+	// build() call returns nil. Guard against that to avoid a nil dereference,
 	// recording a builder error so callers can detect the misuse. The section is
 	// still added (as an empty section), keeping the fluent API non-panicking.
 	var contents []Content
-	if subDoc := subBuilder.Build(); subDoc != nil {
+	if subDoc := subBuilder.build(); subDoc != nil {
 		contents = subDoc.GetContents()
 	} else {
 		b.mu.Lock()
