@@ -164,3 +164,24 @@ func TestTransformCannotMutateBuiltDocument(t *testing.T) {
 		}
 	})
 }
+
+// TestAddContentTypedNilDoesNotPanic verifies that sealContents tolerates
+// typed-nil content pointers. Builder.AddContent's nil check only catches an
+// untyped nil interface, so a typed nil like (*SectionContent)(nil) reaches
+// sealContents, which must not dereference it (regression: the initial T-1677
+// sealing walk panicked here, while main stored the typed nil untouched).
+func TestAddContentTypedNilDoesNotPanic(t *testing.T) {
+	tests := map[string]Content{
+		"typed-nil *TableContent":              (*TableContent)(nil),
+		"typed-nil *SectionContent":            (*SectionContent)(nil),
+		"typed-nil *DefaultCollapsibleSection": (*DefaultCollapsibleSection)(nil),
+		"typed-nil table nested in collapsible section": NewCollapsibleSection(
+			"section", []Content{(*TableContent)(nil)},
+		),
+	}
+	for name, content := range tests {
+		t.Run(name, func(t *testing.T) {
+			New().AddContent(content)
+		})
+	}
+}

@@ -133,15 +133,28 @@ func (tc *TableContent) Transform(fn TransformFunc) error {
 // refused (T-1677). Recursion covers tables nested in sections and
 // collapsible sections, including sections the caller constructed directly
 // (e.g. via NewCollapsibleSection or NewCollapsibleTable).
+//
+// Typed-nil pointers are ignored: Builder.AddContent's nil check only
+// catches an untyped nil interface, so a typed nil such as
+// (*SectionContent)(nil) reaches this walk and must not be dereferenced.
 func sealContents(content Content) {
 	switch c := content.(type) {
 	case *TableContent:
+		if c == nil {
+			return
+		}
 		c.seal()
 	case *SectionContent:
+		if c == nil {
+			return
+		}
 		for _, child := range c.contents {
 			sealContents(child)
 		}
 	case *DefaultCollapsibleSection:
+		if c == nil {
+			return
+		}
 		for _, child := range c.content {
 			sealContents(child)
 		}

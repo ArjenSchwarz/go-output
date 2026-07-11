@@ -43,7 +43,7 @@ Structured inspection of the mutation and render paths.
 
 **Changes made:**
 - `v2/content.go` - Added an unexported `sealed atomic.Bool` field to `TableContent` with a `seal()` method; `Clone()` intentionally returns an unsealed copy (the sanctioned escape hatch for transforming document data).
-- `v2/transform_data.go` - `Transform` now returns an error when the table is sealed (attached to a document), and hands the transformation function a deep copy of the records (via `Records()`) so a failed transform cannot corrupt the table and the function cannot alias internal record maps. Added `sealContents` helper that recursively seals tables nested in sections and collapsible sections.
+- `v2/transform_data.go` - `Transform` now returns an error when the table is sealed (attached to a document), and hands the transformation function a deep copy of the records (via `Records()`) so a failed transform cannot corrupt the table and the function cannot alias internal record maps. Added `sealContents` helper that recursively seals tables nested in sections and collapsible sections; it guards against typed-nil pointers, which pass `AddContent`'s untyped-nil interface check.
 - `v2/document.go` - `Builder.AddContent` calls `sealContents(content)`; every builder path (including `Section`/`CollapsibleSection` sub-builders and `AddCollapsibleTable`) routes through it, so all tables reachable from a document get sealed.
 
 **Approach rationale:** The ticket allows either making built contents non-mutable through public APIs or scoping `Transform` so it cannot mutate attached content. Sealing at attach time keeps the exported `TransformableContent` interface intact (no breaking signature change), matches the existing enforcement pattern (T-1689 records errors for post-`Build()` builder mutations), and closes the race: a sealed `Transform` returns before touching `tc.records`. Sealing at `AddContent` rather than `Build()` is strictly safer (the builder shares the pointer from that moment) and avoids restructuring `Build()`/`GetContents()`, which T-1543 is modifying in parallel.
@@ -63,8 +63,9 @@ Structured inspection of the mutation and render paths.
 - `Clone()` of a document table remains transformable without affecting the document.
 - Standalone (unattached) tables remain transformable.
 - A transformation function that mutates its input and then fails cannot leak partial mutations into the table.
+- `TestAddContentTypedNilDoesNotPanic`: `Builder.AddContent` with a typed-nil `*TableContent`/`*SectionContent`/`*DefaultCollapsibleSection` (including one nested in a collapsible section) does not panic in `sealContents` — matching pre-fix behaviour, where the typed nil was stored untouched.
 
-**Run command:** `go test -run TestTransformCannotMutateBuiltDocument ./...` (from `v2/`)
+**Run command:** `go test -run 'TestTransformCannotMutateBuiltDocument|TestAddContentTypedNilDoesNotPanic' ./...` (from `v2/`)
 
 ## Affected Files
 
