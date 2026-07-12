@@ -360,3 +360,142 @@ func TestTableRenderer_TransformationIntegration(t *testing.T) {
 		t.Error("Bob should be filtered out")
 	}
 }
+
+// TestTableRenderer_DeeplyNestedSections is a regression test for T-1522.
+// The table renderer unrolled nested sections manually instead of recursing:
+// level 1 handled tables/text/sections, level 2 handled only tables. Sections
+// nested 3+ levels deep were silently dropped from the output. This test
+// builds a table at several nesting depths and verifies its rows (and the
+// innermost section header) reach the rendered output.
+func TestTableRenderer_DeeplyNestedSections(t *testing.T) {
+	// newTable builds a single-row table whose only value identifies the
+	// depth at which it lives, so we can assert each table reaches the output.
+	newTable := func(t *testing.T, name string) *TableContent {
+		t.Helper()
+		table, err := NewTableContent(name, []map[string]any{{"name": name}}, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("failed to create table %q: %v", name, err)
+		}
+		return table
+	}
+
+	tests := map[string]struct {
+		// depth is the number of nested sections wrapping the table.
+		// depth=1 -> section -> table (already worked before the fix)
+		// depth=2 -> outer -> inner -> table (already worked before the fix)
+		// depth=3+ -> outer -> ... -> inner -> table (regression)
+		depth int
+		row   string
+	}{
+		"one level":    {depth: 1, row: "level-1"},
+		"two levels":   {depth: 2, row: "level-2"},
+		"three levels": {depth: 3, row: "deep-row"},
+		"five levels":  {depth: 5, row: "level-5"},
+	}
+
+	for testName, tt := range tests {
+		t.Run(testName, func(t *testing.T) {
+			// Build the innermost section holding the table, then wrap it in
+			// the requested number of outer sections.
+			innermost := NewSectionContent("innermost-section")
+			innermost.AddContent(newTable(t, tt.row))
+
+			current := innermost
+			for level := 1; level < tt.depth; level++ {
+				outer := NewSectionContent("section")
+				outer.AddContent(current)
+				current = outer
+			}
+
+			doc := New().AddContent(current).Build()
+
+			result, err := (&tableRenderer{}).Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render failed: %v", err)
+			}
+
+			out := string(result)
+			if !strings.Contains(out, tt.row) {
+				t.Errorf("table output missing table nested %d level(s) deep: want it to contain %q, got %q",
+					tt.depth, tt.row, out)
+			}
+			if !strings.Contains(out, "=== innermost-section ===") {
+				t.Errorf("table output missing header of section nested %d level(s) deep, got %q",
+					tt.depth, out)
+			}
+		})
+	}
+}
+
+// TestTableRenderer_NestedSectionTextContent is a regression test for T-1522.
+// Text content inside a section nested within another section was silently
+// dropped because the hand-unrolled nested-section loop only rendered tables.
+func TestTableRenderer_NestedSectionTextContent(t *testing.T) {
+	text := NewTextContent("nested text survives")
+	table, err := NewTableContent("users", []map[string]any{{"name": "Alice"}}, WithKeys("name"))
+	if err != nil {
+		t.Fatalf("failed to create table: %v", err)
+	}
+
+	inner := NewSectionContent("inner")
+	inner.AddContent(text)
+	inner.AddContent(table)
+
+	outer := NewSectionContent("outer")
+	outer.AddContent(inner)
+
+	doc := New().AddContent(outer).Build()
+
+	result, err := (&tableRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	out := string(result)
+	if !strings.Contains(out, "nested text survives") {
+		t.Errorf("table output missing text content inside nested section, got %q", out)
+	}
+	if !strings.Contains(out, "Alice") {
+		t.Errorf("table output missing table content inside nested section, got %q", out)
+	}
+}
+
+// TestTableRenderer_MultipleTablesAcrossNestingLevels verifies that tables at
+// different depths within the same section hierarchy are all rendered, not
+// just the shallowest ones. Regression test for T-1522.
+func TestTableRenderer_MultipleTablesAcrossNestingLevels(t *testing.T) {
+	makeTable := func(t *testing.T, row string) *TableContent {
+		t.Helper()
+		table, err := NewTableContent(row, []map[string]any{{"name": row}}, WithKeys("name"))
+		if err != nil {
+			t.Fatalf("failed to create table %q: %v", row, err)
+		}
+		return table
+	}
+
+	// Structure: outer{tableA, middle{tableB, inner{tableC}}}
+	inner := NewSectionContent("inner")
+	inner.AddContent(makeTable(t, "row-c"))
+
+	middle := NewSectionContent("middle")
+	middle.AddContent(makeTable(t, "row-b"))
+	middle.AddContent(inner)
+
+	outer := NewSectionContent("outer")
+	outer.AddContent(makeTable(t, "row-a"))
+	outer.AddContent(middle)
+
+	doc := New().AddContent(outer).Build()
+
+	result, err := (&tableRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	out := string(result)
+	for _, want := range []string{"row-a", "row-b", "row-c"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("table output missing table row %q across nesting levels, got %q", want, out)
+		}
+	}
+}
