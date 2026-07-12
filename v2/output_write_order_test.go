@@ -379,3 +379,97 @@ func TestOutput_Render_MultiErrorOrderMatchesFormatOrder(t *testing.T) {
 		}
 	}
 }
+
+// failingFormatWriter records the format name of every Write call (like
+// orderTrackingWriter) but fails the write for one specific format.
+type failingFormatWriter struct {
+	mu         sync.Mutex
+	calls      []string
+	failFormat string
+}
+
+func (w *failingFormatWriter) Write(_ context.Context, format string, _ []byte) error {
+	w.mu.Lock()
+	w.calls = append(w.calls, format)
+	w.mu.Unlock()
+	if format == w.failFormat {
+		return fmt.Errorf("write failed for %s", format)
+	}
+	return nil
+}
+
+func (w *failingFormatWriter) Calls() []string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	calls := make([]string, len(w.calls))
+	copy(calls, w.calls)
+	return calls
+}
+
+// TestOutput_Render_WriteOrderContinuesAfterWriteFailure verifies the write
+// failure semantics of the ordered write phase: a failed write stops the
+// remaining writers for that format only. Later-declared formats are still
+// written to every writer, in declared order, and the failure surfaces as a
+// WriterError in the aggregated error.
+func TestOutput_Render_WriteOrderContinuesAfterWriteFailure(t *testing.T) {
+	doc := New().Text("irrelevant").Build()
+
+	// writer1 fails when writing the "second" format; writer2 never fails.
+	writer1 := &failingFormatWriter{failFormat: "second"}
+	writer2 := &orderTrackingWriter{}
+
+	out := NewOutput(
+		WithFormats(
+			Format{Name: "first", Renderer: &delayedRenderer{name: "first", output: []byte("AAA\n")}},
+			Format{Name: "second", Renderer: &delayedRenderer{name: "second", output: []byte("BBB\n")}},
+			Format{Name: "third", Renderer: &delayedRenderer{name: "third", output: []byte("CCC\n")}},
+		),
+		WithWriters(writer1, writer2),
+	)
+
+	err := out.Render(context.Background(), doc)
+	if err == nil {
+		t.Fatal("Render() should return an error when a writer fails")
+	}
+
+	var multiErr *MultiError
+	if !errors.As(err, &multiErr) {
+		t.Fatalf("Render() error should be a *MultiError, got %T: %v", err, err)
+	}
+	if len(multiErr.Errors) != 1 {
+		t.Fatalf("got %d errors, want 1: %v", len(multiErr.Errors), multiErr.Errors)
+	}
+	var writerErr *WriterError
+	if !errors.As(multiErr.Errors[0], &writerErr) {
+		t.Fatalf("aggregated error should be a *WriterError, got %T: %v", multiErr.Errors[0], multiErr.Errors[0])
+	}
+	if writerErr.Format != "second" {
+		t.Errorf("WriterError.Format = %q, want %q", writerErr.Format, "second")
+	}
+
+	// writer1 is attempted for every format in declared order (the failing
+	// call is still recorded).
+	wantAttempted := []string{"first", "second", "third"}
+	got1 := writer1.Calls()
+	if len(got1) != len(wantAttempted) {
+		t.Fatalf("writer1: got %d writes, want %d: %v", len(got1), len(wantAttempted), got1)
+	}
+	for i := range wantAttempted {
+		if got1[i] != wantAttempted[i] {
+			t.Fatalf("writer1: writes in wrong order: got %v, want %v", got1, wantAttempted)
+		}
+	}
+
+	// writer2 is skipped for the failed format only; the remaining formats
+	// arrive in declared order.
+	wantWritten := []string{"first", "third"}
+	got2 := writer2.Calls()
+	if len(got2) != len(wantWritten) {
+		t.Fatalf("writer2: got %d writes, want %d: %v", len(got2), len(wantWritten), got2)
+	}
+	for i := range wantWritten {
+		if got2[i] != wantWritten[i] {
+			t.Fatalf("writer2: writes in wrong order: got %v, want %v", got2, wantWritten)
+		}
+	}
+}

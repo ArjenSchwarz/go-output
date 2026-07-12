@@ -293,7 +293,10 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 			continue
 		}
 
+		// Release the slot so earlier formats' buffers can be collected while
+		// later formats are still being written (relevant for slow writers).
 		data := results[i]
+		results[i] = nil
 		err := SafeExecuteWithTracer(GetGlobalDebugTracer(), fmt.Sprintf("write-%s", format.Name), func() error {
 			return o.writeFormatData(ctx, format, data, writers, progress, &workDone)
 		})

@@ -66,10 +66,11 @@ only checked output content and progress totals, never cross-format order.
   performed sequentially in declared format order, each format's write pass
   wrapped in its own `SafeExecuteWithTracer` for panic recovery.
 - `v2/output.go` — `processFormatData` split into `transformFormatData`
-  (concurrent phase) and `writeFormatData` (sequential phase). The shared
-  `workDone`/`workMu` counter pointers and the error channel were removed
-  since the write phase is single-threaded; errors are collected into a slice
-  in deterministic order.
+  (concurrent phase) and `writeFormatData` (sequential phase). The `workMu`
+  mutex and the error channel were removed since the write phase is
+  single-threaded; `workDone` is now a plain counter threaded through the
+  sequential write loop, and errors are collected into a slice in
+  deterministic order.
 - `v2/output.go` — doc comments on `Render` and `renderWithConfig` now state
   the ordering guarantee.
 - `v2/docs/API.md` — performance section documents that writes are serialized
@@ -119,14 +120,23 @@ a write failure stops only that format's remaining writers.
 - `TestOutput_Render_MultiErrorOrderMatchesFormatOrder` — added after review:
   with two failing formats (slowest declared first), `MultiError.Errors`
   follows declared format order rather than goroutine completion order.
+- `TestOutput_Render_WriteOrderContinuesAfterWriteFailure` — added in pre-push
+  review: a writer that fails for one format stops only that format's
+  remaining writers; later formats are still written to every writer in
+  declared order, and the failure surfaces as a `WriterError`. This locks in
+  the preserved write-failure semantics rather than reproducing the original
+  bug.
 
 **Run command:**
 `go test -run 'TestOutput_Render_WriteOrder|TestOutput_Render_ProgressAdvancesOnlyDuringWritePhase|TestOutput_Render_MultiErrorOrderMatchesFormatOrder' -count=1`
 (in `v2/`)
 
-The first three tests failed before the fix (observed order
-`[third second first]`) and pass after it; the last two lock in the
-progress-timing and error-ordering side effects of the fix.
+The first five tests all fail before the fix — the write-order tests observe
+goroutine-completion order (`[third second first]`, `[second first]`,
+`[third first]`), and the progress and error-ordering tests catch writes and
+error aggregation happening in scheduler order — and all pass after it. The
+write-failure test asserts semantics preserved by the fix rather than a
+pre-fix failure.
 
 ## Affected Files
 

@@ -473,8 +473,9 @@ func TestOutput_Render_WithTransformers(t *testing.T) {
 
 // TestOutput_Render_TransformerPriorityOrder is a regression test for T-1183.
 //
-// Bug: processFormatData applied transformers in caller-argument (insertion)
-// order instead of Transformer.Priority() order. The transformer pipeline
+// Bug: processFormatData (its transform step now lives in transformFormatData)
+// applied transformers in caller-argument (insertion) order instead of
+// Transformer.Priority() order. The transformer pipeline
 // contract requires lower-priority transformers to run first, regardless of the
 // order in which they were registered.
 //
