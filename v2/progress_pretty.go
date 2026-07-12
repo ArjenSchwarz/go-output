@@ -26,6 +26,7 @@ type prettyProgress struct {
 	active    bool
 	completed bool
 	failed    bool
+	closed    bool
 	err       error
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -205,10 +206,18 @@ func (p *prettyProgress) Fail(err error) {
 	p.tracker.UpdateMessage(p.getStatusMessage())
 }
 
-// Close cleans up resources and stops the progress display
+// Close cleans up resources and stops the progress display. It is
+// idempotent: only the first call performs cleanup, and repeated calls
+// return nil. Without the guard, a second call would panic closing the
+// already-closed signal channel (T-1427).
 func (p *prettyProgress) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	if p.closed {
+		return nil
+	}
+	p.closed = true
 
 	if p.cancel != nil {
 		p.cancel()
