@@ -89,7 +89,7 @@ The atomic flag makes the fix race-free: `Build()` completes (and thus the `Stor
 ## Verification
 
 **Automated:**
-- [x] Regression test passes — all 6 tests in `section_content_immutability_test.go` pass, including `TestSectionContent_ConcurrentRenderAndPostBuildMutation` under `-race`
+- [x] Regression test passes — all 9 tests in `section_content_immutability_test.go` pass, including `TestSectionContent_ConcurrentRenderAndPostBuildMutation` under `-race`
 - [x] Full test suite passes — `make test` and `make test-integration` green; full `go test -race` on `v2` and `v2/icons` green
 - [x] Linters/validators pass — `golangci-lint run`: 0 issues; `gofmt -l`: clean
 

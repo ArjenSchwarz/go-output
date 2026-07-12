@@ -608,7 +608,9 @@ func (s *SectionContent) AddContent(content Content) {
 // Frozen reports whether the section belongs to a built document (T-1543).
 // Once frozen, AddContent is a silent no-op; this predicate lets callers guard
 // against that instead of detecting it after the fact by comparing Contents()
-// lengths. Use Clone to obtain a mutable, unfrozen copy.
+// lengths. Freezing is per section object: a section added to more than one
+// builder is frozen by whichever owning document builds first. Use Clone to
+// obtain a mutable, unfrozen copy.
 func (s *SectionContent) Frozen() bool {
 	return s.frozen.Load()
 }
