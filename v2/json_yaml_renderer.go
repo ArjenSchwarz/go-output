@@ -14,8 +14,11 @@ import (
 // marshalFunc is a function that marshals data to bytes
 type marshalFunc func(v any) ([]byte, error)
 
-// unmarshalFunc is a function that unmarshals bytes to data
-type unmarshalFunc func(data []byte, v any) error
+// wrapContentFunc converts rendered content bytes into a value that can be
+// embedded in a larger structure without losing information. Implementations
+// must preserve key order (e.g. json.RawMessage for JSON, *yaml.Node for
+// YAML) — unmarshaling into maps would destroy it.
+type wrapContentFunc func(data []byte) (any, error)
 
 // renderDocumentGeneric is a shared implementation for rendering documents in different formats
 func renderDocumentGeneric(
@@ -23,7 +26,7 @@ func renderDocumentGeneric(
 	doc *Document,
 	format string,
 	renderContent func(Content) ([]byte, error),
-	unmarshal unmarshalFunc,
+	wrap wrapContentFunc,
 	marshal marshalFunc,
 ) ([]byte, error) {
 	if doc == nil {
@@ -62,14 +65,68 @@ func renderDocumentGeneric(
 			return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
 		}
 
-		var contentData any
-		if err := unmarshal(contentBytes, &contentData); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal %s content: %w", format, err)
+		contentData, err := wrap(contentBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to wrap %s content: %w", format, err)
 		}
 		contentArray = append(contentArray, contentData)
 	}
 
 	return marshal(contentArray)
+}
+
+// jsonMember is a single key/value pair of an orderedJSONObject.
+type jsonMember struct {
+	key   string
+	value any
+}
+
+// orderedJSONObject marshals as a JSON object whose members appear in slice
+// order. encoding/json sorts map keys alphabetically, so key order
+// preservation — the library's core guarantee — requires this custom
+// marshaler. Indentation is applied by the caller (json.MarshalIndent and
+// json.Encoder re-indent marshaler output).
+type orderedJSONObject []jsonMember
+
+func (o orderedJSONObject) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	for i, member := range o {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		key, err := json.Marshal(member.key)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(key)
+		buf.WriteByte(':')
+		value, err := json.Marshal(member.value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value for key %q: %w", member.key, err)
+		}
+		buf.Write(value)
+	}
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
+}
+
+// yamlContentNode parses rendered YAML content into a *yaml.Node so nested
+// structures keep their key order when re-marshaled as part of a larger
+// document (yaml.Unmarshal into any would produce order-destroying maps).
+func yamlContentNode(data []byte) (any, error) {
+	var node yaml.Node
+	if err := yaml.Unmarshal(data, &node); err != nil {
+		return nil, err
+	}
+	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
+		return node.Content[0], nil
+	}
+	if node.Kind == 0 {
+		// Empty document (no content) marshals as null.
+		return nil, nil
+	}
+	return &node, nil
 }
 
 // buildTextContentData creates a generic representation of text content
@@ -135,7 +192,11 @@ func (j *jsonRenderer) SupportsStreaming() bool {
 func (j *jsonRenderer) renderDocumentJSON(ctx context.Context, doc *Document) ([]byte, error) {
 	return renderDocumentGeneric(ctx, doc, "JSON", func(content Content) ([]byte, error) {
 		return j.renderContent(ctx, content)
-	}, json.Unmarshal, func(v any) ([]byte, error) {
+	}, func(data []byte) (any, error) {
+		// Embed the already-rendered JSON verbatim; unmarshaling into maps
+		// would destroy key order.
+		return json.RawMessage(data), nil
+	}, func(v any) ([]byte, error) {
 		return json.MarshalIndent(v, "", "  ")
 	})
 }
@@ -201,41 +262,43 @@ func (j *jsonRenderer) renderContentTo(ctx context.Context, content Content, w i
 
 // renderTableContentJSON renders table content as JSON with key order preservation
 func (j *jsonRenderer) renderTableContentJSON(table *TableContent) ([]byte, error) {
-	result := make(map[string]any)
+	return json.MarshalIndent(j.buildTableContentJSON(table), "", "  ")
+}
+
+// buildTableContentJSON builds the ordered JSON structure for table content.
+// Record objects serialize their keys in the user-specified order (the
+// library's core guarantee); the envelope is title, schema, data.
+func (j *jsonRenderer) buildTableContentJSON(table *TableContent) orderedJSONObject {
+	var result orderedJSONObject
 
 	if table.Title() != "" {
-		result[keyTitle] = table.Title()
+		result = append(result, jsonMember{keyTitle, table.Title()})
 	}
 
-	// Convert records to ordered map preserving key order
 	keyOrder := table.getSchema().GetKeyOrder()
-	var tableData []map[string]any
 
+	var tableData []any
 	for _, record := range table.Records() {
-		// Create ordered map that preserves key order for JSON marshaling
-		orderedRecord := make(map[string]any)
-
-		// Add keys in the specified order
+		// Build an ordered record preserving key order
+		var orderedRecord orderedJSONObject
 		for _, key := range keyOrder {
 			if val, exists := record[key]; exists {
 				// Find field for this key to apply formatter
 				field := table.getSchema().FindField(key)
 				// Process field value and handle CollapsibleValue
-				processedVal := j.formatValueForJSON(val, field)
-				orderedRecord[key] = processedVal
+				orderedRecord = append(orderedRecord, jsonMember{key, j.formatValueForJSON(val, field)})
 			}
 		}
-
 		tableData = append(tableData, orderedRecord)
 	}
 
-	result[keyData] = tableData
-	result["schema"] = map[string]any{
-		keyKeys:   keyOrder,
-		keyFields: j.convertFieldsToJSON(table.getSchema()),
-	}
-
-	return json.MarshalIndent(result, "", "  ")
+	return append(result,
+		jsonMember{"schema", orderedJSONObject{
+			{keyKeys, keyOrder},
+			{keyFields, j.convertFieldsToJSON(table.getSchema())},
+		}},
+		jsonMember{keyData, tableData},
+	)
 }
 
 // formatValueForJSON processes field values and handles CollapsibleValue interface
@@ -277,12 +340,6 @@ func (j *jsonRenderer) renderRawContentJSON(raw *RawContent) ([]byte, error) {
 
 // renderSectionContentJSON renders section content as JSON with nested content
 func (j *jsonRenderer) renderSectionContentJSON(ctx context.Context, section *SectionContent) ([]byte, error) {
-	result := map[string]any{
-		keyType:  contentTypeNameSection,
-		keyTitle: section.Title(),
-		keyLevel: section.Level(),
-	}
-
 	var contents []any
 	for _, content := range section.Contents() {
 		// Apply per-content transformations before rendering
@@ -296,14 +353,16 @@ func (j *jsonRenderer) renderSectionContentJSON(ctx context.Context, section *Se
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}
 
-		var contentData any
-		if err := json.Unmarshal(contentJSON, &contentData); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal content JSON: %w", err)
-		}
-		contents = append(contents, contentData)
+		// Embed the rendered JSON verbatim to keep nested key order intact
+		contents = append(contents, json.RawMessage(contentJSON))
 	}
 
-	result["contents"] = contents
+	result := orderedJSONObject{
+		{keyType, contentTypeNameSection},
+		{keyTitle, section.Title()},
+		{keyLevel, section.Level()},
+		{"contents", contents},
+	}
 
 	return json.MarshalIndent(result, "", "  ")
 }
@@ -330,234 +389,33 @@ func (j *jsonRenderer) convertFieldsToJSON(schema *Schema) []map[string]any {
 func (j *jsonRenderer) renderTableContentJSONStream(table *TableContent, w io.Writer) error {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-
-	// Create structure step by step to avoid loading all data in memory
-	result := make(map[string]any)
-
-	if table.Title() != "" {
-		result[keyTitle] = table.Title()
-	}
-
-	// Add schema information
-	keyOrder := table.getSchema().GetKeyOrder()
-	result["schema"] = map[string]any{
-		keyKeys:   keyOrder,
-		keyFields: j.convertFieldsToJSON(table.getSchema()),
-	}
-
-	// For streaming, we need to handle data differently
-	// First write the opening structure
-	if _, err := w.Write([]byte("{\n")); err != nil {
-		return fmt.Errorf("failed to write opening brace: %w", err)
-	}
-
-	if table.Title() != "" {
-		if _, err := fmt.Fprintf(w, "  \"title\": %q,\n", table.Title()); err != nil {
-			return fmt.Errorf("failed to write title: %w", err)
-		}
-	}
-
-	// Write schema
-	if _, err := w.Write([]byte("  \"schema\": {\n")); err != nil {
-		return fmt.Errorf("failed to write schema header: %w", err)
-	}
-
-	// Write keys
-	if _, err := w.Write([]byte("    \"keys\": [\n")); err != nil {
-		return fmt.Errorf("failed to write keys header: %w", err)
-	}
-	for i, key := range keyOrder {
-		if i > 0 {
-			if _, err := w.Write([]byte(",\n")); err != nil {
-				return fmt.Errorf("failed to write key separator: %w", err)
-			}
-		}
-		if _, err := fmt.Fprintf(w, "      %q", key); err != nil {
-			return fmt.Errorf("failed to write key: %w", err)
-		}
-	}
-	if _, err := w.Write([]byte("\n    ],\n")); err != nil {
-		return fmt.Errorf("failed to write keys footer: %w", err)
-	}
-
-	// Write fields
-	if _, err := w.Write([]byte("    \"fields\": [\n")); err != nil {
-		return fmt.Errorf("failed to write fields header: %w", err)
-	}
-	fields := j.convertFieldsToJSON(table.getSchema())
-	for i, field := range fields {
-		if i > 0 {
-			if _, err := w.Write([]byte(",\n")); err != nil {
-				return fmt.Errorf("failed to write field separator: %w", err)
-			}
-		}
-		fieldJSON, err := json.MarshalIndent(field, "      ", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal field: %w", err)
-		}
-		if _, err := w.Write([]byte("      ")); err != nil {
-			return fmt.Errorf("failed to write field indent: %w", err)
-		}
-		if _, err := w.Write(fieldJSON); err != nil {
-			return fmt.Errorf("failed to write field JSON: %w", err)
-		}
-	}
-	if _, err := w.Write([]byte("\n    ]\n")); err != nil {
-		return fmt.Errorf("failed to write fields footer: %w", err)
-	}
-	if _, err := w.Write([]byte("  },\n")); err != nil {
-		return fmt.Errorf("failed to write schema footer: %w", err)
-	}
-
-	// Stream data records
-	if _, err := w.Write([]byte("  \"data\": [\n")); err != nil {
-		return fmt.Errorf("failed to write data header: %w", err)
-	}
-	records := table.Records()
-	for i, record := range records {
-		if i > 0 {
-			if _, err := w.Write([]byte(",\n")); err != nil {
-				return fmt.Errorf("failed to write record separator: %w", err)
-			}
-		}
-
-		// Create ordered record preserving key order
-		orderedRecord := make(map[string]any)
-		for _, key := range keyOrder {
-			if val, exists := record[key]; exists {
-				// Find field for this key to apply formatter
-				field := table.getSchema().FindField(key)
-				// Process field value and handle CollapsibleValue
-				processedVal := j.formatValueForJSON(val, field)
-				orderedRecord[key] = processedVal
-			}
-		}
-
-		recordJSON, err := json.MarshalIndent(orderedRecord, "    ", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal record: %w", err)
-		}
-		if _, err := w.Write([]byte("    ")); err != nil {
-			return fmt.Errorf("failed to write record indent: %w", err)
-		}
-		if _, err := w.Write(recordJSON); err != nil {
-			return fmt.Errorf("failed to write record JSON: %w", err)
-		}
-	}
-	if _, err := w.Write([]byte("\n  ]\n")); err != nil {
-		return fmt.Errorf("failed to write data footer: %w", err)
-	}
-	if _, err := w.Write([]byte("}\n")); err != nil {
-		return fmt.Errorf("failed to write closing brace: %w", err)
-	}
-
-	return nil
+	return encoder.Encode(j.buildTableContentJSON(table))
 }
 
 // renderTextContentJSONStream renders text content as JSON to writer
 func (j *jsonRenderer) renderTextContentJSONStream(text *TextContent, w io.Writer) error {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-
-	result := map[string]any{
-		keyType:    FormatText,
-		keyContent: text.Text(),
-	}
-
-	style := text.Style()
-	if style.Bold || style.Italic || style.Color != "" || style.Size > 0 || style.Header {
-		result["style"] = map[string]any{
-			keyBold:   style.Bold,
-			keyItalic: style.Italic,
-			keyColor:  style.Color,
-			keySize:   style.Size,
-			keyHeader: style.Header,
-		}
-	}
-
-	return encoder.Encode(result)
+	return encoder.Encode(buildTextContentData(text))
 }
 
 // renderRawContentJSONStream renders raw content as JSON to writer
 func (j *jsonRenderer) renderRawContentJSONStream(raw *RawContent, w io.Writer) error {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-
-	result := map[string]any{
-		keyType:   contentTypeNameRaw,
-		keyFormat: raw.Format(),
-		keyData:   string(raw.Data()),
-	}
-
-	return encoder.Encode(result)
+	return encoder.Encode(buildRawContentData(raw))
 }
 
 // renderSectionContentJSONStream renders section content as JSON to writer
 func (j *jsonRenderer) renderSectionContentJSONStream(ctx context.Context, section *SectionContent, w io.Writer) error {
-	// For sections with nested content, we need a more complex streaming approach
-	if _, err := w.Write([]byte("{\n")); err != nil {
-		return fmt.Errorf("failed to write opening brace: %w", err)
+	data, err := j.renderSectionContentJSON(ctx, section)
+	if err != nil {
+		return err
 	}
-	if _, err := fmt.Fprintf(w, "  \"type\": \"section\",\n"); err != nil {
-		return fmt.Errorf("failed to write type: %w", err)
-	}
-	if _, err := fmt.Fprintf(w, "  \"title\": %q,\n", section.Title()); err != nil {
-		return fmt.Errorf("failed to write title: %w", err)
-	}
-	if _, err := fmt.Fprintf(w, "  \"level\": %d,\n", section.Level()); err != nil {
-		return fmt.Errorf("failed to write level: %w", err)
-	}
-	if _, err := w.Write([]byte("  \"contents\": [\n")); err != nil {
-		return fmt.Errorf("failed to write contents header: %w", err)
-	}
-
-	contents := section.Contents()
-	for i, content := range contents {
-		if i > 0 {
-			if _, err := w.Write([]byte(",\n")); err != nil {
-				return fmt.Errorf("failed to write content separator: %w", err)
-			}
-		}
-
-		// Apply per-content transformations before rendering
-		transformed, err := applyContentTransformations(ctx, content)
-		if err != nil {
-			return err
-		}
-
-		// Create a buffer for the nested content
-		var buf bytes.Buffer
-		if err := j.renderContentTo(ctx, transformed, &buf); err != nil {
-			return fmt.Errorf("failed to render nested content: %w", err)
-		}
-
-		// Indent the nested content
-		lines := bytes.Split(buf.Bytes(), []byte("\n"))
-		for k, line := range lines {
-			if k > 0 {
-				if _, err := w.Write([]byte("\n")); err != nil {
-					return fmt.Errorf("failed to write line break: %w", err)
-				}
-			}
-			if len(line) > 0 {
-				if _, err := w.Write([]byte("    ")); err != nil {
-					return fmt.Errorf("failed to write indent: %w", err)
-				}
-				if _, err := w.Write(line); err != nil {
-					return fmt.Errorf("failed to write line: %w", err)
-				}
-			}
-		}
-	}
-
-	if _, err := w.Write([]byte("\n  ]\n")); err != nil {
-		return fmt.Errorf("failed to write contents footer: %w", err)
-	}
-	if _, err := w.Write([]byte("}\n")); err != nil {
-		return fmt.Errorf("failed to write closing brace: %w", err)
-	}
-
-	return nil
+	// Match the trailing newline the other stream methods emit via json.Encoder
+	data = append(data, '\n')
+	_, err = w.Write(data)
+	return err
 }
 
 // renderChartContentJSON renders ChartContent as JSON
@@ -626,7 +484,7 @@ func (y *yamlRenderer) SupportsStreaming() bool {
 func (y *yamlRenderer) renderDocumentYAML(ctx context.Context, doc *Document) ([]byte, error) {
 	return renderDocumentGeneric(ctx, doc, "YAML", func(content Content) ([]byte, error) {
 		return y.renderContent(ctx, content)
-	}, yaml.Unmarshal, yaml.Marshal)
+	}, yamlContentNode, yaml.Marshal)
 }
 
 // renderContent renders content specifically for YAML format
@@ -690,6 +548,12 @@ func (y *yamlRenderer) renderContentTo(ctx context.Context, content Content, w i
 
 // renderTableContentYAML renders table content as YAML with key order preservation
 func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, error) {
+	return yaml.Marshal(y.buildTableContentYAMLNode(table))
+}
+
+// buildTableContentYAMLNode builds the yaml.Node structure for table content,
+// preserving user-specified key order in each record mapping.
+func (y *yamlRenderer) buildTableContentYAMLNode(table *TableContent) *yaml.Node {
 	result := &yaml.Node{
 		Kind: yaml.MappingNode,
 	}
@@ -771,7 +635,7 @@ func (y *yamlRenderer) renderTableContentYAML(table *TableContent) ([]byte, erro
 		dataArrayNode,
 	)
 
-	return yaml.Marshal(result)
+	return result
 }
 
 // renderTextContentYAML renders text content as YAML
@@ -807,9 +671,10 @@ func (y *yamlRenderer) renderSectionContentYAML(ctx context.Context, section *Se
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}
 
-		var contentData any
-		if err := yaml.Unmarshal(contentYAML, &contentData); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal content YAML: %w", err)
+		// Re-parse as yaml.Node so nested key order survives re-marshaling
+		contentData, err := yamlContentNode(contentYAML)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse content YAML: %w", err)
 		}
 		contents = append(contents, contentData)
 	}
@@ -898,52 +763,7 @@ func (y *yamlRenderer) renderTableContentYAMLStream(table *TableContent, w io.Wr
 		_ = encoder.Close()
 	}()
 
-	// Create structure manually to preserve key order
-	result := make(map[string]any)
-
-	if table.Title() != "" {
-		result[keyTitle] = table.Title()
-	}
-
-	// Add schema information
-	keyOrder := table.getSchema().GetKeyOrder()
-	fields := make([]map[string]any, 0, len(table.getSchema().Fields))
-	for _, field := range table.getSchema().Fields {
-		fieldMap := map[string]any{
-			keyName:   field.Name,
-			keyType:   field.Type,
-			keyHidden: field.Hidden,
-		}
-		fields = append(fields, fieldMap)
-	}
-
-	result["schema"] = map[string]any{
-		keyKeys:   keyOrder,
-		keyFields: fields,
-	}
-
-	// Convert records to ordered maps preserving key order
-	var tableData []map[string]any
-	for _, record := range table.Records() {
-		orderedRecord := make(map[string]any)
-
-		// Add keys in the specified order
-		for _, key := range keyOrder {
-			if val, exists := record[key]; exists {
-				// Find field for this key to apply formatter
-				field := table.getSchema().FindField(key)
-				// Process field value and handle CollapsibleValue
-				processedVal := y.formatValueForYAML(val, field)
-				orderedRecord[key] = processedVal
-			}
-		}
-
-		tableData = append(tableData, orderedRecord)
-	}
-
-	result[keyData] = tableData
-
-	return encoder.Encode(result)
+	return encoder.Encode(y.buildTableContentYAMLNode(table))
 }
 
 // renderTextContentYAMLStream renders text content as YAML to writer
@@ -953,23 +773,7 @@ func (y *yamlRenderer) renderTextContentYAMLStream(text *TextContent, w io.Write
 		_ = encoder.Close()
 	}()
 
-	result := map[string]any{
-		keyType:    FormatText,
-		keyContent: text.Text(),
-	}
-
-	style := text.Style()
-	if style.Bold || style.Italic || style.Color != "" || style.Size > 0 || style.Header {
-		result["style"] = map[string]any{
-			keyBold:   style.Bold,
-			keyItalic: style.Italic,
-			keyColor:  style.Color,
-			keySize:   style.Size,
-			keyHeader: style.Header,
-		}
-	}
-
-	return encoder.Encode(result)
+	return encoder.Encode(buildTextContentData(text))
 }
 
 // renderRawContentYAMLStream renders raw content as YAML to writer
@@ -979,13 +783,7 @@ func (y *yamlRenderer) renderRawContentYAMLStream(raw *RawContent, w io.Writer) 
 		_ = encoder.Close()
 	}()
 
-	result := map[string]any{
-		keyType:   contentTypeNameRaw,
-		keyFormat: raw.Format(),
-		keyData:   string(raw.Data()),
-	}
-
-	return encoder.Encode(result)
+	return encoder.Encode(buildRawContentData(raw))
 }
 
 // renderSectionContentYAMLStream renders section content as YAML to writer
@@ -1014,9 +812,10 @@ func (y *yamlRenderer) renderSectionContentYAMLStream(ctx context.Context, secti
 			return fmt.Errorf("failed to render nested content: %w", err)
 		}
 
-		var contentData any
-		if err := yaml.Unmarshal(contentYAML, &contentData); err != nil {
-			return fmt.Errorf("failed to unmarshal content YAML: %w", err)
+		// Re-parse as yaml.Node so nested key order survives re-marshaling
+		contentData, err := yamlContentNode(contentYAML)
+		if err != nil {
+			return fmt.Errorf("failed to parse content YAML: %w", err)
 		}
 		contents = append(contents, contentData)
 	}
@@ -1083,11 +882,8 @@ func (j *jsonRenderer) renderCollapsibleSectionJSON(ctx context.Context, section
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}
 
-		var contentData any
-		if err := json.Unmarshal(contentJSON, &contentData); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal section content: %w", err)
-		}
-		contentArray = append(contentArray, contentData)
+		// Embed the rendered JSON verbatim to keep nested key order intact
+		contentArray = append(contentArray, json.RawMessage(contentJSON))
 	}
 
 	result[keyContent] = contentArray // Requirement 15.5: nested content array
@@ -1124,9 +920,10 @@ func (y *yamlRenderer) renderCollapsibleSectionYAML(ctx context.Context, section
 			return nil, fmt.Errorf("failed to render section content: %w", err)
 		}
 
-		var contentData any
-		if err := yaml.Unmarshal(contentYAML, &contentData); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal section content: %w", err)
+		// Re-parse as yaml.Node so nested key order survives re-marshaling
+		contentData, err := yamlContentNode(contentYAML)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse section content: %w", err)
 		}
 		contentArray = append(contentArray, contentData)
 	}

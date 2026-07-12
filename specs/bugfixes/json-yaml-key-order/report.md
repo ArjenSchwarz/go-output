@@ -1,7 +1,7 @@
 # Bugfix Report: JSON/YAML Record Objects Do Not Preserve Key Order
 
 **Date:** 2026-07-12
-**Status:** In progress
+**Status:** Fixed
 **Ticket:** T-1520
 
 ## Description of the Issue
@@ -87,7 +87,64 @@ was invisible to the suite.
 
 ## Resolution for the Issue
 
-_To be filled in after the fix is implemented._
+**Changes made** (all in `v2/json_yaml_renderer.go`; no public API signature
+changes):
+
+- Introduced `orderedJSONObject` (a `[]jsonMember` implementing
+  `json.Marshaler`) that emits object members in slice order. Table envelopes
+  and record objects are built with it in a new `buildTableContentJSON`,
+  shared by the buffered path (`renderTableContentJSON`) and the stream path.
+  The JSON table envelope is now `title, schema, data` with `schema.keys`
+  before `schema.fields` (previously alphabetical), matching YAML.
+- `renderDocumentGeneric`'s unmarshal parameter became a `wrapContentFunc`:
+  the multi-content array now embeds already-rendered bytes —
+  `json.RawMessage` for JSON, parsed `*yaml.Node` (new `yamlContentNode`
+  helper) for YAML — instead of the order-destroying
+  unmarshal→re-marshal round trip. The same replacement was applied to
+  `renderSectionContentJSON`, `renderCollapsibleSectionJSON`,
+  `renderSectionContentYAML`, `renderCollapsibleSectionYAML`, and
+  `renderSectionContentYAMLStream`. The JSON section envelope is now ordered
+  (`type, title, level, contents`).
+- Replaced the ~125-line hand-rolled `renderTableContentJSONStream` (with
+  its dead `json.Encoder` and unused `result` map) with a three-line
+  `json.Encoder` encode of `buildTableContentJSON`;
+  `renderSectionContentJSONStream`'s manual byte emission now reuses the
+  buffered section rendering plus a trailing newline.
+  `renderTextContentJSONStream`/`renderRawContentJSONStream` (and their YAML
+  counterparts) now reuse `buildTextContentData`/`buildRawContentData`
+  instead of re-inlining the same maps.
+- The buffered YAML table construction moved into
+  `buildTableContentYAMLNode`, now shared with
+  `renderTableContentYAMLStream` (previously map-based, so alphabetized).
+
+Net effect on `v2/json_yaml_renderer.go`: 334 lines removed against
+131 added.
+
+**Approach rationale:** follows the remediation prescribed in the ticket:
+order-preserving encoding (custom ordered marshaler for JSON, `yaml.Node`
+for YAML — the mechanism the buffered YAML table path already used
+correctly), composition from rendered bytes rather than lossy round trips,
+and replacement of the fragile hand-rolled stream emitter with the same
+ordered construction through a `json.Encoder`. `json.MarshalIndent` and
+`json.Encoder` re-indent custom-marshaler output, so the compact bytes from
+`orderedJSONObject.MarshalJSON` and embedded `json.RawMessage` values come
+out properly indented.
+
+**Alternatives considered:**
+- Emitting records as arrays of `[key, value]` pairs - Rejected: changes the
+  output shape consumers rely on; record objects must stay objects.
+- A third-party ordered-map JSON library - Rejected: a ~25-line
+  `json.Marshaler` suffices; not worth a dependency.
+- `encoding/json/v2` - Rejected: still experimental behind `GOEXPERIMENT`
+  in Go 1.25.
+- Leaving nested-section/collapsible paths for a follow-up - Rejected: they
+  share the identical defect (round trip through unordered maps), and the
+  flagship guarantee would still fail for any table inside a section.
+
+Known remaining limitation (pre-existing, unchanged): the YAML
+section/collapsible *envelope* keys (`type`, `title`, `level`, ...) are
+still emitted from maps and thus sorted; record data — the subject of the
+guarantee — is ordered everywhere.
 
 ## Regression Test
 
@@ -111,14 +168,25 @@ unordered unmarshal.
 
 ## Affected Files
 
-_To be finalized with the fix._
+| File | Change |
+|------|--------|
+| `v2/json_yaml_renderer.go` | Ordered JSON marshaling, round-trip removal, stream emitter replacement, shared YAML node builder |
+| `v2/json_yaml_key_order_test.go` | New byte-level key-order regression tests (10 tests) |
+| `CHANGELOG.md` | Unreleased → Fixed entry; removed a stray pre-existing merge-conflict marker |
+| `specs/bugfixes/json-yaml-key-order/report.md` | This report |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (`go test -run 'SerializeInKeyOrder' ./...` — 10/10)
+- [x] Full test suite passes (`go test ./...` and `INTEGRATION=1 make test-integration`)
+- [x] Linters/validators pass (`golangci-lint run` — 0 issues; `gofmt -l` clean; `go vet` clean)
+
+**Manual verification:**
+- Rendered a document with a multi-table body and a section-nested table
+  through the public `Output.Render` API to both JSON and YAML with keys
+  `zebra, alpha, mike`: every record object/mapping serializes in exactly
+  that order on every path.
 
 ## Prevention
 
