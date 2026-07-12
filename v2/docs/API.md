@@ -68,9 +68,11 @@ doc := output.New().
     Table("Results", data, output.WithKeys("ID", "Name", "Score", "Status")).
     Build()
 
-// INCORRECT: Relies on map iteration (undefined order)
+// INCORRECT: No explicit order. Map key order is unrecoverable in Go, so
+// columns are alphabetized and a non-fatal ErrTableKeyOrderGuessed warning
+// is recorded on the builder (check builder.Errors()).
 doc := output.New().
-    Table("Results", data). // No WithKeys - order will be random!
+    Table("Results", data). // No WithKeys - columns are alphabetized!
     Build()
 ```
 
@@ -181,7 +183,8 @@ The v2 API eliminates global state by using an immutable Document-Builder patter
 
 A fundamental feature that preserves exact user-specified column ordering:
 
-- Key order is **never** alphabetized or reordered
+- Explicitly specified key order (`WithKeys()`/`WithSchema()`) is **never** alphabetized or reordered
+- Without explicit keys, auto-detection cannot recover key order from Go maps and falls back to alphabetical sorting; `Builder.Table` records a non-fatal `ErrTableKeyOrderGuessed` warning on the builder when this happens
 - Each table maintains its own independent key ordering
 - Supports multiple tables with different key sets
 

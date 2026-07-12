@@ -83,7 +83,7 @@ One of the most critical architectural features is **exact key order preservatio
 - **Field**: Individual column definitions with optional formatters and hidden flags
 - **Table Options**: Functional options pattern (`WithKeys()`, `WithSchema()`, `WithAutoSchema()`) for schema configuration
 
-Key ordering is **never** alphabetized or reordered - it preserves the exact order specified by users, addressing a major limitation of v1.
+Key ordering specified by users (via `WithKeys()`/`WithSchema()`) is **never** alphabetized or reordered - it preserves the exact order specified, addressing a major limitation of v1. Without explicit keys, schema auto-detection cannot recover key order from Go maps and falls back to alphabetical sorting; `Builder.Table` records a non-fatal `ErrTableKeyOrderGuessed` warning (via `Errors()`) when this happens (T-1692).
 
 ### Content Type System
 Four distinct content types with a unified interface:

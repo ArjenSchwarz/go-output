@@ -1,6 +1,7 @@
 package output
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -20,7 +21,7 @@ import (
 func keyOrderWarnings(errs []error) []error {
 	var found []error
 	for _, err := range errs {
-		if err != nil && strings.Contains(err.Error(), "key order") {
+		if errors.Is(err, ErrTableKeyOrderGuessed) {
 			found = append(found, err)
 		}
 	}

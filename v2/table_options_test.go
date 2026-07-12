@@ -65,11 +65,6 @@ func TestWithAutoSchema(t *testing.T) {
 	if !tc.autoSchema {
 		t.Error("Expected autoSchema to be true")
 	}
-
-	// Verify detectOrder is enabled
-	if !tc.detectOrder {
-		t.Error("Expected detectOrder to be true")
-	}
 }
 
 func TestWithAutoSchemaOrdered(t *testing.T) {
@@ -87,11 +82,6 @@ func TestWithAutoSchemaOrdered(t *testing.T) {
 	// Verify keys were set
 	if !reflect.DeepEqual(tc.keys, keys) {
 		t.Errorf("Keys = %v, want %v", tc.keys, keys)
-	}
-
-	// Verify detectOrder is disabled
-	if tc.detectOrder {
-		t.Error("Expected detectOrder to be false when using custom order")
 	}
 }
 
@@ -228,9 +218,6 @@ func TestApplyTableOptions(t *testing.T) {
 	// Last option should win for conflicting settings
 	if !tc.autoSchema {
 		t.Error("Expected autoSchema to be true (last option)")
-	}
-	if !tc.detectOrder {
-		t.Error("Expected detectOrder to be true")
 	}
 
 	// Schema should be from WithSchema (applied before WithAutoSchema)

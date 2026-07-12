@@ -226,13 +226,26 @@ func (b *Builder) AddContent(content Content) *Builder {
 // If table construction fails, the error is recorded on the builder, no
 // content is added, and the chain continues; the built document renders
 // without the failed table. Check HasErrors or Errors after building.
+//
+// Key order can only be preserved when it is specified: if no WithKeys or
+// WithSchema option is given for map data with more than one column, the
+// column order is guessed — alphabetized, because Go map iteration order is
+// unrecoverable — and a non-fatal warning wrapping ErrTableKeyOrderGuessed is
+// recorded on the builder (T-1692). The table is still added and renders
+// normally; filter the warning with errors.Is(err, ErrTableKeyOrderGuessed)
+// if alphabetical order is acceptable.
 func (b *Builder) Table(title string, data any, opts ...TableOption) *Builder {
-	table, err := NewTableContent(title, data, opts...)
+	table, keyOrderGuessed, err := newTableContent(title, data, opts...)
 	if err != nil {
 		b.mu.Lock()
 		b.addError(fmt.Errorf("failed to create table %q: %w", title, err))
 		b.mu.Unlock()
 		return b
+	}
+	if keyOrderGuessed {
+		b.mu.Lock()
+		b.addError(fmt.Errorf("table %q: %w", title, ErrTableKeyOrderGuessed))
+		b.mu.Unlock()
 	}
 	return b.AddContent(table)
 }

@@ -1,7 +1,7 @@
 # Bugfix Report: Optionless Table() Silently Alphabetizes Columns
 
 **Date:** 2026-07-12
-**Status:** In Progress
+**Status:** Fixed
 **Ticket:** T-1692
 
 ## Description of the Issue
@@ -54,7 +54,25 @@ Systematic (Fagan-style) inspection of `v2/table_options.go`, `v2/content.go`, `
 
 ## Resolution for the Issue
 
-_To be completed after the fix is implemented._
+The alphabetical fallback itself is intentionally unchanged — Go map key order is unrecoverable, and per the ticket, requiring explicit order for map data is only viable as a v3 change. The fix makes the guess visible and the documentation honest, and removes the dead scaffold:
+
+**Changes made:**
+- `v2/content.go` - Added the `ErrTableKeyOrderGuessed` sentinel (works with `errors.Is`). Refactored the constructor into an internal `newTableContent` that additionally reports whether auto-detection had to guess (alphabetize) the key order — true when neither `WithSchema` nor `WithKeys` was supplied and the data yielded more than one column. Public `NewTableContent` signature is unchanged; its godoc now states the alphabetical fallback.
+- `v2/document.go` - `Builder.Table` now records `table %q: ErrTableKeyOrderGuessed` as a non-fatal builder error when the order was guessed. The table is still added and renders normally. Godoc documents the warning and how to filter it.
+- `v2/table_options.go` - Removed the dead `tableConfig.detectOrder` field and its writes in `WithAutoSchema`/`WithAutoSchemaOrdered`. Corrected the godocs of `WithAutoSchema` (no longer claims source-order preservation), `DetectSchemaFromData`, and `DetectSchemaFromMap` (both now state the alphabetical fallback).
+- `v2/doc.go` - Key Order Preservation section now distinguishes explicit order (never reordered) from auto-detection (alphabetical fallback plus builder warning); no longer claims "map iteration order".
+- `v2/docs/API.md` - The "INCORRECT" example no longer claims "order will be random!"; it states columns are alphabetized and a warning is recorded. The Key Order Preservation bullets qualify the "never alphabetized" guarantee as applying to explicitly specified order.
+- `v2/CLAUDE.md` - Same qualification of the "never alphabetized" guarantee.
+- `v2/table_options_test.go` - Removed assertions on the deleted `detectOrder` field.
+- `CHANGELOG.md` - Entry under Unreleased/Fixed; also removed a stray `<<<<<<< HEAD` conflict marker committed on main at the top of that section.
+
+**Approach rationale:** The ticket prescribes this exact fix: correct the docs, signal the guess through the existing builder error mechanism (`Errors()`), and remove the dead flag. An internal three-value constructor keeps the public `NewTableContent` API unchanged while giving `Builder.Table` the signal it needs. A sentinel error keeps the warning non-fatal in practice: callers who accept alphabetical order can filter it with `errors.Is` without string matching. Zero- and one-column tables do not warn because there is no order to guess.
+
+**Alternatives considered:**
+- Preserve source key order for map input - Impossible: Go randomizes map iteration and the encounter order is unrecoverable at runtime (explicitly out of scope per ticket).
+- Make optionless map input an error (require explicit order) - Breaking change to the most common call; only viable for v3 (per ticket).
+- Store a `keyOrderGuessed` field on `TableContent` instead of a second constructor - Adds state that `Clone`/sealing would have to reason about; the constructor-return approach keeps the flag transient.
+- Separate warnings channel on the Builder - New API surface for one warning; the ticket explicitly asks for the existing `Errors()` mechanism.
 
 ## Regression Test
 
@@ -74,21 +92,37 @@ Confirmed failing (red) before the fix: the four warning-expected cases fail wit
 
 ## Affected Files
 
-_To be completed after the fix is implemented._
+| File | Change |
+|------|--------|
+| `v2/content.go` | `ErrTableKeyOrderGuessed` sentinel; internal `newTableContent` reporting the guess; corrected `NewTableContent` godoc |
+| `v2/document.go` | `Builder.Table` records the non-fatal warning; godoc documents it |
+| `v2/table_options.go` | Removed dead `detectOrder` field; corrected `WithAutoSchema`/`DetectSchemaFromData`/`DetectSchemaFromMap` godocs |
+| `v2/doc.go` | Corrected Key Order Preservation section |
+| `v2/docs/API.md` | Corrected "order will be random!" example and "never alphabetized" bullet |
+| `v2/CLAUDE.md` | Qualified the "never alphabetized" guarantee |
+| `v2/table_options_test.go` | Removed `detectOrder` assertions |
+| `v2/table_key_order_warning_test.go` | New regression tests |
+| `CHANGELOG.md` | Entry under Unreleased/Fixed; removed stray conflict marker |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (`go test -run "TestBuilderTable_KeyOrder" ./...` — red before fix, green after)
+- [x] Full test suite passes (`make test` and `make test-integration`)
+- [x] Linters/validators pass (`golangci-lint run`: 0 issues; `go fmt ./...`: clean)
+
+Note: `make fmt` fails on the example modules with a pre-existing `go mod tidy` complaint unrelated to this change (fails identically on a clean tree), so formatting and lint were run directly on `v2/`.
 
 **Manual verification:**
-- _To be completed._
+- Confirmed the warning message names the table and reads actionably: `table "x": key order auto-detected from map data and alphabetized; pass WithKeys or WithSchema to control column order`.
+- Confirmed `WithAutoSchemaOrdered` (keys supplied) and explicit `WithKeys`/`WithSchema` never warn, and zero/one-column data never warns.
 
 ## Prevention
 
-_To be completed._
+**Recommendations to avoid similar bugs:**
+- When a documented guarantee cannot be implemented (here: preserving Go map key order), change the docs and add a runtime signal instead of silently substituting different behavior.
+- Avoid speculative config fields (`detectOrder` was written but never read for years); wire a flag to behavior in the same change that introduces it, or don't add it.
+- Non-fatal conditions surfaced through `Builder.Errors()` should wrap a sentinel so callers can filter with `errors.Is` rather than string matching.
 
 ## Related
 
