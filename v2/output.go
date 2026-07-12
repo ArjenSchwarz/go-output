@@ -126,7 +126,12 @@ func WithMetadata(key string, value any) OutputOption {
 	}
 }
 
-// Render processes a document through all configured formats, transformers, and writers
+// Render processes a document through all configured formats, transformers, and writers.
+//
+// Formats are rendered and transformed concurrently, but writes happen in
+// declared format order: each writer receives the formats in the order they
+// were configured (WithFormat/WithFormats), so output sent to a shared writer
+// such as a single StdoutWriter is deterministic across runs.
 func (o *Output) Render(ctx context.Context, doc *Document) error {
 	return SafeExecuteWithTracer(GetGlobalDebugTracer(), "render", func() error {
 		// Validate inputs early
@@ -207,7 +212,13 @@ func validateConfigEntries(formats []Format, transformers []Transformer, writers
 	return nil
 }
 
-// renderWithConfig performs the actual rendering with the given configuration
+// renderWithConfig performs the actual rendering with the given configuration.
+//
+// Rendering and transformation run concurrently (one goroutine per format),
+// but writes are serialized in declared format order: no format's output is
+// written until every earlier-declared format has been written. This makes
+// output to a shared writer (for example a single StdoutWriter) deterministic
+// regardless of how long each format takes to render.
 func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []Format, writers []Writer, transformers []Transformer, progress Progress) error {
 	// Check for cancellation early
 	if IsCancelled(ctx.Err()) {
@@ -219,21 +230,22 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 	progress.SetTotal(totalWork)
 	progress.SetStatus("Starting render process")
 
-	GlobalTrace("render", "starting concurrent processing of %d format(s) to %d writer(s)", len(formats), len(writers))
+	GlobalTrace("render", "starting concurrent rendering of %d format(s)", len(formats))
+
+	// Phase 1: render and transform each format concurrently. Each goroutine
+	// writes only to its own slot of results/renderErrs, so no synchronization
+	// beyond the WaitGroup is needed.
+	results := make([][]byte, len(formats))
+	renderErrs := make([]error, len(formats))
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, totalWork)
-	workDone := 0
-	workMu := sync.Mutex{}
-
-	// Process each format concurrently
-	for _, format := range formats {
+	for i, format := range formats {
 		wg.Add(1)
-		go func(f Format) {
+		go func(idx int, f Format) {
 			defer wg.Done()
 
 			// Use safe execution with panic recovery for each format
-			err := SafeExecuteWithTracer(GetGlobalDebugTracer(), fmt.Sprintf("render-%s", f.Name), func() error {
+			renderErrs[idx] = SafeExecuteWithTracer(GetGlobalDebugTracer(), fmt.Sprintf("render-%s", f.Name), func() error {
 				// Check for cancellation
 				if IsCancelled(ctx.Err()) {
 					return NewCancelledError(fmt.Sprintf("render-%s", f.Name), ctx.Err())
@@ -255,25 +267,49 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 				}
 
 				GlobalTrace("render", "rendered %s format successfully, %d bytes", f.Name, len(data))
-				return o.processFormatData(ctx, f, data, transformers, writers, progress, &workDone, &workMu)
-			})
 
-			if err != nil {
-				errChan <- err
-			}
-		}(format)
+				transformed, err := o.transformFormatData(ctx, f, data, transformers, progress)
+				if err != nil {
+					return err
+				}
+				results[idx] = transformed
+				return nil
+			})
+		}(i, format)
 	}
 
 	// Wait for all renders to complete
-	GlobalTrace("render", "waiting for all format processing to complete")
+	GlobalTrace("render", "waiting for all format rendering to complete")
 	wg.Wait()
-	close(errChan)
+
+	// Phase 2: write sequentially in declared format order so output sent to
+	// shared writers is deterministic. A format that failed to render is
+	// reported but does not prevent later formats from being written.
+	var errs []error
+	workDone := 0
+	for i, format := range formats {
+		if renderErrs[i] != nil {
+			errs = append(errs, renderErrs[i])
+			continue
+		}
+
+		// Release the slot so earlier formats' buffers can be collected while
+		// later formats are still being written (relevant for slow writers).
+		data := results[i]
+		results[i] = nil
+		err := SafeExecuteWithTracer(GetGlobalDebugTracer(), fmt.Sprintf("write-%s", format.Name), func() error {
+			return o.writeFormatData(ctx, format, data, writers, progress, &workDone)
+		})
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
 
 	// Collect all errors using the enhanced error handling system
 	multiErr := NewMultiError("render")
-	multiErr.AddContext("total_formats", len(o.formats))
+	multiErr.AddContext("total_formats", len(formats))
 	multiErr.AddContext("document_contents", len(doc.GetContents()))
-	for err := range errChan {
+	for _, err := range errs {
 		// Add error with source tracking - determine source component from error type
 		component := unknownValue
 		details := make(map[string]any)
@@ -320,8 +356,9 @@ func (o *Output) renderWithConfig(ctx context.Context, doc *Document, formats []
 	return nil
 }
 
-// processFormatData applies transformers and writes the data to all configured writers
-func (o *Output) processFormatData(ctx context.Context, format Format, data []byte, transformers []Transformer, writers []Writer, progress Progress, workDone *int, workMu *sync.Mutex) error {
+// transformFormatData applies transformers to the rendered data and returns
+// the transformed bytes. It runs inside the per-format render goroutines.
+func (o *Output) transformFormatData(ctx context.Context, format Format, data []byte, transformers []Transformer, progress Progress) ([]byte, error) {
 	// Apply transformers to the rendered data in priority order (lower priority
 	// runs first), matching the TransformPipeline contract. Sort a local copy so
 	// the caller's slice is not mutated; SliceStable keeps insertion order for
@@ -341,7 +378,7 @@ func (o *Output) processFormatData(ctx context.Context, format Format, data []by
 			var err error
 			transformedData, err = transformer.Transform(ctx, transformedData, format.Name)
 			if err != nil {
-				return ErrorWithContext("transform", err,
+				return nil, ErrorWithContext("transform", err,
 					"format", format.Name,
 					"transformer", transformer.Name(),
 					"input_size", len(data))
@@ -352,7 +389,15 @@ func (o *Output) processFormatData(ctx context.Context, format Format, data []by
 		}
 	}
 
-	// Write to all configured writers
+	return transformedData, nil
+}
+
+// writeFormatData writes the transformed data to all configured writers in
+// declared writer order. It is called sequentially per format (in declared
+// format order) after all renders have completed, so no synchronization is
+// needed for the workDone progress counter. A write failure stops the
+// remaining writers for this format only.
+func (o *Output) writeFormatData(ctx context.Context, format Format, data []byte, writers []Writer, progress Progress, workDone *int) error {
 	for _, writer := range writers {
 		// Check for cancellation before each write
 		if IsCancelled(ctx.Err()) {
@@ -362,20 +407,17 @@ func (o *Output) processFormatData(ctx context.Context, format Format, data []by
 		GlobalTrace("write", "writing %s format using %T writer", format.Name, writer)
 		progress.SetStatus(fmt.Sprintf("Writing %s format", format.Name))
 
-		err := writer.Write(ctx, format.Name, transformedData)
+		err := writer.Write(ctx, format.Name, data)
 		if err != nil {
 			// Create a detailed writer error with enhanced context
 			writerErr := NewWriterErrorWithDetails(fmt.Sprintf("%T", writer), format.Name, "write", err)
-			writerErr.AddContext("data_size", len(transformedData))
+			writerErr.AddContext("data_size", len(data))
 			writerErr.AddContext("writer_type", fmt.Sprintf("%T", writer))
 			return writerErr
 		}
 
-		// Update progress safely
-		workMu.Lock()
 		*workDone++
 		progress.SetCurrent(*workDone)
-		workMu.Unlock()
 
 		GlobalTrace("write", "successfully wrote %s format using %T writer", format.Name, writer)
 	}
