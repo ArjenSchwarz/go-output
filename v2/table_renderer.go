@@ -114,51 +114,8 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 				result.WriteString("\n")
 			}
 
-			// Render section title with console-friendly formatting
-			fmt.Fprintf(&result, "=== %s ===\n\n", c.Title())
-
-			// Render section contents
-			for j, subContent := range c.Contents() {
-				// Apply per-content transformations before rendering
-				transformed, err := applyContentTransformations(ctx, subContent)
-				if err != nil {
-					return nil, err
-				}
-
-				if subTable, ok := transformed.(*TableContent); ok {
-					if j > 0 {
-						result.WriteString("\n")
-					}
-					tableWriter := t.renderTable(subTable)
-					result.WriteString(tableWriter.Render())
-					result.WriteString("\n")
-				} else if subText, ok := transformed.(*TextContent); ok {
-					if j > 0 {
-						result.WriteString("\n")
-					}
-					result.WriteString(subText.Text())
-					result.WriteString("\n")
-				} else if nestedSection, ok := transformed.(*SectionContent); ok {
-					// Handle nested sections recursively
-					if j > 0 {
-						result.WriteString("\n")
-					}
-					fmt.Fprintf(&result, "=== %s ===\n\n", nestedSection.Title())
-					for k, nestedContent := range nestedSection.Contents() {
-						nestedTransformed, err := applyContentTransformations(ctx, nestedContent)
-						if err != nil {
-							return nil, err
-						}
-						if nestedTable, ok := nestedTransformed.(*TableContent); ok {
-							if k > 0 {
-								result.WriteString("\n")
-							}
-							tableWriter := t.renderTable(nestedTable)
-							result.WriteString(tableWriter.Render())
-							result.WriteString("\n")
-						}
-					}
-				}
+			if err := t.renderSectionTable(ctx, c, &result); err != nil {
+				return nil, err
 			}
 
 		case *RawContent:
@@ -182,6 +139,54 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 	}
 
 	return result.Bytes(), nil
+}
+
+// renderSectionTable recursively renders a section and its contents to any
+// nesting depth (T-1522). It writes the section title, walks the section's
+// contents applying per-content transformations at each level, renders any
+// table or text content it finds, and recurses into nested sections. This
+// replaces an earlier hand-written loop that handled tables/text/sections one
+// level deep but only tables two levels deep, silently dropping nested text
+// and sections nested 3+ levels deep. It mirrors the CSV renderer's
+// renderSectionTablesCSV fix from T-1239.
+func (t *tableRenderer) renderSectionTable(ctx context.Context, section *SectionContent, result *bytes.Buffer) error {
+	// Render section title with console-friendly formatting
+	fmt.Fprintf(result, "=== %s ===\n\n", section.Title())
+
+	for j, subContent := range section.Contents() {
+		// Apply per-content transformations before rendering
+		transformed, err := applyContentTransformations(ctx, subContent)
+		if err != nil {
+			return err
+		}
+
+		switch sub := transformed.(type) {
+		case *TableContent:
+			if j > 0 {
+				result.WriteString("\n")
+			}
+			result.WriteString(t.renderTable(sub).Render())
+			result.WriteString("\n")
+
+		case *TextContent:
+			if j > 0 {
+				result.WriteString("\n")
+			}
+			result.WriteString(sub.Text())
+			result.WriteString("\n")
+
+		case *SectionContent:
+			// Recurse into deeper sections to any depth.
+			if j > 0 {
+				result.WriteString("\n")
+			}
+			if err := t.renderSectionTable(ctx, sub, result); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // renderTable creates a formatted table from TableContent

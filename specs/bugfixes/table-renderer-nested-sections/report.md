@@ -69,9 +69,9 @@ The nested-section branch is a hand-unrolled copy of the outer loop rather than 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (`go test -run 'TestTableRenderer' .`)
+- [x] Full test suite passes (`make test` and `make test-integration`)
+- [x] Linters/validators pass (`make lint` — 0 issues; `gofmt -l` clean)
 
 **Manual verification:**
 - Confirmed the failing-test output before the fix showed exactly the reported drops (depth-3+ subtree and nested text absent).
