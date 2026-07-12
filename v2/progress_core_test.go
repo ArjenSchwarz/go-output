@@ -953,6 +953,66 @@ func TestPrettyProgress_SetContext_Replacement_DoesNotFail(t *testing.T) {
 	p.Close()
 }
 
+// TestPrettyProgress_Close_Idempotent is a regression test for T-1427.
+//
+// Bug: Close() called close(p.signals) unconditionally, so closing a
+// TTY-backed prettyProgress twice — directly, or through repeated
+// Output.Close() calls sharing the same progress instance — panicked with
+// "close of closed channel" on the second call.
+//
+// Expected: Close() is idempotent; repeated calls return nil without
+// panicking.
+func TestPrettyProgress_Close_Idempotent(t *testing.T) {
+	var buf bytes.Buffer
+	p := newTestPrettyProgress(&buf)
+
+	p.SetTotal(100)
+	p.SetCurrent(50)
+
+	if err := p.Close(); err != nil {
+		t.Fatalf("first Close() should not return error, got %v", err)
+	}
+
+	// Before the fix this second call panicked with "close of closed channel".
+	if err := p.Close(); err != nil {
+		t.Errorf("second Close() should not return error, got %v", err)
+	}
+}
+
+// TestTextProgress_Close_Idempotent verifies textProgress.Close is safe to
+// call repeatedly (companion coverage for T-1427; textProgress never had the
+// panic path, this pins the behaviour).
+func TestTextProgress_Close_Idempotent(t *testing.T) {
+	var buf bytes.Buffer
+	progress := NewProgress(
+		WithProgressWriter(&buf),
+		WithUpdateInterval(0),
+	)
+
+	progress.SetTotal(10)
+	progress.Complete()
+
+	if err := progress.Close(); err != nil {
+		t.Fatalf("first Close() should not return error, got %v", err)
+	}
+	if err := progress.Close(); err != nil {
+		t.Errorf("second Close() should not return error, got %v", err)
+	}
+}
+
+// TestNoOpProgress_Close_Idempotent verifies noOpProgress.Close is safe to
+// call repeatedly (companion coverage for T-1427).
+func TestNoOpProgress_Close_Idempotent(t *testing.T) {
+	progress := NewNoOpProgress()
+
+	if err := progress.Close(); err != nil {
+		t.Fatalf("first Close() should not return error, got %v", err)
+	}
+	if err := progress.Close(); err != nil {
+		t.Errorf("second Close() should not return error, got %v", err)
+	}
+}
+
 func TestPrettyProgress_FailureHandling(t *testing.T) {
 	var buf bytes.Buffer
 	progress := NewPrettyProgress(WithProgressWriter(&buf))
