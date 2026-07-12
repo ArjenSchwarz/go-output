@@ -1,7 +1,7 @@
 # Bugfix Report: EnhancedEmojiTransformer Corrupts Embedded Indicator Words
 
 **Date:** 2026-07-12
-**Status:** In Progress
+**Status:** Fixed
 **Ticket:** T-1509
 
 ## Description of the Issue
@@ -70,7 +70,32 @@ existing test covered embedded indicator words for this type.
 
 ## Resolution for the Issue
 
-_To be completed after the fix is implemented._
+**Changes made:**
+- `v2/format_aware.go` - Replaced the unanchored `strings.ReplaceAll` calls for
+  word indicators in the Markdown and HTML branches with word-boundary regex
+  replacements, defined in a package-level `enhancedEmojiReplacements` table
+  (compiled once at package load, mirroring the base transformer's
+  `emojiIndicatorReplacements`). Each format keeps its deliberate replacement
+  set: Markdown converts only standalone `OK`; HTML converts standalone `OK`,
+  `Yes`, and `No` to HTML entities. The `!!` indicator remains a plain
+  substring replacement because word boundaries do not apply to punctuation.
+  The `case "markdown"` literal was also changed to the `FormatMarkdown`
+  constant for consistency.
+
+**Approach rationale:** Matches the standalone-indicator semantics established
+by T-1267 for the base transformer while preserving the enhanced transformer's
+format-specific behaviour (conservative Markdown set, HTML entity encoding).
+Minimal, isolated change in a single file.
+
+**Alternatives considered:**
+- Delegate to the base `EmojiTransformer.Transform` and post-process emoji into
+  HTML entities - Rejected: it would silently change the Markdown branch's
+  behaviour (the base transformer also converts `Yes`/`No`/`true`/`false`,
+  while the Markdown branch is deliberately conservative) and would need an
+  emoji-to-entity mapping pass for HTML, adding complexity without benefit.
+- Delete the "Enhanced" layer since it has no production callers - Rejected:
+  removing exported types is a breaking change reserved for a future major
+  version (v3 decision), out of scope for this bugfix.
 
 ## Regression Test
 
@@ -90,14 +115,14 @@ emoji in Markdown; `OK`/`Yes`/`No` -> HTML entities in HTML).
 |------|--------|
 | `v2/format_aware.go` | Word-boundary regex replacement for word indicators in Markdown/HTML branches |
 | `v2/format_aware_test.go` | Added regression test for embedded indicator words |
-| `v2/CHANGELOG.md` | Added Unreleased/Fixed entry |
+| `CHANGELOG.md` | Added Unreleased/Fixed entry; removed a stray committed `<<<<<<< HEAD` merge marker adjacent to it |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (all 6 subtests)
+- [x] Full test suite passes (unit and `INTEGRATION=1` runs)
+- [x] Linters/validators pass (`golangci-lint run`: 0 issues; `gofmt`: clean)
 
 **Manual verification:**
 - Confirmed the regression tests fail before the fix with exactly the
