@@ -149,6 +149,11 @@ func (b *Builder) AddContent(content Content) *Builder {
 		return b
 	}
 
+	// The document shares these exact content pointers and must remain
+	// immutable after Build(), so seal the content against in-place
+	// mutation through Transform (T-1677).
+	sealContents(content)
+
 	b.doc.contents = append(b.doc.contents, content)
 	return b
 }

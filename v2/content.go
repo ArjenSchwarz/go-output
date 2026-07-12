@@ -86,6 +86,11 @@ type TableContent struct {
 	schema          *Schema
 	records         []Record
 	transformations []Operation
+
+	// sealed marks this table as attached to a document. Documents are
+	// immutable after Build(), so mutating methods (Transform) refuse to
+	// modify sealed content (T-1677). Clones are never sealed.
+	sealed atomic.Bool
 }
 
 // NewTableContent creates a new table content with the given data and options
@@ -166,7 +171,16 @@ func (t *TableContent) Records() []Record {
 	return records
 }
 
-// Clone creates a deep copy of the TableContent
+// seal marks the table as attached to a document, disabling in-place
+// mutation through Transform. See sealContents in transform_data.go.
+func (t *TableContent) seal() {
+	t.sealed.Store(true)
+}
+
+// Clone creates a deep copy of the TableContent.
+//
+// The clone is never sealed: cloning is the sanctioned way to transform
+// data that originated from a built (immutable) document.
 func (t *TableContent) Clone() Content {
 	// Deep copy records
 	newRecords := make([]Record, len(t.records))

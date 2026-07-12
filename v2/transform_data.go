@@ -87,7 +87,10 @@ type TransformableContent interface {
 	// Clone creates a deep copy for transformation
 	Clone() Content
 
-	// Transform applies a transformation function
+	// Transform applies a transformation function. Implementations may
+	// refuse content that is attached to a document, because documents
+	// are immutable after Build(); call Clone() and transform the copy
+	// instead (see TableContent.Transform).
 	Transform(fn TransformFunc) error
 }
 
@@ -97,9 +100,25 @@ type TransformFunc func(data any) (any, error)
 // Ensure TableContent implements TransformableContent
 var _ TransformableContent = (*TableContent)(nil)
 
-// Transform applies a transformation function to the table's records
+// Transform applies a transformation function to the table's records.
+//
+// The function receives a copy of the records (a new slice with new
+// record maps, as returned by Records()), so replacing records or
+// top-level record fields never affects the table and a failed
+// transformation leaves the table's records unchanged; the table is only
+// updated when fn succeeds and returns a []Record. Values nested inside
+// a record (maps, slices, pointers) are shared with the table, matching
+// Records() semantics.
+//
+// Tables attached to a document are sealed and cannot be transformed,
+// because documents are immutable after Build() (T-1677). Call Clone()
+// and transform the copy instead.
 func (tc *TableContent) Transform(fn TransformFunc) error {
-	result, err := fn(tc.records)
+	if tc.sealed.Load() {
+		return fmt.Errorf("cannot transform table content %q: it belongs to a document and documents are immutable after Build(); call Clone() and transform the copy instead", tc.title)
+	}
+
+	result, err := fn(tc.Records())
 	if err != nil {
 		return fmt.Errorf("transformation failed: %w", err)
 	}
@@ -111,4 +130,39 @@ func (tc *TableContent) Transform(fn TransformFunc) error {
 
 	tc.records = records
 	return nil
+}
+
+// sealContents recursively seals every TableContent reachable from content.
+// The builder calls this when content is attached to a document: from that
+// moment the document shares the exact content pointers and must remain
+// immutable after Build(), so in-place mutation through Transform is
+// refused (T-1677). Recursion covers tables nested in sections and
+// collapsible sections, including sections the caller constructed directly
+// (e.g. via NewCollapsibleSection or NewCollapsibleTable).
+//
+// Typed-nil pointers are ignored: Builder.AddContent's nil check only
+// catches an untyped nil interface, so a typed nil such as
+// (*SectionContent)(nil) reaches this walk and must not be dereferenced.
+func sealContents(content Content) {
+	switch c := content.(type) {
+	case *TableContent:
+		if c == nil {
+			return
+		}
+		c.seal()
+	case *SectionContent:
+		if c == nil {
+			return
+		}
+		for _, child := range c.contents {
+			sealContents(child)
+		}
+	case *DefaultCollapsibleSection:
+		if c == nil {
+			return
+		}
+		for _, child := range c.content {
+			sealContents(child)
+		}
+	}
 }
