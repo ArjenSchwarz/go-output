@@ -27,7 +27,7 @@ type FileWriter struct {
 	pattern              string            // e.g., "report-{format}.{ext}"
 	extensions           map[string]string // format to extension mapping
 	allowAbsolute        bool              // Allow absolute paths in filenames
-	mu                   sync.Mutex        // For concurrent access protection
+	mu                   sync.Mutex        // Guards file operations and the extensions map
 	appendMode           bool              // Enable append mode instead of replace
 	permissions          os.FileMode       // File permissions (default 0644)
 	disallowUnsafeAppend bool              // Prevent appending to JSON/YAML
@@ -84,6 +84,11 @@ func (fw *FileWriter) Write(ctx context.Context, format string, data []byte) (re
 		return err
 	}
 
+	// Lock before generating the filename: generateFilename reads the
+	// extensions map, which SetExtension may mutate concurrently (T-1629).
+	fw.mu.Lock()
+	defer fw.mu.Unlock()
+
 	// Generate filename from pattern
 	filename, err := fw.generateFilename(format)
 	if err != nil {
@@ -94,10 +99,6 @@ func (fw *FileWriter) Write(ctx context.Context, format string, data []byte) (re
 	if err := fw.validateFilename(filename); err != nil {
 		return fw.wrapError(format, err)
 	}
-
-	// Write the file with proper locking
-	fw.mu.Lock()
-	defer fw.mu.Unlock()
 
 	// Create the full file path
 	var fullPath string
