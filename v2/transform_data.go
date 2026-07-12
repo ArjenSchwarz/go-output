@@ -87,7 +87,10 @@ type TransformableContent interface {
 	// Clone creates a deep copy for transformation
 	Clone() Content
 
-	// Transform applies a transformation function
+	// Transform applies a transformation function. Implementations may
+	// refuse content that is attached to a document, because documents
+	// are immutable after Build(); call Clone() and transform the copy
+	// instead (see TableContent.Transform).
 	Transform(fn TransformFunc) error
 }
 
@@ -99,10 +102,13 @@ var _ TransformableContent = (*TableContent)(nil)
 
 // Transform applies a transformation function to the table's records.
 //
-// The function receives a deep copy of the records, so mutations of the
-// passed-in data never alias the table's internal state and a failed
-// transformation leaves the table unchanged; the table is only updated
-// when fn succeeds and returns a []Record.
+// The function receives a copy of the records (a new slice with new
+// record maps, as returned by Records()), so replacing records or
+// top-level record fields never affects the table and a failed
+// transformation leaves the table's records unchanged; the table is only
+// updated when fn succeeds and returns a []Record. Values nested inside
+// a record (maps, slices, pointers) are shared with the table, matching
+// Records() semantics.
 //
 // Tables attached to a document are sealed and cannot be transformed,
 // because documents are immutable after Build() (T-1677). Call Clone()

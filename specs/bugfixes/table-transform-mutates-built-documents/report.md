@@ -24,7 +24,7 @@ Structured inspection of the mutation and render paths.
 - **Code inspected:** `v2/transform_data.go` (`Transform`, `TransformableContent`), `v2/document.go` (`GetContents`, `Builder.AddContent`, `Build`), `v2/content.go` (`TableContent`, `Clone`, `Records`, `Schema`), `v2/renderer.go` (`applyContentTransformations`), `v2/operations.go` (operation `Apply` implementations), `v2/collapsible_section.go`.
 - **Hypotheses tested:**
   - *Internal pipeline relies on in-place Transform mutation* — ruled out: the render pipeline is clone-based (`applyContentTransformations` clones before applying operations; every operation `Apply` clones the table). No non-test code calls `(*TableContent).Transform`.
-  - *Other TableContent mutation vectors* — ruled out: `Records()` returns deep copies, `Schema()` returns a defensive clone (fixed previously). `Transform` was the remaining public mutation path.
+  - *Other TableContent mutation vectors* — ruled out: `Records()` returns defensive copies (new slice, new record maps; nested values shared), `Schema()` returns a defensive clone (fixed previously). `Transform` was the remaining public mutation path.
 
 ## Discovered Root Cause
 
@@ -43,7 +43,7 @@ Structured inspection of the mutation and render paths.
 
 **Changes made:**
 - `v2/content.go` - Added an unexported `sealed atomic.Bool` field to `TableContent` with a `seal()` method; `Clone()` intentionally returns an unsealed copy (the sanctioned escape hatch for transforming document data).
-- `v2/transform_data.go` - `Transform` now returns an error when the table is sealed (attached to a document), and hands the transformation function a deep copy of the records (via `Records()`) so a failed transform cannot corrupt the table and the function cannot alias internal record maps. Added `sealContents` helper that recursively seals tables nested in sections and collapsible sections; it guards against typed-nil pointers, which pass `AddContent`'s untyped-nil interface check.
+- `v2/transform_data.go` - `Transform` now returns an error when the table is sealed (attached to a document), and hands the transformation function a copy of the records via `Records()` (new slice, new record maps; nested reference values are shared, matching `Records()` semantics) so a failed transform cannot corrupt the table's records and the function cannot alias internal record maps. Added `sealContents` helper that recursively seals tables nested in sections and collapsible sections; it guards against typed-nil pointers, which pass `AddContent`'s untyped-nil interface check.
 - `v2/document.go` - `Builder.AddContent` calls `sealContents(content)`; every builder path (including `Section`/`CollapsibleSection` sub-builders and `AddCollapsibleTable`) routes through it, so all tables reachable from a document get sealed.
 
 **Approach rationale:** The ticket allows either making built contents non-mutable through public APIs or scoping `Transform` so it cannot mutate attached content. Sealing at attach time keeps the exported `TransformableContent` interface intact (no breaking signature change), matches the existing enforcement pattern (T-1689 records errors for post-`Build()` builder mutations), and closes the race: a sealed `Transform` returns before touching `tc.records`. Sealing at `AddContent` rather than `Build()` is strictly safer (the builder shares the pointer from that moment) and avoids restructuring `Build()`/`GetContents()`, which T-1543 is modifying in parallel.
@@ -72,7 +72,7 @@ Structured inspection of the mutation and render paths.
 | File | Change |
 |------|--------|
 | `v2/content.go` | `sealed` flag + `seal()` on `TableContent`; `Clone()` documents unsealed copies |
-| `v2/transform_data.go` | Sealed check and records deep-copy in `Transform`; `sealContents` helper |
+| `v2/transform_data.go` | Sealed check and records copy in `Transform`; `sealContents` helper |
 | `v2/document.go` | `Builder.AddContent` seals attached content |
 | `v2/transform_data_immutability_test.go` | Regression tests |
 
