@@ -35,7 +35,14 @@ The ticket identified the exact defect site, and inspection confirmed it and rul
 
 ## Resolution for the Issue
 
-_Pending — filled in after the fix is implemented._
+**Changes made:**
+- `v2/markdown_renderer.go:266` - Wrap `style.Color` in `html.EscapeString()` before embedding it in the `style` attribute (with the `html` import added). This matches the HTML renderer's handling at `v2/html_renderer.go:237`.
+
+**Approach rationale:** `html.EscapeString` escapes `"`, `'`, `&`, `<`, and `>`, which neutralises both attribute breakout and element injection while leaving legitimate CSS color values (`red`, `#ff0000`, `rgb(1,2,3)`) untouched. Using the same function as the HTML renderer keeps behaviour consistent across renderers, as requested by the ticket. `TextStyle.Size` needs no change: it is an `int` formatted with `%d` and cannot carry a payload.
+
+**Alternatives considered:**
+- Validate the color against a CSS color allowlist/regex and drop invalid values - Rejected: stricter than the HTML renderer (the same input would produce different output per renderer), and maintaining an allowlist of valid CSS color syntax is more code for no additional safety over escaping.
+- Extract a shared styled-span helper used by both renderers - Rejected for this fix: a larger refactor than the bug warrants; the renderers build their spans differently (the HTML renderer also emits CSS classes).
 
 ## Regression Test
 
@@ -57,9 +64,9 @@ _Pending — filled in after the fix is implemented._
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (`go test -run TestMarkdownRenderer_TextStyleColorEscaping ./...`)
+- [x] Full test suite passes (`make test`)
+- [x] Linters/validators pass (`golangci-lint run`: 0 issues; `gofmt -l`: clean; `go vet`: clean)
 
 **Manual verification:**
 - Confirmed the existing `TestMarkdownRenderer_TextStyling` expectation (`<span style="color: red; font-size: 14px">`) still holds, since benign color values are unchanged by escaping.
