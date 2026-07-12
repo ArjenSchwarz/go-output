@@ -1058,6 +1058,58 @@ func TestPrettyProgress_HandleSignals_NilContext_DoesNotPanic(t *testing.T) {
 	}
 }
 
+// TestPrettyProgress_SetContext_SignalGoroutine_NoRace is a regression test
+// for T-1429: handleSignals evaluated p.contextDone(), which read the shared
+// p.ctx field without holding p.mu, while SetContext wrote p.ctx under the
+// mutex. Running the signal loop concurrently with SetContext is a data race
+// detectable with `go test -race`.
+//
+// Expected: reads and writes of p.ctx are synchronized, so driving the signal
+// loop while SetContext replaces the context is race-free.
+//
+// Note: SetContext must run in a different goroutine from the one feeding
+// p.signals — a channel send/receive pair would otherwise create a
+// happens-before edge that hides the race from the detector.
+func TestPrettyProgress_SetContext_SignalGoroutine_NoRace(t *testing.T) {
+	var buf bytes.Buffer
+	p := newTestPrettyProgress(&buf)
+
+	handlerDone := make(chan struct{})
+	go func() {
+		defer close(handlerDone)
+		p.handleSignals()
+	}()
+
+	// Hammer SetContext from a separate goroutine so its writes to p.ctx have
+	// no synchronization edge with the signal loop's reads.
+	setterDone := make(chan struct{})
+	go func() {
+		defer close(setterDone)
+		for range 200 {
+			p.SetContext(context.Background())
+		}
+	}()
+
+	// Feed non-SIGWINCH signals so the loop keeps iterating and re-evaluates
+	// contextDone() on each pass. Stop early if the handler exits (it may
+	// observe a replaced context being cancelled).
+	for range 200 {
+		select {
+		case p.signals <- os.Interrupt:
+		case <-handlerDone:
+		}
+	}
+
+	<-setterDone
+	p.Close()
+
+	select {
+	case <-handlerDone:
+	case <-time.After(time.Second):
+		t.Fatal("handleSignals did not exit after Close")
+	}
+}
+
 func TestPrettyProgress_SignalHandling(t *testing.T) {
 	var buf bytes.Buffer
 	progress := NewPrettyProgress(WithProgressWriter(&buf))
