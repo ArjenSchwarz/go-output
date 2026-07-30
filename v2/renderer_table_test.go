@@ -544,3 +544,35 @@ func TestTableRenderer_NestedRawAndCollapsibleContent(t *testing.T) {
 		t.Errorf("table output missing table row after raw and collapsible content, got %q", out)
 	}
 }
+
+// TestTableRenderer_NestedHeaderTextContent verifies that header-styled text
+// nested inside a section renders with the same upper-cased, underlined format
+// the top-level loop applies. renderSectionTable and renderDocumentTable share
+// a single writeTextContent helper, so a header TextContent must not render as
+// plain text just because it sits inside a section (T-1522 review follow-up).
+func TestTableRenderer_NestedHeaderTextContent(t *testing.T) {
+	header := NewTextContent("deep heading", WithHeader(true))
+
+	inner := NewSectionContent("inner")
+	inner.AddContent(header)
+	outer := NewSectionContent("outer")
+	outer.AddContent(inner)
+
+	doc := New().AddContent(outer).Build()
+
+	result, err := (&tableRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	out := string(result)
+	if !strings.Contains(out, "DEEP HEADING") {
+		t.Errorf("nested header text should be upper-cased like the top level, got %q", out)
+	}
+	if !strings.Contains(out, strings.Repeat("=", len("deep heading"))) {
+		t.Errorf("nested header text should be underlined like the top level, got %q", out)
+	}
+	if strings.Contains(out, "deep heading") {
+		t.Errorf("nested header text should not render verbatim (plain, un-styled), got %q", out)
+	}
+}

@@ -96,18 +96,7 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 				result.WriteString("\n")
 			}
 
-			style := c.Style()
-			text := c.Text()
-
-			if style.Header {
-				// Create a simple header format
-				result.WriteString(strings.ToUpper(text))
-				result.WriteString("\n")
-				result.WriteString(strings.Repeat("=", len(text)))
-			} else {
-				result.WriteString(text)
-			}
-			result.WriteString("\n")
+			writeTextContent(&result, c)
 
 		case *SectionContent:
 			if i > 0 {
@@ -156,6 +145,16 @@ func (t *tableRenderer) renderSectionTable(ctx context.Context, section *Section
 	fmt.Fprintf(result, "=== %s ===\n\n", section.Title())
 
 	for j, subContent := range section.Contents() {
+		// Check for context cancellation. This mirrors renderDocumentTable's
+		// top-level loop: applyContentTransformations only observes ctx when the
+		// content carries transformations, so a deep transformation-free subtree
+		// would otherwise render to completion without honouring cancellation.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		// Apply per-content transformations before rendering
 		transformed, err := applyContentTransformations(ctx, subContent)
 		if err != nil {
@@ -174,8 +173,7 @@ func (t *tableRenderer) renderSectionTable(ctx context.Context, section *Section
 			if j > 0 {
 				result.WriteString("\n")
 			}
-			result.WriteString(sub.Text())
-			result.WriteString("\n")
+			writeTextContent(result, sub)
 
 		case *SectionContent:
 			// Recurse into deeper sections to any depth.
@@ -183,7 +181,7 @@ func (t *tableRenderer) renderSectionTable(ctx context.Context, section *Section
 				result.WriteString("\n")
 			}
 			if err := t.renderSectionTable(ctx, sub, result); err != nil {
-				return err
+				return fmt.Errorf("failed to render section %q: %w", sub.Title(), err)
 			}
 
 		case *RawContent:
@@ -217,6 +215,25 @@ func (t *tableRenderer) renderSectionTable(ctx context.Context, section *Section
 	}
 
 	return nil
+}
+
+// writeTextContent renders a TextContent to result using the console text
+// formatting shared by renderDocumentTable and renderSectionTable: header text
+// is upper-cased and underlined with '=', other text is written verbatim. It is
+// a single definition so nested and top-level text render identically.
+func writeTextContent(result *bytes.Buffer, c *TextContent) {
+	style := c.Style()
+	text := c.Text()
+
+	if style.Header {
+		// Create a simple header format
+		result.WriteString(strings.ToUpper(text))
+		result.WriteString("\n")
+		result.WriteString(strings.Repeat("=", len(text)))
+	} else {
+		result.WriteString(text)
+	}
+	result.WriteString("\n")
 }
 
 // renderTable creates a formatted table from TableContent
