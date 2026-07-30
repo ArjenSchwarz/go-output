@@ -499,3 +499,48 @@ func TestTableRenderer_MultipleTablesAcrossNestingLevels(t *testing.T) {
 		}
 	}
 }
+
+// TestTableRenderer_NestedRawAndCollapsibleContent is a follow-up regression
+// test for T-1522. RawContent and DefaultCollapsibleSection nested inside a
+// SectionContent were silently dropped because renderSectionTable's switch
+// only matched tables, text, and sections, while the top-level switch in
+// renderDocumentTable handles all content types.
+func TestTableRenderer_NestedRawAndCollapsibleContent(t *testing.T) {
+	raw, err := NewRawContent(FormatText, []byte("nested raw survives"))
+	if err != nil {
+		t.Fatalf("failed to create raw content: %v", err)
+	}
+	collapsible := NewCollapsibleSection("nested-collapsible", []Content{
+		NewTextContent("collapsible body"),
+	}, WithSectionExpanded(true))
+	table, err := NewTableContent("users", []map[string]any{{"name": "Alice"}}, WithKeys("name"))
+	if err != nil {
+		t.Fatalf("failed to create table: %v", err)
+	}
+
+	section := NewSectionContent("outer")
+	section.AddContent(raw)
+	section.AddContent(collapsible)
+	section.AddContent(table)
+
+	doc := New().AddContent(section).Build()
+
+	result, err := (&tableRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	out := string(result)
+	if !strings.Contains(out, "nested raw survives") {
+		t.Errorf("table output missing raw content inside section, got %q", out)
+	}
+	if !strings.Contains(out, "=== nested-collapsible ===") {
+		t.Errorf("table output missing collapsible section header inside section, got %q", out)
+	}
+	if !strings.Contains(out, "collapsible body") {
+		t.Errorf("table output missing expanded collapsible body inside section, got %q", out)
+	}
+	if !strings.Contains(out, "Alice") {
+		t.Errorf("table output missing table row after raw and collapsible content, got %q", out)
+	}
+}

@@ -41,7 +41,7 @@ The nested-section branch is a hand-unrolled copy of the outer loop rather than 
 ## Resolution for the Issue
 
 **Changes made:**
-- `v2/table_renderer.go` - Replaced the hand-unrolled `case *SectionContent:` body in `renderDocumentTable` with a call to a new recursive helper `renderSectionTable(ctx, section, result)`, mirroring the T-1239 CSV approach. The helper writes the `=== Title ===` header, applies per-content transformations at every level, renders tables and text exactly as the previous level-1 code did, and recurses into nested sections to any depth.
+- `v2/table_renderer.go` - Replaced the hand-unrolled `case *SectionContent:` body in `renderDocumentTable` with a call to a new recursive helper `renderSectionTable(ctx, section, result)`, mirroring the T-1239 CSV approach. The helper writes the `=== Title ===` header, applies per-content transformations at every level, renders every content type the top-level loop does (tables, text, raw content, collapsible sections, and an `AppendText` fallback for unknown types), and recurses into nested sections to any depth. Handling the full content-type set closes a second instance of the same defect: `RawContent` and `DefaultCollapsibleSection` nested inside a section were also silently dropped (and left a stray blank line), because the original inner loop matched only tables, text, and sections. The `case *SectionContent:` in `renderDocumentTable` now also wraps recursion errors with the section title for context, matching the collapsible-section case.
 
 **Approach rationale:** Recursion matches the recursive shape of the data, so no fixed depth exists to fall off. The helper preserves the existing per-item rendering and separator logic, so output for previously-working documents (depth 1-2 tables, depth-1 text) is unchanged; only previously-dropped content now appears.
 
@@ -52,11 +52,11 @@ The nested-section branch is a hand-unrolled copy of the outer loop rather than 
 ## Regression Test
 
 **Test file:** `v2/renderer_table_test.go`
-**Test names:** `TestTableRenderer_DeeplyNestedSections`, `TestTableRenderer_NestedSectionTextContent`, `TestTableRenderer_MultipleTablesAcrossNestingLevels`
+**Test names:** `TestTableRenderer_DeeplyNestedSections`, `TestTableRenderer_NestedSectionTextContent`, `TestTableRenderer_MultipleTablesAcrossNestingLevels`, `TestTableRenderer_NestedRawAndCollapsibleContent`
 
-**What it verifies:** Tables and innermost section headers render at nesting depths 1, 2, 3, and 5; text content inside a nested section renders; tables at different depths within one hierarchy all render. Mirrors the T-1239 CSV regression tests.
+**What it verifies:** Tables and innermost section headers render at nesting depths 1, 2, 3, and 5; text content inside a nested section renders; tables at different depths within one hierarchy all render; and `RawContent` plus an expanded `DefaultCollapsibleSection` nested inside a section both render alongside a following table. Mirrors the T-1239 CSV regression tests.
 
-**Run command:** `cd v2 && go test -run 'TestTableRenderer_DeeplyNestedSections|TestTableRenderer_NestedSectionTextContent|TestTableRenderer_MultipleTablesAcrossNestingLevels' .`
+**Run command:** `cd v2 && go test -run 'TestTableRenderer_DeeplyNestedSections|TestTableRenderer_NestedSectionTextContent|TestTableRenderer_MultipleTablesAcrossNestingLevels|TestTableRenderer_NestedRawAndCollapsibleContent' .`
 
 ## Affected Files
 

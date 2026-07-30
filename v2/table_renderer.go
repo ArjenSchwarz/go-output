@@ -115,7 +115,7 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 			}
 
 			if err := t.renderSectionTable(ctx, c, &result); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to render section %q: %w", c.Title(), err)
 			}
 
 		case *RawContent:
@@ -143,8 +143,10 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 
 // renderSectionTable recursively renders a section and its contents to any
 // nesting depth (T-1522). It writes the section title, walks the section's
-// contents applying per-content transformations at each level, renders any
-// table or text content it finds, and recurses into nested sections. This
+// contents applying per-content transformations at each level, renders each
+// content type the same way renderDocumentTable does at the top level
+// (tables, text, raw content, collapsible sections, and an AppendText
+// fallback for unknown types), and recurses into nested sections. This
 // replaces an earlier hand-written loop that handled tables/text/sections one
 // level deep but only tables two levels deep, silently dropping nested text
 // and sections nested 3+ levels deep. It mirrors the CSV renderer's
@@ -183,6 +185,34 @@ func (t *tableRenderer) renderSectionTable(ctx context.Context, section *Section
 			if err := t.renderSectionTable(ctx, sub, result); err != nil {
 				return err
 			}
+
+		case *RawContent:
+			if j > 0 {
+				result.WriteString("\n")
+			}
+			result.WriteString(string(sub.Data()))
+			result.WriteString("\n")
+
+		case *DefaultCollapsibleSection:
+			if j > 0 {
+				result.WriteString("\n")
+			}
+			sectionOutput, err := t.renderCollapsibleSection(sub)
+			if err != nil {
+				return fmt.Errorf("failed to render collapsible section: %w", err)
+			}
+			result.Write(sectionOutput)
+
+		default:
+			// Fallback for unknown content types, mirroring renderDocumentTable.
+			if j > 0 {
+				result.WriteString("\n")
+			}
+			contentBytes, err := sub.AppendText(nil)
+			if err != nil {
+				return fmt.Errorf("failed to render content %s: %w", sub.ID(), err)
+			}
+			result.Write(contentBytes)
 		}
 	}
 
