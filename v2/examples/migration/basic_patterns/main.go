@@ -35,7 +35,7 @@ output.Write()`)
 
 	// v2 Implementation
 	doc1 := output.New().
-		Table("", userData). // Auto-detects schema but order may vary
+		Table("", userData). // Auto-detects schema; map key order is unrecoverable, so columns are alphabetized and a non-fatal ErrTableKeyOrderGuessed warning is recorded (use WithKeys/WithSchema to control order)
 		Build()
 
 	out1 := output.NewOutput(

@@ -99,7 +99,9 @@ Confirmed failing (red) before the fix: the four warning-expected cases fail wit
 | `v2/table_options.go` | Removed dead `detectOrder` field; corrected `WithAutoSchema`/`DetectSchemaFromData`/`DetectSchemaFromMap` godocs |
 | `v2/doc.go` | Corrected Key Order Preservation section |
 | `v2/docs/API.md` | Corrected "order will be random!" example and "never alphabetized" bullet |
-| `v2/CLAUDE.md` | Qualified the "never alphabetized" guarantee |
+| `v2/CLAUDE.md` | Qualified the "never alphabetized" guarantee; corrected the Schema Detection note (alphabetical fallback, not map iteration order) |
+| `v2/docs/DOCUMENTATION.md` | Corrected `WithAutoSchema` "key order may vary" comment to state the alphabetical fallback + warning (pre-push review) |
+| `v2/examples/migration/basic_patterns/main.go` | Corrected "order may vary" comment on optionless `Table` (pre-push review) |
 | `v2/table_options_test.go` | Removed `detectOrder` assertions |
 | `v2/table_key_order_warning_test.go` | New regression tests |
 | `CHANGELOG.md` | Entry under Unreleased/Fixed; removed stray conflict marker |

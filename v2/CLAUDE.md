@@ -129,7 +129,7 @@ Key order preservation is tested extensively. When adding new table functionalit
 3. Key order remains consistent across multiple operations
 
 ### Schema Detection
-The `DetectSchemaFromData()` function has limitations due to Go map iteration order. For true order preservation, users should use explicit `WithKeys()` or `WithSchema()` options.
+The `DetectSchemaFromData()` function cannot recover key order from Go maps and falls back to sorting column names alphabetically (not map iteration order). For a specific column order, users should use explicit `WithKeys()` or `WithSchema()` options; `Builder.Table` records a non-fatal `ErrTableKeyOrderGuessed` warning (via `Errors()`) when it has to guess.
 
 ### Migration Context
 This v2 is designed to replace v1 completely. The agents/ directory contains:
