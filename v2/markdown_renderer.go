@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"html"
 	"io"
 	"maps"
 	"os"
@@ -261,7 +262,9 @@ func (m *markdownRenderer) renderTextContentMarkdown(text *TextContent) ([]byte,
 		if style.Color != "" || style.Size > 0 {
 			var htmlAttrs []string
 			if style.Color != "" {
-				htmlAttrs = append(htmlAttrs, fmt.Sprintf("color: %s", style.Color))
+				// Escape the color so it cannot break out of the style
+				// attribute (matches the HTML renderer's handling).
+				htmlAttrs = append(htmlAttrs, fmt.Sprintf("color: %s", html.EscapeString(style.Color)))
 			}
 			if style.Size > 0 {
 				htmlAttrs = append(htmlAttrs, fmt.Sprintf("font-size: %dpx", style.Size))

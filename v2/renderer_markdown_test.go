@@ -213,6 +213,55 @@ func TestMarkdownRenderer_TextStyling(t *testing.T) {
 	}
 }
 
+// TestMarkdownRenderer_TextStyleColorEscaping is a regression test for T-1625:
+// a hostile TextStyle.Color value must not be able to break out of the style
+// attribute of the emitted <span> when the Markdown output is rendered as HTML.
+// The color value must be HTML-escaped, matching the HTML renderer's behaviour.
+func TestMarkdownRenderer_TextStyleColorEscaping(t *testing.T) {
+	tests := map[string]struct {
+		color   string
+		want    string
+		notWant string
+	}{
+		"attribute breakout via double quote": {
+			color: `red" onclick="alert(1)`,
+			// Expected: quotes escaped so the value stays inside the style attribute
+			want: `<span style="color: red&#34; onclick=&#34;alert(1)">`,
+			// Actual (bug): the quote closes the attribute and injects onclick
+			notWant: `onclick="alert(1)"`,
+		},
+		"tag injection via angle brackets": {
+			color: `red"><script>alert(1)</script>`,
+			// Expected: angle brackets escaped so no element can be injected
+			want: `color: red&#34;&gt;&lt;script&gt;alert(1)&lt;/script&gt;`,
+			// Actual (bug): a live <script> element appears in the output
+			notWant: `<script>`,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			doc := New().
+				Text("Styled text", WithTextStyle(TextStyle{Color: tt.color})).
+				Build()
+
+			renderer := &markdownRenderer{headingLevel: 1}
+			result, err := renderer.Render(context.Background(), doc)
+			if err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+
+			got := string(result)
+			if strings.Contains(got, tt.notWant) {
+				t.Errorf("Render() output contains unescaped hostile input %q:\n%s", tt.notWant, got)
+			}
+			if !strings.Contains(got, tt.want) {
+				t.Errorf("Render() output missing escaped style value %q:\n%s", tt.want, got)
+			}
+		})
+	}
+}
+
 func TestMarkdownRenderer_MarkdownEscaping(t *testing.T) {
 	specialText := "Text with *asterisks* and _underscores_ and [brackets] and |pipes|"
 
