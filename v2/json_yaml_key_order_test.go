@@ -294,6 +294,83 @@ func TestYAMLRenderer_CollapsibleSectionTableRecordMappingsSerializeInKeyOrder(t
 	assertRecordKeyOrders(t, yamlRecordKeyOrders(t, result), keyOrderRegressionKeys)
 }
 
+// yamlMappingKeyOrder returns the top-level keys of a YAML mapping in
+// document order, plus the sub-key order of the mapping stored under wantSub
+// (if present).
+func yamlMappingKeyOrder(t *testing.T, out []byte, wantSub string) (keys, subKeys []string) {
+	t.Helper()
+	var root yaml.Node
+	if err := yaml.Unmarshal(out, &root); err != nil {
+		t.Fatalf("failed to parse YAML: %v", err)
+	}
+	if root.Kind != yaml.DocumentNode || len(root.Content) == 0 || root.Content[0].Kind != yaml.MappingNode {
+		t.Fatalf("expected document with top-level mapping, got kind %v", root.Kind)
+	}
+	mapping := root.Content[0]
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		key, value := mapping.Content[i], mapping.Content[i+1]
+		keys = append(keys, key.Value)
+		if key.Value == wantSub && value.Kind == yaml.MappingNode {
+			for k := 0; k+1 < len(value.Content); k += 2 {
+				subKeys = append(subKeys, value.Content[k].Value)
+			}
+		}
+	}
+	return keys, subKeys
+}
+
+// The table envelope order (title, schema, data; schema: keys, fields) is a
+// documented part of the output contract as of T-1520. These tests lock it in
+// so future changes to the envelope are deliberate, not accidental.
+
+func TestJSONRenderer_TableEnvelopeKeyOrder(t *testing.T) {
+	doc := New().
+		Table("test", keyOrderRegressionRecords(), WithKeys(keyOrderRegressionKeys...)).
+		Build()
+
+	result, err := (&jsonRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	wantEnvelope := []string{"title", "schema", "data"}
+	if got := jsonObjectKeyOrder(t, result); !slices.Equal(got, wantEnvelope) {
+		t.Errorf("envelope key order = %v, want %v", got, wantEnvelope)
+	}
+
+	var envelope struct {
+		Schema json.RawMessage `json:"schema"`
+	}
+	if err := json.Unmarshal(result, &envelope); err != nil {
+		t.Fatalf("failed to parse table JSON: %v", err)
+	}
+	wantSchema := []string{"keys", "fields"}
+	if got := jsonObjectKeyOrder(t, envelope.Schema); !slices.Equal(got, wantSchema) {
+		t.Errorf("schema key order = %v, want %v", got, wantSchema)
+	}
+}
+
+func TestYAMLRenderer_TableEnvelopeKeyOrder(t *testing.T) {
+	doc := New().
+		Table("test", keyOrderRegressionRecords(), WithKeys(keyOrderRegressionKeys...)).
+		Build()
+
+	result, err := (&yamlRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	keys, schemaKeys := yamlMappingKeyOrder(t, result, "schema")
+	wantEnvelope := []string{"title", "schema", "data"}
+	if !slices.Equal(keys, wantEnvelope) {
+		t.Errorf("envelope key order = %v, want %v", keys, wantEnvelope)
+	}
+	wantSchema := []string{"keys", "fields"}
+	if !slices.Equal(schemaKeys, wantSchema) {
+		t.Errorf("schema key order = %v, want %v", schemaKeys, wantSchema)
+	}
+}
+
 func TestYAMLRenderer_StreamTableRecordMappingsSerializeInKeyOrder(t *testing.T) {
 	table, err := NewTableContent("test", keyOrderRegressionRecords(), WithKeys(keyOrderRegressionKeys...))
 	if err != nil {

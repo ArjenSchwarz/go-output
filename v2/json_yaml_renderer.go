@@ -340,6 +340,17 @@ func (j *jsonRenderer) renderRawContentJSON(raw *RawContent) ([]byte, error) {
 
 // renderSectionContentJSON renders section content as JSON with nested content
 func (j *jsonRenderer) renderSectionContentJSON(ctx context.Context, section *SectionContent) ([]byte, error) {
+	result, err := j.buildSectionContentJSON(ctx, section)
+	if err != nil {
+		return nil, err
+	}
+	return json.MarshalIndent(result, "", "  ")
+}
+
+// buildSectionContentJSON builds the ordered JSON structure for section
+// content, embedding each nested content's rendered JSON verbatim to keep
+// nested key order intact.
+func (j *jsonRenderer) buildSectionContentJSON(ctx context.Context, section *SectionContent) (orderedJSONObject, error) {
 	var contents []any
 	for _, content := range section.Contents() {
 		// Apply per-content transformations before rendering
@@ -353,18 +364,15 @@ func (j *jsonRenderer) renderSectionContentJSON(ctx context.Context, section *Se
 			return nil, fmt.Errorf("failed to render nested content: %w", err)
 		}
 
-		// Embed the rendered JSON verbatim to keep nested key order intact
 		contents = append(contents, json.RawMessage(contentJSON))
 	}
 
-	result := orderedJSONObject{
+	return orderedJSONObject{
 		{keyType, contentTypeNameSection},
 		{keyTitle, section.Title()},
 		{keyLevel, section.Level()},
 		{"contents", contents},
-	}
-
-	return json.MarshalIndent(result, "", "  ")
+	}, nil
 }
 
 // convertFieldsToJSON converts schema fields to JSON representation
@@ -408,14 +416,13 @@ func (j *jsonRenderer) renderRawContentJSONStream(raw *RawContent, w io.Writer) 
 
 // renderSectionContentJSONStream renders section content as JSON to writer
 func (j *jsonRenderer) renderSectionContentJSONStream(ctx context.Context, section *SectionContent, w io.Writer) error {
-	data, err := j.renderSectionContentJSON(ctx, section)
+	result, err := j.buildSectionContentJSON(ctx, section)
 	if err != nil {
 		return err
 	}
-	// Match the trailing newline the other stream methods emit via json.Encoder
-	data = append(data, '\n')
-	_, err = w.Write(data)
-	return err
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(result)
 }
 
 // renderChartContentJSON renders ChartContent as JSON
