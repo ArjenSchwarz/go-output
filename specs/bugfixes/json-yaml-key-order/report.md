@@ -118,7 +118,7 @@ changes):
   `renderTableContentYAMLStream` (previously map-based, so alphabetized).
 
 Net effect on `v2/json_yaml_renderer.go`: 334 lines removed against
-131 added.
+138 added.
 
 **Approach rationale:** follows the remediation prescribed in the ticket:
 order-preserving encoding (custom ordered marshaler for JSON, `yaml.Node`
@@ -142,9 +142,10 @@ out properly indented.
   flagship guarantee would still fail for any table inside a section.
 
 Known remaining limitation (pre-existing, unchanged): the YAML
-section/collapsible *envelope* keys (`type`, `title`, `level`, ...) are
-still emitted from maps and thus sorted; record data — the subject of the
-guarantee — is ordered everywhere.
+section/collapsible *envelope* keys and the JSON collapsible-section
+*envelope* keys (`type`, `title`, `level`, ...) are still emitted from maps
+and thus sorted (the regular JSON section envelope is now ordered); record
+data — the subject of the guarantee — is ordered everywhere.
 
 ## Regression Test
 
