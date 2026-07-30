@@ -360,6 +360,77 @@ func TestEnhancedEmojiTransformer_FormatSpecificTransform(t *testing.T) {
 	}
 }
 
+// TestEnhancedEmojiTransformer_PreservesEmbeddedIndicatorWords is a regression
+// test for T-1509: the Markdown and HTML branches used raw strings.ReplaceAll
+// for the word indicators (OK/Yes/No), corrupting ordinary words that embed
+// them, e.g. "Notes" became "&#x274C;tes" in HTML and "BROKEN" became "BR✅EN"
+// in Markdown. Word indicators must only be replaced when they appear as
+// standalone words, matching the base EmojiTransformer semantics (T-1267).
+func TestEnhancedEmojiTransformer_PreservesEmbeddedIndicatorWords(t *testing.T) {
+	transformer := NewEnhancedEmojiTransformer()
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		format   string
+		input    string
+		expected string
+	}{
+		"markdown leaves words embedding OK untouched": {
+			format:   FormatMarkdown,
+			input:    "BROKEN build during LOOKUP",
+			expected: "BROKEN build during LOOKUP",
+		},
+		"markdown still converts standalone OK": {
+			format:   FormatMarkdown,
+			input:    "Status: OK",
+			expected: "Status: ✅",
+		},
+		"html leaves Notes and Nobody untouched": {
+			format:   FormatHTML,
+			input:    "Notes: Nobody responded",
+			expected: "Notes: Nobody responded",
+		},
+		"html leaves BROKEN untouched": {
+			format:   FormatHTML,
+			input:    "BROKEN pipeline",
+			expected: "BROKEN pipeline",
+		},
+		"html leaves embedded Yes untouched": {
+			format:   FormatHTML,
+			input:    "Yesterday it worked",
+			expected: "Yesterday it worked",
+		},
+		"html still converts standalone indicators": {
+			format:   FormatHTML,
+			input:    "OK Yes No",
+			expected: "&#x2705; &#x2705; &#x274C;",
+		},
+		"markdown combines !! and word indicator without corrupting embedded words": {
+			format:   FormatMarkdown,
+			input:    "OK!! Notes",
+			expected: "✅⚠️ Notes",
+		},
+		"html combines !! and word indicator without corrupting embedded words": {
+			format:   FormatHTML,
+			input:    "OK!! Notes",
+			expected: "&#x2705;&#x1F6A8; Notes",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := transformer.Transform(ctx, []byte(test.input), test.format)
+			if err != nil {
+				t.Fatalf("EnhancedEmojiTransformer.Transform() error = %v", err)
+			}
+
+			if got := string(result); got != test.expected {
+				t.Errorf("EnhancedEmojiTransformer.Transform() got = %q, want %q", got, test.expected)
+			}
+		})
+	}
+}
+
 // Test EnhancedColorTransformer
 
 func TestEnhancedColorTransformer_CanTransform(t *testing.T) {

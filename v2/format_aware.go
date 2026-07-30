@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -143,6 +144,28 @@ type EnhancedEmojiTransformer struct {
 	detector *FormatDetector
 }
 
+// Format-specific replacement tables for EnhancedEmojiTransformer. Word-based
+// indicators are matched with word boundaries so that only standalone
+// indicators are converted, mirroring the base EmojiTransformer semantics from
+// T-1267. Without boundaries, ordinary text such as "Notes" or "BROKEN" would
+// be corrupted into "&#x274C;tes"/"BR✅EN" (see T-1509). Compiled once at
+// package load since the patterns are constant.
+var enhancedEmojiReplacements = map[string][]struct {
+	pattern     *regexp.Regexp
+	replacement string
+}{
+	FormatMarkdown: {
+		// In markdown, be more conservative with emoji to maintain readability
+		{regexp.MustCompile(`\bOK\b`), "✅"},
+	},
+	FormatHTML: {
+		// In HTML, use emoji but ensure proper encoding
+		{regexp.MustCompile(`\bOK\b`), "&#x2705;"},  // ✅
+		{regexp.MustCompile(`\bYes\b`), "&#x2705;"}, // ✅
+		{regexp.MustCompile(`\bNo\b`), "&#x274C;"},  // ❌
+	},
+}
+
 // NewEnhancedEmojiTransformer creates an enhanced emoji transformer
 func NewEnhancedEmojiTransformer() *EnhancedEmojiTransformer {
 	return &EnhancedEmojiTransformer{
@@ -169,21 +192,22 @@ func (eet *EnhancedEmojiTransformer) Transform(ctx context.Context, input []byte
 
 	output := string(inputCopy)
 
-	// Format-specific emoji substitutions
+	// Format-specific emoji substitutions. The "!!" indicator is punctuation,
+	// so word boundaries (\b) do not apply; it is replaced as a plain
+	// substring. Word-based indicators are handled by the boundary-aware
+	// enhancedEmojiReplacements table below.
 	switch format {
-	case "markdown":
-		// In markdown, be more conservative with emoji to maintain readability
+	case FormatMarkdown:
 		output = strings.ReplaceAll(output, "!!", "⚠️")
-		output = strings.ReplaceAll(output, "OK", "✅")
 	case FormatHTML:
-		// In HTML, use emoji but ensure proper encoding
 		output = strings.ReplaceAll(output, "!!", "&#x1F6A8;") // 🚨
-		output = strings.ReplaceAll(output, "OK", "&#x2705;")  // ✅
-		output = strings.ReplaceAll(output, "Yes", "&#x2705;") // ✅
-		output = strings.ReplaceAll(output, "No", "&#x274C;")  // ❌
 	default:
 		// Default behavior for table, csv, etc.
 		return eet.EmojiTransformer.Transform(ctx, inputCopy, format)
+	}
+
+	for _, r := range enhancedEmojiReplacements[format] {
+		output = r.pattern.ReplaceAllString(output, r.replacement)
 	}
 
 	return []byte(output), nil
