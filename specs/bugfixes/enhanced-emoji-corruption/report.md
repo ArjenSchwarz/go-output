@@ -120,7 +120,7 @@ emoji in Markdown; `OK`/`Yes`/`No` -> HTML entities in HTML).
 ## Verification
 
 **Automated:**
-- [x] Regression test passes (all 6 subtests)
+- [x] Regression test passes (all 8 subtests)
 - [x] Full test suite passes (unit and `INTEGRATION=1` runs)
 - [x] Linters/validators pass (`golangci-lint run`: 0 issues; `gofmt`: clean)
 
