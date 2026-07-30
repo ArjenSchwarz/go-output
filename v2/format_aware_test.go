@@ -405,6 +405,16 @@ func TestEnhancedEmojiTransformer_PreservesEmbeddedIndicatorWords(t *testing.T) 
 			input:    "OK Yes No",
 			expected: "&#x2705; &#x2705; &#x274C;",
 		},
+		"markdown combines !! and word indicator without corrupting embedded words": {
+			format:   FormatMarkdown,
+			input:    "OK!! Notes",
+			expected: "✅⚠️ Notes",
+		},
+		"html combines !! and word indicator without corrupting embedded words": {
+			format:   FormatHTML,
+			input:    "OK!! Notes",
+			expected: "&#x2705;&#x1F6A8; Notes",
+		},
 	}
 
 	for name, test := range tests {
