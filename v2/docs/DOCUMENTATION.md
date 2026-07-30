@@ -213,7 +213,9 @@ schema := output.NewSchema(
 )
 builder.AddTable(data, output.WithSchema(schema))
 
-// Auto-detect schema (Note: key order may vary)
+// Auto-detect schema (Note: map key order is unrecoverable, so columns are
+// alphabetized and a non-fatal ErrTableKeyOrderGuessed warning is recorded;
+// use WithKeys/WithSchema to control column order)
 builder.AddTable(data, output.WithAutoSchema())
 ```
 

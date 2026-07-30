@@ -10,7 +10,6 @@ type tableConfig struct {
 	schema          *Schema
 	keys            []string
 	autoSchema      bool
-	detectOrder     bool
 	transformations []Operation
 }
 
@@ -38,12 +37,18 @@ func WithKeys(keys ...string) TableOption {
 	}
 }
 
-// WithAutoSchema enables automatic schema detection from data
-// When enabled, the system will preserve the order keys appear in the source data
+// WithAutoSchema enables automatic schema detection from data. This is also
+// the default behavior when no schema or keys are provided.
+//
+// Map input has no recoverable key order: Go randomizes map iteration order,
+// so the order keys appear in the source data cannot be preserved. Detection
+// falls back to sorting the column names alphabetically (see
+// DetectSchemaFromMap). Use WithKeys or WithSchema to control column order;
+// Builder.Table records a non-fatal ErrTableKeyOrderGuessed warning when this
+// fallback guessed an order (T-1692).
 func WithAutoSchema() TableOption {
 	return func(tc *tableConfig) {
 		tc.autoSchema = true
-		tc.detectOrder = true
 	}
 }
 
@@ -52,7 +57,6 @@ func WithAutoSchemaOrdered(keys ...string) TableOption {
 	return func(tc *tableConfig) {
 		tc.autoSchema = true
 		tc.keys = keys
-		tc.detectOrder = false
 	}
 }
 
@@ -100,7 +104,10 @@ func WithTransformations(ops ...Operation) TableOption {
 	}
 }
 
-// DetectSchemaFromData creates a schema from the provided data, preserving key order
+// DetectSchemaFromData creates a schema from the provided data. All accepted
+// shapes are map-based, and map input has no recoverable key order, so the
+// detected column order is alphabetical (see DetectSchemaFromMap). Use
+// WithKeys or WithSchema when column order matters.
 func DetectSchemaFromData(data any) *Schema {
 	switch v := data.(type) {
 	case []Record:
@@ -128,20 +135,19 @@ func DetectSchemaFromData(data any) *Schema {
 	return &Schema{Fields: []Field{}, keyOrder: []string{}}
 }
 
-// DetectSchemaFromMap creates a schema from a map, preserving insertion order
+// DetectSchemaFromMap creates a schema from a map. Go map iteration order is
+// randomized and the original insertion order is unrecoverable, so keys are
+// sorted alphabetically as a deterministic fallback — the source key order is
+// NOT preserved. Callers that need a specific column order must use WithKeys
+// or WithSchema (T-1692).
 func DetectSchemaFromMap(m map[string]any) *Schema {
-	// Since Go maps don't preserve order, we need to extract keys in a deterministic way
-	// This is a limitation that should be documented - for true order preservation,
-	// users should provide explicit keys or use WithKeys/WithSchema
 	keys := make([]string, 0, len(m))
 	fields := make([]Field, 0, len(m))
 
-	// Extract keys in a consistent order (alphabetical for now)
-	// In real usage, we might want to use a different approach or require explicit ordering
 	for k := range m {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys) // Sort keys alphabetically for deterministic output
+	sort.Strings(keys) // map key order is unrecoverable; alphabetize for deterministic output
 
 	// For each key, create a field
 	for _, k := range keys {

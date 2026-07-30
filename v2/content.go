@@ -3,6 +3,7 @@ package output
 import (
 	"crypto/rand"
 	"encoding"
+	"errors"
 	"fmt"
 	"maps"
 	"sync/atomic"
@@ -93,8 +94,44 @@ type TableContent struct {
 	sealed atomic.Bool
 }
 
-// NewTableContent creates a new table content with the given data and options
+// ErrTableKeyOrderGuessed signals that a table's key order was guessed rather
+// than specified: no WithKeys or WithSchema option was provided, and Go map
+// iteration order is unrecoverable, so schema auto-detection fell back to
+// sorting the column names alphabetically (see DetectSchemaFromMap).
+//
+// Builder.Table records this as a non-fatal builder error — the table is still
+// added to the document and renders normally. Callers that accept alphabetical
+// order can filter the warning with errors.Is:
+//
+//	for _, err := range builder.Errors() {
+//	    if errors.Is(err, ErrTableKeyOrderGuessed) {
+//	        continue // alphabetical column order is acceptable here
+//	    }
+//	    // handle real errors
+//	}
+//
+// To control column order, pass WithKeys or WithSchema (T-1692).
+var ErrTableKeyOrderGuessed = errors.New("key order auto-detected from map data and alphabetized; pass WithKeys or WithSchema to control column order")
+
+// NewTableContent creates a new table content with the given data and options.
+//
+// When neither WithSchema nor WithKeys is provided, the schema is
+// auto-detected from the data. Map input has no recoverable key order, so
+// auto-detection sorts the column names alphabetically (see
+// DetectSchemaFromMap). Callers that need a specific column order must pass
+// WithKeys or WithSchema; Builder.Table additionally records a non-fatal
+// ErrTableKeyOrderGuessed warning when this fallback guessed an order.
 func NewTableContent(title string, data any, opts ...TableOption) (*TableContent, error) {
+	table, _, err := newTableContent(title, data, opts...)
+	return table, err
+}
+
+// newTableContent constructs a TableContent and additionally reports whether
+// schema auto-detection had to guess (alphabetize) the key order: true when
+// no explicit schema or keys were supplied and the data yielded more than one
+// column. With zero or one column there is no order to guess. Builder.Table
+// uses the flag to record ErrTableKeyOrderGuessed on the builder (T-1692).
+func newTableContent(title string, data any, opts ...TableOption) (*TableContent, bool, error) {
 	tc := ApplyTableOptions(opts...)
 
 	table := &TableContent{
@@ -117,17 +154,21 @@ func NewTableContent(title string, data any, opts ...TableOption) (*TableContent
 		table.schema = DetectSchemaFromData(data)
 	}
 
+	// The schema was detected — and its key order therefore guessed — only
+	// when neither an explicit schema nor explicit keys were provided.
+	keyOrderGuessed := tc.schema == nil && len(tc.keys) == 0 && len(table.schema.GetKeyOrder()) > 1
+
 	// Convert data to records
 	records, err := convertToRecords(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert data to records: %w", err)
+		return nil, false, fmt.Errorf("failed to convert data to records: %w", err)
 	}
 	table.records = records
 
 	// Store transformations from config
 	table.transformations = tc.transformations
 
-	return table, nil
+	return table, keyOrderGuessed, nil
 }
 
 // Type returns the content type

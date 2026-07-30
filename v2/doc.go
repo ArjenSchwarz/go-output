@@ -196,14 +196,21 @@ Error messages include:
 
 A critical feature of v2 is exact key order preservation for tables:
 
-	// Keys appear in specified order, never alphabetized
+	// Explicitly specified keys appear in exactly this order — never reordered
 	builder.Table("users", data, output.WithKeys("name", "age", "email"))
 
-Three ways to specify key order:
+Two ways to specify key order:
 
 1. WithKeys() - explicit key list
 2. WithSchema() - full schema with field definitions
-3. WithAutoSchema() - auto-detect from data (map iteration order, not recommended)
+
+Without either option (or with WithAutoSchema()), the schema is auto-detected
+from the data. Map input has no recoverable key order — Go randomizes map
+iteration — so auto-detection falls back to sorting the column names
+alphabetically. Builder.Table records a non-fatal ErrTableKeyOrderGuessed
+warning (retrievable via the builder's Errors method) whenever it had to
+guess an order this way. Use WithKeys or WithSchema whenever column order
+matters.
 
 # Content Types
 
