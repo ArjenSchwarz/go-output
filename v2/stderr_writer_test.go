@@ -166,6 +166,57 @@ func TestStderrWriterContextCancellation(t *testing.T) {
 	}
 }
 
+// TestStderrWriterSetWriterNil is a regression test for T-1387.
+// SetWriter(nil) used to store the nil writer without validation, so a later
+// Write passed input validation and then panicked on sw.writer.Write(data).
+// Expected: a nil writer is ignored so the existing writer is kept, matching
+// the nil handling in MultiWriter.AddWriter and WithProgressWriter.
+func TestStderrWriterSetWriterNil(t *testing.T) {
+	t.Run("nil writer is ignored and existing writer kept", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("Write panicked after SetWriter(nil): %v", r)
+			}
+		}()
+
+		var buf bytes.Buffer
+		sw := NewStderrWriter()
+		sw.SetWriter(&buf)
+		sw.SetWriter(nil)
+
+		if err := sw.Write(context.Background(), FormatText, []byte("test")); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got, want := buf.String(), "test\n"; got != want {
+			t.Errorf("output = %q, want %q (existing writer should be kept)", got, want)
+		}
+	})
+
+	t.Run("zero-value writer returns error instead of panicking", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("Write panicked on nil internal writer: %v", r)
+			}
+		}()
+
+		// A zero-value StderrWriter never went through NewStderrWriter, so
+		// its internal writer is nil. Write must fail with a WriteError
+		// rather than panic.
+		sw := &StderrWriter{baseWriter: baseWriter{name: "stderr"}}
+
+		err := sw.Write(context.Background(), FormatText, []byte("test"))
+		if err == nil {
+			t.Fatal("expected error for nil internal writer, got nil")
+		}
+
+		var writeErr *WriteError
+		if !errors.As(err, &writeErr) {
+			t.Errorf("error type = %T, want *WriteError", err)
+		}
+	})
+}
+
 func TestStderrWriterWriteError(t *testing.T) {
 	sw := NewStderrWriter()
 	sw.SetWriter(&mockFailWriter{})
