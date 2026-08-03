@@ -2,7 +2,7 @@
 
 **Ticket:** T-1502
 **Date:** 2026-08-03
-**Status:** In Progress
+**Status:** Fixed
 
 ## Description of the Issue
 
@@ -40,7 +40,14 @@ Validation and application are decoupled: each operation implements `Validate()`
 
 ## Resolution for the Issue
 
-_To be filled in after the fix is implemented._
+**Changes made:**
+- `v2/operations.go` — each of the five `Apply` methods (`FilterOp.Apply`, `SortOp.Apply`, `LimitOp.Apply`, `GroupByOp.Apply`, `AddColumnOp.Apply`) now calls `o.Validate()` first and returns the structured validation error before touching content or configuration. `ApplyWithFormat` delegates to `Apply` in all five operations, so it inherits the check.
+
+**Approach rationale:** The `Validate` methods already exist and return the exact structured errors the ticket expects; the fix is pure wiring. Placing the check at the top of `Apply` guarantees every entry point (direct `Apply`, direct `ApplyWithFormat`, and the renderer pipeline) enforces the same contract. The pipeline's pre-validation in `renderer.go` remains: its error wrapping adds content ID and operation index context that callers rely on, and the duplicate check is a few cheap field comparisons.
+
+**Alternatives considered:**
+- Ad-hoc guards inside each `Apply` (e.g. `if o.predicate == nil`) — rejected: duplicates logic already in `Validate`, would drift over time, and would not fix the silent invalid-sort-direction case without re-implementing that check as well.
+- Removing the pipeline's `Validate` call now that `Apply` validates — rejected: the pipeline's wrapping (content ID, operation index) would be lost for validation failures, changing existing error messages for no benefit.
 
 ## Regression Test
 
@@ -62,12 +69,12 @@ _To be filled in after the fix is implemented._
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (`TestOperationsApplyInvalidConfig`, `TestOperationsApplyWithFormatInvalidConfig`, `TestOperationsApplyValidConfigStillWorks`)
+- [x] Full test suite passes (`make test`)
+- [x] Linters/validators pass (`make lint` — 0 issues; `gofmt` clean)
 
 **Manual verification:**
-- Confirmed pre-fix panics and silent behaviour via the failing regression tests (red phase)
+- Confirmed pre-fix panics and silent behaviour via the failing regression tests (red phase): nil-pointer panics for filter/addColumn/groupBy, `slice bounds out of range [:-1]` for limit, silent ascending sort for the invalid direction
 
 ## Prevention
 
