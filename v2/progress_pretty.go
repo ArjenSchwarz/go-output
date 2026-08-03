@@ -33,10 +33,14 @@ type prettyProgress struct {
 	signals   chan os.Signal
 }
 
-// NewPrettyProgress creates a new professional progress indicator using go-pretty
+// NewPrettyProgress creates a new professional progress indicator using go-pretty.
+// Nil options are ignored.
 func NewPrettyProgress(opts ...ProgressOption) Progress {
 	config := defaultProgressConfig()
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(config)
 	}
 

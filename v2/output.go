@@ -27,7 +27,8 @@ type Output struct {
 // OutputOption configures Output instances
 type OutputOption func(*Output)
 
-// NewOutput creates a new Output instance with the given options
+// NewOutput creates a new Output instance with the given options.
+// Nil options are ignored.
 func NewOutput(opts ...OutputOption) *Output {
 	output := &Output{
 		metadata: make(map[string]any),
@@ -35,6 +36,9 @@ func NewOutput(opts ...OutputOption) *Output {
 
 	// Apply all options
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(output)
 	}
 

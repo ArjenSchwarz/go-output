@@ -86,12 +86,13 @@ The option application loops call every element of the variadic slice unconditio
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes
+- [x] Full test suite passes (`make test`; the pre-existing example go.mod staleness that breaks `make fmt` in `v2/examples/` also exists on main and is unrelated)
+- [x] Linters/validators pass (`make lint`: 0 issues; `gofmt -l` clean)
 
 **Manual verification:**
-- Red/green cycle: all 20 regression subtests panicked before the fix.
+- Red/green cycle: all 20 regression subtests panicked before the fix and pass after it.
+- Godoc comments on all fourteen application sites now state "Nil options are ignored."
 
 ## Prevention
 

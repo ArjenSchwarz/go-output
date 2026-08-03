@@ -191,10 +191,14 @@ func defaultProgressConfig() *ProgressConfig {
 	}
 }
 
-// NewProgress creates a new text-based progress indicator
+// NewProgress creates a new text-based progress indicator.
+// Nil options are ignored.
 func NewProgress(opts ...ProgressOption) Progress {
 	config := defaultProgressConfig()
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(config)
 	}
 
@@ -280,11 +284,15 @@ func NewProgressForFormats(formats []Format, opts ...ProgressOption) Progress {
 }
 
 // NewAutoProgress creates a progress indicator with automatic format detection
-// This is a convenience function that detects format from writer or uses default
+// This is a convenience function that detects format from writer or uses default.
+// Nil options are ignored.
 func NewAutoProgress(opts ...ProgressOption) Progress {
 	// Parse options to detect format hints
 	config := defaultProgressConfig()
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(config)
 	}
 

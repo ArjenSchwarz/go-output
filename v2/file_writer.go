@@ -591,7 +591,8 @@ func WithDisallowUnsafeAppend() FileWriterOption {
 	}
 }
 
-// NewFileWriterWithOptions creates a FileWriter with options
+// NewFileWriterWithOptions creates a FileWriter with options.
+// Nil options are ignored.
 func NewFileWriterWithOptions(dir, pattern string, opts ...FileWriterOption) (*FileWriter, error) {
 	fw, err := NewFileWriter(dir, pattern)
 	if err != nil {
@@ -599,6 +600,9 @@ func NewFileWriterWithOptions(dir, pattern string, opts ...FileWriterOption) (*F
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(fw)
 	}
 

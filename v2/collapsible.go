@@ -55,7 +55,8 @@ type DefaultCollapsibleValue struct {
 // CollapsibleOption configures a DefaultCollapsibleValue
 type CollapsibleOption func(*DefaultCollapsibleValue)
 
-// NewCollapsibleValue creates a new collapsible value with configuration options
+// NewCollapsibleValue creates a new collapsible value with configuration options.
+// Nil options are ignored.
 func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption) *DefaultCollapsibleValue {
 	cv := &DefaultCollapsibleValue{
 		summary:           summary,
@@ -67,6 +68,9 @@ func NewCollapsibleValue(summary string, details any, opts ...CollapsibleOption)
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(cv)
 	}
 
