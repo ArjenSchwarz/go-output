@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"sync"
@@ -40,6 +41,12 @@ func (sw *StdoutWriter) Write(ctx context.Context, format string, data []byte) e
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
+	// A nil writer is only possible when the zero value is used instead of
+	// NewStdoutWriter; fail with a WriteError rather than panic (T-1387)
+	if sw.writer == nil {
+		return sw.wrapError(format, errors.New("writer cannot be nil"))
+	}
+
 	// Write all data at once
 	_, err := sw.writer.Write(data)
 	if err != nil {
@@ -57,8 +64,13 @@ func (sw *StdoutWriter) Write(ctx context.Context, format string, data []byte) e
 	return nil
 }
 
-// SetWriter sets a custom writer (useful for testing)
+// SetWriter sets a custom writer (useful for testing).
+// A nil writer is ignored so the existing writer is kept, preventing a nil
+// pointer dereference on a later Write (T-1387).
 func (sw *StdoutWriter) SetWriter(w io.Writer) {
+	if w == nil {
+		return
+	}
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 	sw.writer = w
