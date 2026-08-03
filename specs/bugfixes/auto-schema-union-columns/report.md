@@ -2,7 +2,7 @@
 
 **Ticket:** T-1576
 **Date:** 2026-08-03
-**Status:** In Progress
+**Status:** Fixed
 
 ## Description of the Issue
 
@@ -65,7 +65,35 @@ actual record keys anywhere in the pipeline.
 
 ## Resolution for the Issue
 
-_To be filled in after the fix is implemented._
+**Changes made:**
+- `v2/table_options.go` - `DetectSchemaFromData` now scans slice input in
+  full: the `[]Record` and `[]map[string]any` cases delegate to a new
+  `detectSchemaFromMaps` helper (generic over `~map[string]any`) that builds
+  the union of keys across all rows, and the `[]any` case collects every
+  `map[string]any` element before doing the same. Keys are sorted
+  alphabetically (the T-1692 convention for map input) and each column's type
+  is detected from its value in the first row containing the key.
+  `DetectSchemaFromMap` now delegates to the same helper with a single row,
+  keeping one implementation. Doc comments updated.
+- `v2/content.go` - `NewTableContent` doc comment updated to state that
+  auto-detection covers the union of keys across all rows.
+- `CHANGELOG.md` - entry under Unreleased/Fixed.
+
+**Approach rationale:** The union keeps all data (the ticket's expected
+behavior) while staying consistent with the deterministic-alphabetical
+ordering T-1692 just established for map-derived schemas. Rows missing a
+column simply render it as empty, which renderers already handle. No change
+was needed to `newTableContent`: its existing `ErrTableKeyOrderGuessed` logic
+keys off the detected key order, so the warning now correctly fires when the
+multi-column union made the order a guess.
+
+**Alternatives considered:**
+- Return a validation error for sparse rows - rejected: sparse rows are
+  legitimate data; erroring would break working callers while the union loses
+  nothing.
+- Preserve first-row order and append later-only keys - rejected:
+  inconsistent with the deterministic alphabetical convention established by
+  T-1692 for map input, and first-row map order is unrecoverable anyway.
 
 ## Regression Test
 
@@ -88,14 +116,20 @@ silently dropped.
 
 ## Affected Files
 
-_To be filled in after the fix is implemented._
+| File | Change |
+|------|--------|
+| `v2/table_options.go` | Union-of-columns schema detection via new `detectSchemaFromMaps` helper; doc comments |
+| `v2/content.go` | `NewTableContent` doc comment |
+| `v2/table_sparse_columns_test.go` | New regression tests |
+| `CHANGELOG.md` | Unreleased/Fixed entry |
+| `specs/bugfixes/auto-schema-union-columns/report.md` | This report |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes
+- [x] Full test suite passes (`make test`)
+- [x] Linters/validators pass (`make lint`, 0 issues; `gofmt` clean)
 
 **Manual verification:**
 - Reproduction case output inspected before/after the fix.
