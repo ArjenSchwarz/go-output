@@ -320,7 +320,9 @@ func (e *MultiError) Unwrap() error {
 	return e.Errors[0]
 }
 
-// Add adds an error to the multi-error
+// Add adds an error to the multi-error. Non-comparable errors are fine here:
+// unlike AddWithSource, Add only appends to a slice and never uses the error
+// as a map key.
 func (e *MultiError) Add(err error) {
 	if err != nil {
 		e.Errors = append(e.Errors, err)
