@@ -58,6 +58,19 @@ func TestDetectSchemaFromData_UnionOfColumns(t *testing.T) {
 			wantKeys:  []string{"apple", "mango", "zebra"},
 			wantTypes: []string{"bool", "string", "int"},
 		},
+		"any slice skips non-map elements": {
+			// Non-map elements are ignored during detection; the schema is
+			// the union of the map elements only. convertToRecords rejects
+			// such input before rendering, so this only locks in that
+			// detection itself does not panic or bail out.
+			data: []any{
+				map[string]any{"name": "Alice"},
+				"not a map",
+				map[string]any{"name": "Bob", "email": "bob@example.com"},
+			},
+			wantKeys:  []string{"email", "name"},
+			wantTypes: []string{"string", "string"},
+		},
 		"column type comes from first row containing the key": {
 			data: []map[string]any{
 				{"id": 1},

@@ -125,13 +125,17 @@ func DetectSchemaFromData(data any) *Schema {
 	case map[string]any:
 		return DetectSchemaFromMap(v)
 	case []any:
-		maps := make([]map[string]any, 0, len(v))
+		// Non-map items are skipped here: the union is built from whatever
+		// maps are present. convertToRecords rejects []any input containing
+		// non-map elements, so a schema detected from such input is
+		// discarded before rendering anyway.
+		items := make([]map[string]any, 0, len(v))
 		for _, item := range v {
 			if m, ok := item.(map[string]any); ok {
-				maps = append(maps, m)
+				items = append(items, m)
 			}
 		}
-		return detectSchemaFromMaps(maps)
+		return detectSchemaFromMaps(items)
 	}
 	return &Schema{Fields: []Field{}, keyOrder: []string{}}
 }
