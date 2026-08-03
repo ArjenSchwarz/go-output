@@ -46,7 +46,7 @@ Source metadata is keyed by error identity in a `map[error]ErrorSource`. The des
 
 **Changes made:**
 - `v2/errors.go` — `MultiError` gains an unexported `sources map[int]ErrorSource` keyed by index into `Errors`. `AddWithSource` records the source there (never panics) and additionally populates the exported `SourceMap` only when the error value is hashable. `Error()` resolves sources through a new `sourceOf` helper: positional entry first, then a hashability-guarded `SourceMap` lookup as fallback for entries callers placed into the field directly. Hashability is checked with `reflect.Value.Comparable()`, which inspects the dynamic value and therefore also rejects statically comparable structs holding non-comparable interface payloads.
-- `v2/CHANGELOG.md` — entry under Unreleased/Fixed.
+- `CHANGELOG.md` — entry under Unreleased/Fixed.
 
 **Approach rationale:** Positional tracking removes error values from the map-key position entirely on the write path the library controls, fixing both panic sites. Keeping `SourceMap` populated for hashable errors preserves the exported surface — the in-repo reader (`errors_core_test.go`) and any external readers keep working — without a breaking change. As a side effect, duplicate error values added twice now retain their individual sources (previously the map overwrote the first).
 
@@ -70,7 +70,7 @@ Source metadata is keyed by error identity in a `map[error]ErrorSource`. The des
 |------|--------|
 | `v2/errors.go` | Positional source tracking; hashability guard on `SourceMap` insert and lookup |
 | `v2/multierror_source_tracking_test.go` | New regression tests |
-| `v2/CHANGELOG.md` | Unreleased/Fixed entry |
+| `CHANGELOG.md` | Unreleased/Fixed entry |
 
 ## Verification
 
