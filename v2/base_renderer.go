@@ -132,6 +132,14 @@ func (b *baseRenderer) applyDataTransformers(ctx context.Context, doc *Document,
 	// Filter and sort applicable transformers by priority
 	var applicable []DataTransformer
 	for _, adapter := range transformers {
+		// Skip nil adapter entries defensively. RendererConfig is a public
+		// struct, so DataTransformers can be populated without going through
+		// NewTransformerAdapter; calling IsDataTransformer on a nil adapter
+		// would panic (T-1438).
+		if adapter == nil {
+			continue
+		}
+
 		if !adapter.IsDataTransformer() {
 			continue
 		}
@@ -181,6 +189,13 @@ func (b *baseRenderer) applyDataTransformers(ctx context.Context, doc *Document,
 				transformed, err := transformer.TransformData(ctx, content, format)
 				if err != nil {
 					return nil, fmt.Errorf("transformer %s failed: %w", transformer.Name(), err)
+				}
+				// A transformer returning nil content with a nil error breaks
+				// the DataTransformer contract; surface it as an error before
+				// the transformed document is constructed, because later
+				// render stages dereference each Content (T-1438).
+				if transformed == nil {
+					return nil, fmt.Errorf("transformer %s returned nil content for content %s", transformer.Name(), content.ID())
 				}
 				transformedContents = append(transformedContents, transformed)
 			} else {

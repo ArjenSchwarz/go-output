@@ -2,7 +2,7 @@
 
 **Ticket:** T-1438
 **Date:** 2026-08-03
-**Status:** In Progress
+**Status:** Fixed
 
 ## Description of the Issue
 
@@ -70,7 +70,34 @@ result is skipped), which made the two remaining gaps easy to miss.
 
 ## Resolution for the Issue
 
-_To be filled in after the fix is implemented._
+**Changes made:**
+- `v2/base_renderer.go` (`applyDataTransformers`, adapter filter loop) — skip
+  nil `*TransformerAdapter` entries before calling `IsDataTransformer`,
+  matching the existing skip of adapters that are not data transformers.
+- `v2/base_renderer.go` (`applyDataTransformers`, transform loop) — after a
+  successful `TransformData` call, return
+  `transformer %s returned nil content for content %s` when the returned
+  `Content` is nil, before the transformed document is constructed. The error
+  surfaces through the existing `data transformation failed: %w` wrapper in
+  `renderDocumentWithFormat`.
+
+**Approach rationale:** Skipping nil adapter entries is consistent with the
+established defensive pattern in this codebase (`applyContentTransformations`
+skips nil operations, `AsDataTransformer() == nil` entries are skipped one line
+below the panic site) — a nil adapter transforms nothing, so it is inert
+configuration. A nil transformed content, by contrast, signals a broken
+transformer contract, so it becomes a normal error rather than being silently
+dropped or passed through.
+
+**Alternatives considered:**
+- Returning a validation error for nil adapter entries — rejected for
+  consistency with how the surrounding code treats inert entries.
+- Validating `DataTransformers` in the renderer constructors — rejected because
+  constructors like `NewHTMLRendererWithCollapsible` return the `Renderer`
+  interface with no error channel, and config can also be set after
+  construction.
+- Passing nil content through unchanged (treat as "no transformation") —
+  rejected because it would mask transformer bugs.
 
 ## Regression Test
 
@@ -98,9 +125,11 @@ _To be filled in after the fix is implemented._
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (`go test -run 'TestApplyDataTransformersNil' ./v2/...`)
+- [x] Full test suite passes (`go test ./...` in v2; the sandboxed
+  `TestDocumentationExamplesCompile` failure is a known sandbox artifact and
+  passes unsandboxed)
+- [x] Linters/validators pass (`make lint` — 0 issues; `gofmt -l` clean)
 
 **Manual verification:**
 - Reproduced both panics with the regression tests before the fix (red phase),
