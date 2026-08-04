@@ -47,7 +47,8 @@ func (o *FilterOp) Name() string {
 	return "Filter"
 }
 
-// Apply filters table records based on the predicate
+// Apply filters table records based on the predicate.
+// It returns a validation error if the operation's configuration is invalid.
 func (o *FilterOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Validate configuration first: Apply is public API and callable outside
 	// the renderer pipeline, which performs this check before applying.
@@ -128,7 +129,8 @@ func (o *SortOp) Name() string {
 	return "Sort"
 }
 
-// Apply sorts table records based on keys or comparator
+// Apply sorts table records based on keys or comparator.
+// It returns a validation error if the operation's configuration is invalid.
 func (o *SortOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Validate configuration first: Apply is public API and callable outside
 	// the renderer pipeline, which performs this check before applying.
@@ -369,7 +371,8 @@ func (o *LimitOp) Name() string {
 	return "Limit"
 }
 
-// Apply limits the number of records in the table
+// Apply limits the number of records in the table.
+// It returns a validation error if the operation's configuration is invalid.
 func (o *LimitOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Validate configuration first: Apply is public API and callable outside
 	// the renderer pipeline, which performs this check before applying.
@@ -469,7 +472,8 @@ func (o *GroupByOp) Name() string {
 	return "GroupBy"
 }
 
-// Apply groups table records and applies aggregate functions
+// Apply groups table records and applies aggregate functions.
+// It returns a validation error if the operation's configuration is invalid.
 func (o *GroupByOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Validate configuration first: Apply is public API and callable outside
 	// the renderer pipeline, which performs this check before applying.
@@ -868,7 +872,8 @@ func (o *AddColumnOp) Name() string {
 	return "AddColumn"
 }
 
-// Apply adds a calculated column to the table
+// Apply adds a calculated column to the table.
+// It returns a validation error if the operation's configuration is invalid.
 func (o *AddColumnOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Validate configuration first: Apply is public API and callable outside
 	// the renderer pipeline, which performs this check before applying.
