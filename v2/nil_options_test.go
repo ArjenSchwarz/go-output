@@ -66,6 +66,15 @@ func TestNilFunctionalOptionsDoNotPanic(t *testing.T) {
 		"NewPrettyProgress": func() {
 			NewPrettyProgress(nil)
 		},
+		"NewProgressForFormat": func() {
+			NewProgressForFormat(Table(), nil)
+		},
+		"NewProgressForFormatName": func() {
+			NewProgressForFormatName(FormatTable, nil)
+		},
+		"NewProgressForFormats": func() {
+			NewProgressForFormats([]Format{Table()}, nil)
+		},
 		"NewFileWriterWithOptions": func() {
 			dir := t.TempDir()
 			if _, err := NewFileWriterWithOptions(dir, "out.{ext}", nil); err != nil {
