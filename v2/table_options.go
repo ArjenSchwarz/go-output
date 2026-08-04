@@ -110,10 +110,11 @@ func WithTransformations(ops ...Operation) TableOption {
 // DetectSchemaFromData creates a schema from the provided data. Slice input
 // is scanned in full: the detected columns are the union of keys across all
 // rows, so columns that first appear in a later row are included rather than
-// silently dropped (T-1576). All accepted shapes are map-based, and map input
-// has no recoverable key order, so the detected column order is alphabetical
-// (see DetectSchemaFromMap). Use WithKeys or WithSchema when column order
-// matters.
+// silently dropped (T-1576). Non-map elements in []any input are ignored:
+// the union covers the map elements only. All accepted shapes are map-based,
+// and map input has no recoverable key order, so the detected column order is
+// alphabetical (see DetectSchemaFromMap). Use WithKeys or WithSchema when
+// column order matters.
 func DetectSchemaFromData(data any) *Schema {
 	switch v := data.(type) {
 	case []Record:
@@ -155,15 +156,17 @@ func DetectSchemaFromMap(m map[string]any) *Schema {
 // unrecoverable, see DetectSchemaFromMap). Each column's type is detected
 // from its value in the first row that contains the key.
 func detectSchemaFromMaps[M ~map[string]any](rows []M) *Schema {
-	keys := make([]string, 0)
 	types := make(map[string]string)
 	for _, row := range rows {
 		for k, val := range row {
 			if _, seen := types[k]; !seen {
-				keys = append(keys, k)
 				types[k] = DetectType(val)
 			}
 		}
+	}
+	keys := make([]string, 0, len(types))
+	for k := range types {
+		keys = append(keys, k)
 	}
 	sort.Strings(keys) // map key order is unrecoverable; alphabetize for deterministic output
 
