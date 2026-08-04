@@ -30,8 +30,9 @@ func (n *nilResultDataTransformer) TransformData(ctx context.Context, content Co
 
 func TestApplyDataTransformersNilAdapterEntry(t *testing.T) {
 	tests := map[string]struct {
-		transformers []*TransformerAdapter
-		wantInOutput string
+		transformers    []*TransformerAdapter
+		wantInOutput    string
+		wantErrContains string
 	}{
 		"only nil adapter entry": {
 			transformers: []*TransformerAdapter{nil},
@@ -49,6 +50,17 @@ func TestApplyDataTransformersNilAdapterEntry(t *testing.T) {
 			},
 			wantInOutput: "[OK]Alice",
 		},
+		"nil adapter entry alongside erroring transformer": {
+			transformers: []*TransformerAdapter{
+				nil,
+				NewTransformerAdapter(&rendererFailingDataTransformer{
+					name:     "failing",
+					priority: 100,
+					formats:  []string{FormatHTML},
+				}),
+			},
+			wantErrContains: "simulated failure in transformer failing",
+		},
 	}
 
 	for name, tc := range tests {
@@ -61,10 +73,20 @@ func TestApplyDataTransformersNilAdapterEntry(t *testing.T) {
 				DataTransformers: tc.transformers,
 			})
 
-			// Expected: nil adapter entries are ignored and rendering
-			// succeeds. Actual (before fix): panic via nil pointer
+			// Expected: nil adapter entries are ignored, so rendering
+			// either succeeds or surfaces the remaining transformer's
+			// error. Actual (before fix): panic via nil pointer
 			// dereference in TransformerAdapter.IsDataTransformer.
 			got, err := renderer.Render(context.Background(), doc)
+			if tc.wantErrContains != "" {
+				if err == nil {
+					t.Fatalf("Render() error = nil, want error containing %q", tc.wantErrContains)
+				}
+				if !strings.Contains(err.Error(), tc.wantErrContains) {
+					t.Errorf("Render() error = %q, want it to contain %q", err, tc.wantErrContains)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("Render() error = %v, want nil", err)
 			}
