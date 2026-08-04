@@ -241,7 +241,10 @@ type MultiError struct {
 
 	// sources tracks source information by index into Errors, so errors with
 	// non-comparable dynamic types can be tracked without using the error
-	// value as a map key, which would panic (T-1508).
+	// value as a map key, which would panic (T-1508). Positional tracking
+	// assumes Errors is append-only: reordering or splicing the exported
+	// Errors slice directly after calling AddWithSource misaligns these
+	// entries with their errors.
 	sources map[int]ErrorSource
 }
 

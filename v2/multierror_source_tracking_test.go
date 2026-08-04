@@ -153,3 +153,58 @@ func TestMultiErrorSourceMapCompatibility(t *testing.T) {
 		}
 	})
 }
+
+// TestMultiErrorInterleavedAddAndAddWithSource verifies positional source
+// tracking stays aligned with Errors when Add() and AddWithSource() calls are
+// interleaved: Add appends to Errors without recording a source, so the
+// source recorded by a later AddWithSource must land on that error's own
+// line in Error() output and not shift onto a neighbour.
+func TestMultiErrorInterleavedAddAndAddWithSource(t *testing.T) {
+	multiErr := NewMultiError("render")
+	multiErr.Add(errors.New("first failure"))
+	multiErr.AddWithSource(errors.New("second failure"), "renderer", map[string]any{"format": "json"})
+	multiErr.Add(errors.New("third failure"))
+
+	got := multiErr.Error()
+	lines := strings.Split(got, "\n")
+
+	var numbered []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "1.") || strings.HasPrefix(trimmed, "2.") || strings.HasPrefix(trimmed, "3.") {
+			numbered = append(numbered, trimmed)
+		}
+	}
+	if len(numbered) != 3 {
+		t.Fatalf("Error() = %q, want 3 numbered error lines, got %d", got, len(numbered))
+	}
+	if strings.Contains(numbered[0], "component=") {
+		t.Errorf("line 1 = %q, want no source info for error added via Add()", numbered[0])
+	}
+	if !strings.Contains(numbered[1], "second failure") || !strings.Contains(numbered[1], "component=renderer") {
+		t.Errorf("line 2 = %q, want %q with source component=renderer", numbered[1], "second failure")
+	}
+	if strings.Contains(numbered[2], "component=") {
+		t.Errorf("line 3 = %q, want no source info for error added via Add()", numbered[2])
+	}
+}
+
+// TestMultiErrorDuplicateErrorKeepsBothSources locks down the behaviour
+// documented in the changelog: the same error value added twice via
+// AddWithSource keeps both source entries in Error() output, instead of the
+// second overwriting the first as the map-keyed implementation did.
+func TestMultiErrorDuplicateErrorKeepsBothSources(t *testing.T) {
+	multiErr := NewMultiError("render")
+	err := errors.New("shared failure")
+	multiErr.AddWithSource(err, "renderer", map[string]any{"format": "json"})
+	multiErr.AddWithSource(err, "writer", map[string]any{"format": "csv"})
+
+	got := multiErr.Error()
+
+	if !strings.Contains(got, "component=renderer") || !strings.Contains(got, "format=json") {
+		t.Errorf("Error() = %q, want first source entry component=renderer format=json", got)
+	}
+	if !strings.Contains(got, "component=writer") || !strings.Contains(got, "format=csv") {
+		t.Errorf("Error() = %q, want second source entry component=writer format=csv", got)
+	}
+}
