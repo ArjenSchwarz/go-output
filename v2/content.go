@@ -116,7 +116,8 @@ var ErrTableKeyOrderGuessed = errors.New("key order auto-detected from map data 
 // NewTableContent creates a new table content with the given data and options.
 //
 // When neither WithSchema nor WithKeys is provided, the schema is
-// auto-detected from the data. Map input has no recoverable key order, so
+// auto-detected from the data: for slice input the columns are the union of
+// keys across all rows (T-1576). Map input has no recoverable key order, so
 // auto-detection sorts the column names alphabetically (see
 // DetectSchemaFromMap). Callers that need a specific column order must pass
 // WithKeys or WithSchema; Builder.Table additionally records a non-fatal

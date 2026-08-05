@@ -40,6 +40,9 @@ func WithKeys(keys ...string) TableOption {
 // WithAutoSchema enables automatic schema detection from data. This is also
 // the default behavior when no schema or keys are provided.
 //
+// For slice input the detected columns are the union of keys across all rows,
+// so columns that first appear in a later row are included (T-1576).
+//
 // Map input has no recoverable key order: Go randomizes map iteration order,
 // so the order keys appear in the source data cannot be preserved. Detection
 // falls back to sorting the column names alphabetically (see
@@ -104,33 +107,36 @@ func WithTransformations(ops ...Operation) TableOption {
 	}
 }
 
-// DetectSchemaFromData creates a schema from the provided data. All accepted
-// shapes are map-based, and map input has no recoverable key order, so the
-// detected column order is alphabetical (see DetectSchemaFromMap). Use
-// WithKeys or WithSchema when column order matters.
+// DetectSchemaFromData creates a schema from the provided data. Slice input
+// is scanned in full: the detected columns are the union of keys across all
+// rows, so columns that first appear in a later row are included rather than
+// silently dropped (T-1576). Non-map elements in []any input are ignored:
+// the union covers the map elements only. All accepted shapes are map-based,
+// and map input has no recoverable key order, so the detected column order is
+// alphabetical (see DetectSchemaFromMap). Use WithKeys or WithSchema when
+// column order matters.
 func DetectSchemaFromData(data any) *Schema {
 	switch v := data.(type) {
 	case []Record:
-		if len(v) == 0 {
-			return &Schema{Fields: []Field{}, keyOrder: []string{}}
-		}
-		return DetectSchemaFromMap(v[0])
+		return detectSchemaFromMaps(v)
 	case []map[string]any:
-		if len(v) == 0 {
-			return &Schema{Fields: []Field{}, keyOrder: []string{}}
-		}
-		return DetectSchemaFromMap(v[0])
+		return detectSchemaFromMaps(v)
 	case Record:
 		return DetectSchemaFromMap(v)
 	case map[string]any:
 		return DetectSchemaFromMap(v)
 	case []any:
-		if len(v) == 0 {
-			return &Schema{Fields: []Field{}, keyOrder: []string{}}
+		// Non-map items are skipped here: the union is built from whatever
+		// maps are present. convertToRecords rejects []any input containing
+		// non-map elements, so a schema detected from such input is
+		// discarded before rendering anyway.
+		items := make([]map[string]any, 0, len(v))
+		for _, item := range v {
+			if m, ok := item.(map[string]any); ok {
+				items = append(items, m)
+			}
 		}
-		if m, ok := v[0].(map[string]any); ok {
-			return DetectSchemaFromMap(m)
-		}
+		return detectSchemaFromMaps(items)
 	}
 	return &Schema{Fields: []Field{}, keyOrder: []string{}}
 }
@@ -141,19 +147,34 @@ func DetectSchemaFromData(data any) *Schema {
 // NOT preserved. Callers that need a specific column order must use WithKeys
 // or WithSchema (T-1692).
 func DetectSchemaFromMap(m map[string]any) *Schema {
-	keys := make([]string, 0, len(m))
-	fields := make([]Field, 0, len(m))
+	return detectSchemaFromMaps([]map[string]any{m})
+}
 
-	for k := range m {
+// detectSchemaFromMaps creates a schema covering the union of keys across all
+// rows, so columns that first appear after row 0 are not dropped (T-1576).
+// Keys are sorted alphabetically for deterministic output (map key order is
+// unrecoverable, see DetectSchemaFromMap). Each column's type is detected
+// from its value in the first row that contains the key.
+func detectSchemaFromMaps[M ~map[string]any](rows []M) *Schema {
+	types := make(map[string]string)
+	for _, row := range rows {
+		for k, val := range row {
+			if _, seen := types[k]; !seen {
+				types[k] = DetectType(val)
+			}
+		}
+	}
+	keys := make([]string, 0, len(types))
+	for k := range types {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys) // map key order is unrecoverable; alphabetize for deterministic output
 
-	// For each key, create a field
+	fields := make([]Field, 0, len(keys))
 	for _, k := range keys {
 		fields = append(fields, Field{
 			Name: k,
-			Type: DetectType(m[k]),
+			Type: types[k],
 		})
 	}
 
