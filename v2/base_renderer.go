@@ -27,7 +27,8 @@ type RendererConfig struct {
 	TableHiddenIndicator string
 	HTMLCSSClasses       map[string]string
 
-	// Transformer configuration (Task 10.2: Dual transformer system)
+	// Transformer configuration (Task 10.2: Dual transformer system).
+	// Nil entries in DataTransformers are ignored (T-1438).
 	DataTransformers []*TransformerAdapter
 	ByteTransformers *TransformPipeline
 }

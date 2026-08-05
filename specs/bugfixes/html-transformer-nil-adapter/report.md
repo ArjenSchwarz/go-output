@@ -31,9 +31,9 @@ ways on the data transformer path:
    `(nil, nil)` — panic at `v2/renderer.go:180`
    (`applyContentTransformations` on nil content).
 
-**Impact:** Any renderer that embeds `baseRenderer` and routes through
-`renderDocumentWithFormat` (HTML, Markdown with collapsible config, JSON, YAML)
-crashes the calling process instead of returning an error. `RendererConfig` is
+**Impact:** Any renderer that routes through `renderDocumentWithFormat` — the
+HTML renderer, and the Mermaid/Draw.io table-content fallback paths — crashes
+the calling process instead of returning an error. `RendererConfig` is
 a public struct, so callers can construct the nil-adapter case directly without
 going through `NewTransformerAdapter`.
 
@@ -50,7 +50,7 @@ going through `NewTransformerAdapter`.
 - **Hypotheses tested:** Confirmed both panic paths with failing tests before
   changing any code. Verified `applyByteTransformers` already guards against a
   nil pipeline, and `applyContentTransformations` already skips nil operations
-  (T-1142) — the data transformer path was the remaining unguarded entry.
+  (T-1208) — the data transformer path was the remaining unguarded entry.
 
 ## Discovered Root Cause
 
@@ -112,7 +112,7 @@ dropped or passed through.
 - A transformer returning `(nil, nil)` produces a render error that names the
   transformer instead of panicking.
 
-**Run command:** `go test -run 'TestApplyDataTransformersNil' ./v2/...`
+**Run command:** `cd v2 && go test -run TestApplyDataTransformersNil ./...`
 
 ## Affected Files
 
@@ -125,7 +125,7 @@ dropped or passed through.
 ## Verification
 
 **Automated:**
-- [x] Regression test passes (`go test -run 'TestApplyDataTransformersNil' ./v2/...`)
+- [x] Regression test passes (`cd v2 && go test -run TestApplyDataTransformersNil ./...`)
 - [x] Full test suite passes (`go test ./...` in v2; the sandboxed
   `TestDocumentationExamplesCompile` failure is a known sandbox artifact and
   passes unsandboxed)
@@ -145,8 +145,8 @@ dropped or passed through.
 
 ## Related
 
-- T-1142 — nil content into table operations (nil `Operation` skip in
-  `applyContentTransformations`)
+- T-1208 — nil `Operation` skip in `applyContentTransformations`
+- T-1142 — nil content guards in table operations
 - T-1363 — nil nested content in collapsible sections
 - T-1223 — collapsible constructors populating `baseRenderer.config`, which
   made this path reachable from public constructors
