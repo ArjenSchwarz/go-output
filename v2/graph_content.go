@@ -446,7 +446,8 @@ func WithDrawIOColumns(columns ...string) DrawIOOption {
 	}
 }
 
-// NewDrawIOContent creates a new Draw.io content
+// NewDrawIOContent creates a new Draw.io content.
+// Nil options are ignored.
 func NewDrawIOContent(title string, records []Record, header DrawIOHeader, opts ...DrawIOOption) *DrawIOContent {
 	content := &DrawIOContent{
 		id:      GenerateID(),
@@ -455,6 +456,9 @@ func NewDrawIOContent(title string, records []Record, header DrawIOHeader, opts 
 		records: cloneRecords(records),
 	}
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(content)
 	}
 	return content
@@ -463,6 +467,7 @@ func NewDrawIOContent(title string, records []Record, header DrawIOHeader, opts 
 // NewDrawIOContentFromTable creates Draw.io content from table data.
 // A nil table yields safe, empty content rather than a panic, since this
 // constructor returns no error to report the invalid input.
+// Nil options are ignored.
 func NewDrawIOContentFromTable(table *TableContent, header DrawIOHeader, opts ...DrawIOOption) *DrawIOContent {
 	content := &DrawIOContent{
 		id:     GenerateID(),
@@ -474,6 +479,9 @@ func NewDrawIOContentFromTable(table *TableContent, header DrawIOHeader, opts ..
 		content.columns = table.schema.GetFieldNames()
 	}
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(content)
 	}
 	return content

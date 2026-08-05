@@ -31,13 +31,17 @@ func WithRawTransformations(ops ...Operation) RawOption {
 	}
 }
 
-// ApplyRawOptions applies all options to the raw content configuration
+// ApplyRawOptions applies all options to the raw content configuration.
+// Nil options are ignored.
 func ApplyRawOptions(opts ...RawOption) *rawConfig {
 	rc := &rawConfig{
 		validateFormat: true, // Default to validating formats
 		preserveData:   true, // Default to preserving data by copying
 	}
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(rc)
 	}
 	return rc

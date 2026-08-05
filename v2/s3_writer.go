@@ -410,11 +410,15 @@ func WithContentTypes(contentTypes map[string]string) S3WriterOption {
 	}
 }
 
-// NewS3WriterWithOptions creates an S3Writer with options
+// NewS3WriterWithOptions creates an S3Writer with options.
+// Nil options are ignored.
 func NewS3WriterWithOptions(client S3PutObjectAPI, bucket, keyPattern string, opts ...S3WriterOption) *S3Writer {
 	sw := NewS3Writer(client, bucket, keyPattern)
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(sw)
 	}
 

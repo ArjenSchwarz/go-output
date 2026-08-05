@@ -204,12 +204,16 @@ func DetectType(v any) string {
 	}
 }
 
-// ApplyTableOptions applies all options to the table configuration
+// ApplyTableOptions applies all options to the table configuration.
+// Nil options are ignored.
 func ApplyTableOptions(opts ...TableOption) *tableConfig {
 	tc := &tableConfig{
 		autoSchema: true, // Default to auto-detection
 	}
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(tc)
 	}
 	return tc

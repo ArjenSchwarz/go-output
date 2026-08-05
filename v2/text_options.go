@@ -58,12 +58,16 @@ func WithTextTransformations(ops ...Operation) TextOption {
 	}
 }
 
-// ApplyTextOptions applies all options to the text configuration
+// ApplyTextOptions applies all options to the text configuration.
+// Nil options are ignored.
 func ApplyTextOptions(opts ...TextOption) *textConfig {
 	tc := &textConfig{
 		style: TextStyle{}, // Default empty style
 	}
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(tc)
 	}
 	return tc

@@ -25,12 +25,16 @@ func WithSectionTransformations(ops ...Operation) SectionOption {
 	}
 }
 
-// ApplySectionOptions applies all options to the section configuration
+// ApplySectionOptions applies all options to the section configuration.
+// Nil options are ignored.
 func ApplySectionOptions(opts ...SectionOption) *sectionConfig {
 	sc := &sectionConfig{
 		level: 0, // Default to level 0 (top level)
 	}
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(sc)
 	}
 	return sc

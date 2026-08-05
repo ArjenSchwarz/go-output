@@ -35,7 +35,8 @@ type DefaultCollapsibleSection struct {
 	formatHints     map[string]map[string]any
 }
 
-// NewCollapsibleSection creates a new collapsible section
+// NewCollapsibleSection creates a new collapsible section.
+// Nil options are ignored.
 func NewCollapsibleSection(title string, content []Content, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
 	// Defensively copy the content slice so later mutation of the caller's
 	// slice cannot change this section's rendering (T-1317).
@@ -52,6 +53,9 @@ func NewCollapsibleSection(title string, content []Content, opts ...CollapsibleS
 	}
 
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		opt(cs)
 	}
 
