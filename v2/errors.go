@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -229,10 +230,22 @@ func ErrorWithContext(operation string, cause error, contextPairs ...any) error 
 
 // MultiError represents multiple errors that occurred during an operation
 type MultiError struct {
-	Operation string                // The operation that failed
-	Errors    []error               // The list of errors that occurred
-	SourceMap map[error]ErrorSource // Maps errors to their sources
-	Context   map[string]any        // Additional context for the operation
+	Operation string  // The operation that failed
+	Errors    []error // The list of errors that occurred
+	// SourceMap maps errors to their sources. Only errors whose values can be
+	// used as map keys without panicking (comparable, hashable values) appear
+	// here; sources for all errors — including non-comparable ones — are
+	// tracked internally by position and included in Error() output.
+	SourceMap map[error]ErrorSource
+	Context   map[string]any // Additional context for the operation
+
+	// sources tracks source information by index into Errors, so errors with
+	// non-comparable dynamic types can be tracked without using the error
+	// value as a map key, which would panic (T-1508). Positional tracking
+	// assumes Errors is append-only: reordering or splicing the exported
+	// Errors slice directly after calling AddWithSource misaligns these
+	// entries with their errors.
+	sources map[int]ErrorSource
 }
 
 // ErrorSource provides information about where an error originated
@@ -283,7 +296,7 @@ func (e *MultiError) Error() string {
 		errorInfo := fmt.Sprintf("  %d. %v", i+1, err)
 
 		// Add source information if available
-		if source, exists := e.SourceMap[err]; exists {
+		if source, exists := e.sourceOf(i, err); exists {
 			var sourceDetails []string
 			if source.Component != "" {
 				sourceDetails = append(sourceDetails, fmt.Sprintf("component=%s", source.Component))
@@ -310,25 +323,61 @@ func (e *MultiError) Unwrap() error {
 	return e.Errors[0]
 }
 
-// Add adds an error to the multi-error
+// Add adds an error to the multi-error. Non-comparable errors are fine here:
+// unlike AddWithSource, Add only appends to a slice and never uses the error
+// as a map key.
 func (e *MultiError) Add(err error) {
 	if err != nil {
 		e.Errors = append(e.Errors, err)
 	}
 }
 
-// AddWithSource adds an error with source information to the multi-error
+// AddWithSource adds an error with source information to the multi-error.
+// It accepts any valid error value, including errors whose dynamic type is
+// not comparable; those are tracked by position and omitted from the exported
+// SourceMap, since using them as map keys would panic.
 func (e *MultiError) AddWithSource(err error, component string, details map[string]any) {
-	if err != nil {
-		e.Errors = append(e.Errors, err)
+	if err == nil {
+		return
+	}
+	e.Errors = append(e.Errors, err)
+	source := ErrorSource{
+		Component: component,
+		Details:   details,
+	}
+	if e.sources == nil {
+		e.sources = make(map[int]ErrorSource)
+	}
+	e.sources[len(e.Errors)-1] = source
+	if isHashableError(err) {
 		if e.SourceMap == nil {
 			e.SourceMap = make(map[error]ErrorSource)
 		}
-		e.SourceMap[err] = ErrorSource{
-			Component: component,
-			Details:   details,
-		}
+		e.SourceMap[err] = source
 	}
+}
+
+// sourceOf returns the source for the error at index i. Sources recorded by
+// AddWithSource are tracked by position; entries placed directly into
+// SourceMap by callers are used as a fallback for hashable errors.
+func (e *MultiError) sourceOf(i int, err error) (ErrorSource, bool) {
+	if source, ok := e.sources[i]; ok {
+		return source, true
+	}
+	if len(e.SourceMap) == 0 || !isHashableError(err) {
+		return ErrorSource{}, false
+	}
+	source, ok := e.SourceMap[err]
+	return source, ok
+}
+
+// isHashableError reports whether err can be used as a map key without
+// panicking. reflect.Value.Comparable checks the dynamic value, so unlike
+// reflect.Type.Comparable it also rejects statically comparable struct types
+// whose interface fields hold non-comparable values.
+func isHashableError(err error) bool {
+	v := reflect.ValueOf(err)
+	return v.IsValid() && v.Comparable()
 }
 
 // AddContext adds context information to the multi-error
