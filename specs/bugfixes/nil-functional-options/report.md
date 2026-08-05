@@ -19,7 +19,7 @@ Every v2 public constructor and option applicator that accepts variadic function
 Applied the systematic-debugger (Fagan inspection) methodology.
 
 - **Symptoms examined:** Nil pointer dereference panics from the option application loops in constructors.
-- **Code inspected:** All variadic option application sites found via `grep -rn "range opts"` across v2. Fourteen loops in eleven files, all following the pattern `for _, opt := range opts { opt(x) }` with no nil guard. All other variadic option functions (Builder methods, `NewCollapsibleTable`, `NewProgressForFormat`, collapsible formatters, etc.) forward to these fourteen sites.
+- **Code inspected:** All variadic option application sites found via `grep -rn "range opts"` across v2. Fourteen loops in twelve files, all following the pattern `for _, opt := range opts { opt(x) }` with no nil guard. All other variadic option functions (Builder methods, `NewCollapsibleTable`, `NewProgressForFormat`, collapsible formatters, etc.) forward to these fourteen sites.
 - **Hypotheses tested:** Checked whether any site already guarded against nil (`grep "opt == nil"` — none did), confirming the panic surface is uniform across all option families.
 
 ## Discovered Root Cause
@@ -30,7 +30,7 @@ The option application loops call every element of the variadic slice unconditio
 
 **Why it occurred:** The functional options pattern was implemented with the implicit assumption that all options come from the library's `With*` constructors and are never nil. That non-nil contract is invisible in the type system, so nothing enforced or documented it, and callers building option slices dynamically can easily introduce nils.
 
-**Contributing factors:** The same loop pattern was copied across eleven files as new option families were added, replicating the missing guard each time.
+**Contributing factors:** The same loop pattern was copied across twelve files as new option families were added, replicating the missing guard each time.
 
 ## Resolution for the Issue
 
@@ -62,7 +62,7 @@ The option application loops call every element of the variadic slice unconditio
 
 **What it verifies:** Every public option-accepting constructor and applicator accepts nil options without panicking, and real options surrounding a nil are still applied (table key order, text style).
 
-**Run command:** `go test -run "TestNilFunctionalOptionsDoNotPanic|TestNilOptionsInterleavedWithRealOptions" ./v2`
+**Run command:** `cd v2 && go test -run "TestNilFunctionalOptionsDoNotPanic|TestNilOptionsInterleavedWithRealOptions" ./...`
 
 ## Affected Files
 
@@ -91,7 +91,7 @@ The option application loops call every element of the variadic slice unconditio
 - [x] Linters/validators pass (`make lint`: 0 issues; `gofmt -l` clean)
 
 **Manual verification:**
-- Red/green cycle: all 20 regression subtests panicked before the fix and pass after it.
+- Red/green cycle: all 20 initial regression subtests panicked before the fix and pass after it. The three progress format wrapper subtests added afterwards bring the suite to 23, all passing.
 - Godoc comments on all fourteen application sites now state "Nil options are ignored."
 
 ## Prevention

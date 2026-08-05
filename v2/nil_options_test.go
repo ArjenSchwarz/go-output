@@ -58,22 +58,28 @@ func TestNilFunctionalOptionsDoNotPanic(t *testing.T) {
 			NewCollapsibleSection("title", []Content{}, nil)
 		},
 		"NewProgress": func() {
-			NewProgress(nil)
+			p := NewProgress(nil)
+			_ = p.Close()
 		},
 		"NewAutoProgress": func() {
-			NewAutoProgress(nil)
+			p := NewAutoProgress(nil)
+			_ = p.Close()
 		},
 		"NewPrettyProgress": func() {
-			NewPrettyProgress(nil)
+			p := NewPrettyProgress(nil)
+			_ = p.Close()
 		},
 		"NewProgressForFormat": func() {
-			NewProgressForFormat(Table(), nil)
+			p := NewProgressForFormat(Table(), nil)
+			_ = p.Close()
 		},
 		"NewProgressForFormatName": func() {
-			NewProgressForFormatName(FormatTable, nil)
+			p := NewProgressForFormatName(FormatTable, nil)
+			_ = p.Close()
 		},
 		"NewProgressForFormats": func() {
-			NewProgressForFormats([]Format{Table()}, nil)
+			p := NewProgressForFormats([]Format{Table()}, nil)
+			_ = p.Close()
 		},
 		"NewFileWriterWithOptions": func() {
 			dir := t.TempDir()
