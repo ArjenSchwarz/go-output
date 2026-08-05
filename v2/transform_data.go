@@ -11,7 +11,9 @@ type DataTransformer interface {
 	// Name returns the transformer name for identification
 	Name() string
 
-	// TransformData modifies structured content data
+	// TransformData modifies structured content data. The returned Content
+	// must be non-nil when the returned error is nil; a (nil, nil) result is
+	// reported as a render error (T-1438).
 	TransformData(ctx context.Context, content Content, format string) (Content, error)
 
 	// CanTransform checks if this transformer applies to the given content and format
