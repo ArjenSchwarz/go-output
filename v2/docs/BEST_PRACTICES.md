@@ -340,7 +340,10 @@ if err != nil {
 // Validate operation configuration
 op := output.NewSortOp(output.SortKey{Column: "name", Direction: output.Ascending})
 
-// Validation happens during rendering, but you can test explicitly
+// Apply and ApplyWithFormat validate the operation's configuration
+// themselves (as does the rendering pipeline), so invalid configuration
+// returns a structured validation error instead of panicking. Calling
+// Validate directly is still useful to fail fast before building a document.
 if err := op.Validate(); err != nil {
     log.Fatalf("Invalid operation: %v", err)
 }
