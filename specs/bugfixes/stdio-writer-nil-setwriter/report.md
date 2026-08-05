@@ -115,7 +115,7 @@ path.
 | `v2/stderr_writer.go` | Guard `SetWriter` against nil; error instead of panic in `Write` |
 | `v2/stdout_writer_test.go` | Regression tests |
 | `v2/stderr_writer_test.go` | Regression tests |
-| `v2/CHANGELOG.md` | Changelog entry |
+| `CHANGELOG.md` | Changelog entry |
 
 ## Verification
 
