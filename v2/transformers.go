@@ -155,8 +155,10 @@ func (c *ColorTransformer) Transform(_ context.Context, input []byte, _ string) 
 }
 
 // colorizeLine applies the scheme color for the first matching indicator role
-// to a single line. Success, error, and warning lines render bold; info lines
-// render in the plain scheme color.
+// to a single line. When a line contains indicators for multiple roles, the
+// precedence order success > error > warning > info is intentional and the
+// whole line takes the winning role's color. Success, error, and warning
+// lines render bold; info lines render in the plain scheme color.
 func (c *ColorTransformer) colorizeLine(line string) string {
 	switch {
 	case successIndicatorPattern.MatchString(line):

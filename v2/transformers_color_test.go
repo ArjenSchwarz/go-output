@@ -154,6 +154,53 @@ func TestColorTransformerWordBoundaries(t *testing.T) {
 	}
 }
 
+// TestColorTransformerMultipleIndicatorPrecedence locks in the intentional
+// precedence order (success > error > warning > info) when a single line
+// contains indicators for multiple roles: the whole line takes the winning
+// role's color.
+func TestColorTransformerMultipleIndicatorPrecedence(t *testing.T) {
+	transformer := NewColorTransformer()
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		input      string
+		wantColor  string
+		avoidColor string
+	}{
+		"success wins over error": {
+			input:      "✅ pass | ❌ fail",
+			wantColor:  ansiGreen,
+			avoidColor: ansiRed,
+		},
+		"error wins over warning": {
+			input:      "❌ fail | 🚨 alert",
+			wantColor:  ansiRed,
+			avoidColor: ansiYellow,
+		},
+		"warning wins over info": {
+			input:      "🚨 alert | ℹ️ note",
+			wantColor:  ansiYellow,
+			avoidColor: ansiBlue,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result, err := transformer.Transform(ctx, []byte(test.input), FormatTable)
+			if err != nil {
+				t.Fatalf("Transform() error = %v", err)
+			}
+			got := string(result)
+			if !strings.Contains(got, test.wantColor) {
+				t.Errorf("Transform(%q) = %q, want the higher-precedence color %q", test.input, got, test.wantColor)
+			}
+			if strings.Contains(got, test.avoidColor) {
+				t.Errorf("Transform(%q) = %q, contains lower-precedence color %q", test.input, got, test.avoidColor)
+			}
+		})
+	}
+}
+
 // TestColorTransformerUnknownColorName verifies that a scheme entry naming an
 // unsupported color leaves matching text unstyled instead of silently falling
 // back to a hard-coded color.
