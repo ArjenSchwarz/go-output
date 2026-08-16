@@ -86,7 +86,40 @@ config in casual use.
 
 ## Resolution for the Issue
 
-_To be completed after the fix is implemented._
+**Changes made:**
+- `v2/transformers.go` — `ColorTransformer.Transform` now applies coloring
+  per line: each line is matched against package-level compiled indicator
+  patterns (success `✅`/`Yes`/`true`, error `❌`/`No`/`false`, warning
+  `🚨`/`!!`, info `ℹ️`), with word tokens matched on `\b` boundaries per the
+  T-1267 precedent. Only matching lines are colored; all other lines pass
+  through byte-for-byte.
+- `v2/transformers.go` — the applied color is looked up from the configured
+  `c.scheme` via a package-level name→`color.Attribute` map
+  (`colorSchemeAttributes`: black, red, green, yellow, blue, magenta, cyan,
+  white; case-insensitive). Success/error/warning lines render bold, info
+  lines render plain, matching the original weights. An empty or unknown
+  color name leaves matching lines unstyled, so a partially configured
+  scheme only colors the roles it names.
+- `v2/transformers.go` — warning indicators (`🚨`/`!!`) now use the scheme's
+  `Warning` color (default yellow) instead of hard-coded red.
+- `v2/transformers.go` — `RemoveColorsTransformer.Transform` now uses the
+  package-level `ansiEscapePattern` compiled once at package load.
+- `CHANGELOG.md` — entry under Unreleased/Fixed flagging the rendered-byte
+  changes.
+
+**Approach rationale:** Per-line granularity fixes the whole-document tint
+with a simple, dependency-free implementation that mirrors the line-based
+processing already used by `SortTransformer` and `LineSplitTransformer` in
+the same file. Reading the scheme through a fixed name map keeps
+`ColorScheme`'s exported string-based API unchanged, and
+`EnhancedColorTransformer` inherits the fix through delegation.
+
+**Alternatives considered:**
+- Per-cell coloring — requires parsing rendered table borders/separators for
+  every output style; fragile against renderer changes and far more code for
+  marginal benefit. Per-line already gives correct row-level signaling.
+- Falling back to default colors for unknown scheme names — hides user
+  configuration errors; leaving the text unstyled makes a typo visible.
 
 ## Regression Test
 
@@ -116,9 +149,12 @@ scheme color names leave text unstyled.
 ## Verification
 
 **Automated:**
-- [ ] Regression tests pass
-- [ ] Full test suite passes (`make test`)
-- [ ] Linters/validators pass (`make check`)
+- [x] Regression tests pass
+- [x] Full test suite passes (`make test` and `make test-integration`,
+  including `TestDocumentationExamplesCompile`)
+- [x] Linters/validators pass (`make lint`, 0 issues; `gofmt -l` clean on
+  changed files; the `make fmt` example-directory `go mod tidy` failure is
+  pre-existing on the base commit and unrelated to this change)
 
 **Manual verification:**
 - Red-phase run confirmed all five regression tests fail against the original
