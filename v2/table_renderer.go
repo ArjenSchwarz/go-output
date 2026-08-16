@@ -553,6 +553,13 @@ func (t *tableRenderer) renderCollapsibleSection(section *DefaultCollapsibleSect
 	if section.IsExpanded() || t.collapsibleConfig.ForceExpansion {
 		// Render nested content when expanded (Requirement 15.7)
 		for i, content := range section.Content() {
+			// Skip nil entries defensively: NewCollapsibleSection filters
+			// them, but a malformed section must degrade gracefully instead
+			// of panicking the public render path (T-1472).
+			if content == nil {
+				continue
+			}
+
 			if i > 0 {
 				result.WriteString("\n")
 			}

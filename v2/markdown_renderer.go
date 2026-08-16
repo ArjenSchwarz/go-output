@@ -773,6 +773,13 @@ func (m *markdownRenderer) renderCollapsibleSection(ctx context.Context, section
 
 	// Render all nested content within the collapsible section with indentation (Requirement 15.4)
 	for i, content := range section.Content() {
+		// Skip nil entries defensively: NewCollapsibleSection filters them,
+		// but a malformed section must degrade gracefully instead of
+		// panicking the public render path (T-1472).
+		if content == nil {
+			continue
+		}
+
 		if i > 0 {
 			result.WriteString("\n")
 		}

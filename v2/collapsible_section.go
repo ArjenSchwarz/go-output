@@ -37,11 +37,23 @@ type DefaultCollapsibleSection struct {
 
 // NewCollapsibleSection creates a new collapsible section.
 // Nil options are ignored.
+//
+// Nil entries in content are dropped rather than stored: every consumer of
+// the nested content (AppendText, Clone, and the renderers' collapsible
+// paths) assumes entries are non-nil, and the constructor has no error
+// channel, so nil is silently filtered consistent with
+// SectionContent.AddContent (T-1472).
 func NewCollapsibleSection(title string, content []Content, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
 	// Defensively copy the content slice so later mutation of the caller's
-	// slice cannot change this section's rendering (T-1317).
-	contentCopy := make([]Content, len(content))
-	copy(contentCopy, content)
+	// slice cannot change this section's rendering (T-1317), dropping nil
+	// entries as documented above (T-1472).
+	contentCopy := make([]Content, 0, len(content))
+	for _, item := range content {
+		if item == nil {
+			continue
+		}
+		contentCopy = append(contentCopy, item)
+	}
 
 	cs := &DefaultCollapsibleSection{
 		id:              GenerateID(),
@@ -150,11 +162,18 @@ func (cs *DefaultCollapsibleSection) AppendText(b []byte) ([]byte, error) {
 		}
 	}
 
-	// Render all nested content
-	for i, content := range cs.content {
-		if i > 0 {
+	// Render all nested content. Skip any nil entry defensively so a nil
+	// that reached the slice by some route cannot cause a nil dereference
+	// (the primary guard is in NewCollapsibleSection, T-1472).
+	rendered := 0
+	for _, content := range cs.content {
+		if content == nil {
+			continue
+		}
+		if rendered > 0 {
 			b = append(b, '\n')
 		}
+		rendered++
 
 		contentBytes, err := content.AppendText(nil)
 		if err != nil {
@@ -175,10 +194,15 @@ func (cs *DefaultCollapsibleSection) AppendBinary(b []byte) ([]byte, error) {
 
 // Clone creates a deep copy of the DefaultCollapsibleSection
 func (cs *DefaultCollapsibleSection) Clone() Content {
-	// Deep copy the nested contents
-	newContent := make([]Content, len(cs.content))
-	for i, content := range cs.content {
-		newContent[i] = content.Clone()
+	// Deep copy the nested contents. Skip any nil entry defensively so a nil
+	// that reached the slice by some route cannot cause a nil dereference
+	// (the primary guard is in NewCollapsibleSection, T-1472).
+	newContent := make([]Content, 0, len(cs.content))
+	for _, content := range cs.content {
+		if content == nil {
+			continue
+		}
+		newContent = append(newContent, content.Clone())
 	}
 
 	// Deep copy format hints
@@ -206,16 +230,29 @@ func (cs *DefaultCollapsibleSection) GetTransformations() []Operation {
 
 // Helper functions for creating collapsible sections
 
-// NewCollapsibleTable creates a collapsible section containing a single table
+// NewCollapsibleTable creates a collapsible section containing a single table.
+//
+// A nil table yields an empty section: wrapping a nil *TableContent into a
+// Content interface value would create a typed nil that the constructor's
+// nil filter cannot detect and that later dereferences would panic on (T-1472).
 func NewCollapsibleTable(title string, table *TableContent, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
+	if table == nil {
+		return NewCollapsibleSection(title, nil, opts...)
+	}
 	return NewCollapsibleSection(title, []Content{table}, opts...)
 }
 
-// NewCollapsibleMultiTable creates a collapsible section containing multiple tables
+// NewCollapsibleMultiTable creates a collapsible section containing multiple tables.
+//
+// Nil tables are dropped before wrapping, for the same typed-nil reason as
+// NewCollapsibleTable (T-1472).
 func NewCollapsibleMultiTable(title string, tables []*TableContent, opts ...CollapsibleSectionOption) *DefaultCollapsibleSection {
-	content := make([]Content, len(tables))
-	for i, table := range tables {
-		content[i] = table
+	content := make([]Content, 0, len(tables))
+	for _, table := range tables {
+		if table == nil {
+			continue
+		}
+		content = append(content, table)
 	}
 	return NewCollapsibleSection(title, content, opts...)
 }

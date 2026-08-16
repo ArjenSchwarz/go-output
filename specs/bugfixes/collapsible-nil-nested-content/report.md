@@ -97,7 +97,42 @@ are invisible to the conventional `content == nil` check.
 
 ## Resolution for the Issue
 
-_To be completed after the fix is implemented._
+**Changes made:**
+- `v2/collapsible_section.go` — `NewCollapsibleSection` drops nil entries
+  while copying the content slice (primary guard, documented on the
+  constructor); `NewCollapsibleTable` and `NewCollapsibleMultiTable` skip
+  nil `*TableContent` values before wrapping them into interface values,
+  closing the typed-nil route; `AppendText` and `Clone` skip nil entries
+  defensively, mirroring `SectionContent.Clone`.
+- `v2/markdown_renderer.go`, `v2/html_renderer.go`,
+  `v2/json_yaml_renderer.go` (JSON and YAML paths), `v2/csv_renderer.go`,
+  `v2/table_renderer.go` — the collapsible-section loops skip nil entries so
+  malformed sections degrade gracefully instead of panicking.
+
+**Approach rationale:** Dropping nil at construction matches the established
+conventions exactly: `SectionContent.AddContent` silently drops nil (no
+error channel), and `SectionContent.Clone` skips nils defensively with the
+primary guard elsewhere. Checking the concrete `*TableContent` pointers in
+the helpers catches the ticket's typed-nil cases with a plain `== nil`
+comparison, no reflection needed. Renderer guards satisfy the merged T-1570
+requirement that renderers tolerate malformed sections however constructed.
+
+**Alternatives considered:**
+- Record a builder error from `Builder.AddCollapsibleSection` when nils are
+  dropped — rejected: the constructor is the shared choke point and has no
+  error channel; diverging behaviour between the builder path and direct
+  construction would be inconsistent with `SectionContent.AddContent`.
+- Reflection-based typed-nil detection in the constructor (catching
+  `[]Content{(*TableContent)(nil)}` passed directly) — deferred: open
+  ticket T-1649 plans one consolidated reflection-based typed-nil fix across
+  transformers, progress, renderers, and writers; a one-off helper here
+  would fragment that work (same reasoning as the T-1387 fix). The
+  helper-level concrete checks cover all typed-nil routes named in this
+  ticket.
+- Return errors from renderers on nil entries instead of skipping —
+  rejected: the nil entry is dropped everywhere else in the pipeline, so
+  erroring only at render time would be inconsistent and turn a recoverable
+  malformation into a rendering failure.
 
 ## Regression Test
 
@@ -137,14 +172,14 @@ _To be completed after the fix is implemented._
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes (`make test`)
-- [ ] Linters/validators pass (`make lint`)
+- [x] Regression test passes
+- [x] Full test suite passes (`make test`)
+- [x] Linters/validators pass (`make lint`, 0 issues)
 
 **Manual verification:**
 - Confirmed the regression tests fail with the original panics before the
   fix (constructor keeps nils; `(*TableContent).Clone` on typed nil
-  segfaults).
+  segfaults) and pass after the fix.
 
 ## Prevention
 
