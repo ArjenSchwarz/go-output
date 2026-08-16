@@ -506,9 +506,29 @@ func ValidateNonEmpty(field, value string) error {
 	return nil
 }
 
-// ValidateNonNil validates that a value is not nil
-func ValidateNonNil(field string, value any) error {
+// isNilValue reports whether value is nil, either as an untyped nil interface
+// or as a typed nil: a non-nil interface wrapping a nil pointer, map, slice,
+// func, chan, or interface. Interface comparisons with == nil miss typed nils
+// because the interface's type word is set even though its data word is nil,
+// so a value like (*FormatAwareTransformer)(nil) would pass validation and
+// panic when dereferenced later (T-1649).
+func isNilValue(value any) bool {
 	if value == nil {
+		return true
+	}
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan, reflect.Interface, reflect.UnsafePointer:
+		return rv.IsNil()
+	default:
+		return false
+	}
+}
+
+// ValidateNonNil validates that a value is not nil. Typed nils (a nil concrete
+// pointer boxed into a non-nil interface) are rejected the same as untyped nil.
+func ValidateNonNil(field string, value any) error {
+	if isNilValue(value) {
 		return NewValidationError(field, value, "cannot be nil")
 	}
 	return nil

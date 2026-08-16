@@ -166,7 +166,7 @@ construction (`NewFormatAwareTransformer`), and never panics during render.
 | `v2/stdout_writer.go` | `SetWriter` ignores typed-nil writers |
 | `v2/stderr_writer.go` | `SetWriter` ignores typed-nil writers |
 | `v2/typed_nil_validation_test.go` | Regression tests (new) |
-| `v2/CHANGELOG.md` | Fixed entry under Unreleased |
+| `CHANGELOG.md` | Fixed entry under Unreleased |
 
 ## Verification
 
