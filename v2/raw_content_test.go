@@ -110,6 +110,10 @@ func TestRawContent_ValidFormats(t *testing.T) {
 	}
 }
 
+// TestRawContent_DataPreservation covers only the "preserve" side of the
+// option: an explicit WithDataPreservation(true) and the default must both
+// copy the input slice. The disabled case is covered by
+// TestRawContent_DataPreservationDisabled_AliasesInput.
 func TestRawContent_DataPreservation(t *testing.T) {
 	originalData := []byte("original data")
 	format := FormatText
