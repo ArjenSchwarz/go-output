@@ -84,7 +84,7 @@ The error message follows the existing error style in the same function
 transformation error from `applyContentTransformations` before any
 renderer-specific code sees the nil Content.
 
-**Run command:** `cd v2 && go test -run 'TestApplyContentTransformationsNilOperationResult|TestApplyContentTransformationsNilResultStopsChain|TestCSVRendererNilOperationResult' ./...`
+**Run command:** `cd v2 && go test -run 'TestApplyContentTransformationsNilOperationResult|TestApplyContentTransformationsNilResultStopsChain|TestCSVRendererNilOperationResult|TestCSVRendererNilOperationResultInSection' ./...`
 
 ## Affected Files
 
