@@ -463,7 +463,12 @@ type RawContent struct {
 	transformations []Operation
 }
 
-// NewRawContent creates a new raw content with the given format and data
+// NewRawContent creates a new raw content with the given format and data.
+//
+// By default the data slice is copied so later modification of the caller's
+// slice cannot affect the content. Pass WithDataPreservation(false) to store
+// the slice directly and skip the copy; see WithDataPreservation for the
+// aliasing hazard that opt-out carries.
 func NewRawContent(format string, data []byte, opts ...RawOption) (*RawContent, error) {
 	rc := ApplyRawOptions(opts...)
 
@@ -472,14 +477,18 @@ func NewRawContent(format string, data []byte, opts ...RawOption) (*RawContent, 
 		return nil, fmt.Errorf("invalid format: %s", format)
 	}
 
-	// Create a copy of the data to ensure immutability
-	dataCopy := make([]byte, len(data))
-	copy(dataCopy, data)
+	// Copy the data to ensure immutability unless the caller explicitly
+	// opted out via WithDataPreservation(false).
+	contentData := data
+	if rc.preserveData {
+		contentData = make([]byte, len(data))
+		copy(contentData, data)
+	}
 
 	return &RawContent{
 		id:              GenerateID(),
 		format:          format,
-		data:            dataCopy,
+		data:            contentData,
 		transformations: rc.transformations,
 	}, nil
 }
