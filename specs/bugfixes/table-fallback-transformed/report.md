@@ -65,7 +65,22 @@ transformations attached.
 
 ## Resolution for the Issue
 
-_To be completed after the fix is implemented._
+**Changes made:**
+- `v2/table_renderer.go` (renderDocumentTable, default branch) — now calls
+  `transformed.AppendText(nil)` and reports errors with `transformed.ID()`,
+  matching the section-level helper's behaviour.
+
+**Approach rationale:** Minimal wrong-variable fix that makes the top-level
+loop consistent with `renderSectionTable`'s already-correct default branch.
+Nil transformed results are handled centrally in
+`applyContentTransformations` (T-1601), so no additional nil check belongs
+here.
+
+**Alternatives considered:**
+- Erroring on unknown content types instead of falling back to `AppendText` —
+  rejected: it would break existing custom content types that render fine via
+  the fallback, and the section-level helper already established the
+  render-the-transformed-value contract.
 
 ## Regression Test
 
@@ -91,9 +106,9 @@ guard for the already-correct helper).
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes
+- [x] Full test suite passes (`go test ./...` in `v2/`)
+- [x] Linters/validators pass (`golangci-lint run`: 0 issues; `gofmt -l`: clean)
 
 **Manual verification:**
 - Audited both content switches in `v2/table_renderer.go` for other branches
