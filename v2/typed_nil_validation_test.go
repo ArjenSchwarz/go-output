@@ -254,3 +254,35 @@ func TestStdioSetWriterIgnoresTypedNil(t *testing.T) {
 		})
 	}
 }
+
+// TestMultiWriterIgnoresTypedNilWriters verifies that NewMultiWriter and
+// AddWriter drop typed-nil writers the same way they drop untyped nil, so a
+// nil concrete pointer boxed into the Writer interface never reaches the
+// write goroutine where calling Write on it would panic.
+func TestMultiWriterIgnoresTypedNilWriters(t *testing.T) {
+	var typedNil *typedNilTestWriter
+
+	t.Run("NewMultiWriter drops typed nil", func(t *testing.T) {
+		valid := &typedNilTestWriter{}
+		mw := NewMultiWriter(valid, typedNil)
+
+		if got := mw.WriterCount(); got != 1 {
+			t.Fatalf("WriterCount() = %d, want 1 (typed-nil writer should be dropped)", got)
+		}
+		if err := mw.Write(context.Background(), FormatText, []byte("data")); err != nil {
+			t.Fatalf("Write() error = %v, want nil", err)
+		}
+		if valid.lastFormat != FormatText {
+			t.Errorf("valid writer lastFormat = %q, want %q", valid.lastFormat, FormatText)
+		}
+	})
+
+	t.Run("AddWriter ignores typed nil", func(t *testing.T) {
+		mw := NewMultiWriter()
+		mw.AddWriter(typedNil)
+
+		if got := mw.WriterCount(); got != 0 {
+			t.Fatalf("after AddWriter(typed nil): WriterCount() = %d, want 0", got)
+		}
+	})
+}
