@@ -576,3 +576,113 @@ func TestTableRenderer_NestedHeaderTextContent(t *testing.T) {
 		t.Errorf("nested header text should not render verbatim (plain, un-styled), got %q", out)
 	}
 }
+
+// unknownTransformableContent is a Content implementation whose concrete type
+// is not handled by the table renderer's content switches, so rendering it
+// falls through to the AppendText fallback. It carries transformations so
+// tests can verify the fallback renders the transformed content (T-1448).
+type unknownTransformableContent struct {
+	id         string
+	text       string
+	transforms []Operation
+}
+
+func (c *unknownTransformableContent) Type() ContentType { return ContentType(99) }
+
+func (c *unknownTransformableContent) ID() string { return c.id }
+
+func (c *unknownTransformableContent) Clone() Content {
+	clone := *c
+	clone.transforms = append([]Operation(nil), c.transforms...)
+	return &clone
+}
+
+func (c *unknownTransformableContent) GetTransformations() []Operation { return c.transforms }
+
+func (c *unknownTransformableContent) AppendText(b []byte) ([]byte, error) {
+	return append(b, c.text...), nil
+}
+
+func (c *unknownTransformableContent) AppendBinary(b []byte) ([]byte, error) {
+	return append(b, c.text...), nil
+}
+
+// replaceTextOp is a test Operation that rewrites the text of an
+// unknownTransformableContent, so pre- and post-transform output differ.
+type replaceTextOp struct {
+	newText string
+}
+
+func (op *replaceTextOp) Name() string { return "replace-text" }
+
+func (op *replaceTextOp) Apply(_ context.Context, content Content) (Content, error) {
+	c, ok := content.(*unknownTransformableContent)
+	if !ok {
+		return content, nil
+	}
+	clone := c.Clone().(*unknownTransformableContent)
+	clone.text = op.newText
+	return clone, nil
+}
+
+func (op *replaceTextOp) CanOptimize(Operation) bool { return false }
+
+func (op *replaceTextOp) Validate() error { return nil }
+
+// TestTableRenderer_FallbackRendersTransformedContent is a regression test for
+// T-1448. renderDocumentTable applies per-content transformations, but its
+// default (unknown content type) branch rendered the original pre-transform
+// content instead of the transformed result, silently discarding the
+// transformation. The fallback must render the transformed content.
+func TestTableRenderer_FallbackRendersTransformedContent(t *testing.T) {
+	content := &unknownTransformableContent{
+		id:         "unknown-1",
+		text:       "original text",
+		transforms: []Operation{&replaceTextOp{newText: "transformed text"}},
+	}
+
+	doc := New().AddContent(content).Build()
+
+	result, err := (&tableRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	out := string(result)
+	if !strings.Contains(out, "transformed text") {
+		t.Errorf("fallback should render transformed content, got %q", out)
+	}
+	if strings.Contains(out, "original text") {
+		t.Errorf("fallback must not render pre-transform content, got %q", out)
+	}
+}
+
+// TestTableRenderer_NestedFallbackRendersTransformedContent verifies that the
+// section-level fallback in renderSectionTable renders transformed content the
+// same way the top level does, so unknown content types behave consistently at
+// any nesting depth (T-1448 consistency guard).
+func TestTableRenderer_NestedFallbackRendersTransformedContent(t *testing.T) {
+	content := &unknownTransformableContent{
+		id:         "unknown-nested",
+		text:       "original nested text",
+		transforms: []Operation{&replaceTextOp{newText: "transformed nested text"}},
+	}
+
+	section := NewSectionContent("outer")
+	section.AddContent(content)
+
+	doc := New().AddContent(section).Build()
+
+	result, err := (&tableRenderer{}).Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	out := string(result)
+	if !strings.Contains(out, "transformed nested text") {
+		t.Errorf("nested fallback should render transformed content, got %q", out)
+	}
+	if strings.Contains(out, "original nested text") {
+		t.Errorf("nested fallback must not render pre-transform content, got %q", out)
+	}
+}
