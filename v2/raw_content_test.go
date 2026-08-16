@@ -131,16 +131,36 @@ func TestRawContent_DataPreservation(t *testing.T) {
 	// Reset original data
 	originalData[0] = 'o'
 
-	// Test with data preservation disabled
-	content2, err := NewRawContent(format, originalData, WithDataPreservation(false))
+	// The default (no option) must also copy
+	content2, err := NewRawContent(format, originalData)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	// Even with preservation disabled, data should still be copied for safety
 	originalData[0] = 'Y'
 	if string(content2.Data()) == string(originalData) {
-		t.Error("Data should still be copied even when preservation is disabled")
+		t.Error("Data preservation failed - default should copy the input slice")
+	}
+}
+
+// TestRawContent_DataPreservationDisabled_AliasesInput is the regression test
+// for T-1557. WithDataPreservation(false) is documented as disabling the
+// defensive copy, so the content must store the caller's slice directly:
+// mutating the original slice is then visible through the content. Before the
+// fix, NewRawContent copied unconditionally and the option was a no-op.
+func TestRawContent_DataPreservationDisabled_AliasesInput(t *testing.T) {
+	data := []byte("original data")
+
+	content, err := NewRawContent(FormatText, data, WithDataPreservation(false))
+	if err != nil {
+		t.Fatalf("NewRawContent() unexpected error: %v", err)
+	}
+
+	// With preservation disabled the content aliases the caller's slice, so a
+	// mutation through the original slice must be visible in the content.
+	data[0] = 'Y'
+	if got, want := string(content.Data()), string(data); got != want {
+		t.Errorf("content data = %q, want %q: WithDataPreservation(false) should store the caller's slice without copying", got, want)
 	}
 }
 
