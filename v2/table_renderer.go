@@ -115,13 +115,15 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 			result.WriteString("\n")
 
 		default:
-			// Fallback for unknown content types
+			// Fallback for unknown content types. Render the transformed
+			// content, not the original: rendering `content` here would
+			// silently discard applied transformations (T-1448).
 			if i > 0 {
 				result.WriteString("\n")
 			}
-			contentBytes, err := content.AppendText(nil)
+			contentBytes, err := transformed.AppendText(nil)
 			if err != nil {
-				return nil, fmt.Errorf("failed to render content %s: %w", content.ID(), err)
+				return nil, fmt.Errorf("failed to render content %s: %w", transformed.ID(), err)
 			}
 			result.Write(contentBytes)
 		}
