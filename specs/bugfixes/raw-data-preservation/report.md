@@ -148,7 +148,18 @@ is visible through the content. The sibling test
   review red flag: tests must assert the documented contract, not the current
   implementation.
 
+## Known Limitation
+
+The opt-out removes only the construction-time copy. Renderers read raw
+content through `RawContent.Data()`, which returns a defensive copy on every
+call (and several call sites convert via `string(raw.Data())`, copying twice),
+so each render still pays a copy regardless of `WithDataPreservation(false)`.
+This is pre-existing behavior, out of scope for this fix; T-2233 tracks the
+render-side accessor change.
+
 ## Related
 
 - Transit ticket T-1557
 - T-1543 / T-1677 — the immutability work this decision was weighed against
+- T-2233 — follow-up: renderers copy RawContent via Data() on every render,
+  undermining the opt-out's render-path benefit

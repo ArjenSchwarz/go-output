@@ -168,6 +168,26 @@ func TestRawContent_DataPreservationDisabled_AliasesInput(t *testing.T) {
 	}
 }
 
+// TestRawContent_DataPreservationDisabled_CloneCopies locks the documented
+// read-side guarantee: even when the content aliases the caller's slice via
+// WithDataPreservation(false), Clone still deep-copies, so later mutation of
+// the caller's slice must not be visible in the clone.
+func TestRawContent_DataPreservationDisabled_CloneCopies(t *testing.T) {
+	data := []byte("original data")
+
+	content, err := NewRawContent(FormatText, data, WithDataPreservation(false))
+	if err != nil {
+		t.Fatalf("NewRawContent() unexpected error: %v", err)
+	}
+
+	clone := content.Clone().(*RawContent)
+
+	data[0] = 'Y'
+	if got, want := string(clone.Data()), "original data"; got != want {
+		t.Errorf("clone data = %q, want %q: Clone must deep-copy even when the source aliases the caller's slice", got, want)
+	}
+}
+
 func TestRawContent_AppendText(t *testing.T) {
 	tests := map[string]struct {
 		format   string

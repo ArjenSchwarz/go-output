@@ -26,7 +26,9 @@ func WithFormatValidation(validate bool) RawOption {
 // not modify the slice after passing it in: the content aliases it, so any
 // mutation becomes visible in subsequent renders and breaks the immutability
 // guarantees of built documents. RawContent.Data still returns a copy and
-// Clone still deep-copies regardless of this option.
+// Clone still deep-copies regardless of this option, so the opt-out removes
+// only the construction-time copy: reads through Data, including those made
+// by renderers, still pay a per-call copy.
 func WithDataPreservation(preserve bool) RawOption {
 	return func(rc *rawConfig) {
 		rc.preserveData = preserve
