@@ -35,6 +35,11 @@ func (e *EmojiTransformer) CanTransform(format string) bool {
 // standalone indicators are converted. Without boundaries, ordinary cell text
 // such as "Notes" or "Nobody" would be corrupted into "❌tes"/"❌body" (see
 // T-1267). Compiled once at package load since the patterns are constant.
+//
+// Keep the indicator words in sync with the ColorTransformer indicator
+// patterns (successIndicatorPattern et al., below) and
+// enhancedEmojiReplacements (format_aware.go). "OK" is deliberately absent
+// from the color patterns — see the comment there.
 var emojiIndicatorReplacements = []struct {
 	pattern *regexp.Regexp
 	emoji   string
@@ -116,27 +121,81 @@ func (c *ColorTransformer) CanTransform(format string) bool {
 	return format == FormatTable
 }
 
-// Transform adds ANSI color codes to the output
+// colorSchemeAttributes maps ColorScheme color names to ANSI foreground
+// attributes. Names are matched case-insensitively; a name outside this map
+// (or an empty name) leaves the matching text unstyled so a partially
+// configured scheme only colors the roles it names.
+var colorSchemeAttributes = map[string]color.Attribute{
+	"black":   color.FgBlack,
+	"red":     color.FgRed,
+	"green":   color.FgGreen,
+	"yellow":  color.FgYellow,
+	"blue":    color.FgBlue,
+	"magenta": color.FgMagenta,
+	"cyan":    color.FgCyan,
+	"white":   color.FgWhite,
+}
+
+// Indicator patterns that select a ColorScheme role for a line. Word-based
+// indicators use word boundaries so ordinary cell text such as "Notes" or
+// "Yesterday" is not colored (same rationale as the emoji transformer's
+// T-1267 fix). Compiled once at package load since the patterns are constant.
+//
+// Keep the word indicators in sync with emojiIndicatorReplacements (above)
+// and enhancedEmojiReplacements (format_aware.go). "OK" is intentionally
+// excluded here: it converts to ✅ in the emoji tables but is too common in
+// ordinary prose to trigger line coloring on its own.
+var (
+	successIndicatorPattern = regexp.MustCompile(`✅|\bYes\b|\btrue\b`)
+	errorIndicatorPattern   = regexp.MustCompile(`❌|\bNo\b|\bfalse\b`)
+	warningIndicatorPattern = regexp.MustCompile(`🚨|!!`)
+	infoIndicatorPattern    = regexp.MustCompile(`ℹ️`)
+)
+
+// Transform adds ANSI color codes to the output. Coloring is applied per
+// line: each line containing a status indicator is colored with the scheme
+// color for that indicator's role, and lines without indicators pass through
+// unchanged (T-1518).
 func (c *ColorTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
-	output := string(input)
-
-	// Apply colors based on content patterns
-	switch {
-	case strings.Contains(output, "✅") || strings.Contains(output, "Yes") || strings.Contains(output, "true"):
-		green := color.New(color.FgGreen).Add(color.Bold)
-		output = green.Sprint(output)
-	case strings.Contains(output, "❌") || strings.Contains(output, "No") || strings.Contains(output, "false"):
-		red := color.New(color.FgRed).Add(color.Bold)
-		output = red.Sprint(output)
-	case strings.Contains(output, "🚨") || strings.Contains(output, "!!"):
-		red := color.New(color.FgRed).Add(color.Bold)
-		output = red.Sprint(output)
-	case strings.Contains(output, "ℹ️"):
-		blue := color.New(color.FgBlue)
-		output = blue.Sprint(output)
+	lines := strings.Split(string(input), "\n")
+	for i, line := range lines {
+		lines[i] = c.colorizeLine(line)
 	}
+	return []byte(strings.Join(lines, "\n")), nil
+}
 
-	return []byte(output), nil
+// colorizeLine applies the scheme color for the first matching indicator role
+// to a single line. When a line contains indicators for multiple roles, the
+// precedence order success > error > warning > info is intentional and the
+// whole line takes the winning role's color. Success, error, and warning
+// lines render bold; info lines render in the plain scheme color.
+func (c *ColorTransformer) colorizeLine(line string) string {
+	switch {
+	case successIndicatorPattern.MatchString(line):
+		return applySchemeColor(line, c.scheme.Success, true)
+	case errorIndicatorPattern.MatchString(line):
+		return applySchemeColor(line, c.scheme.Error, true)
+	case warningIndicatorPattern.MatchString(line):
+		return applySchemeColor(line, c.scheme.Warning, true)
+	case infoIndicatorPattern.MatchString(line):
+		return applySchemeColor(line, c.scheme.Info, false)
+	default:
+		return line
+	}
+}
+
+// applySchemeColor colors text with the named scheme color, optionally bold.
+// Unknown or empty color names return the text unstyled.
+func applySchemeColor(text, colorName string, bold bool) string {
+	attr, ok := colorSchemeAttributes[strings.ToLower(colorName)]
+	if !ok {
+		return text
+	}
+	col := color.New(attr)
+	if bold {
+		col = col.Add(color.Bold)
+	}
+	return col.Sprint(text)
 }
 
 // SortTransformer sorts table data by a specified key
@@ -611,12 +670,13 @@ func (r *RemoveColorsTransformer) CanTransform(_ string) bool {
 	return true
 }
 
+// ansiEscapePattern matches ANSI escape sequences (colors). Compiled once at
+// package load rather than on every Transform call (T-1518).
+var ansiEscapePattern = regexp.MustCompile(`\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]`)
+
 // Transform removes ANSI color codes from the output
 func (r *RemoveColorsTransformer) Transform(_ context.Context, input []byte, _ string) ([]byte, error) {
-	// Remove ANSI escape sequences (colors)
-	re := regexp.MustCompile(`\x1B\[([0-9]{1,3}(;[0-9]{1,3})*)?[mGK]`)
-	output := re.ReplaceAll(input, []byte(""))
-	return output, nil
+	return ansiEscapePattern.ReplaceAll(input, []byte("")), nil
 }
 
 // detectSeparator detects the separator used in a line

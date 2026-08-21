@@ -150,6 +150,10 @@ type EnhancedEmojiTransformer struct {
 // T-1267. Without boundaries, ordinary text such as "Notes" or "BROKEN" would
 // be corrupted into "&#x274C;tes"/"BR✅EN" (see T-1509). Compiled once at
 // package load since the patterns are constant.
+//
+// Keep the indicator words in sync with emojiIndicatorReplacements and the
+// ColorTransformer indicator patterns (both in transformers.go); "OK" is
+// deliberately absent from the color patterns — see the comment there.
 var enhancedEmojiReplacements = map[string][]struct {
 	pattern     *regexp.Regexp
 	replacement string
