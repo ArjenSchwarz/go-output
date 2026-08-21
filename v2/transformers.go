@@ -35,6 +35,11 @@ func (e *EmojiTransformer) CanTransform(format string) bool {
 // standalone indicators are converted. Without boundaries, ordinary cell text
 // such as "Notes" or "Nobody" would be corrupted into "❌tes"/"❌body" (see
 // T-1267). Compiled once at package load since the patterns are constant.
+//
+// Keep the indicator words in sync with the ColorTransformer indicator
+// patterns (successIndicatorPattern et al., below) and
+// enhancedEmojiReplacements (format_aware.go). "OK" is deliberately absent
+// from the color patterns — see the comment there.
 var emojiIndicatorReplacements = []struct {
 	pattern *regexp.Regexp
 	emoji   string
@@ -135,6 +140,11 @@ var colorSchemeAttributes = map[string]color.Attribute{
 // indicators use word boundaries so ordinary cell text such as "Notes" or
 // "Yesterday" is not colored (same rationale as the emoji transformer's
 // T-1267 fix). Compiled once at package load since the patterns are constant.
+//
+// Keep the word indicators in sync with emojiIndicatorReplacements (above)
+// and enhancedEmojiReplacements (format_aware.go). "OK" is intentionally
+// excluded here: it converts to ✅ in the emoji tables but is too common in
+// ordinary prose to trigger line coloring on its own.
 var (
 	successIndicatorPattern = regexp.MustCompile(`✅|\bYes\b|\btrue\b`)
 	errorIndicatorPattern   = regexp.MustCompile(`❌|\bNo\b|\bfalse\b`)
