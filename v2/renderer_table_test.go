@@ -587,7 +587,7 @@ type unknownTransformableContent struct {
 	transforms []Operation
 }
 
-func (c *unknownTransformableContent) Type() ContentType { return ContentType(99) }
+func (c *unknownTransformableContent) Type() ContentType { return ContentType(999) }
 
 func (c *unknownTransformableContent) ID() string { return c.id }
 
@@ -607,27 +607,23 @@ func (c *unknownTransformableContent) AppendBinary(b []byte) ([]byte, error) {
 	return append(b, c.text...), nil
 }
 
-// replaceTextOp is a test Operation that rewrites the text of an
-// unknownTransformableContent, so pre- and post-transform output differ.
-type replaceTextOp struct {
-	newText string
-}
-
-func (op *replaceTextOp) Name() string { return "replace-text" }
-
-func (op *replaceTextOp) Apply(_ context.Context, content Content) (Content, error) {
-	c, ok := content.(*unknownTransformableContent)
-	if !ok {
-		return content, nil
+// newReplaceTextOp returns an Operation that rewrites the text of an
+// unknownTransformableContent, so pre- and post-transform output differ. It
+// reuses the package's mockTransformOperation double (renderer_test.go).
+func newReplaceTextOp(newText string) *mockTransformOperation {
+	return &mockTransformOperation{
+		name: "replace-text",
+		applyFunc: func(_ context.Context, content Content) (Content, error) {
+			c, ok := content.(*unknownTransformableContent)
+			if !ok {
+				return content, nil
+			}
+			clone := c.Clone().(*unknownTransformableContent)
+			clone.text = newText
+			return clone, nil
+		},
 	}
-	clone := c.Clone().(*unknownTransformableContent)
-	clone.text = op.newText
-	return clone, nil
 }
-
-func (op *replaceTextOp) CanOptimize(Operation) bool { return false }
-
-func (op *replaceTextOp) Validate() error { return nil }
 
 // TestTableRenderer_FallbackRendersTransformedContent is a regression test for
 // T-1448. renderDocumentTable applies per-content transformations, but its
@@ -638,7 +634,7 @@ func TestTableRenderer_FallbackRendersTransformedContent(t *testing.T) {
 	content := &unknownTransformableContent{
 		id:         "unknown-1",
 		text:       "original text",
-		transforms: []Operation{&replaceTextOp{newText: "transformed text"}},
+		transforms: []Operation{newReplaceTextOp("transformed text")},
 	}
 
 	doc := New().AddContent(content).Build()
@@ -665,7 +661,7 @@ func TestTableRenderer_NestedFallbackRendersTransformedContent(t *testing.T) {
 	content := &unknownTransformableContent{
 		id:         "unknown-nested",
 		text:       "original nested text",
-		transforms: []Operation{&replaceTextOp{newText: "transformed nested text"}},
+		transforms: []Operation{newReplaceTextOp("transformed nested text")},
 	}
 
 	section := NewSectionContent("outer")

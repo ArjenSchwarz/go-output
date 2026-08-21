@@ -72,9 +72,10 @@ transformations attached.
 
 **Approach rationale:** Minimal wrong-variable fix that makes the top-level
 loop consistent with `renderSectionTable`'s already-correct default branch.
-Nil transformed results are handled centrally in
-`applyContentTransformations` (T-1601), so no additional nil check belongs
-here.
+No nil check on the transformed result is added here: centralising
+nil-transformed-result handling in `applyContentTransformations` is T-1601's
+scope (PR #117, in flight, not yet merged into this branch), and duplicating
+the guard here would scatter that invariant.
 
 **Alternatives considered:**
 - Erroring on unknown content types instead of falling back to `AppendText` —
@@ -93,7 +94,7 @@ transformation renders the transformed text (never the pre-transform text) both
 at the document top level (the bug) and nested inside a section (consistency
 guard for the already-correct helper).
 
-**Run command:** `go test -run 'TestTableRenderer_FallbackRendersTransformedContent|TestTableRenderer_NestedFallbackRendersTransformedContent' ./v2/...`
+**Run command:** `cd v2 && go test -run 'TestTableRenderer_FallbackRendersTransformedContent|TestTableRenderer_NestedFallbackRendersTransformedContent' .`
 
 ## Affected Files
 
@@ -111,8 +112,10 @@ guard for the already-correct helper).
 - [x] Linters/validators pass (`golangci-lint run`: 0 issues; `gofmt -l`: clean)
 
 **Manual verification:**
-- Audited both content switches in `v2/table_renderer.go` for other branches
-  reading the pre-transform variable; none remain.
+- Audited both transformation-applying content switches in
+  `v2/table_renderer.go` for other branches reading the pre-transform
+  variable; none remain. (`renderCollapsibleSection`'s switch never applies
+  transformations at all — the known T-1635 gap, out of scope here.)
 
 ## Prevention
 
@@ -127,5 +130,6 @@ guard for the already-correct helper).
 
 - T-1522 (PR #106) — rewrote section rendering; its `renderSectionTable`
   default branch was already correct and served as the reference behaviour.
-- T-1601 — centralises nil-transformed-content handling in
-  `applyContentTransformations` (`v2/renderer.go`).
+- T-1601 (PR #117, in flight) — will centralise nil-transformed-content
+  handling in `applyContentTransformations` (`v2/renderer.go`); not yet
+  merged into this branch.
