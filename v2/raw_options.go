@@ -17,7 +17,18 @@ func WithFormatValidation(validate bool) RawOption {
 	}
 }
 
-// WithDataPreservation enables or disables data preservation (copying)
+// WithDataPreservation enables or disables data preservation (copying).
+//
+// When enabled (the default), NewRawContent copies the input byte slice so
+// later modification of the caller's slice cannot affect the content. When
+// disabled, the content stores the caller's slice directly, skipping the copy
+// as a performance opt-out for large payloads. In that case the caller must
+// not modify the slice after passing it in: the content aliases it, so any
+// mutation becomes visible in subsequent renders and breaks the immutability
+// guarantees of built documents. RawContent.Data still returns a copy and
+// Clone still deep-copies regardless of this option, so the opt-out removes
+// only the construction-time copy: reads through Data, including those made
+// by renderers, still pay a per-call copy.
 func WithDataPreservation(preserve bool) RawOption {
 	return func(rc *rawConfig) {
 		rc.preserveData = preserve

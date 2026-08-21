@@ -24,6 +24,7 @@
 - The Builder now records an error when content or metadata is added after `Build()` has finalized the document; previously such mutations vanished silently with `HasErrors()` returning false (T-1689). The built document remains unchanged and the fluent API remains non-panicking.
 - The DOT and Mermaid renderers now propagate `NewGraphContentFromTable` errors instead of discarding them (T-1689). No behavior change today — the only current error condition is unreachable at those call sites — but future error conditions will surface through `Render`.
 - The godoc for `Builder`, `Build`, `Table`, and `Raw` now documents the fluent-chain error contract: failures are recorded on the builder, the affected content is omitted from the document, and callers should check `HasErrors()`/`Errors()` after building (T-1689).
+- `WithDataPreservation(false)` now takes effect (T-1557). The option always documented that it disables data preservation (copying), but `NewRawContent` — and therefore `Builder.Raw` — unconditionally copied the input byte slice, making the performance opt-out a no-op. With preservation disabled the content now stores the caller's slice directly; the godoc warns that the caller must not modify the slice afterward, since mutations become visible in subsequent renders. The default is unchanged (input is copied), and `RawContent.Data()`/`Clone()` still return copies regardless of the option.
 
 ## 2.7.0 / 2026-06-21
 
