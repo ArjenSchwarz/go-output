@@ -479,6 +479,13 @@ func (c *csvRenderer) renderCollapsibleSectionCSV(section *DefaultCollapsibleSec
 
 	// Process each content item in the section (Requirement 15.8)
 	for i, content := range section.Content() {
+		// Skip nil entries defensively: NewCollapsibleSection filters them,
+		// but a malformed section must degrade gracefully instead of
+		// panicking the public render path (T-1472).
+		if content == nil {
+			continue
+		}
+
 		switch contentItem := content.(type) {
 		case *TableContent:
 			// Add a blank separator row between tables (matches top-level

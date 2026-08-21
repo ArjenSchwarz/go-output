@@ -877,6 +877,13 @@ func (j *jsonRenderer) renderCollapsibleSectionJSON(ctx context.Context, section
 	// Render nested content (Requirement 15.5: nested content)
 	var contentArray []any
 	for _, content := range section.Content() {
+		// Skip nil entries defensively: NewCollapsibleSection filters them,
+		// but a malformed section must degrade gracefully instead of
+		// panicking the public render path (T-1472).
+		if content == nil {
+			continue
+		}
+
 		// Apply per-content transformations before rendering so nested
 		// content observes the caller's context (cancellation/deadlines).
 		transformed, err := applyContentTransformations(ctx, content)
@@ -915,6 +922,13 @@ func (y *yamlRenderer) renderCollapsibleSectionYAML(ctx context.Context, section
 	// Render nested content as YAML structures (Requirement 15.5: nested content)
 	var contentArray []any
 	for _, content := range section.Content() {
+		// Skip nil entries defensively: NewCollapsibleSection filters them,
+		// but a malformed section must degrade gracefully instead of
+		// panicking the public render path (T-1472).
+		if content == nil {
+			continue
+		}
+
 		// Apply per-content transformations before rendering so nested
 		// content observes the caller's context (cancellation/deadlines).
 		transformed, err := applyContentTransformations(ctx, content)

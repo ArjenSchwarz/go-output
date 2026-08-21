@@ -533,6 +533,13 @@ func (h *htmlRenderer) renderCollapsibleSection(ctx context.Context, section *De
 
 	// Render all nested content with indentation (Requirement 15.6)
 	for _, content := range section.Content() {
+		// Skip nil entries defensively: NewCollapsibleSection filters them,
+		// but a malformed section must degrade gracefully instead of
+		// panicking the public render path (T-1472).
+		if content == nil {
+			continue
+		}
+
 		// Apply per-content transformations before rendering so nested
 		// content observes the caller's context (cancellation/deadlines).
 		transformed, err := applyContentTransformations(ctx, content)

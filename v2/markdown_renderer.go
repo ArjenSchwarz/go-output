@@ -772,10 +772,21 @@ func (m *markdownRenderer) renderCollapsibleSection(ctx context.Context, section
 	fmt.Fprintf(&result, "<summary>%s</summary>\n\n", m.escapeMarkdown(section.Title()))
 
 	// Render all nested content within the collapsible section with indentation (Requirement 15.4)
-	for i, content := range section.Content() {
-		if i > 0 {
+	rendered := 0
+	for _, content := range section.Content() {
+		// Skip nil entries defensively: NewCollapsibleSection filters them,
+		// but a malformed section must degrade gracefully instead of
+		// panicking the public render path (T-1472).
+		if content == nil {
+			continue
+		}
+
+		// Separate on rendered entries, not the raw index, so a skipped nil
+		// cannot produce a leading blank line (mirrors AppendText).
+		if rendered > 0 {
 			result.WriteString("\n")
 		}
+		rendered++
 
 		// Apply per-content transformations before rendering
 		transformed, err := applyContentTransformations(ctx, content)
