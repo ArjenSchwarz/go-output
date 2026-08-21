@@ -7,6 +7,9 @@ import (
 // Operation represents a pipeline operation
 type Operation interface {
 	Name() string
+	// Apply transforms the given content. The returned Content must be
+	// non-nil when the error is nil; a (nil, nil) result is rejected as a
+	// transformation error during rendering (T-1601).
 	Apply(ctx context.Context, content Content) (Content, error)
 	CanOptimize(with Operation) bool
 	Validate() error

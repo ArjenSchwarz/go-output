@@ -212,6 +212,14 @@ func applyContentTransformations(ctx context.Context, content Content) (Content,
 			return nil, fmt.Errorf("content %s transformation %d (%s) failed: %w",
 				content.ID(), i, op.Name(), err)
 		}
+		// An operation returning nil content with a nil error breaks the
+		// Operation contract; surface it as an error here so renderer-specific
+		// code never sees a nil Content (T-1601). Mirrors the T-1438 guard on
+		// the DataTransformer path.
+		if result == nil {
+			return nil, fmt.Errorf("content %s transformation %d (%s) returned nil content",
+				content.ID(), i, op.Name())
+		}
 		current = result
 	}
 
