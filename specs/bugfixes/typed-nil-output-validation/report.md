@@ -43,6 +43,9 @@ Equivalent failures existed for each option type:
 - **Stdio writers:** `StdoutWriter.SetWriter`/`StderrWriter.SetWriter`
   ignored only untyped nil, so a typed-nil `io.Writer` was stored and
   panicked on the next `Write` (deferred from T-1387).
+- **MultiWriter:** `NewMultiWriter` and `AddWriter` dropped only untyped-nil
+  writers, so a typed-nil `Writer` was stored and panicked at `writer.Write`
+  inside the write goroutine (found during review of this fix).
 - **Document:** `ValidateNonNil("document", doc)` boxed the `*Document`
   parameter into `any`, so `Render(ctx, nil)` passed validation and panicked
   at `doc.GetContents()` (`d.mu.RLock()` on a nil receiver).
@@ -114,6 +117,9 @@ number of boxing sites.
 - `v2/stdout_writer.go`, `v2/stderr_writer.go` — `SetWriter` ignores
   typed-nil `io.Writer` values (the T-1387 deferral), keeping the previous
   writer.
+- `v2/multi_writer.go` — `NewMultiWriter` and `AddWriter` drop typed-nil
+  writers the same way they already dropped untyped nil, and the
+  defence-in-depth skip in the `Write` loop uses `isNilValue` too.
 
 **Approach rationale:** One shared helper applied at the existing validation
 points is the smallest change that covers every option type with identical
@@ -147,11 +153,14 @@ back to no-op because absence is its documented default.
 - `TestRenderRejectsTypedNilWriter`
 - `TestRenderRejectsTypedNilDocument`
 - `TestStdioSetWriterIgnoresTypedNil` (subtests for stdout and stderr)
+- `TestMultiWriterIgnoresTypedNilWriters` (subtests for `NewMultiWriter` and
+  `AddWriter`)
 
 **What it verifies:** Each option type's typed-nil value is rejected via
 `*ValidationError` (transformer, renderer, writer, document), treated as
-absent (progress → no-op, pipeline `Add`, stdio `SetWriter`), or refused at
-construction (`NewFormatAwareTransformer`), and never panics during render.
+absent (progress → no-op, pipeline `Add`, stdio `SetWriter`, `MultiWriter`
+construction and `AddWriter`), or refused at construction
+(`NewFormatAwareTransformer`), and never panics during render.
 
 **Run command:** `go test -run TypedNil ./...` (from `v2/`)
 
@@ -165,6 +174,7 @@ construction (`NewFormatAwareTransformer`), and never panics during render.
 | `v2/format_aware.go` | `NewFormatAwareTransformer` returns nil for typed-nil input |
 | `v2/stdout_writer.go` | `SetWriter` ignores typed-nil writers |
 | `v2/stderr_writer.go` | `SetWriter` ignores typed-nil writers |
+| `v2/multi_writer.go` | `NewMultiWriter`/`AddWriter` drop typed-nil writers; `Write` loop skip is typed-nil aware |
 | `v2/typed_nil_validation_test.go` | Regression tests (new) |
 | `CHANGELOG.md` | Fixed entry under Unreleased |
 

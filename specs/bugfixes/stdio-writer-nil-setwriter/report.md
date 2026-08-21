@@ -134,11 +134,14 @@ path.
 - Any public setter that stores an interface used later without a nil check
   should either reject nil or the consumer must handle nil.
 - T-1649 tracks the remaining typed-nil gap across all option types; when
-  that lands, these setters should adopt the shared helper.
+  that lands, these setters should adopt the shared helper. (Landed: both
+  setters now use the shared `isNilValue` helper — see
+  `specs/bugfixes/typed-nil-output-validation`.)
 
 ## Related
 
 - T-1387 (this fix)
-- T-1649 — consolidated typed-nil validation (open; covers the typed-nil
+- T-1649 — consolidated typed-nil validation (fixed in
+  `specs/bugfixes/typed-nil-output-validation`; covers the typed-nil
   variant of this class of bug)
 - specs/bugfixes/renderto-nil-writer — nil writer hardening for renderers

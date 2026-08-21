@@ -508,10 +508,12 @@ func ValidateNonEmpty(field, value string) error {
 
 // isNilValue reports whether value is nil, either as an untyped nil interface
 // or as a typed nil: a non-nil interface wrapping a nil pointer, map, slice,
-// func, chan, or interface. Interface comparisons with == nil miss typed nils
-// because the interface's type word is set even though its data word is nil,
-// so a value like (*FormatAwareTransformer)(nil) would pass validation and
-// panic when dereferenced later (T-1649).
+// func, chan, or unsafe pointer. (The reflect.Interface case is unreachable
+// through an any parameter — reflect.ValueOf unwraps to the dynamic kind —
+// and is kept only as future-proofing.) Interface comparisons with == nil
+// miss typed nils because the interface's type word is set even though its
+// data word is nil, so a value like (*FormatAwareTransformer)(nil) would pass
+// validation and panic when dereferenced later (T-1649).
 func isNilValue(value any) bool {
 	if value == nil {
 		return true
