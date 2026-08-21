@@ -37,12 +37,13 @@ func NewTransformPipeline() *TransformPipeline {
 	}
 }
 
-// Add adds a transformer to the pipeline. Nil transformers are ignored so the
-// pipeline never stores a value that would panic when its interface methods are
-// called later (matching how the rest of the transformation API rejects nil
-// inputs rather than crashing).
+// Add adds a transformer to the pipeline. Nil transformers — untyped nil and
+// typed nils such as NewFormatAwareTransformer(nil) (T-1649) — are ignored so
+// the pipeline never stores a value that would panic when its interface
+// methods are called later (matching how the rest of the transformation API
+// rejects nil inputs rather than crashing).
 func (tp *TransformPipeline) Add(transformer Transformer) {
-	if transformer == nil {
+	if isNilValue(transformer) {
 		return
 	}
 

@@ -42,8 +42,10 @@ func NewOutput(opts ...OutputOption) *Output {
 		opt(output)
 	}
 
-	// Default to no-op progress if none specified
-	if output.progress == nil {
+	// Default to no-op progress if none specified. A typed-nil Progress (a nil
+	// concrete pointer boxed into the interface) is treated as absent too, so
+	// render never calls SetTotal on a value that would panic (T-1649).
+	if isNilValue(output.progress) {
 		output.progress = NewNoOpProgress()
 	}
 
@@ -184,10 +186,12 @@ func (o *Output) Render(ctx context.Context, doc *Document) error {
 // validateConfigEntries checks that each configured format has a non-nil
 // renderer and that no transformer or writer entry is nil. It returns the first
 // validation error encountered, ensuring nil entries are reported as normal
-// validation errors rather than being dereferenced during rendering.
+// validation errors rather than being dereferenced during rendering. Checks
+// use isNilValue so typed nils (a nil concrete pointer boxed into a non-nil
+// interface, e.g. NewFormatAwareTransformer(nil)) are rejected too (T-1649).
 func validateConfigEntries(formats []Format, transformers []Transformer, writers []Writer) error {
 	for i, f := range formats {
-		if f.Renderer == nil {
+		if isNilValue(f.Renderer) {
 			return NewValidationError(
 				fmt.Sprintf("formats[%d].renderer", i),
 				f.Renderer,
@@ -196,7 +200,7 @@ func validateConfigEntries(formats []Format, transformers []Transformer, writers
 		}
 	}
 	for i, transformer := range transformers {
-		if transformer == nil {
+		if isNilValue(transformer) {
 			return NewValidationError(
 				fmt.Sprintf("transformers[%d]", i),
 				transformer,
@@ -205,7 +209,7 @@ func validateConfigEntries(formats []Format, transformers []Transformer, writers
 		}
 	}
 	for i, writer := range writers {
-		if writer == nil {
+		if isNilValue(writer) {
 			return NewValidationError(
 				fmt.Sprintf("writers[%d]", i),
 				writer,

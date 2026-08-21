@@ -80,11 +80,12 @@ type FormatAwareTransformer struct {
 }
 
 // NewFormatAwareTransformer wraps a transformer with format awareness. It
-// returns nil when the supplied transformer is nil, since wrapping nil would
-// only defer a nil-pointer panic to the wrapper's Name/Priority/CanTransform/
-// Transform methods.
+// returns nil when the supplied transformer is nil — including a typed nil
+// such as a nil concrete pointer boxed into the interface (T-1649) — since
+// wrapping nil would only defer a nil-pointer panic to the wrapper's
+// Name/Priority/CanTransform/Transform methods.
 func NewFormatAwareTransformer(transformer Transformer) *FormatAwareTransformer {
-	if transformer == nil {
+	if isNilValue(transformer) {
 		return nil
 	}
 	return &FormatAwareTransformer{

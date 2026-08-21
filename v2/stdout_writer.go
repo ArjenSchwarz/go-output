@@ -65,10 +65,11 @@ func (sw *StdoutWriter) Write(ctx context.Context, format string, data []byte) e
 }
 
 // SetWriter sets a custom writer (useful for testing).
-// A nil writer is ignored so the existing writer is kept, preventing a nil
-// pointer dereference on a later Write (T-1387).
+// A nil writer — untyped or a typed nil such as (*bytes.Buffer)(nil) — is
+// ignored so the existing writer is kept, preventing a nil pointer
+// dereference on a later Write (T-1387, T-1649).
 func (sw *StdoutWriter) SetWriter(w io.Writer) {
-	if w == nil {
+	if isNilValue(w) {
 		return
 	}
 	sw.mu.Lock()
