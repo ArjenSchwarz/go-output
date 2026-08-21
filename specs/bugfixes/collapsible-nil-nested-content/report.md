@@ -139,6 +139,7 @@ requirement that renderers tolerate malformed sections however constructed.
 **Test file:** `v2/collapsible_nil_content_test.go`
 **Test names:** `TestNewCollapsibleSectionDropsNilContent`,
 `TestCollapsibleTableHelpersDropNilTables`,
+`TestCollapsibleDelegationRoutesDropNilContent`,
 `TestCollapsibleSectionNilContentMethodsNoPanic`,
 `TestRenderCollapsibleSectionNilContent`,
 `TestRenderersTolerateMalformedCollapsibleSection`
@@ -147,6 +148,8 @@ requirement that renderers tolerate malformed sections however constructed.
 - The constructor drops nil entries (alone, and mixed with valid content).
 - The table helpers drop nil `*TableContent` values instead of storing typed
   nils; `Clone` no longer panics.
+- The delegating routes named in the changelog (`NewCollapsibleReport`,
+  `Builder.AddCollapsibleSection`) inherit the constructor's nil filter.
 - `AppendText` and `Clone` tolerate a malformed section built via struct
   literal (defence-in-depth guards).
 - The ticket's reproduction renders through all six public format paths and
@@ -154,7 +157,8 @@ requirement that renderers tolerate malformed sections however constructed.
 - Every renderer skips a nil entry injected past the constructor and still
   renders the valid sibling content.
 
-**Run command:** `go test -run 'TestNewCollapsibleSectionDropsNilContent|TestCollapsibleTableHelpersDropNilTables|TestCollapsibleSectionNilContentMethodsNoPanic|TestRenderCollapsibleSectionNilContent|TestRenderersTolerateMalformedCollapsibleSection' ./v2/...`
+**Run command:** `cd v2 && go test -run 'TestNewCollapsibleSectionDropsNilContent|TestCollapsibleTableHelpersDropNilTables|TestCollapsibleDelegationRoutesDropNilContent|TestCollapsibleSectionNilContentMethodsNoPanic|TestRenderCollapsibleSectionNilContent|TestRenderersTolerateMalformedCollapsibleSection' ./...`
+(v2 is a nested Go module, so the pattern must run from inside `v2/`.)
 
 ## Affected Files
 

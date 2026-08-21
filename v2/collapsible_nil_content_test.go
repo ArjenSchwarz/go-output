@@ -89,6 +89,33 @@ func TestCollapsibleTableHelpersDropNilTables(t *testing.T) {
 	})
 }
 
+// TestCollapsibleDelegationRoutesDropNilContent verifies the entry points
+// that delegate to NewCollapsibleSection inherit its nil filter, as the
+// changelog claims: NewCollapsibleReport and Builder.AddCollapsibleSection.
+func TestCollapsibleDelegationRoutesDropNilContent(t *testing.T) {
+	t.Run("NewCollapsibleReport", func(t *testing.T) {
+		section := NewCollapsibleReport("report", []Content{nil, NewTextContent("kept"), nil})
+		if got := len(section.Content()); got != 1 {
+			t.Errorf("len(Content()) = %d, want 1", got)
+		}
+	})
+
+	t.Run("Builder AddCollapsibleSection", func(t *testing.T) {
+		doc := New().AddCollapsibleSection("section", []Content{nil}).Build()
+		contents := doc.GetContents()
+		if len(contents) != 1 {
+			t.Fatalf("len(GetContents()) = %d, want 1", len(contents))
+		}
+		section, ok := contents[0].(*DefaultCollapsibleSection)
+		if !ok {
+			t.Fatalf("content type = %T, want *DefaultCollapsibleSection", contents[0])
+		}
+		if got := len(section.Content()); got != 0 {
+			t.Errorf("len(Content()) = %d, want 0", got)
+		}
+	})
+}
+
 // TestCollapsibleSectionNilContentMethodsNoPanic verifies AppendText and
 // Clone tolerate a malformed section whose content slice contains nil
 // entries. The section is built via a struct literal because the constructor
