@@ -356,6 +356,7 @@ func (b *Builder) Table(title string, data any, opts ...TableOption) *Builder
 - `WithKeys(keys ...string)` - Explicit key ordering (recommended)
 - `WithSchema(fields ...Field)` - Full schema with formatters
 - `WithAutoSchema()` - Auto-detect schema from data
+- `WithAutoSchemaOrdered(keys ...string)` - Auto-detect schema from data with the listed keys as the first columns (in the given order); remaining detected columns are appended alphabetically
 
 **Example**:
 ```go
@@ -2261,6 +2262,7 @@ The v2 API is designed for extensibility:
 | `WithKeys(keys...)` | Set column order | `WithKeys("ID", "Name", "Status")` |
 | `WithSchema(fields...)` | Define full schema | `WithSchema(Field{Name: "id", Type: "int"})` |
 | `WithAutoSchema()` | Auto-detect schema | `WithAutoSchema()` |
+| `WithAutoSchemaOrdered(keys...)` | Auto-detect schema, listed keys first | `WithAutoSchemaOrdered("Name")` |
 
 ### Collapsible Options (v2.1.0+)
 | Option | Purpose | Example |
