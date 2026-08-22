@@ -85,7 +85,7 @@ func (t *tableRenderer) renderDocumentTable(ctx context.Context, doc *Document) 
 				result.WriteString("\n")
 			}
 
-			sectionOutput, err := t.renderCollapsibleSection(c)
+			sectionOutput, err := t.renderCollapsibleSection(ctx, c)
 			if err != nil {
 				return nil, fmt.Errorf("failed to render collapsible section: %w", err)
 			}
@@ -197,7 +197,7 @@ func (t *tableRenderer) renderSectionTable(ctx context.Context, section *Section
 			if j > 0 {
 				result.WriteString("\n")
 			}
-			sectionOutput, err := t.renderCollapsibleSection(sub)
+			sectionOutput, err := t.renderCollapsibleSection(ctx, sub)
 			if err != nil {
 				return fmt.Errorf("failed to render collapsible section: %w", err)
 			}
@@ -537,8 +537,14 @@ func NewTableRendererWithStyleAndWidth(styleName string, maxColumnWidth int) Ren
 	}
 }
 
-// renderCollapsibleSection renders a CollapsibleSection for table output (Requirement 15.7)
-func (t *tableRenderer) renderCollapsibleSection(section *DefaultCollapsibleSection) ([]byte, error) {
+// renderCollapsibleSection renders a CollapsibleSection for table output (Requirement 15.7).
+//
+// Nested content is passed through applyContentTransformations before
+// rendering (T-1635), so tables and other content inside collapsible sections
+// honour WithTransformations exactly like top-level and regular-section
+// content. The switch below must always render the transformed value, never
+// the original (T-1448).
+func (t *tableRenderer) renderCollapsibleSection(ctx context.Context, section *DefaultCollapsibleSection) ([]byte, error) {
 	var result strings.Builder
 
 	// Show section title with expansion indicator (Requirement 15.7)
@@ -568,7 +574,13 @@ func (t *tableRenderer) renderCollapsibleSection(section *DefaultCollapsibleSect
 			}
 			rendered++
 
-			switch c := content.(type) {
+			// Apply per-content transformations before rendering (T-1635).
+			transformed, err := applyContentTransformations(ctx, content)
+			if err != nil {
+				return nil, err
+			}
+
+			switch c := transformed.(type) {
 			case *TableContent:
 				tableWriter := t.renderTable(c)
 				// Indent nested content (Requirement 15.7)
@@ -591,8 +603,10 @@ func (t *tableRenderer) renderCollapsibleSection(section *DefaultCollapsibleSect
 					result.WriteString("  " + text + "\n")
 				}
 			default:
-				// Fallback for other content types
-				contentBytes, err := content.AppendText(nil)
+				// Fallback for other content types. Render the transformed
+				// content, not the original: rendering `content` here would
+				// silently discard applied transformations (T-1448).
+				contentBytes, err := c.AppendText(nil)
 				if err != nil {
 					return nil, fmt.Errorf("failed to render nested content: %w", err)
 				}
