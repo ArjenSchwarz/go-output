@@ -65,7 +65,7 @@ func TestFormatDetector_IsTabularFormat(t *testing.T) {
 	}{
 		{FormatTable, true},
 		{FormatCSV, true},
-		{FormatHTML, true},
+		{FormatHTML, false}, // Tables render as markup, not separator-based lines (T-1510)
 		{FormatMarkdown, true},
 		{FormatJSON, false},
 		{FormatYAML, false},
@@ -256,7 +256,7 @@ func TestFormatAwareTransformer_SortCanTransform(t *testing.T) {
 	}{
 		{FormatTable, true},
 		{FormatCSV, true},
-		{FormatHTML, true},
+		{FormatHTML, false}, // Not byte-level parseable tabular text (T-1510)
 		{FormatMarkdown, true},
 		{FormatJSON, false}, // Not tabular
 		{FormatYAML, false}, // Not tabular
@@ -482,7 +482,7 @@ func TestEnhancedSortTransformer_CanTransform(t *testing.T) {
 	}{
 		{FormatTable, true},
 		{FormatCSV, true},
-		{FormatHTML, true},
+		{FormatHTML, false}, // Not byte-level parseable tabular text (T-1510)
 		{FormatMarkdown, true},
 		{FormatJSON, false}, // Not tabular
 		{FormatYAML, false}, // Not tabular
