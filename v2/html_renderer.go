@@ -338,28 +338,30 @@ func (h *htmlRenderer) renderChartContentHTML(chart *ChartContent) ([]byte, erro
 
 // documentContainsMermaidCharts checks if a document contains any ChartContent
 func (h *htmlRenderer) documentContainsMermaidCharts(doc *Document) bool {
-	for _, content := range doc.GetContents() {
-		if _, ok := content.(*ChartContent); ok {
-			return true
-		}
-		// Check nested content in sections
-		if section, ok := content.(*SectionContent); ok {
-			if h.sectionContainsMermaidCharts(section) {
-				return true
-			}
-		}
-	}
-	return false
+	return h.contentsContainMermaidCharts(doc.GetContents())
 }
 
-// sectionContainsMermaidCharts recursively checks if a section contains ChartContent
-func (h *htmlRenderer) sectionContainsMermaidCharts(section *SectionContent) bool {
-	for _, content := range section.Contents() {
-		if _, ok := content.(*ChartContent); ok {
-			return true
+// contentsContainMermaidCharts recursively checks whether any content is a
+// ChartContent, descending into every nested container the HTML renderer
+// itself recurses into (SectionContent and DefaultCollapsibleSection, in any
+// combination). Keeping detection aligned with renderContent's dispatch
+// guarantees the mermaid.js script is injected whenever a chart is rendered
+// as <pre class="mermaid"> (T-1593). Nil entries are skipped defensively,
+// mirroring the nil-skip guards in the collapsible render path (T-1472).
+func (h *htmlRenderer) contentsContainMermaidCharts(contents []Content) bool {
+	for _, content := range contents {
+		if content == nil {
+			continue
 		}
-		if nestedSection, ok := content.(*SectionContent); ok {
-			if h.sectionContainsMermaidCharts(nestedSection) {
+		switch c := content.(type) {
+		case *ChartContent:
+			return true
+		case *SectionContent:
+			if h.contentsContainMermaidCharts(c.Contents()) {
+				return true
+			}
+		case *DefaultCollapsibleSection:
+			if h.contentsContainMermaidCharts(c.Content()) {
 				return true
 			}
 		}

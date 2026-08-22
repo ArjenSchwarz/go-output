@@ -356,6 +356,96 @@ func TestHTMLRenderer_MermaidScriptInjection(t *testing.T) {
 	}
 }
 
+// TestHTMLRenderer_MermaidScriptInjectionCollapsibleSections is a regression
+// test for T-1593: documentContainsMermaidCharts detected charts at the top
+// level and inside SectionContent, but not inside DefaultCollapsibleSection.
+// renderCollapsibleSection still rendered nested charts as
+// <pre class="mermaid">, so the output contained Mermaid markup without the
+// mermaid.js import/initializer script and browsers displayed the raw Mermaid
+// source instead of the chart. Expected: any document whose rendered HTML
+// contains a mermaid pre block also carries the script, regardless of how
+// deeply the chart is nested in sections and collapsible sections.
+func TestHTMLRenderer_MermaidScriptInjectionCollapsibleSections(t *testing.T) {
+	newChart := func() *ChartContent {
+		return NewPieChart("Status", []PieSlice{{Label: "ok", Value: 1}}, false)
+	}
+
+	tests := map[string]struct {
+		doc              *Document
+		shouldHaveScript bool
+	}{
+		"chart directly inside collapsible section": {
+			doc: func() *Document {
+				section := NewCollapsibleSection("Charts", []Content{newChart()})
+				return New().AddContent(section).Build()
+			}(),
+			shouldHaveScript: true,
+		},
+		"chart in section nested inside collapsible section": {
+			doc: func() *Document {
+				inner := NewSectionContent("Inner", WithLevel(2))
+				inner.AddContent(newChart())
+				outer := NewCollapsibleSection("Outer", []Content{inner})
+				return New().AddContent(outer).Build()
+			}(),
+			shouldHaveScript: true,
+		},
+		"chart in collapsible section nested inside section": {
+			doc: func() *Document {
+				inner := NewCollapsibleSection("Inner", []Content{newChart()})
+				outer := NewSectionContent("Outer", WithLevel(1))
+				outer.AddContent(inner)
+				return New().AddContent(outer).Build()
+			}(),
+			shouldHaveScript: true,
+		},
+		"collapsible section without charts": {
+			doc: func() *Document {
+				section := NewCollapsibleSection("Details", []Content{
+					NewTextContent("no charts here"),
+				})
+				return New().AddContent(section).Build()
+			}(),
+			shouldHaveScript: false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			renderer := &htmlRenderer{}
+
+			hasMermaidScript := func(output string) bool {
+				return strings.Contains(output, `<script type="module">`) &&
+					strings.Contains(output, `import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs'`) &&
+					strings.Contains(output, `mermaid.initialize({ startOnLoad: true })`)
+			}
+
+			// Render path
+			result, err := renderer.Render(context.Background(), tc.doc)
+			if err != nil {
+				t.Fatalf("Render() error = %v", err)
+			}
+			output := string(result)
+
+			if got, want := hasMermaidScript(output), tc.shouldHaveScript; got != want {
+				t.Errorf("Render(): mermaid script present = %v, want %v; output:\n%s", got, want, output)
+			}
+			if tc.shouldHaveScript && !strings.Contains(output, `<pre class="mermaid">`) {
+				t.Errorf("Render(): output should contain <pre class=\"mermaid\">, got:\n%s", output)
+			}
+
+			// RenderTo (streaming) path uses the same detection and must agree
+			var buf strings.Builder
+			if err := renderer.RenderTo(context.Background(), tc.doc, &buf); err != nil {
+				t.Fatalf("RenderTo() error = %v", err)
+			}
+			if got, want := hasMermaidScript(buf.String()), tc.shouldHaveScript; got != want {
+				t.Errorf("RenderTo(): mermaid script present = %v, want %v; output:\n%s", got, want, buf.String())
+			}
+		})
+	}
+}
+
 func TestHTMLRenderer_MermaidScriptFormat(t *testing.T) {
 	// Test the exact format of the injected script
 	chart := NewPieChart("Test", []PieSlice{{Label: "A", Value: 100}}, false)
