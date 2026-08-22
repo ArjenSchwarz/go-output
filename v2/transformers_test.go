@@ -304,7 +304,7 @@ func TestSortTransformer_CanTransform(t *testing.T) {
 	}{
 		{"table", true},
 		{"csv", true},
-		{"html", true},
+		{"html", false}, // Byte-level tabular parsing cannot handle HTML markup (T-1510)
 		{"markdown", true},
 		{"json", false},
 		{"yaml", false},
@@ -495,7 +495,7 @@ func TestLineSplitTransformer_CanTransform(t *testing.T) {
 	}{
 		{"table", true},
 		{"csv", true},
-		{"html", true},
+		{"html", false}, // Byte-level tabular parsing cannot handle HTML markup (T-1510)
 		{"markdown", true},
 		{"json", false},
 		{"yaml", false},

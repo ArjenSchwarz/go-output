@@ -84,7 +84,45 @@ only gate between a transformer and formats it cannot handle.
 
 ## Resolution for the Issue
 
-_To be completed after the fix is implemented._
+**Changes made:**
+- `v2/transformers.go` — removed `FormatHTML` from
+  `SortTransformer.CanTransform` and `LineSplitTransformer.CanTransform`;
+  both now advertise table, CSV, and markdown only, with godoc explaining why
+  HTML is excluded.
+- `v2/format_aware.go` — removed `FormatHTML` from
+  `FormatDetector.IsTabularFormat`, which consistently propagates to
+  `SupportsSorting`, `SupportsLineSplitting`, the
+  `FormatAwareTransformer.CanTransform` sort/linesplit cases, and
+  `EnhancedSortTransformer`; documented the byte-level parsing rationale on
+  the predicate.
+- `v2/transformers_test.go`, `v2/format_aware_test.go` — flipped the
+  `{html, true}` expectations to `false` for the affected predicates
+  (Sort/LineSplit `CanTransform`, `IsTabularFormat`, the sort wrapper, and
+  `EnhancedSortTransformer`). Emoji and text-based predicate expectations for
+  HTML are unchanged.
+- `CHANGELOG.md` — noted the behavior change under Unreleased/Fixed:
+  transformers that previously ran on HTML as no-ops (sort) or corrupters
+  (linesplit) no longer run on HTML at all.
+
+**Approach rationale:** The transformers never worked on HTML, so dropping the
+advertisement matches the predicate to reality with zero loss of working
+functionality; the pipeline's `CanTransform` gate then keeps the transformers
+off HTML output entirely, which also fixes the corruption path.
+`IsTabularFormat` was fixed at the source (rather than special-casing only
+`SupportsSorting`/`SupportsLineSplitting`) because its only consumers are
+those two predicates, keeping the "Enhanced" layer consistent per ticket
+guidance.
+
+**Alternatives considered:**
+- Implement HTML-aware table transformations (parse `<tr>`/`<td>` structure) —
+  rejected: that is a new feature with meaningful parsing complexity, not a
+  bugfix; the ticket guidance explicitly endorses dropping the false
+  advertisement instead.
+- Keep `IsTabularFormat` including HTML and only change
+  `SupportsSorting`/`SupportsLineSplitting` — rejected: the ticket names
+  `IsTabularFormat` as an offender, its only consumers are the two
+  `Supports*` predicates, and leaving it would keep an inconsistent claim in
+  the public API.
 
 ## Regression Test
 
@@ -99,21 +137,38 @@ _To be completed after the fix is implemented._
 `SupportsSorting`/`SupportsLineSplitting`, `EnhancedSortTransformer`, and the
 `FormatAwareTransformer` wrappers for sort and linesplit) reports HTML as
 unsupported, and pipeline-level runs with sort and line-split transformers
-leave HTML bytes byte-for-byte intact (the line-split case reproduces real
-corruption before the fix).
+leave HTML bytes byte-for-byte intact (the line-split case reproduced real
+corruption before the fix: `Java;Go, senior` was mangled into two broken
+rows).
 
 **Run command:** `cd v2 && go test -run 'TestTabularTransformersDoNotAdvertiseHTMLSupport|TestTransformPipeline_LineSplitLeavesHTMLIntact|TestTransformPipeline_SortLeavesHTMLIntact|TestEnhancedSortTransformer_Transform_HTMLPassthrough' ./...`
 
 ## Affected Files
 
-_To be completed after the fix is implemented._
+| File | Change |
+|------|--------|
+| `v2/transformers.go` | Drop `FormatHTML` from Sort/LineSplit `CanTransform` |
+| `v2/format_aware.go` | Drop `FormatHTML` from `IsTabularFormat`; document rationale |
+| `v2/transformers_html_test.go` | New regression tests (T-1510) |
+| `v2/transformers_test.go` | Update `CanTransform` expectations for html to false |
+| `v2/format_aware_test.go` | Update predicate expectations for html to false |
+| `CHANGELOG.md` | Note behavior change under Unreleased/Fixed |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass (`make check`)
+- [x] Regression test passes
+- [x] Full test suite passes (unit and `INTEGRATION=1`)
+- [x] Linters/validators pass (`make lint`: 0 issues; gofmt clean)
+
+**Manual verification:**
+- Confirmed via grep that no non-test code consumes `IsTabularFormat`,
+  `SupportsSorting`, or `SupportsLineSplitting` outside `format_aware.go`
+  itself, so the predicate change cannot strand another caller.
+- Confirmed no documentation claims sort/line-split support for HTML.
+- Note: `make fmt`/`make check` fail on example directories with a
+  pre-existing `go mod tidy` issue unrelated to this change (verified on a
+  clean tree via `git stash`).
 
 ## Prevention
 
