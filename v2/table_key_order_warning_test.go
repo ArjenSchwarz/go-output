@@ -72,6 +72,16 @@ func TestBuilderTable_KeyOrderGuessWarning(t *testing.T) {
 			opts:        []TableOption{WithAutoSchemaOrdered("zebra", "apple", "mango")},
 			wantWarning: false,
 		},
+		"WithAutoSchemaOrdered with partial keys does not warn": {
+			// The unlisted columns (apple, mango) are appended after the
+			// explicit key in alphabetical order. That remainder ordering is
+			// the option's documented contract — the caller opted into
+			// detection with a partial order — not a silent guess, so no
+			// warning is recorded (T-1451).
+			data:        multiColumn,
+			opts:        []TableOption{WithAutoSchemaOrdered("zebra")},
+			wantWarning: false,
+		},
 		"single-column map has no order to guess": {
 			data:        []map[string]any{{"only": 1}},
 			wantWarning: false,
