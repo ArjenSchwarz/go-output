@@ -27,9 +27,13 @@ func (fd *FormatDetector) IsStructuredFormat(format string) bool {
 	return slices.Contains(structuredFormats, format)
 }
 
-// IsTabularFormat checks if a format represents tabular data
+// IsTabularFormat checks if a format represents tabular data that the
+// byte-level tabular transformers can parse (CSV via encoding/csv, otherwise
+// tab/comma/pipe separated lines). HTML renders tables but uses markup rather
+// than those separators, so it is deliberately excluded — sorting on HTML was
+// a silent no-op and line splitting could corrupt the markup (T-1510).
 func (fd *FormatDetector) IsTabularFormat(format string) bool {
-	tabularFormats := []string{FormatTable, FormatCSV, FormatHTML, FormatMarkdown}
+	tabularFormats := []string{FormatTable, FormatCSV, FormatMarkdown}
 	return slices.Contains(tabularFormats, format)
 }
 
