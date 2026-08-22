@@ -79,7 +79,7 @@ Systematic inspection (Fagan-style walkthrough) of `v2/html_renderer.go` compari
 - [x] Linters/validators pass
 
 **Manual verification:**
-- Inspected rendered output for the repro document: it now contains both `<pre class="mermaid">` and the mermaid import/initialize script.
+- Rendered output for the repro document (asserted directly in the regression test) now contains both `<pre class="mermaid">` and the mermaid import/initialize script; before the fix the test failure output showed the pre block without the script.
 
 ## Prevention
 
