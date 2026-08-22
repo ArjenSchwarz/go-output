@@ -58,7 +58,8 @@ func TestWithFrontMatterAddsMarkdownFrontMatter(t *testing.T) {
 	if !strings.HasPrefix(got, "---\n") {
 		t.Errorf("WithFrontMatter output does not start with front matter delimiter; got:\n%s", got)
 	}
-	if !strings.Contains(got, "title: Migration Test") {
+	// Values containing spaces are YAML-quoted by the renderer.
+	if !strings.Contains(got, `title: "Migration Test"`) {
 		t.Errorf("WithFrontMatter output missing front matter entry; got:\n%s", got)
 	}
 }
@@ -111,7 +112,8 @@ func TestOutputCompatOptionsCombineWithFormatConstructors(t *testing.T) {
 		WithFormat(MarkdownWithToC(true)),
 		WithFrontMatter(map[string]string{"author": "Test Suite"}),
 	)
-	if !strings.Contains(got, "author: Test Suite") {
+	// Values containing spaces are YAML-quoted by the renderer.
+	if !strings.Contains(got, `author: "Test Suite"`) {
 		t.Errorf("combined output missing front matter; got:\n%s", got)
 	}
 	if !strings.Contains(got, "## Table of Contents") {
