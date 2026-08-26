@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -176,6 +177,36 @@ func TestRenderCollapsibleSectionNilContent(t *testing.T) {
 
 	if clone := section.Clone(); clone == nil {
 		t.Error("Clone() = nil, want non-nil")
+	}
+}
+
+// TestCSVCollapsibleContentNumberingSkipsNilEntries verifies the CSV
+// renderer numbers "# Content N" metadata rows by rendered entries, not the
+// raw slice index, so a nil-skipped entry (T-1472 malformed section) cannot
+// produce gaps like "Content 1", "Content 3".
+func TestCSVCollapsibleContentNumberingSkipsNilEntries(t *testing.T) {
+	section := &DefaultCollapsibleSection{
+		id:              "malformed",
+		title:           "malformed",
+		content:         []Content{nil, NewTextContent("first"), NewTextContent("second")},
+		defaultExpanded: true,
+		formatHints:     make(map[string]map[string]any),
+	}
+	doc := New().AddContent(section).Build()
+
+	output, err := CSV().Renderer.Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("Render() error = %v, want nil", err)
+	}
+
+	got := string(output)
+	for _, want := range []string{"# Content 1: text", "# Content 2: text"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("Render() output missing %q\noutput:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "# Content 3:") {
+		t.Errorf("Render() output contains %q, want contiguous numbering\noutput:\n%s", "# Content 3:", got)
 	}
 }
 

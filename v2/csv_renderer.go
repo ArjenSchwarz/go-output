@@ -484,13 +484,19 @@ func (c *csvRenderer) renderCollapsibleSectionCSV(ctx context.Context, section *
 	}
 
 	// Process each content item in the section (Requirement 15.8)
-	for i, content := range section.Content() {
+	contentNum := 0
+	for _, content := range section.Content() {
 		// Skip nil entries defensively: NewCollapsibleSection filters them,
 		// but a malformed section must degrade gracefully instead of
 		// panicking the public render path (T-1472).
 		if content == nil {
 			continue
 		}
+
+		// Number on rendered entries, not the raw index, so a skipped nil
+		// cannot produce gaps in the "# Content N" metadata rows (mirrors
+		// the rendered counter in the table renderer's collapsible path).
+		contentNum++
 
 		// Apply transformations to nested content before rendering (T-1635).
 		transformed, err := applyContentTransformations(ctx, content)
@@ -536,7 +542,7 @@ func (c *csvRenderer) renderCollapsibleSectionCSV(ctx context.Context, section *
 			// Render the transformed content, not the original: rendering
 			// `content` here would silently discard applied transformations
 			// (T-1448).
-			metadataRow := []string{fmt.Sprintf("# Content %d: %s", i+1, contentItem.Type())}
+			metadataRow := []string{fmt.Sprintf("# Content %d: %s", contentNum, contentItem.Type())}
 			if err := csvWriter.Write(metadataRow); err != nil {
 				return fmt.Errorf("failed to write content metadata: %w", err)
 			}
