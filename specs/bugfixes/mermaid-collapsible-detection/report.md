@@ -59,7 +59,7 @@ Systematic inspection (Fagan-style walkthrough) of `v2/html_renderer.go` compari
 **Test file:** `v2/mermaid_html_markdown_test.go`
 **Test name:** `TestHTMLRenderer_MermaidScriptInjectionCollapsibleSections`
 
-**What it verifies:** For both `Render` and `RenderTo`, the mermaid script is present when a chart is (a) directly inside a collapsible section, (b) inside a `SectionContent` nested in a collapsible section, and (c) inside a collapsible section nested in a `SectionContent`; and the script is absent for a collapsible section without charts.
+**What it verifies:** For both `Render` and `RenderTo`, the mermaid script is present when a chart is (a) directly inside a collapsible section, (b) inside a `SectionContent` nested in a collapsible section, (c) inside a collapsible section nested in a `SectionContent`, and (d) inside a collapsible section nested in another collapsible section; and the script is absent for a collapsible section without charts.
 
 **Run command:** `cd v2 && go test -run TestHTMLRenderer_MermaidScriptInjectionCollapsibleSections ./...`
 
@@ -69,7 +69,7 @@ Systematic inspection (Fagan-style walkthrough) of `v2/html_renderer.go` compari
 |------|--------|
 | `v2/html_renderer.go` | Shared recursive mermaid-chart detection covering collapsible sections |
 | `v2/mermaid_html_markdown_test.go` | Regression tests for chart detection in collapsible sections |
-| `v2/CHANGELOG.md` | Changelog entry under Unreleased/Fixed |
+| `CHANGELOG.md` | Changelog entry under Unreleased/Fixed |
 
 ## Verification
 
