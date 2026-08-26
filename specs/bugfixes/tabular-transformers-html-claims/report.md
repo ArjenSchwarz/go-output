@@ -19,10 +19,13 @@ Rendered HTML tables (`<table><tr><td>...`) use none of those separators, so:
   line or latched onto a comma inside prose, and the sort key never matched a
   fragment of HTML markup, so the input was returned unchanged despite the
   advertised support.
-- **Line splitting could corrupt raw HTML.** When cell content contained a
-  comma (or the configured separator), `detectSeparator` mistook the comma for
-  a column separator and the row was split, trimmed, and reassembled across
-  multiple mangled lines.
+- **Line splitting altered rendered HTML on every run, and could corrupt it
+  outright.** The line-based path whitespace-trims every line before
+  re-emitting it, so the HTML renderer's indentation (`  <table`,
+  `      <tr>`, ...) was stripped on every pass even when nothing was split.
+  Worse, when cell content contained a comma (or the configured separator),
+  `detectSeparator` mistook the comma for a column separator and the row was
+  split, trimmed, and reassembled across multiple mangled lines.
 
 **Reproduction steps:**
 1. Build a `TransformPipeline` containing `NewLineSplitTransformer(";")`.
@@ -36,9 +39,10 @@ Rendered HTML tables (`<table><tr><td>...`) use none of those separators, so:
 
 **Impact:** Any pipeline that registers a sort or line-split transformer and
 renders HTML. Sorting silently did nothing (misleading, but harmless bytes);
-line splitting actively corrupted HTML output whenever cell text contained the
-separator. Both transformers also wasted a full copy-and-scan pass over HTML
-output they could never handle.
+line splitting stripped the renderer's indentation on every run and actively
+corrupted HTML output whenever cell text contained the separator alongside a
+detectable comma/tab/pipe. Both transformers also wasted a full copy-and-scan
+pass over HTML output they could never handle.
 
 ## Investigation Summary
 
