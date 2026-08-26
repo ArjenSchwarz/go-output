@@ -121,6 +121,47 @@ func TestOutputCompatOptionsCombineWithFormatConstructors(t *testing.T) {
 	}
 }
 
+func TestCompatOptionsSkipCustomRenderers(t *testing.T) {
+	// The compat options only reconfigure the built-in renderers. A custom
+	// Renderer registered under the table or markdown format name must be
+	// skipped entirely: its output stays byte-identical with every compat
+	// option set.
+	tests := map[string]struct {
+		formatName string
+	}{
+		"custom renderer under table format name":    {formatName: FormatTable},
+		"custom renderer under markdown format name": {formatName: FormatMarkdown},
+	}
+
+	doc := New().
+		Header("Overview").
+		Table("Data", []map[string]any{{"Name": "Alice"}}, WithKeys("Name")).
+		Build()
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			want := "custom renderer output for " + tc.formatName
+			format := Format{
+				Name: tc.formatName,
+				Renderer: &MockRenderer{
+					formatName:   tc.formatName,
+					renderResult: []byte(want),
+				},
+			}
+
+			got := renderCompat(t, doc,
+				WithFormat(format),
+				WithTableStyle("Bold"),
+				WithTOC(true),
+				WithFrontMatter(map[string]string{"title": "Test"}),
+			)
+			if got != want {
+				t.Errorf("custom renderer output changed by compat options: got %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestCompatOptionsLeaveOtherFormatsUntouched(t *testing.T) {
 	// The v1 compatibility options only target their matching formats: JSON
 	// output must be identical with and without them.

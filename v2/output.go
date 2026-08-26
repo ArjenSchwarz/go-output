@@ -253,6 +253,10 @@ func validateConfigEntries(formats []Format, transformers []Transformer, writers
 // formats are returned unchanged. The options are additive: zero values apply
 // no changes, so WithTOC(false) does not disable a ToC enabled through
 // MarkdownWithToC(true).
+//
+// Callers must reject nil and typed-nil renderers first (validateConfigEntries
+// does this in Render); the type assertions below assume any renderer that
+// matches a built-in type is a non-nil pointer.
 func applyV1CompatOptions(formats []Format, tableStyle string, hasTOC bool, frontMatter map[string]string) []Format {
 	if tableStyle == "" && !hasTOC && len(frontMatter) == 0 {
 		return formats
@@ -268,7 +272,7 @@ func applyV1CompatOptions(formats []Format, tableStyle string, hasTOC bool, fron
 			}
 			// tableRenderer holds no locks, so a shallow copy is safe and
 			// keeps maxColumnWidth and collapsibleConfig intact.
-			if tr, ok := format.Renderer.(*tableRenderer); ok && tr != nil {
+			if tr, ok := format.Renderer.(*tableRenderer); ok {
 				clone := *tr
 				clone.styleName = tableStyle
 				derived[i].Renderer = &clone
@@ -278,7 +282,7 @@ func applyV1CompatOptions(formats []Format, tableStyle string, hasTOC bool, fron
 				continue
 			}
 			mr, ok := format.Renderer.(*markdownRenderer)
-			if !ok || mr == nil {
+			if !ok {
 				continue
 			}
 
