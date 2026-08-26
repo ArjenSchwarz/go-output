@@ -399,6 +399,14 @@ func TestHTMLRenderer_MermaidScriptInjectionCollapsibleSections(t *testing.T) {
 			}(),
 			shouldHaveScript: true,
 		},
+		"chart in collapsible section nested inside collapsible section": {
+			doc: func() *Document {
+				inner := NewCollapsibleSection("Inner", []Content{newChart()})
+				outer := NewCollapsibleSection("Outer", []Content{inner})
+				return New().AddContent(outer).Build()
+			}(),
+			shouldHaveScript: true,
+		},
 		"collapsible section without charts": {
 			doc: func() *Document {
 				section := NewCollapsibleSection("Details", []Content{
