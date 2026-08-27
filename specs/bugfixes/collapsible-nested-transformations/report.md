@@ -37,6 +37,7 @@ A `*TableContent` carrying per-content transformations via `WithTransformations(
 **Changes made:**
 - `v2/csv_renderer.go` — `renderCollapsibleSectionCSV` now accepts `ctx context.Context` and the document-level `flushCSV` helper. Each non-nil nested item is passed through `applyContentTransformations(ctx, content)` before the type switch, and the switch (including the non-table fallback) operates on the transformed value. On a transformation error, buffered rows are flushed first and a write error takes precedence, matching `renderDocumentCSVTo` and `renderSectionTablesCSV` (T-1186).
 - `v2/table_renderer.go` — `renderCollapsibleSection` now accepts `ctx context.Context`. Each non-nil nested item is passed through `applyContentTransformations(ctx, content)` before the type switch, and the switch — including the `AppendText` fallback — renders the transformed value, not the original (avoiding the T-1448 bug shape). Both call sites (`renderDocumentTable`, `renderSectionTable`) pass their `ctx` through.
+- Pre-push review follow-up — the collapsible loops in both renderers and `renderSectionTablesCSV` now check `ctx.Done()` per nested item (mirroring `renderSectionTable`/`renderDocumentCSVTo`, since `applyContentTransformations` only observes `ctx` for content carrying transformations; the CSV paths flush buffered rows first and prefer a write error, T-1186). Both non-table fallback branches note that nested collapsible sections are not recursed into (deferred to T-2031).
 
 **Approach rationale:** This mirrors the pattern already used by the markdown and HTML renderers' collapsible paths and by every other dispatch site in the CSV and table renderers, so all render paths now share one transformation contract. The T-1472 nil-entry guards and rendered-counter separator logic are preserved unchanged, and the change keeps each dispatch switch shaped like the others to ease the planned T-2031 unification.
 
@@ -91,3 +92,4 @@ A `*TableContent` carrying per-content transformations via `WithTransformations(
 - T-1472 — nil-entry guards in collapsible loops (preserved by this fix)
 - T-1601 — `applyContentTransformations` now errors on nil operation results (error path handled here)
 - T-2031 — planned unification of the table renderer dispatch switches
+- T-2283 — pre-existing: `renderSectionTablesCSV` silently drops collapsible sections nested inside regular sections (found during pre-push review, out of scope here)
