@@ -104,16 +104,18 @@ func WithProgress(progress Progress) OutputOption {
 // WithTableStyle sets the table style for v1 compatibility. During Render the
 // style is applied to every configured table format that uses the built-in
 // table renderer (Table, TableWithStyle, TableWithMaxColumnWidth, ...); other
-// renderer settings such as max column width are preserved. Formats using a
-// custom Renderer implementation are unaffected.
+// renderer settings such as max column width are preserved. Style names are
+// case-sensitive; an unknown name falls back to the default style, matching
+// TableWithStyle. Formats using a custom Renderer implementation are
+// unaffected.
 func WithTableStyle(style string) OutputOption {
 	return func(o *Output) {
 		o.tableStyle = style
 	}
 }
 
-// WithTOC enables or disables table of contents generation for v1
-// compatibility. During Render, WithTOC(true) enables ToC generation on every
+// WithTOC enables table of contents generation for v1 compatibility.
+// During Render, WithTOC(true) enables ToC generation on every
 // configured markdown format that uses the built-in markdown renderer. The
 // option is additive: false is the zero value and does not disable a ToC
 // enabled through MarkdownWithToC(true). Formats using a custom Renderer
@@ -270,43 +272,15 @@ func applyV1CompatOptions(formats []Format, tableStyle string, hasTOC bool, fron
 			if tableStyle == "" {
 				continue
 			}
-			// tableRenderer holds no locks, so a shallow copy is safe and
-			// keeps maxColumnWidth and collapsibleConfig intact.
 			if tr, ok := format.Renderer.(*tableRenderer); ok {
-				clone := *tr
-				clone.styleName = tableStyle
-				derived[i].Renderer = &clone
+				derived[i].Renderer = tr.withStyle(tableStyle)
 			}
 		case FormatMarkdown:
 			if !hasTOC && len(frontMatter) == 0 {
 				continue
 			}
-			mr, ok := format.Renderer.(*markdownRenderer)
-			if !ok {
-				continue
-			}
-
-			// markdownRenderer embeds baseRenderer, which contains a mutex,
-			// so copy fields explicitly instead of copying the struct. The
-			// embedded config is read under its own lock; the remaining
-			// fields are only written at construction.
-			mr.mu.RLock()
-			baseConfig := mr.config
-			mr.mu.RUnlock()
-
-			merged := mr.frontMatter
-			if len(frontMatter) > 0 {
-				merged = make(map[string]string, len(mr.frontMatter)+len(frontMatter))
-				maps.Copy(merged, mr.frontMatter)
-				maps.Copy(merged, frontMatter)
-			}
-
-			derived[i].Renderer = &markdownRenderer{
-				baseRenderer:      baseRenderer{config: baseConfig},
-				includeToC:        mr.includeToC || hasTOC,
-				frontMatter:       merged,
-				headingLevel:      mr.headingLevel,
-				collapsibleConfig: mr.collapsibleConfig,
+			if mr, ok := format.Renderer.(*markdownRenderer); ok {
+				derived[i].Renderer = mr.withCompatOptions(hasTOC, frontMatter)
 			}
 		}
 	}

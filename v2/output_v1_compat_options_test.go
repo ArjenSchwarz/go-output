@@ -162,6 +162,72 @@ func TestCompatOptionsSkipCustomRenderers(t *testing.T) {
 	}
 }
 
+func TestWithTOCFalseLeavesConstructorToCEnabled(t *testing.T) {
+	// The options are additive: WithTOC(false) is the zero value and must not
+	// disable a ToC enabled through the format constructor.
+	doc := New().
+		Header("Overview").
+		Build()
+
+	got := renderCompat(t, doc,
+		WithFormat(MarkdownWithToC(true)),
+		WithTOC(false),
+	)
+	if !strings.Contains(got, "## Table of Contents") {
+		t.Errorf("WithTOC(false) disabled a constructor-enabled ToC; got:\n%s", got)
+	}
+}
+
+func TestWithFrontMatterMergesConstructorEntries(t *testing.T) {
+	// Output-level front matter merges with constructor-supplied entries:
+	// disjoint keys from both sides survive, and on key conflict the
+	// Output-level value wins.
+	doc := New().
+		Text("body text").
+		Build()
+
+	got := renderCompat(t, doc,
+		WithFormat(MarkdownWithFrontMatter(map[string]string{
+			"title":  "constructor",
+			"author": "constructor",
+		})),
+		WithFrontMatter(map[string]string{"title": "output"}),
+	)
+	if !strings.Contains(got, "author: constructor") {
+		t.Errorf("merge lost disjoint constructor-supplied key; got:\n%s", got)
+	}
+	if !strings.Contains(got, "title: output") {
+		t.Errorf("Output-level value did not win on key conflict; got:\n%s", got)
+	}
+	if strings.Contains(got, "title: constructor") {
+		t.Errorf("constructor value for conflicting key still present; got:\n%s", got)
+	}
+}
+
+func TestCompatOptionsDoNotMutateStoredFormats(t *testing.T) {
+	// applyV1CompatOptions must derive copies: a Format value shared between
+	// two Outputs must not pick up compat options applied by one of them,
+	// because the Renderer pointer inside the Format is shared.
+	doc := New().
+		Header("Overview").
+		Build()
+	format := Markdown()
+
+	_ = renderCompat(t, doc,
+		WithFormat(format),
+		WithTOC(true),
+		WithFrontMatter(map[string]string{"title": "compat"}),
+	)
+
+	got := renderCompat(t, doc, WithFormat(format))
+	if strings.Contains(got, "## Table of Contents") {
+		t.Errorf("shared format gained a ToC from another Output's compat options; got:\n%s", got)
+	}
+	if strings.Contains(got, "title: compat") {
+		t.Errorf("shared format gained front matter from another Output's compat options; got:\n%s", got)
+	}
+}
+
 func TestCompatOptionsLeaveOtherFormatsUntouched(t *testing.T) {
 	// The v1 compatibility options only target their matching formats: JSON
 	// output must be identical with and without them.

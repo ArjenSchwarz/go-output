@@ -54,8 +54,9 @@ no compile-time or runtime signal that the fields were unused.
 ## Resolution for the Issue
 
 **Changes made:**
-- `v2/output.go` - `Render` now snapshots `tableStyle`, `hasTOC`, and `frontMatter` under the read lock and derives effective formats via a new `applyV1CompatOptions` helper before validation/rendering.
+- `v2/output.go` - `Render` now snapshots `tableStyle`, `hasTOC`, and `frontMatter` under the read lock and derives effective formats via a new `applyV1CompatOptions` helper, placed after `validateConfigEntries` (so typed-nil renderers are rejected before the type assertions) and before rendering.
 - `v2/output.go` - `applyV1CompatOptions` reconfigures matching built-in renderers: table formats backed by `*tableRenderer` get the configured style (preserving max column width and collapsible config); markdown formats backed by `*markdownRenderer` get ToC enabled and/or front matter merged (Output-level keys win on conflict), preserving heading level, collapsible config, and base renderer config. Renderers of other formats, and custom `Renderer` implementations, are left untouched.
+- `v2/table_renderer.go` / `v2/markdown_renderer.go` - The per-renderer copy logic lives in unexported helpers next to the struct definitions (`(*tableRenderer).withStyle`, `(*markdownRenderer).withCompatOptions`), so a field added to either renderer is added to its copy in the same file rather than silently reverting to its zero value in the derived renderer.
 - `v2/output.go` - Option doc comments updated to describe the wired behaviour and its additive semantics (`WithTOC(false)` is the zero value and does not disable a ToC enabled via `MarkdownWithToC(true)`).
 - `v2/renderer.go` - `Format.Options` documented as informational only: it is not consumed by the render pipeline (see decision below).
 
@@ -92,25 +93,45 @@ informational metadata not consumed by the render pipeline.
 - `TestWithTableStyleAppliesStyleToTableFormat`
 - `TestWithTableStylePreservesMaxColumnWidth`
 - `TestOutputCompatOptionsCombineWithFormatConstructors`
+- `TestCompatOptionsSkipCustomRenderers`
+- `TestWithTOCFalseLeavesConstructorToCEnabled`
+- `TestWithFrontMatterMergesConstructorEntries`
+- `TestCompatOptionsDoNotMutateStoredFormats`
 - `TestCompatOptionsLeaveOtherFormatsUntouched`
 
 **What it verifies:** Each Output-level option affects the rendered bytes of
 its matching format; style override preserves constructor-configured max
-column width; Output options combine with Format-constructor settings; and
-non-matching formats (JSON) are byte-identical with and without the options.
+column width; Output options combine with Format-constructor settings;
+`WithTOC(false)` does not disable a constructor-enabled ToC (additive
+semantics); front matter merges with constructor entries and Output-level
+keys win on conflict; custom `Renderer` implementations registered under the
+table or markdown format names are skipped entirely; stored formats are not
+mutated (a `Format` shared between two Outputs does not leak compat options);
+and non-matching formats (JSON) are byte-identical with and without the
+options.
 
 **Run command:** `cd v2 && go test -run 'TestWithTOC|TestWithFrontMatter|TestWithTableStyle|TestOutputCompatOptions|TestCompatOptions' ./`
 
-All behavioural tests failed before the fix (red) and pass after (green); the
-JSON guard passed in both states.
+The core behavioural tests (`TestWithTOCEnablesMarkdownToC`,
+`TestWithFrontMatterAddsMarkdownFrontMatter`,
+`TestWithTableStyleAppliesStyleToTableFormat`,
+`TestWithTableStylePreservesMaxColumnWidth`,
+`TestOutputCompatOptionsCombineWithFormatConstructors`) failed before the fix
+(red) and pass after (green); the JSON guard passed in both states. The
+remaining tests were added during review to lock in the documented invariants
+(custom-renderer skip, additive zero values, merge conflict rule, no mutation
+of stored formats).
 
 ## Affected Files
 
 | File | Change |
 |------|--------|
 | `v2/output.go` | Snapshot compat fields in `Render`; add `applyV1CompatOptions`; update option docs |
+| `v2/table_renderer.go` | Add unexported `withStyle` copy helper next to the struct |
+| `v2/markdown_renderer.go` | Add unexported `withCompatOptions` copy helper next to the struct |
 | `v2/renderer.go` | Document `Format.Options` as not consumed by the render pipeline |
 | `v2/output_v1_compat_options_test.go` | New regression tests |
+| `v2/docs/MIGRATION.md` | Note on additive semantics of the compat options |
 | `CHANGELOG.md` | Entry under Unreleased / Fixed |
 
 ## Verification
