@@ -2,12 +2,30 @@ package output
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 )
+
+// formatContext renders a context map as "key=value" pairs joined by ", ",
+// with keys sorted so error messages are deterministic (Go map iteration
+// order is randomized).
+func formatContext(m map[string]any) string {
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%v", key, m[key]))
+	}
+	return strings.Join(parts, ", ")
+}
 
 // RenderError indicates rendering failure with detailed context
 type RenderError struct {
@@ -48,11 +66,7 @@ func (e *RenderError) Error() string {
 
 	// Additional context
 	if len(e.Context) > 0 {
-		var contextParts []string
-		for key, value := range e.Context {
-			contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, value))
-		}
-		parts = append(parts, fmt.Sprintf("context=[%s]", strings.Join(contextParts, ", ")))
+		parts = append(parts, fmt.Sprintf("context=[%s]", formatContext(e.Context)))
 	}
 
 	// Cause
@@ -173,11 +187,7 @@ func (e *ContextError) Error() string {
 	}
 
 	if len(e.Context) > 0 {
-		var contextParts []string
-		for key, value := range e.Context {
-			contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, value))
-		}
-		parts = append(parts, fmt.Sprintf("context: %s", strings.Join(contextParts, ", ")))
+		parts = append(parts, fmt.Sprintf("context: %s", formatContext(e.Context)))
 	}
 
 	if e.Cause != nil {
@@ -263,11 +273,7 @@ func (e *MultiError) Error() string {
 	if len(e.Errors) == 1 {
 		var contextInfo string
 		if len(e.Context) > 0 {
-			var contextParts []string
-			for key, value := range e.Context {
-				contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, value))
-			}
-			contextInfo = fmt.Sprintf(" [%s]", strings.Join(contextParts, ", "))
+			contextInfo = fmt.Sprintf(" [%s]", formatContext(e.Context))
 		}
 
 		if e.Operation != "" {
@@ -285,11 +291,7 @@ func (e *MultiError) Error() string {
 
 	// Add context information
 	if len(e.Context) > 0 {
-		var contextParts []string
-		for key, value := range e.Context {
-			contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, value))
-		}
-		parts = append(parts, fmt.Sprintf("Context: %s", strings.Join(contextParts, ", ")))
+		parts = append(parts, fmt.Sprintf("Context: %s", formatContext(e.Context)))
 	}
 
 	for i, err := range e.Errors {
@@ -301,8 +303,8 @@ func (e *MultiError) Error() string {
 			if source.Component != "" {
 				sourceDetails = append(sourceDetails, fmt.Sprintf("component=%s", source.Component))
 			}
-			for key, value := range source.Details {
-				sourceDetails = append(sourceDetails, fmt.Sprintf("%s=%v", key, value))
+			if len(source.Details) > 0 {
+				sourceDetails = append(sourceDetails, formatContext(source.Details))
 			}
 			if len(sourceDetails) > 0 {
 				errorInfo += fmt.Sprintf(" [%s]", strings.Join(sourceDetails, ", "))
@@ -439,50 +441,36 @@ func NewCancelledError(operation string, cause error) *CancelledError {
 	}
 }
 
-// IsCancelled checks if an error represents a cancellation
+// IsCancelled reports whether err represents a cancellation. Both
+// context.Canceled and context.DeadlineExceeded count as cancellation: every
+// render-path caller passes ctx.Err() and must abort on either form of
+// context termination. Errors are matched with errors.Is/errors.As, so
+// wrapped cancellations (e.g. fmt.Errorf("op: %w", ctx.Err()) or a
+// *CancelledError anywhere in the chain) are classified correctly. Wrapper
+// types such as *ContextError are not inherently cancellations; they count
+// only when their cause chain contains one of the context sentinels or a
+// *CancelledError.
 func IsCancelled(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	// Check for context cancellation
-	if err == context.Canceled || err == context.DeadlineExceeded {
+	// Check for context cancellation anywhere in the error chain
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 
 	// Check for wrapped cancellation errors
 	var cancelledErr *CancelledError
-	return AsError(err, &cancelledErr)
+	return errors.As(err, &cancelledErr)
 }
 
-// AsError is a wrapper around errors.As for better type safety
+// AsError is a generic wrapper around errors.As for better type safety.
+// It delegates to errors.As, so it follows Unwrap() error chains,
+// Unwrap() []error multi-error trees (such as *MultiWriteError), and custom
+// As(any) bool conversion hooks.
 func AsError[T error](err error, target *T) bool {
-	if err == nil {
-		return false
-	}
-
-	// Try direct type assertion first
-	if typedErr, ok := err.(T); ok {
-		*target = typedErr
-		return true
-	}
-
-	// For wrapped errors, we need to unwrap and check
-	for err != nil {
-		if typedErr, ok := err.(T); ok {
-			*target = typedErr
-			return true
-		}
-
-		// Try to unwrap the error
-		if unwrapper, ok := err.(interface{ Unwrap() error }); ok {
-			err = unwrapper.Unwrap()
-		} else {
-			break
-		}
-	}
-
-	return false
+	return errors.As(err, target)
 }
 
 // ValidateInput performs early validation with helpful error messages
@@ -607,19 +595,7 @@ func (e *StructuredError) Error() string {
 
 	// Add context information
 	if len(e.Context) > 0 {
-		var contextParts []string
-
-		// Sort keys to ensure deterministic output
-		keys := make([]string, 0, len(e.Context))
-		for key := range e.Context {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-
-		for _, key := range keys {
-			contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, e.Context[key]))
-		}
-		parts = append(parts, fmt.Sprintf("context=[%s]", strings.Join(contextParts, ", ")))
+		parts = append(parts, fmt.Sprintf("context=[%s]", formatContext(e.Context)))
 	}
 
 	if e.Cause != nil {
@@ -795,11 +771,7 @@ func (e *WriterError) Error() string {
 
 	// Additional context
 	if len(e.Context) > 0 {
-		var contextParts []string
-		for key, value := range e.Context {
-			contextParts = append(contextParts, fmt.Sprintf("%s=%v", key, value))
-		}
-		parts = append(parts, fmt.Sprintf("context=[%s]", strings.Join(contextParts, ", ")))
+		parts = append(parts, fmt.Sprintf("context=[%s]", formatContext(e.Context)))
 	}
 
 	// Cause
@@ -872,20 +844,12 @@ func (e *PipelineError) Error() string {
 
 	// Pipeline context
 	if len(e.PipelineCtx) > 0 {
-		var ctxParts []string
-		for key, value := range e.PipelineCtx {
-			ctxParts = append(ctxParts, fmt.Sprintf("%s=%v", key, value))
-		}
-		parts = append(parts, fmt.Sprintf("pipeline_context=[%s]", strings.Join(ctxParts, ", ")))
+		parts = append(parts, fmt.Sprintf("pipeline_context=[%s]", formatContext(e.PipelineCtx)))
 	}
 
 	// Operation context
 	if len(e.Context) > 0 {
-		var ctxParts []string
-		for key, value := range e.Context {
-			ctxParts = append(ctxParts, fmt.Sprintf("%s=%v", key, value))
-		}
-		parts = append(parts, fmt.Sprintf("operation_context=[%s]", strings.Join(ctxParts, ", ")))
+		parts = append(parts, fmt.Sprintf("operation_context=[%s]", formatContext(e.Context)))
 	}
 
 	// Input sample information (if provided)
