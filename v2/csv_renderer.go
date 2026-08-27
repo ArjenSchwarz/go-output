@@ -171,6 +171,22 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 // a transformation error (T-1186).
 func (c *csvRenderer) renderSectionTablesCSV(ctx context.Context, section *SectionContent, csvWriter *csv.Writer, lastKeyOrder *[]string, flushCSV func() error) error {
 	for _, nestedContent := range section.Contents() {
+		// Check for context cancellation. This mirrors renderDocumentCSVTo's
+		// top-level loop: applyContentTransformations only observes ctx when
+		// the content carries transformations, so a transformation-free
+		// subtree would otherwise render to completion without honouring
+		// cancellation.
+		select {
+		case <-ctx.Done():
+			// Flush already-buffered rows; prefer a write error over the
+			// context error so a failed destination is not masked (T-1186).
+			if flushErr := flushCSV(); flushErr != nil {
+				return flushErr
+			}
+			return ctx.Err()
+		default:
+		}
+
 		// Apply transformations to nested content at this level.
 		transformed, err := applyContentTransformations(ctx, nestedContent)
 		if err != nil {
@@ -486,6 +502,22 @@ func (c *csvRenderer) renderCollapsibleSectionCSV(ctx context.Context, section *
 	// Process each content item in the section (Requirement 15.8)
 	contentNum := 0
 	for _, content := range section.Content() {
+		// Check for context cancellation. This mirrors renderDocumentCSVTo's
+		// top-level loop: applyContentTransformations only observes ctx when
+		// the content carries transformations, so a transformation-free
+		// section would otherwise render to completion without honouring
+		// cancellation.
+		select {
+		case <-ctx.Done():
+			// Flush already-buffered rows; prefer a write error over the
+			// context error so a failed destination is not masked (T-1186).
+			if flushErr := flushCSV(); flushErr != nil {
+				return flushErr
+			}
+			return ctx.Err()
+		default:
+		}
+
 		// Skip nil entries defensively: NewCollapsibleSection filters them,
 		// but a malformed section must degrade gracefully instead of
 		// panicking the public render path (T-1472).
@@ -542,6 +574,7 @@ func (c *csvRenderer) renderCollapsibleSectionCSV(ctx context.Context, section *
 			// Render the transformed content, not the original: rendering
 			// `content` here would silently discard applied transformations
 			// (T-1448).
+			// Nested collapsible sections are not recursed into; see T-2031.
 			metadataRow := []string{fmt.Sprintf("# Content %d: %s", contentNum, contentItem.Type())}
 			if err := csvWriter.Write(metadataRow); err != nil {
 				return fmt.Errorf("failed to write content metadata: %w", err)

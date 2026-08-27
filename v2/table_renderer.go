@@ -560,6 +560,17 @@ func (t *tableRenderer) renderCollapsibleSection(ctx context.Context, section *D
 		// Render nested content when expanded (Requirement 15.7)
 		rendered := 0
 		for _, content := range section.Content() {
+			// Check for context cancellation. This mirrors renderSectionTable's
+			// loop: applyContentTransformations only observes ctx when the
+			// content carries transformations, so a transformation-free section
+			// would otherwise render to completion without honouring
+			// cancellation.
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
+
 			// Skip nil entries defensively: NewCollapsibleSection filters
 			// them, but a malformed section must degrade gracefully instead
 			// of panicking the public render path (T-1472).
@@ -606,6 +617,7 @@ func (t *tableRenderer) renderCollapsibleSection(ctx context.Context, section *D
 				// Fallback for other content types. Render the transformed
 				// content, not the original: rendering `content` here would
 				// silently discard applied transformations (T-1448).
+				// Nested collapsible sections are not recursed into; see T-2031.
 				contentBytes, err := c.AppendText(nil)
 				if err != nil {
 					return nil, fmt.Errorf("failed to render nested content: %w", err)
