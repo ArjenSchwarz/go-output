@@ -227,10 +227,13 @@ func (s *SortTransformer) Priority() int {
 	return 50 // Run early, before other transformations
 }
 
-// CanTransform checks if this transformer applies to the given format
+// CanTransform checks if this transformer applies to the given format.
+// HTML is deliberately excluded: this transformer sorts byte-level tabular
+// text (CSV via encoding/csv, otherwise tab/comma/pipe separated lines) and
+// cannot parse rendered HTML tables (T-1510).
 func (s *SortTransformer) CanTransform(format string) bool {
-	// Apply sorting to tabular formats
-	return format == FormatTable || format == FormatCSV || format == FormatHTML || format == FormatMarkdown
+	// Apply sorting to byte-level tabular formats
+	return format == FormatTable || format == FormatCSV || format == FormatMarkdown
 }
 
 // Transform sorts the tabular data by the specified key
@@ -496,10 +499,14 @@ func (l *LineSplitTransformer) Priority() int {
 	return 150
 }
 
-// CanTransform checks if this transformer applies to the given format
+// CanTransform checks if this transformer applies to the given format.
+// HTML is deliberately excluded: this transformer splits byte-level tabular
+// text (CSV via encoding/csv, otherwise tab/comma/pipe separated lines), and
+// running it on rendered HTML corrupted the markup whenever cell content
+// contained the configured separator (T-1510).
 func (l *LineSplitTransformer) CanTransform(format string) bool {
-	// Apply line splitting to tabular formats
-	return format == FormatTable || format == FormatCSV || format == FormatHTML || format == FormatMarkdown
+	// Apply line splitting to byte-level tabular formats
+	return format == FormatTable || format == FormatCSV || format == FormatMarkdown
 }
 
 // Transform splits multi-line cells into separate rows
