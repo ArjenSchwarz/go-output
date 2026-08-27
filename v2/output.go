@@ -101,21 +101,36 @@ func WithProgress(progress Progress) OutputOption {
 	}
 }
 
-// WithTableStyle sets the table style for v1 compatibility
+// WithTableStyle sets the table style for v1 compatibility. During Render the
+// style is applied to every configured table format that uses the built-in
+// table renderer (Table, TableWithStyle, TableWithMaxColumnWidth, ...); other
+// renderer settings such as max column width are preserved. Style names are
+// case-sensitive; an unknown name falls back to the default style, matching
+// TableWithStyle. Formats using a custom Renderer implementation are
+// unaffected.
 func WithTableStyle(style string) OutputOption {
 	return func(o *Output) {
 		o.tableStyle = style
 	}
 }
 
-// WithTOC enables or disables table of contents generation for v1 compatibility
+// WithTOC enables table of contents generation for v1 compatibility.
+// During Render, WithTOC(true) enables ToC generation on every
+// configured markdown format that uses the built-in markdown renderer. The
+// option is additive: false is the zero value and does not disable a ToC
+// enabled through MarkdownWithToC(true). Formats using a custom Renderer
+// implementation are unaffected.
 func WithTOC(enabled bool) OutputOption {
 	return func(o *Output) {
 		o.hasTOC = enabled
 	}
 }
 
-// WithFrontMatter sets markdown front matter for v1 compatibility
+// WithFrontMatter sets markdown front matter for v1 compatibility. During
+// Render the entries are applied to every configured markdown format that
+// uses the built-in markdown renderer, merging with any front matter supplied
+// via MarkdownWithFrontMatter (Output-level keys win on conflict). Formats
+// using a custom Renderer implementation are unaffected.
 func WithFrontMatter(fm map[string]string) OutputOption {
 	return func(o *Output) {
 		if o.frontMatter == nil {
@@ -158,6 +173,9 @@ func (o *Output) Render(ctx context.Context, doc *Document) error {
 		transformers := make([]Transformer, len(o.transformers))
 		copy(transformers, o.transformers)
 		progress := o.progress
+		tableStyle := o.tableStyle
+		hasTOC := o.hasTOC
+		frontMatter := o.frontMatter
 		o.mu.RUnlock()
 
 		GlobalTrace("render", "loaded configuration: %d formats, %d writers, %d transformers",
@@ -178,6 +196,11 @@ func (o *Output) Render(ctx context.Context, doc *Document) error {
 		if err := validateConfigEntries(formats, transformers, writers); err != nil {
 			return err
 		}
+
+		// Derive the effective renderers for the Output-level v1 compatibility
+		// options (T-1516). This runs after validateConfigEntries so typed-nil
+		// renderers have already been rejected.
+		formats = applyV1CompatOptions(formats, tableStyle, hasTOC, frontMatter)
 
 		return o.renderWithConfig(ctx, doc, formats, writers, transformers, progress)
 	})
@@ -218,6 +241,50 @@ func validateConfigEntries(formats []Format, transformers []Transformer, writers
 		}
 	}
 	return nil
+}
+
+// applyV1CompatOptions derives the effective formats for the Output-level v1
+// compatibility options (WithTableStyle, WithTOC, WithFrontMatter). The
+// options target the built-in renderers of their matching formats: tableStyle
+// restyles table formats backed by *tableRenderer, and hasTOC/frontMatter
+// enable a table of contents and merge front matter (Output-level keys win)
+// on markdown formats backed by *markdownRenderer. Renderers are reconfigured
+// on copies — the stored formats are never mutated — and settings configured
+// through the Format constructors (max column width, collapsible config,
+// heading level) are preserved. Custom Renderer implementations and other
+// formats are returned unchanged. The options are additive: zero values apply
+// no changes, so WithTOC(false) does not disable a ToC enabled through
+// MarkdownWithToC(true).
+//
+// Callers must reject nil and typed-nil renderers first (validateConfigEntries
+// does this in Render); the type assertions below assume any renderer that
+// matches a built-in type is a non-nil pointer.
+func applyV1CompatOptions(formats []Format, tableStyle string, hasTOC bool, frontMatter map[string]string) []Format {
+	if tableStyle == "" && !hasTOC && len(frontMatter) == 0 {
+		return formats
+	}
+
+	derived := make([]Format, len(formats))
+	copy(derived, formats)
+	for i, format := range derived {
+		switch format.Name {
+		case FormatTable:
+			if tableStyle == "" {
+				continue
+			}
+			if tr, ok := format.Renderer.(*tableRenderer); ok {
+				derived[i].Renderer = tr.withStyle(tableStyle)
+			}
+		case FormatMarkdown:
+			if !hasTOC && len(frontMatter) == 0 {
+				continue
+			}
+			if mr, ok := format.Renderer.(*markdownRenderer); ok {
+				derived[i].Renderer = mr.withCompatOptions(hasTOC, frontMatter)
+			}
+		}
+	}
+	return derived
 }
 
 // renderWithConfig performs the actual rendering with the given configuration.

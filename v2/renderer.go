@@ -39,7 +39,13 @@ type Renderer interface {
 type Format struct {
 	Name     string
 	Renderer Renderer
-	Options  map[string]any
+
+	// Options carries optional format metadata for callers' own use. The
+	// render pipeline does not read it: renderer behavior is configured
+	// through the Format constructors (e.g. TableWithStyle, MarkdownWithToC)
+	// or the Output-level v1 compatibility options (WithTableStyle, WithTOC,
+	// WithFrontMatter).
+	Options map[string]any
 }
 
 // Built-in format constructor functions for common output formats

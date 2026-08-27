@@ -18,6 +18,15 @@ type tableRenderer struct {
 	maxColumnWidth    int // Maximum width for table columns (0 = no limit)
 }
 
+// withStyle returns a copy of the renderer with the style overridden (T-1516).
+// tableRenderer holds no locks, so a shallow struct copy is safe and keeps
+// maxColumnWidth and collapsibleConfig intact.
+func (t *tableRenderer) withStyle(styleName string) *tableRenderer {
+	clone := *t
+	clone.styleName = styleName
+	return &clone
+}
+
 func (t *tableRenderer) Format() string {
 	return FormatTable
 }
