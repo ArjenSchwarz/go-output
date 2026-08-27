@@ -108,6 +108,26 @@ func TestWithAutoSchemaOrdered_PreservesDetectedTypes(t *testing.T) {
 	}
 }
 
+// TestWithAutoSchemaOrdered_ZeroKeys locks in the documented degradation:
+// with no keys there is no ordering contract, so the option behaves exactly
+// like WithAutoSchema — detection runs and all columns are alphabetized.
+// (The matching warning semantics — ErrTableKeyOrderGuessed IS recorded in
+// this case — are asserted in TestBuilderTable_KeyOrderGuessWarning.)
+func TestWithAutoSchemaOrdered_ZeroKeys(t *testing.T) {
+	table, err := NewTableContent("test",
+		[]map[string]any{{"zebra": 1, "apple": 2, "mango": 3}},
+		WithAutoSchemaOrdered())
+	if err != nil {
+		t.Fatalf("NewTableContent() error = %v", err)
+	}
+
+	got := table.Schema().GetKeyOrder()
+	want := []string{"apple", "mango", "zebra"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("key order = %v, want %v (alphabetical, like WithAutoSchema)", got, want)
+	}
+}
+
 // TestWithAutoSchemaOrdered_DoesNotRetainCallerSlice verifies the option
 // clones the caller's key slice, matching the defensive-copy convention of
 // WithKeys and WithSchema (T-1086).
@@ -127,5 +147,73 @@ func TestWithAutoSchemaOrdered_DoesNotRetainCallerSlice(t *testing.T) {
 	want := []string{"name", "age"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("after mutating caller slice, key order = %v, want %v", got, want)
+	}
+}
+
+// TestTableOptionPrecedence locks in the option-precedence switch in
+// newTableContent so its cases cannot be accidentally reordered: an explicit
+// schema always wins, detection-with-keys comes next, then keys alone. It
+// also pins the documented side effect of the T-1451 fix: because the options
+// mutate shared tableConfig state, combining WithKeys(...) with a later
+// WithAutoSchema() behaves like WithAutoSchemaOrdered(...) instead of the
+// trailing WithAutoSchema() being silently ignored (see CHANGELOG).
+func TestTableOptionPrecedence(t *testing.T) {
+	data := []map[string]any{{"name": "Alice", "zebra": 1, "apple": 2}}
+
+	tests := map[string]struct {
+		opts []TableOption
+		want []string
+	}{
+		"WithSchema wins over later WithAutoSchemaOrdered": {
+			opts: []TableOption{
+				WithSchema(Field{Name: "name"}),
+				WithAutoSchemaOrdered("zebra"),
+			},
+			want: []string{"name"},
+		},
+		"WithSchema wins over earlier WithAutoSchemaOrdered": {
+			opts: []TableOption{
+				WithAutoSchemaOrdered("zebra"),
+				WithSchema(Field{Name: "name"}),
+			},
+			want: []string{"name"},
+		},
+		"WithKeys then WithAutoSchema behaves like WithAutoSchemaOrdered": {
+			opts: []TableOption{
+				WithKeys("name"),
+				WithAutoSchema(),
+			},
+			want: []string{"name", "apple", "zebra"},
+		},
+		"WithAutoSchema then WithKeys behaves like WithKeys alone": {
+			// WithKeys clears autoSchema, so no detection runs and unlisted
+			// data columns are dropped — plain WithKeys semantics.
+			opts: []TableOption{
+				WithAutoSchema(),
+				WithKeys("name"),
+			},
+			want: []string{"name"},
+		},
+		"WithAutoSchemaOrdered then WithKeys behaves like WithKeys alone": {
+			opts: []TableOption{
+				WithAutoSchemaOrdered("zebra"),
+				WithKeys("name"),
+			},
+			want: []string{"name"},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			table, err := NewTableContent("test", data, tt.opts...)
+			if err != nil {
+				t.Fatalf("NewTableContent() error = %v", err)
+			}
+
+			got := table.Schema().GetKeyOrder()
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("key order = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

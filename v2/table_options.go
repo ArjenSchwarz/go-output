@@ -69,6 +69,11 @@ func WithAutoSchema() TableOption {
 // for tables built with this option — the alphabetically appended remainder
 // is documented behavior, not a guess.
 //
+// Called with no keys, the option deliberately degrades to plain
+// WithAutoSchema behavior: no ordering contract was supplied, so detection
+// alphabetizes all columns and Builder.Table records the
+// ErrTableKeyOrderGuessed warning as usual.
+//
 // The keys are cloned so later caller mutations cannot change the key order.
 func WithAutoSchemaOrdered(keys ...string) TableOption {
 	return func(tc *tableConfig) {
