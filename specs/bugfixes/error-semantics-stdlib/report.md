@@ -95,11 +95,12 @@ it easy for a fix (sorting) to land in one place and not the others.
   by its cause chain, which `errors.Is`/`errors.As` traverse naturally.
 - `v2/errors.go` — extracted a shared `formatContext` helper that renders a
   `map[string]any` as `key=value` pairs with sorted keys, and replaced the
-  seven duplicated unsorted-iteration snippets in `RenderError.Error`,
-  `ContextError.Error`, `MultiError.Error` (operation context and per-error
-  source details), `WriterError.Error`, `PipelineError.Error` (operation and
-  pipeline context), and `StructuredError.Error` (inline sort replaced by
-  the helper). All error messages with context are now deterministic.
+  eight duplicated unsorted-iteration snippets in `RenderError.Error`,
+  `ContextError.Error`, `MultiError.Error` (operation context in both its
+  single- and multi-error branches, plus per-error source details),
+  `WriterError.Error`, `PipelineError.Error` (operation and pipeline
+  context), and `StructuredError.Error` (inline sort replaced by the
+  helper). All error messages with context are now deterministic.
 
 **Approach rationale:** Delegating to stdlib is the minimal fix that is
 correct by construction — `errors.As`/`errors.Is` are strict supersets of
@@ -140,7 +141,7 @@ and the public API is unchanged.
 
 | File | Change |
 |------|--------|
-| `v2/errors.go` | `AsError` delegates to `errors.As`; `IsCancelled` uses `errors.Is`/`errors.As`; shared sorted `formatContext` helper replaces seven unsorted map-iteration snippets |
+| `v2/errors.go` | `AsError` delegates to `errors.As`; `IsCancelled` uses `errors.Is`/`errors.As`; shared sorted `formatContext` helper replaces eight unsorted map-iteration snippets |
 | `v2/errors_semantics_test.go` | New regression tests |
 | `CHANGELOG.md` | Entry under Unreleased → Fixed |
 
