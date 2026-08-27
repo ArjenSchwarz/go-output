@@ -77,8 +77,10 @@ the detected key order entirely rather than merging.)
 - `v2/content.go` — added a `case tc.autoSchema && len(tc.keys) > 0:` arm
   before the plain keys case. It runs `DetectSchemaFromData(data)` and merges
   the result with the explicit keys via `newSchemaWithKeyOrder`. Removed the
-  dead `SetKeyOrder` sub-branch from the plain `tc.autoSchema` case. Updated
-  the `newTableContent` godoc.
+  now-redundant `case tc.autoSchema:` block entirely (including its dead
+  `SetKeyOrder` sub-branch); the keyless auto-schema path falls through to
+  the `default` case, which performs the identical `DetectSchemaFromData`
+  call. Updated the `newTableContent` godoc.
 - `v2/schema.go` — new unexported helper `newSchemaWithKeyOrder(detected
   *Schema, keys []string) *Schema`: explicit keys first in the given order
   (duplicates deduplicated; keys present in the data keep their detected
@@ -92,7 +94,9 @@ the detected key order entirely rather than merging.)
   remaining detected columns are appended alphabetically, and no
   `ErrTableKeyOrderGuessed` warning is recorded.
 - `v2/docs/API.md` — documented `WithAutoSchemaOrdered` alongside the other
-  table options.
+  table options. Also added to the sibling-option lists in
+  `v2/docs/DOCUMENTATION.md`, the package godoc (`v2/doc.go`), and the
+  contributor snippet in `v2/CLAUDE.md`/`v2/AGENTS.md`.
 
 **Warning semantics decision (T-1692 interaction):** `WithAutoSchemaOrdered`
 does NOT record `ErrTableKeyOrderGuessed`, even when unlisted remainder
@@ -105,11 +109,21 @@ option's primary use case (partial ordering) permanently noisy. Locked in by
 the "WithAutoSchemaOrdered with partial keys does not warn" test case.
 
 **Behaviour note:** the config state `autoSchema && len(keys) > 0` is now
-interpreted declaratively, so the combination `WithKeys("a"),
-WithAutoSchema()` behaves identically to `WithAutoSchemaOrdered("a")`
-(detection with "a" first) instead of silently ignoring the trailing
-`WithAutoSchema()`. This is consistent with the builder's last-option-wins
-convention.
+interpreted declaratively from the final option state, so the combination
+`WithKeys("a"), WithAutoSchema()` behaves identically to
+`WithAutoSchemaOrdered("a")` (detection with "a" first) instead of silently
+ignoring the trailing `WithAutoSchema()`. Precedence is not strictly
+last-option-wins: the switch resolves explicit schema > detection-with-keys
+> keys-only > detection, and because the auto-schema options do not clear a
+previously set schema, an earlier `WithSchema` still beats a later
+`WithAutoSchemaOrdered` (locked in by `TestTableOptionPrecedence`).
+
+**Zero-keys degradation:** `WithAutoSchemaOrdered()` called with no keys
+supplies no ordering contract, so it deliberately degrades to plain
+`WithAutoSchema` behaviour — all columns alphabetized and the
+`ErrTableKeyOrderGuessed` warning recorded as usual. Documented in the
+option's godoc and locked in by `TestWithAutoSchemaOrdered_ZeroKeys` plus
+the "zero keys warns" warning-test case.
 
 **Approach rationale:** the switch is the single decision point for schema
 construction; adding an explicit arm for the auto+keys combination fixes the
@@ -132,20 +146,26 @@ the other schema constructors in schema.go.
 **Test file:** `v2/table_auto_schema_ordered_test.go`
 **Test names:** `TestWithAutoSchemaOrdered_SchemaDetection`,
 `TestWithAutoSchemaOrdered_PreservesDetectedTypes`,
-`TestWithAutoSchemaOrdered_DoesNotRetainCallerSlice`
+`TestWithAutoSchemaOrdered_ZeroKeys`,
+`TestWithAutoSchemaOrdered_DoesNotRetainCallerSlice`,
+`TestTableOptionPrecedence`
 
 **What they verify:** the ticket reproduction (unlisted field detected);
 explicit keys first with alphabetical remainder; full explicit list keeps
-given order; missing explicit keys kept like `WithKeys`; column union across
-rows (T-1576); duplicate explicit keys deduplicated; `[]Record` input;
-detected field types preserved for listed keys; caller's key slice not
-retained.
+given order; missing explicit keys kept untyped like `WithKeys`; column
+union across rows (T-1576); duplicate explicit keys deduplicated; `[]Record`
+input; detected field types preserved for listed keys; zero-keys degradation
+to plain `WithAutoSchema` behaviour; caller's key slice not retained; and
+the option-precedence switch (explicit schema wins regardless of position,
+detection-with-keys next, keys-only last — including the documented
+`WithKeys` + `WithAutoSchema` equivalence with `WithAutoSchemaOrdered`).
 
-Additionally `v2/table_key_order_warning_test.go` gained the case
-"WithAutoSchemaOrdered with partial keys does not warn", locking the warning
-semantics decision.
+Additionally `v2/table_key_order_warning_test.go` gained two cases:
+"WithAutoSchemaOrdered with partial keys does not warn" (locking the warning
+semantics decision) and "WithAutoSchemaOrdered with zero keys warns like
+WithAutoSchema" (locking the degradation semantics).
 
-**Run command:** `go test -run "TestWithAutoSchemaOrdered_|TestBuilderTable_KeyOrderGuessWarning" ./...` (in `v2/`)
+**Run command:** `go test -run "TestWithAutoSchemaOrdered_|TestTableOptionPrecedence|TestBuilderTable_KeyOrderGuessWarning" ./...` (in `v2/`)
 
 ## Affected Files
 
@@ -155,8 +175,11 @@ semantics decision.
 | `v2/schema.go` | New `newSchemaWithKeyOrder` merge helper |
 | `v2/table_options.go` | `WithAutoSchemaOrdered` clones keys; full godoc contract |
 | `v2/table_auto_schema_ordered_test.go` | New regression tests |
-| `v2/table_key_order_warning_test.go` | Warning-semantics case for partial keys |
+| `v2/table_key_order_warning_test.go` | Warning-semantics cases for partial and zero keys |
 | `v2/docs/API.md` | Document `WithAutoSchemaOrdered` |
+| `v2/docs/DOCUMENTATION.md` | Add `WithAutoSchemaOrdered` to the Table Options reference |
+| `v2/doc.go` | Package godoc: third way to specify key order |
+| `v2/CLAUDE.md` (+ `v2/AGENTS.md` symlink) | Add option to the functional-options snippet |
 | `CHANGELOG.md` | Fixed entry under Unreleased |
 
 ## Verification

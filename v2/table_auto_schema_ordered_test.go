@@ -82,20 +82,22 @@ func TestWithAutoSchemaOrdered_SchemaDetection(t *testing.T) {
 
 // TestWithAutoSchemaOrdered_PreservesDetectedTypes verifies that explicitly
 // listed keys keep the field type detected from the data instead of being
-// replaced by untyped placeholder fields.
+// replaced by untyped placeholder fields, and that a listed key absent from
+// the data becomes an untyped field, matching WithKeys.
 func TestWithAutoSchemaOrdered_PreservesDetectedTypes(t *testing.T) {
 	table, err := NewTableContent("users",
 		[]map[string]any{{"name": "Alice", "age": 30, "active": true}},
-		WithAutoSchemaOrdered("age", "name"))
+		WithAutoSchemaOrdered("age", "name", "missing"))
 	if err != nil {
 		t.Fatalf("NewTableContent() error = %v", err)
 	}
 
 	schema := table.Schema()
 	wantTypes := map[string]string{
-		"age":    "int",
-		"name":   "string",
-		"active": "bool",
+		"age":     "int",
+		"name":    "string",
+		"active":  "bool",
+		"missing": "", // absent from the data: untyped, like WithKeys
 	}
 	for fieldName, wantType := range wantTypes {
 		field := schema.FindField(fieldName)
@@ -128,9 +130,11 @@ func TestWithAutoSchemaOrdered_ZeroKeys(t *testing.T) {
 	}
 }
 
-// TestWithAutoSchemaOrdered_DoesNotRetainCallerSlice verifies the option
-// clones the caller's key slice, matching the defensive-copy convention of
-// WithKeys and WithSchema (T-1086).
+// TestWithAutoSchemaOrdered_DoesNotRetainCallerSlice verifies that mutating
+// the caller's key slice after construction cannot change the built table's
+// key order. The independence is guaranteed by schema construction building
+// fresh slices; the option additionally clones the keys at application time
+// as convention-consistency with WithKeys and WithSchema (T-1086).
 func TestWithAutoSchemaOrdered_DoesNotRetainCallerSlice(t *testing.T) {
 	keys := []string{"name"}
 	table, err := NewTableContent("users",
