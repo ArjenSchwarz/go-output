@@ -1,7 +1,9 @@
 package output
 
 import (
+	"bytes"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -313,5 +315,108 @@ func TestGraphContent_GetNodesStableOrder(t *testing.T) {
 		if !slices.Equal(got, want) {
 			t.Fatalf("GetNodes() returned unstable/unexpected order on iteration %d:\ngot:  %v\nwant: %v", i, got, want)
 		}
+	}
+}
+
+// Regression tests for T-1371: DrawIOContent exposes mutable header
+// connections. DrawIOHeader.Connections is a slice, so storing the header by
+// value in the constructors, or returning it by value from GetHeader, shares
+// the slice's backing array with the caller. Mutating the caller's header
+// after construction, or the header returned by GetHeader, must not change
+// the stored header or later Draw.io render output.
+
+// TestDrawIOContent_HeaderConnectionsDefensivelyCopied verifies that the
+// header's Connections slice is copied on the way in (both constructors) and
+// on the way out (GetHeader), and that Clone remains independent.
+func TestDrawIOContent_HeaderConnectionsDefensivelyCopied(t *testing.T) {
+	records := []Record{{"Name": "web", "Upstream": "db"}}
+	wantConnection := DrawIOConnection{From: "Name", To: "Upstream", Label: "calls"}
+	newHeader := func() DrawIOHeader {
+		header := DefaultDrawIOHeader()
+		header.Connections = []DrawIOConnection{wantConnection}
+		return header
+	}
+	fromRecords := func(_ *testing.T, header DrawIOHeader) *DrawIOContent {
+		return NewDrawIOContent("infra", records, header)
+	}
+
+	tests := map[string]struct {
+		construct func(t *testing.T, header DrawIOHeader) *DrawIOContent
+		mutate    func(input *DrawIOHeader, content *DrawIOContent)
+	}{
+		"input header mutated after NewDrawIOContent": {
+			construct: fromRecords,
+			mutate: func(input *DrawIOHeader, _ *DrawIOContent) {
+				input.Connections[0].To = "mutated"
+			},
+		},
+		"input header mutated after NewDrawIOContentFromTable": {
+			construct: func(t *testing.T, header DrawIOHeader) *DrawIOContent {
+				table, err := NewTableContent("infra", records, WithKeys("Name", "Upstream"))
+				if err != nil {
+					t.Fatalf("NewTableContent failed: %v", err)
+				}
+				return NewDrawIOContentFromTable(table, header)
+			},
+			mutate: func(input *DrawIOHeader, _ *DrawIOContent) {
+				input.Connections[0].To = "mutated"
+			},
+		},
+		"GetHeader result mutated": {
+			construct: fromRecords,
+			mutate: func(_ *DrawIOHeader, content *DrawIOContent) {
+				returned := content.GetHeader()
+				returned.Connections[0].To = "mutated"
+			},
+		},
+		// Clone already copied Connections before T-1371; this case guards the
+		// refactor that routes Clone through the shared helper.
+		"clone header mutated": {
+			construct: fromRecords,
+			mutate: func(_ *DrawIOHeader, content *DrawIOContent) {
+				clone := content.Clone().(*DrawIOContent)
+				clone.header.Connections[0].To = "mutated"
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			input := newHeader()
+			content := tc.construct(t, input)
+
+			var before bytes.Buffer
+			(&drawioRenderer{}).renderDrawIOContent(&before, content)
+			if !strings.Contains(before.String(), "Upstream") {
+				t.Fatalf("baseline render does not contain the connection target: %q", before.String())
+			}
+
+			tc.mutate(&input, content)
+
+			got := content.GetHeader().Connections
+			if len(got) != 1 || got[0] != wantConnection {
+				t.Errorf("stored header connections after mutation: got %+v, want [%+v]", got, wantConnection)
+			}
+
+			var after bytes.Buffer
+			(&drawioRenderer{}).renderDrawIOContent(&after, content)
+			if after.String() != before.String() {
+				t.Errorf("render output changed after mutation:\ngot:  %q\nwant: %q", after.String(), before.String())
+			}
+		})
+	}
+}
+
+// TestDrawIOContent_NilHeaderConnectionsStayNil verifies that copying the
+// header preserves a nil Connections slice, so JSON/YAML output for headers
+// without connections is unchanged (nil marshals as null, empty as []).
+func TestDrawIOContent_NilHeaderConnectionsStayNil(t *testing.T) {
+	content := NewDrawIOContent("infra", nil, DrawIOHeader{Layout: DrawIOLayoutAuto})
+
+	if got := content.GetHeader().Connections; got != nil {
+		t.Errorf("GetHeader().Connections: got %#v, want nil", got)
+	}
+	if got := content.Clone().(*DrawIOContent).GetHeader().Connections; got != nil {
+		t.Errorf("Clone().GetHeader().Connections: got %#v, want nil", got)
 	}
 }
