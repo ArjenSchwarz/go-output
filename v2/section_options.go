@@ -18,10 +18,12 @@ func WithLevel(level int) SectionOption {
 	}
 }
 
-// WithSectionTransformations sets transformations for the section content
+// WithSectionTransformations sets transformations for the section content.
+// The operations are copied and nil entries are dropped, so later changes to
+// the caller's slice cannot affect the content (T-1378).
 func WithSectionTransformations(ops ...Operation) SectionOption {
 	return func(sc *sectionConfig) {
-		sc.transformations = ops
+		sc.transformations = cloneOperations(ops)
 	}
 }
 

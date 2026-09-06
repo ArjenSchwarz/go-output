@@ -51,10 +51,12 @@ func WithHeader(header bool) TextOption {
 	}
 }
 
-// WithTextTransformations sets transformations for the text content
+// WithTextTransformations sets transformations for the text content.
+// The operations are copied and nil entries are dropped, so later changes to
+// the caller's slice cannot affect the content (T-1378).
 func WithTextTransformations(ops ...Operation) TextOption {
 	return func(tc *textConfig) {
-		tc.transformations = ops
+		tc.transformations = cloneOperations(ops)
 	}
 }
 

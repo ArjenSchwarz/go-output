@@ -1,7 +1,7 @@
 # Bugfix Report: GetTransformations Exposes Mutable Operation Slices
 
 **Date:** 2026-09-06
-**Status:** In Progress
+**Status:** Fixed
 **Ticket:** T-1378
 
 ## Description of the Issue
@@ -87,7 +87,48 @@ mutation through the returned or caller-owned slice.
 
 ## Resolution for the Issue
 
-_To be completed after the fix is implemented._
+**Changes made:**
+- `v2/pipeline.go` - Added the unexported `cloneOperations` helper next to the
+  `Operation` interface. It returns a fresh, non-nil slice holding the non-nil
+  entries of its input and is the single place operation slices cross the API
+  boundary.
+- `v2/content.go` - `TableContent`, `TextContent`, `RawContent`, and
+  `SectionContent.GetTransformations` now `return cloneOperations(x.transformations)`,
+  which preserves the existing "empty non-nil slice when absent" behaviour. The
+  `Content` interface godoc now states that implementations must not expose
+  internal state through `GetTransformations`.
+- `v2/text_options.go`, `v2/raw_options.go`, `v2/section_options.go` - The
+  three option functions store `cloneOperations(ops)` instead of `ops`, so the
+  caller's backing array is never retained and nil entries are dropped.
+- `v2/table_options.go` - `WithTransformations` reuses `cloneOperations`
+  instead of its inline nil-filter loop; behaviour is unchanged.
+- `v2/docs/API.md` - Documented the copy semantics under "Content-Specific
+  Transformation Options".
+- `CHANGELOG.md` - Entry under Unreleased -> Fixed.
+
+**Approach rationale:** Copy-on-input and copy-on-output is the convention the
+library already uses for its other "immutable" slices (`Records()`,
+`Schema()`, `GetKeyOrder()`, `WithKeys`, `WithSchema` — T-1086), and
+`WithTransformations` already did the input half for tables (T-1208). Routing
+all seven sites through one helper makes the four content types behave
+identically and keeps the nil-filtering rule in one place. The only
+production consumer of `GetTransformations`, `applyContentTransformations` in
+`v2/renderer.go`, checks the length and iterates, so an extra small
+allocation per render of transformed content is the entire cost.
+
+**Alternatives considered:**
+- Freezing or sealing the slice (as T-1543/T-1677 did for `AddContent` and
+  `Transform`) - Not applicable: the leak is through a returned slice header,
+  not a mutating method; there is nothing to gate.
+- Returning `nil` instead of an empty slice when no transformations are set -
+  Rejected: the existing table tests and the ticket require an empty non-nil
+  slice, and changing it would alter the public contract for no benefit.
+- Copying only in `GetTransformations` and leaving the options aliasing the
+  caller's slice - Rejected: the ticket names both paths, and a caller-owned
+  slice spread with `...` is a realistic way to build option lists dynamically.
+- Making the graph/chart/Draw.io/collapsible-section stubs return an empty
+  slice instead of nil - Out of scope: they hold no transformations, so nothing
+  can be aliased; the interface godoc allows nil for such types.
 
 ## Regression Test
 
@@ -114,18 +155,40 @@ _To be completed after the fix is implemented._
 
 ## Affected Files
 
-_To be completed after the fix is implemented._
+| File | Change |
+|------|--------|
+| `v2/pipeline.go` | New `cloneOperations` helper |
+| `v2/content.go` | Four `GetTransformations` implementations return a copy; `Content` interface godoc |
+| `v2/text_options.go` | `WithTextTransformations` copies and nil-filters |
+| `v2/raw_options.go` | `WithRawTransformations` copies and nil-filters |
+| `v2/section_options.go` | `WithSectionTransformations` copies and nil-filters |
+| `v2/table_options.go` | `WithTransformations` reuses the helper |
+| `v2/content_transformations_immutability_test.go` | Regression tests |
+| `v2/docs/API.md` | Copy semantics documented |
+| `CHANGELOG.md` | Unreleased -> Fixed entry |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes
+- [x] Full test suite passes — `go test ./...` in `v2` green
+- [x] Linters/validators pass — `golangci-lint run`: 0 issues; `gofmt -l`: clean
+
+**Manual verification:**
+- Confirmed `applyContentTransformations` is the only production caller of
+  `GetTransformations` and depends on neither slice identity nor nil-ness, so
+  returning a copy changes no rendered output.
 
 ## Prevention
 
-_To be completed after the fix is implemented._
+**Recommendations to avoid similar bugs:**
+- Treat every slice or map field on a content type as copy-on-input and
+  copy-on-output; a getter that returns the field directly is an aliasing bug
+  on an immutable type.
+- When a fix establishes a convention for one option family (as T-1208 did for
+  `WithTransformations`), apply it to the sibling families in the same change.
+- Immutability tests should mutate through the returned value and through the
+  original input, not only assert counts and order.
 
 ## Related
 

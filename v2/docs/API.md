@@ -1439,6 +1439,12 @@ output.WithRawTransformations(ops...)
 output.WithSectionTransformations(ops...)
 ```
 
+All four options copy the operations they receive and drop nil entries, so a
+caller-owned slice passed with `...` can be reused or modified afterwards
+without affecting the content. `GetTransformations()` likewise returns a copy
+(an empty, non-nil slice when no transformations are attached), so the
+transformations of a built document cannot be changed from outside.
+
 #### Migration from Pipeline API
 
 **Old (Pipeline API - Removed in v2.4.0)**:

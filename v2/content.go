@@ -55,7 +55,10 @@ type Content interface {
 	// Clone creates a deep copy of this content
 	Clone() Content
 
-	// GetTransformations returns the transformations attached to this content
+	// GetTransformations returns the transformations attached to this content.
+	// Implementations must not expose internal state: the returned slice is a
+	// copy (or nil for types that hold no transformations), so callers may
+	// modify it without affecting the content or a built document (T-1378).
 	GetTransformations() []Operation
 
 	// Encoding interfaces for efficient serialization
@@ -256,12 +259,10 @@ func (t *TableContent) Clone() Content {
 	}
 }
 
-// GetTransformations returns the transformations attached to this table
+// GetTransformations returns a copy of the transformations attached to this
+// table. Mutating the returned slice does not affect the table (T-1378).
 func (t *TableContent) GetTransformations() []Operation {
-	if t.transformations == nil {
-		return []Operation{}
-	}
-	return t.transformations
+	return cloneOperations(t.transformations)
 }
 
 // AppendText implements encoding.TextAppender preserving key order
@@ -432,12 +433,10 @@ func (t *TextContent) Clone() Content {
 	}
 }
 
-// GetTransformations returns the transformations attached to this text
+// GetTransformations returns a copy of the transformations attached to this
+// text. Mutating the returned slice does not affect the text (T-1378).
 func (t *TextContent) GetTransformations() []Operation {
-	if t.transformations == nil {
-		return []Operation{}
-	}
-	return t.transformations
+	return cloneOperations(t.transformations)
 }
 
 // AppendText implements encoding.TextAppender
@@ -540,12 +539,10 @@ func (r *RawContent) Clone() Content {
 	}
 }
 
-// GetTransformations returns the transformations attached to this raw content
+// GetTransformations returns a copy of the transformations attached to this
+// raw content. Mutating the returned slice does not affect the raw content (T-1378).
 func (r *RawContent) GetTransformations() []Operation {
-	if r.transformations == nil {
-		return []Operation{}
-	}
-	return r.transformations
+	return cloneOperations(r.transformations)
 }
 
 // AppendText implements encoding.TextAppender
@@ -702,12 +699,10 @@ func (s *SectionContent) Clone() Content {
 	}
 }
 
-// GetTransformations returns the transformations attached to this section
+// GetTransformations returns a copy of the transformations attached to this
+// section. Mutating the returned slice does not affect the section (T-1378).
 func (s *SectionContent) GetTransformations() []Operation {
-	if s.transformations == nil {
-		return []Operation{}
-	}
-	return s.transformations
+	return cloneOperations(s.transformations)
 }
 
 // AppendText implements encoding.TextAppender with hierarchical rendering
