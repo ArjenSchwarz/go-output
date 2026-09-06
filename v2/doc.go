@@ -199,12 +199,14 @@ A critical feature of v2 is exact key order preservation for tables:
 	// Explicitly specified keys appear in exactly this order — never reordered
 	builder.Table("users", data, output.WithKeys("name", "age", "email"))
 
-Two ways to specify key order:
+Three ways to specify key order:
 
 1. WithKeys() - explicit key list
 2. WithSchema() - full schema with field definitions
+3. WithAutoSchemaOrdered() - auto-detected schema with the listed keys as the
+first columns; remaining detected columns are appended alphabetically
 
-Without either option (or with WithAutoSchema()), the schema is auto-detected
+Without any of these options (or with WithAutoSchema()), the schema is auto-detected
 from the data. Map input has no recoverable key order — Go randomizes map
 iteration — so auto-detection falls back to sorting the column names
 alphabetically. Builder.Table records a non-fatal ErrTableKeyOrderGuessed

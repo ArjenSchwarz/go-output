@@ -55,11 +55,30 @@ func WithAutoSchema() TableOption {
 	}
 }
 
-// WithAutoSchemaOrdered enables automatic schema detection with custom key order
+// WithAutoSchemaOrdered enables automatic schema detection with a custom key
+// order. The schema fields are detected from the data exactly as WithAutoSchema
+// does (for slice input the columns are the union of keys across all rows,
+// T-1576). The listed keys become the first columns, in the order given; keys
+// not present in the data are still included as untyped columns, matching
+// WithKeys. All remaining detected columns are appended after them in
+// alphabetical order — the deterministic detection order (see
+// DetectSchemaFromMap) — so unlisted data columns are never dropped (T-1451).
+//
+// Because the caller explicitly opts into detection under this ordering
+// contract, Builder.Table does not record an ErrTableKeyOrderGuessed warning
+// for tables built with this option — the alphabetically appended remainder
+// is documented behavior, not a guess.
+//
+// Called with no keys, the option deliberately degrades to plain
+// WithAutoSchema behavior: no ordering contract was supplied, so detection
+// alphabetizes all columns and Builder.Table records the
+// ErrTableKeyOrderGuessed warning as usual.
+//
+// The keys are cloned so later caller mutations cannot change the key order.
 func WithAutoSchemaOrdered(keys ...string) TableOption {
 	return func(tc *tableConfig) {
 		tc.autoSchema = true
-		tc.keys = keys
+		tc.keys = slices.Clone(keys)
 	}
 }
 

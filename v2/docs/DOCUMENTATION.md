@@ -599,6 +599,7 @@ func (d *Document) Transform(t Transformer) *Document
 func WithKeys(keys ...string) TableOption
 func WithSchema(schema *Schema) TableOption
 func WithAutoSchema() TableOption
+func WithAutoSchemaOrdered(keys ...string) TableOption
 func WithTableTitle(title string) TableOption
 ```
 

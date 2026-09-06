@@ -120,7 +120,8 @@ var ErrTableKeyOrderGuessed = errors.New("key order auto-detected from map data 
 // keys across all rows (T-1576). Map input has no recoverable key order, so
 // auto-detection sorts the column names alphabetically (see
 // DetectSchemaFromMap). Callers that need a specific column order must pass
-// WithKeys or WithSchema; Builder.Table additionally records a non-fatal
+// WithKeys or WithSchema — or WithAutoSchemaOrdered to combine detection with
+// an explicit partial order; Builder.Table additionally records a non-fatal
 // ErrTableKeyOrderGuessed warning when this fallback guessed an order.
 func NewTableContent(title string, data any, opts ...TableOption) (*TableContent, error) {
 	table, _, err := newTableContent(title, data, opts...)
@@ -144,19 +145,23 @@ func newTableContent(title string, data any, opts ...TableOption) (*TableContent
 	switch {
 	case tc.schema != nil:
 		table.schema = tc.schema
+	case tc.autoSchema && len(tc.keys) > 0:
+		// WithAutoSchemaOrdered: detect the full field set from the data,
+		// then order columns as explicit keys first (in the given order)
+		// with the remaining detected fields appended alphabetically
+		// (T-1451). See newSchemaWithKeyOrder.
+		table.schema = newSchemaWithKeyOrder(DetectSchemaFromData(data), tc.keys)
 	case len(tc.keys) > 0:
 		table.schema = NewSchemaFromKeys(tc.keys)
-	case tc.autoSchema:
-		table.schema = DetectSchemaFromData(data)
-		if len(tc.keys) > 0 {
-			table.schema.SetKeyOrder(tc.keys)
-		}
 	default:
 		table.schema = DetectSchemaFromData(data)
 	}
 
 	// The schema was detected — and its key order therefore guessed — only
-	// when neither an explicit schema nor explicit keys were provided.
+	// when neither an explicit schema nor explicit keys were provided. With
+	// WithAutoSchemaOrdered the caller supplied the ordering contract
+	// (explicit keys first, detected remainder appended alphabetically), so
+	// no order was guessed even though detection ran (T-1451).
 	keyOrderGuessed := tc.schema == nil && len(tc.keys) == 0 && len(table.schema.GetKeyOrder()) > 1
 
 	// Convert data to records

@@ -65,6 +65,39 @@ func NewSchemaFromKeys(keys []string) *Schema {
 	}
 }
 
+// newSchemaWithKeyOrder builds the schema for auto-detection with an explicit
+// key order (WithAutoSchemaOrdered): the explicit keys come first, in the
+// given order, followed by every remaining detected field in detection order —
+// alphabetical, per detectSchemaFromMaps — so unlisted data columns are
+// appended deterministically instead of being dropped (T-1451). Duplicate
+// explicit keys are dropped after the first occurrence. Explicit keys present
+// in the detected schema keep their detected field definition (type); keys
+// absent from the data become untyped fields, matching NewSchemaFromKeys.
+func newSchemaWithKeyOrder(detected *Schema, keys []string) *Schema {
+	fields := make([]Field, 0, len(keys)+len(detected.Fields))
+	listed := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		if listed[key] {
+			continue
+		}
+		listed[key] = true
+		if f := detected.FindField(key); f != nil {
+			fields = append(fields, *f)
+		} else {
+			fields = append(fields, Field{Name: key})
+		}
+	}
+	for _, f := range detected.Fields {
+		if !listed[f.Name] {
+			fields = append(fields, f)
+		}
+	}
+	return &Schema{
+		Fields:   fields,
+		keyOrder: extractKeyOrder(fields),
+	}
+}
+
 // FindField looks up a field by name
 func (s *Schema) FindField(name string) *Field {
 	for i := range s.Fields {

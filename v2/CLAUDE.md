@@ -108,6 +108,7 @@ Extensive use of functional options for configuration:
 WithSchema(fields...)     // Explicit schema with preserved field order
 WithKeys(keys...)        // Simple key ordering (v1 compatibility)
 WithAutoSchema()         // Auto-detect schema from data
+WithAutoSchemaOrdered(keys...) // Auto-detect schema, listed keys first
 ```
 
 ### Interface-Driven Design
