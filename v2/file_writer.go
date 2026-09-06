@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -23,14 +24,33 @@ import (
 // preserving the original HTML structure and allowing multiple appends.
 type FileWriter struct {
 	baseWriter
-	dir                  string            // Base directory for files
-	pattern              string            // e.g., "report-{format}.{ext}"
-	extensions           map[string]string // format to extension mapping
-	allowAbsolute        bool              // Allow absolute paths in filenames
-	mu                   sync.Mutex        // Guards file operations and the extensions map
-	appendMode           bool              // Enable append mode instead of replace
-	permissions          os.FileMode       // File permissions (default 0644)
-	disallowUnsafeAppend bool              // Prevent appending to JSON/YAML
+	dir                  string                      // Base directory for files
+	pattern              string                      // e.g., "report-{format}.{ext}"
+	extensions           map[string]string           // format to extension mapping
+	allowAbsolute        bool                        // Allow absolute paths in filenames
+	mu                   sync.Mutex                  // Guards file operations and the extensions map
+	appendMode           bool                        // Enable append mode instead of replace
+	permissions          os.FileMode                 // File permissions (default 0644)
+	disallowUnsafeAppend bool                        // Prevent appending to JSON/YAML
+	wrapFile             func(*os.File) writableFile // Test seam: wraps every file opened for writing (nil = use the *os.File directly)
+}
+
+// writableFile is the subset of *os.File that the FileWriter write paths use.
+// Production code always passes an *os.File; tests substitute a handle whose
+// Close fails, so close-error reporting can be verified without relying on
+// OS-specific filesystem behaviour (T-1399).
+type writableFile interface {
+	io.Writer
+	Sync() error
+	Close() error
+}
+
+// openedFile applies the wrapFile test seam, if set, to a freshly opened file.
+func (fw *FileWriter) openedFile(f *os.File) writableFile {
+	if fw.wrapFile != nil {
+		return fw.wrapFile(f)
+	}
+	return f
 }
 
 // NewFileWriter creates a new FileWriter with the specified directory and pattern
@@ -128,10 +148,11 @@ func (fw *FileWriter) Write(ctx context.Context, format string, data []byte) (re
 	}
 
 	// Use OpenFile with CREATE and TRUNCATE to overwrite existing files
-	file, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fw.permissions)
+	osFile, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fw.permissions)
 	if err != nil {
 		return fw.wrapError(format, fmt.Errorf("failed to create file %q: %w", fullPath, err))
 	}
+	file := fw.openedFile(osFile)
 	defer func() {
 		if err := file.Close(); err != nil && returnErr == nil {
 			returnErr = fw.wrapError(format, fmt.Errorf("failed to close file: %w", err))
@@ -280,10 +301,11 @@ func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data
 	default:
 	}
 
-	file, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, fw.permissions)
+	osFile, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, fw.permissions)
 	if err != nil {
 		return fmt.Errorf("failed to open file for append %q: %w", fullPath, err)
 	}
+	file := fw.openedFile(osFile)
 	defer func() {
 		// Close file, errors are intentionally ignored as we already have the data
 		_ = file.Close()
@@ -358,11 +380,12 @@ func (fw *FileWriter) appendHTMLWithMarker(ctx context.Context, fullPath string,
 	}
 
 	// Create temp file in same directory with cryptographically random suffix
-	tempFile, err := os.CreateTemp(filepath.Dir(fullPath), ".go-output-*.tmp")
+	osTemp, err := os.CreateTemp(filepath.Dir(fullPath), ".go-output-*.tmp")
 	if err != nil {
 		return fw.wrapError(FormatHTML, fmt.Errorf("failed to create temp file: %w", err))
 	}
-	tempPath := tempFile.Name()
+	tempPath := osTemp.Name()
+	tempFile := fw.openedFile(osTemp)
 	// Cleanup temp file on error using defer
 	defer func() {
 		// Attempt to remove temp file - ignore errors (file may have been renamed successfully)
