@@ -81,7 +81,34 @@ making post-construction mutation an easy mistake.
 
 ## Resolution for the Issue
 
-_To be filled in after the fix is implemented._
+**Changes made:**
+- `v2/graph_content.go` - Added `cloneDrawIOHeader`, which returns the header with
+  `Connections` replaced by `slices.Clone(Connections)` (nil stays nil). Its godoc
+  records why a shallow slice clone is a full deep copy (`DrawIOConnection` is a
+  value struct; `Connections` is the header's only reference-typed field).
+- `v2/graph_content.go` `NewDrawIOContent` / `NewDrawIOContentFromTable` - store
+  `cloneDrawIOHeader(header)` instead of the caller's header.
+- `v2/graph_content.go` `GetHeader` - returns `cloneDrawIOHeader(d.header)`.
+- `v2/graph_content.go` `Clone` - routes through the same helper, replacing the
+  inline clone that previously lived only there.
+- Godoc on both constructors and `GetHeader` now states the copying contract.
+- `CHANGELOG.md` - Unreleased → Fixed entry.
+- `docs/agent-notes/drawio-csv.md` - one-line note on the header copy contract.
+
+**Approach rationale:** Same shape as T-1295: defensive copies at both the input
+and output boundary, with one shared helper so the constructors, the getter, and
+`Clone` cannot diverge. No public signature changes. The only cost is one small
+slice allocation per constructor or `GetHeader` call; the renderers call
+`GetHeader` once per content.
+
+**Alternatives considered:**
+- Returning `*DrawIOHeader` or an unexported header type from `GetHeader` -
+  Rejected: a breaking API change for a problem that copying solves.
+- Documenting `Connections` as "do not mutate" instead of copying - Rejected: does
+  not enforce immutability and contradicts the existing `Clone` behaviour and the
+  T-1086/T-1295 precedent.
+- Copying only in the constructors - Rejected: `GetHeader` would still hand out the
+  internal slice, leaving the getter mutation vector open.
 
 ## Regression Test
 
@@ -110,18 +137,21 @@ helper.
 
 | File | Change |
 |------|--------|
-| `v2/graph_content.go` | _pending_ |
+| `v2/graph_content.go` | `cloneDrawIOHeader` helper; defensive copies in both constructors, `GetHeader`, and `Clone`; godoc |
 | `v2/graph_content_mutation_test.go` | New regression tests (added) |
+| `CHANGELOG.md` | Unreleased → Fixed entry |
+| `docs/agent-notes/drawio-csv.md` | Header copy contract note |
 
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes - both tests pass, including under `-race`
+- [x] Full test suite passes - `make test-all` (unit + integration) green
+- [x] Linters/validators pass - `golangci-lint run`: 0 issues; `gofmt -l`: clean
 
 **Manual verification:**
-- Confirmed the three aliasing subtests fail before the fix.
+- Confirmed the three aliasing subtests fail before the fix (stored connection and
+  rendered `# connect:` line both show the mutation) and pass after it.
 
 ## Prevention
 

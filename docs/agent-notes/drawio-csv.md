@@ -21,6 +21,7 @@ Spec: `specs/drawio-csv-reader/` (T-1539). All phases implemented: writer change
 - Set via `WithDrawIOColumns(...)` (a `DrawIOOption`); `NewDrawIOContent`, `NewDrawIOContentFromTable`, and `Builder.DrawIO` (`v2/document.go`) all take variadic `opts ...DrawIOOption`. Backward compatible: no pre-existing caller passed options.
 - `NewDrawIOContentFromTable` captures `table.schema.GetFieldNames()` order (Decision 13) — behavior change: table-sourced drawio CSV columns went from alphabetical to schema order. Nil table leaves columns nil. `GetKeyOrder` already returns a clone, so no aliasing.
 - `GetColumns()` returns a defensive copy; `Clone()` does `slices.Clone(d.columns)`.
+- `GetHeader()` returns a copy with a cloned `Connections` slice, and both constructors clone the incoming header via `cloneDrawIOHeader` (T-1371). `DrawIOConnection` is value-only, so the slice clone is a full deep copy; nil `Connections` stays nil (JSON `null` vs `[]`).
 - Silent-drop contract: record keys outside the explicit column list are not rendered; columns missing from a record render as `""`. With explicit columns, the header row is written even with zero records.
 
 ## Connect JSON wire format (Decisions 10 + 14)
