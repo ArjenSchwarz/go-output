@@ -21,6 +21,37 @@ type markdownRenderer struct {
 	collapsibleConfig RendererConfig
 }
 
+// withCompatOptions returns a copy of the renderer with the Output-level v1
+// compatibility options applied (T-1516): enableToC turns on ToC generation
+// (additive — false leaves a constructor-enabled ToC on), and frontMatter
+// merges over the constructor-supplied entries (Output-level keys win on
+// conflict). markdownRenderer embeds baseRenderer, which contains a mutex, so
+// the copy is built field by field instead of copying the struct; the embedded
+// config is read under its own lock, the remaining fields are only written at
+// construction. This method lives next to the struct definition so that any
+// field added to markdownRenderer is also added to the copy below — a field
+// missing here silently reverts to its zero value in the derived renderer.
+func (m *markdownRenderer) withCompatOptions(enableToC bool, frontMatter map[string]string) *markdownRenderer {
+	m.mu.RLock()
+	baseConfig := m.config
+	m.mu.RUnlock()
+
+	merged := m.frontMatter
+	if len(frontMatter) > 0 {
+		merged = make(map[string]string, len(m.frontMatter)+len(frontMatter))
+		maps.Copy(merged, m.frontMatter)
+		maps.Copy(merged, frontMatter)
+	}
+
+	return &markdownRenderer{
+		baseRenderer:      baseRenderer{config: baseConfig},
+		includeToC:        m.includeToC || enableToC,
+		frontMatter:       merged,
+		headingLevel:      m.headingLevel,
+		collapsibleConfig: m.collapsibleConfig,
+	}
+}
+
 func (m *markdownRenderer) Format() string {
 	return FormatMarkdown
 }

@@ -822,6 +822,8 @@ settings.HasTOC = true
 output.WithTOC(true)
 ```
 
+Note: unlike v1 settings, the v2 compatibility options (`WithTableStyle`, `WithTOC`, `WithFrontMatter`) are additive — they add settings to the built-in renderers but never remove them, so `WithTOC(false)` does not disable a ToC enabled through `MarkdownWithToC(true)`.
+
 ### Front Matter (Markdown)
 ```go
 // v1
