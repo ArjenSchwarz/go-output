@@ -293,7 +293,7 @@ func (fw *FileWriter) appendToFile(ctx context.Context, format string, fullPath 
 }
 
 // appendByteLevel performs byte-level appending to a file
-func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data []byte) error {
+func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data []byte) (returnErr error) {
 	// Check context cancellation
 	select {
 	case <-ctx.Done():
@@ -307,8 +307,12 @@ func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data
 	}
 	file := fw.openedFile(osFile)
 	defer func() {
-		// Close file, errors are intentionally ignored as we already have the data
-		_ = file.Close()
+		// Close can surface delayed writeback or metadata errors on some
+		// filesystems, so report it unless an earlier error already explains
+		// the failure (T-1399). Mirrors the overwrite path in Write.
+		if err := file.Close(); err != nil && returnErr == nil {
+			returnErr = fmt.Errorf("failed to close file: %w", err)
+		}
 	}()
 
 	_, err = file.Write(data)
@@ -399,18 +403,25 @@ func (fw *FileWriter) appendHTMLWithMarker(ctx context.Context, fullPath string,
 	buf.WriteString(HTMLAppendMarker)
 	buf.Write(existing[markerIndex+len(HTMLAppendMarker):])
 
-	// Write to temp file
+	// Write to temp file. On failure the write error is what matters, so the
+	// close result is deliberately ignored.
 	if _, err := tempFile.Write(buf.Bytes()); err != nil {
-		tempFile.Close()
+		_ = tempFile.Close()
 		return fw.wrapError(FormatHTML, fmt.Errorf("failed to write temp file: %w", err))
 	}
 
 	// Ensure data is flushed to disk before rename (durability requirement)
 	if err := tempFile.Sync(); err != nil {
-		tempFile.Close()
+		_ = tempFile.Close()
 		return fw.wrapError(FormatHTML, fmt.Errorf("failed to sync temp file: %w", err))
 	}
-	tempFile.Close()
+
+	// Close before the rename: on some filesystems Close is where delayed
+	// writeback or metadata errors surface, and a temp file that failed to
+	// close must not replace the original (T-1399).
+	if err := tempFile.Close(); err != nil {
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to close temp file: %w", err))
+	}
 
 	// Atomic rename (atomic on same filesystem)
 	if err := os.Rename(tempPath, fullPath); err != nil {

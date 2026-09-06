@@ -47,7 +47,19 @@ The append helpers were written as a separate feature (PR #33) and did not adopt
 
 ## Resolution for the Issue
 
-_To be filled in after the fix is implemented._
+**Changes made:**
+- `v2/file_writer.go` (`appendByteLevel`) - Named the return value and replaced the deferred `_ = file.Close()` with the same check the overwrite path uses: a `Close` error is returned as `failed to close file: ...` when no earlier error exists. `appendCSVWithoutHeaders` delegates its write to this helper, so CSV append is fixed by the same change.
+- `v2/file_writer.go` (`appendHTMLWithMarker`) - The close that precedes `os.Rename` now returns `failed to close temp file: ...` on failure, so a temp file whose close failed never replaces the original (the existing deferred `os.Remove` cleans it up). The two closes on the write/sync error paths are now explicit `_ = tempFile.Close()`, documenting that the earlier error takes precedence.
+- `v2/file_writer.go` (`writableFile`, `FileWriter.wrapFile`, `openedFile`) - Small test seam: an interface covering the `Write`/`Sync`/`Close` subset of `*os.File`, and an unexported per-instance hook that wraps each file opened for writing. Production behaviour is unchanged (a nil hook returns the `*os.File` as-is); tests inject a handle whose `Close` fails.
+
+**Approach rationale:** The overwrite path already had the right pattern, so the append helpers now mirror it instead of introducing a new mechanism. The HTML path needs an explicit (not deferred) check because the close must be verified *before* the rename. The seam is the smallest change that makes close failures injectable through the public `Write` API, which is what lets the regression test fail before the fix and pass after it without depending on OS-specific filesystem behaviour.
+
+**Alternatives considered:**
+- Extract a shared `writeSyncClose(f, data)` helper used by all three paths and unit-test it with a fake - Not chosen: the tests would cover the helper but not that each path routes through it, and they could not exist before the fix. Reasonable follow-up if a fourth write path appears.
+- Package-level `var openFile = os.OpenFile` override - Rejected: reintroduces mutable global state, which the v2 design deliberately avoids, and would need a second override for `os.CreateTemp`.
+- Deferred close check in the HTML path - Rejected: it would run after `os.Rename`, so a failed close would be reported only after the unverified temp file had already replaced the original.
+
+**Observation (out of scope):** errors from `appendByteLevel` — including the new close error — are returned by `appendToFile` without the `*WriteError` wrapping that the overwrite and HTML paths apply. This inconsistency predates this fix and is left unchanged here.
 
 ## Regression Test
 
@@ -75,12 +87,12 @@ Before the fix, the three append cases fail (`Write() error = nil, want ...`; th
 ## Verification
 
 **Automated:**
-- [ ] Regression test passes
-- [ ] Full test suite passes
-- [ ] Linters/validators pass
+- [x] Regression test passes (`go test -run TestFileWriterReportsCloseErrors ./...`)
+- [x] Full test suite passes (`make test`, plus `go test -race -run TestFileWriter`)
+- [x] Linters/validators pass (`make lint`, `gofmt`)
 
 **Manual verification:**
-- Confirmed pre-fix that the three append subtests fail and the overwrite/precedence subtests pass.
+- Confirmed pre-fix (checkpoint commit `410f96a`) that the three append subtests fail with `Write() error = nil` and the overwrite/precedence/no-fault subtests pass; all seven pass after the fix.
 
 ## Prevention
 
