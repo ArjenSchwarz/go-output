@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -23,14 +24,33 @@ import (
 // preserving the original HTML structure and allowing multiple appends.
 type FileWriter struct {
 	baseWriter
-	dir                  string            // Base directory for files
-	pattern              string            // e.g., "report-{format}.{ext}"
-	extensions           map[string]string // format to extension mapping
-	allowAbsolute        bool              // Allow absolute paths in filenames
-	mu                   sync.Mutex        // Guards file operations and the extensions map
-	appendMode           bool              // Enable append mode instead of replace
-	permissions          os.FileMode       // File permissions (default 0644)
-	disallowUnsafeAppend bool              // Prevent appending to JSON/YAML
+	dir                  string                      // Base directory for files
+	pattern              string                      // e.g., "report-{format}.{ext}"
+	extensions           map[string]string           // format to extension mapping
+	allowAbsolute        bool                        // Allow absolute paths in filenames
+	mu                   sync.Mutex                  // Guards file operations and the extensions map
+	appendMode           bool                        // Enable append mode instead of replace
+	permissions          os.FileMode                 // File permissions (default 0644)
+	disallowUnsafeAppend bool                        // Prevent appending to JSON/YAML
+	wrapFile             func(*os.File) writableFile // Test seam: wraps every file opened for writing (nil = use the *os.File directly)
+}
+
+// writableFile is the subset of *os.File that the FileWriter write paths use.
+// Production code always passes an *os.File; tests substitute a handle whose
+// Close fails, so close-error reporting can be verified without relying on
+// OS-specific filesystem behaviour (T-1399).
+type writableFile interface {
+	io.Writer
+	Sync() error
+	Close() error
+}
+
+// openedFile applies the wrapFile test seam, if set, to a freshly opened file.
+func (fw *FileWriter) openedFile(f *os.File) writableFile {
+	if fw.wrapFile != nil {
+		return fw.wrapFile(f)
+	}
+	return f
 }
 
 // NewFileWriter creates a new FileWriter with the specified directory and pattern
@@ -128,10 +148,11 @@ func (fw *FileWriter) Write(ctx context.Context, format string, data []byte) (re
 	}
 
 	// Use OpenFile with CREATE and TRUNCATE to overwrite existing files
-	file, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fw.permissions)
+	osFile, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fw.permissions)
 	if err != nil {
 		return fw.wrapError(format, fmt.Errorf("failed to create file %q: %w", fullPath, err))
 	}
+	file := fw.openedFile(osFile)
 	defer func() {
 		if err := file.Close(); err != nil && returnErr == nil {
 			returnErr = fw.wrapError(format, fmt.Errorf("failed to close file: %w", err))
@@ -272,7 +293,7 @@ func (fw *FileWriter) appendToFile(ctx context.Context, format string, fullPath 
 }
 
 // appendByteLevel performs byte-level appending to a file
-func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data []byte) error {
+func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data []byte) (returnErr error) {
 	// Check context cancellation
 	select {
 	case <-ctx.Done():
@@ -280,13 +301,18 @@ func (fw *FileWriter) appendByteLevel(ctx context.Context, fullPath string, data
 	default:
 	}
 
-	file, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, fw.permissions)
+	osFile, err := os.OpenFile(fullPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, fw.permissions)
 	if err != nil {
 		return fmt.Errorf("failed to open file for append %q: %w", fullPath, err)
 	}
+	file := fw.openedFile(osFile)
 	defer func() {
-		// Close file, errors are intentionally ignored as we already have the data
-		_ = file.Close()
+		// Close can surface delayed writeback or metadata errors on some
+		// filesystems, so report it unless an earlier error already explains
+		// the failure (T-1399). Mirrors the overwrite path in Write.
+		if err := file.Close(); err != nil && returnErr == nil {
+			returnErr = fmt.Errorf("failed to close file: %w", err)
+		}
 	}()
 
 	_, err = file.Write(data)
@@ -358,11 +384,12 @@ func (fw *FileWriter) appendHTMLWithMarker(ctx context.Context, fullPath string,
 	}
 
 	// Create temp file in same directory with cryptographically random suffix
-	tempFile, err := os.CreateTemp(filepath.Dir(fullPath), ".go-output-*.tmp")
+	osTemp, err := os.CreateTemp(filepath.Dir(fullPath), ".go-output-*.tmp")
 	if err != nil {
 		return fw.wrapError(FormatHTML, fmt.Errorf("failed to create temp file: %w", err))
 	}
-	tempPath := tempFile.Name()
+	tempPath := osTemp.Name()
+	tempFile := fw.openedFile(osTemp)
 	// Cleanup temp file on error using defer
 	defer func() {
 		// Attempt to remove temp file - ignore errors (file may have been renamed successfully)
@@ -376,18 +403,25 @@ func (fw *FileWriter) appendHTMLWithMarker(ctx context.Context, fullPath string,
 	buf.WriteString(HTMLAppendMarker)
 	buf.Write(existing[markerIndex+len(HTMLAppendMarker):])
 
-	// Write to temp file
+	// Write to temp file. On failure the write error is what matters, so the
+	// close result is deliberately ignored.
 	if _, err := tempFile.Write(buf.Bytes()); err != nil {
-		tempFile.Close()
+		_ = tempFile.Close()
 		return fw.wrapError(FormatHTML, fmt.Errorf("failed to write temp file: %w", err))
 	}
 
 	// Ensure data is flushed to disk before rename (durability requirement)
 	if err := tempFile.Sync(); err != nil {
-		tempFile.Close()
+		_ = tempFile.Close()
 		return fw.wrapError(FormatHTML, fmt.Errorf("failed to sync temp file: %w", err))
 	}
-	tempFile.Close()
+
+	// Close before the rename: on some filesystems Close is where delayed
+	// writeback or metadata errors surface, and a temp file that failed to
+	// close must not replace the original (T-1399).
+	if err := tempFile.Close(); err != nil {
+		return fw.wrapError(FormatHTML, fmt.Errorf("failed to close temp file: %w", err))
+	}
 
 	// Atomic rename (atomic on same filesystem)
 	if err := os.Rename(tempPath, fullPath); err != nil {
