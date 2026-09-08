@@ -35,10 +35,12 @@ func WithDataPreservation(preserve bool) RawOption {
 	}
 }
 
-// WithRawTransformations sets transformations for the raw content
+// WithRawTransformations sets transformations for the raw content.
+// The operations are copied and nil entries are dropped, so later changes to
+// the caller's slice cannot affect the content (T-1378).
 func WithRawTransformations(ops ...Operation) RawOption {
 	return func(rc *rawConfig) {
-		rc.transformations = ops
+		rc.transformations = cloneOperations(ops)
 	}
 }
 

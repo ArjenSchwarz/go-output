@@ -25,3 +25,21 @@ type FormatAwareOperation interface {
 	// CanTransform checks if this operation applies to the given content and format
 	CanTransform(content Content, format string) bool
 }
+
+// cloneOperations returns a fresh, non-nil slice holding the non-nil entries
+// of ops. Every operation slice that crosses the public API boundary passes
+// through it: the transformation options copy caller input on the way in and
+// GetTransformations copies content state on the way out, so neither side can
+// alias the other's backing array and built documents stay immutable
+// (T-1378). Nil entries are dropped because a nil Operation panics when its
+// methods are called during rendering (T-1208).
+func cloneOperations(ops []Operation) []Operation {
+	cloned := make([]Operation, 0, len(ops))
+	for _, op := range ops {
+		if op == nil {
+			continue
+		}
+		cloned = append(cloned, op)
+	}
+	return cloned
+}
