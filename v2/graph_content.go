@@ -433,6 +433,17 @@ type DrawIOConnection struct {
 	Style  string // Connection style (curved, straight, etc.)
 }
 
+// cloneDrawIOHeader returns a copy of the header whose Connections slice is
+// independent of the original. DrawIOConnection is a value struct with no
+// reference-typed fields, and Connections is the only reference-typed field in
+// DrawIOHeader, so cloning the slice is a full deep copy. A nil Connections
+// slice stays nil so JSON/YAML output for headers without connections is
+// unchanged.
+func cloneDrawIOHeader(header DrawIOHeader) DrawIOHeader {
+	header.Connections = slices.Clone(header.Connections)
+	return header
+}
+
 // DrawIOOption configures a DrawIOContent during construction.
 type DrawIOOption func(*DrawIOContent)
 
@@ -446,13 +457,14 @@ func WithDrawIOColumns(columns ...string) DrawIOOption {
 	}
 }
 
-// NewDrawIOContent creates a new Draw.io content.
+// NewDrawIOContent creates a new Draw.io content. The header and records are
+// copied, so later changes to the caller's values do not affect the content.
 // Nil options are ignored.
 func NewDrawIOContent(title string, records []Record, header DrawIOHeader, opts ...DrawIOOption) *DrawIOContent {
 	content := &DrawIOContent{
 		id:      GenerateID(),
 		title:   title,
-		header:  header,
+		header:  cloneDrawIOHeader(header),
 		records: cloneRecords(records),
 	}
 	for _, opt := range opts {
@@ -464,14 +476,16 @@ func NewDrawIOContent(title string, records []Record, header DrawIOHeader, opts 
 	return content
 }
 
-// NewDrawIOContentFromTable creates Draw.io content from table data.
+// NewDrawIOContentFromTable creates Draw.io content from table data. The header
+// and the table's records are copied, so later changes to the caller's values
+// do not affect the content.
 // A nil table yields safe, empty content rather than a panic, since this
 // constructor returns no error to report the invalid input.
 // Nil options are ignored.
 func NewDrawIOContentFromTable(table *TableContent, header DrawIOHeader, opts ...DrawIOOption) *DrawIOContent {
 	content := &DrawIOContent{
 		id:     GenerateID(),
-		header: header,
+		header: cloneDrawIOHeader(header),
 	}
 	if table != nil {
 		content.title = table.title
@@ -502,9 +516,11 @@ func (d *DrawIOContent) GetTitle() string {
 	return d.title
 }
 
-// GetHeader returns the Draw.io header configuration
+// GetHeader returns a copy of the Draw.io header configuration. The
+// Connections slice is cloned so callers cannot mutate the content's internal
+// state.
 func (d *DrawIOContent) GetHeader() DrawIOHeader {
-	return d.header
+	return cloneDrawIOHeader(d.header)
 }
 
 // GetRecords returns a deep copy of the data records so callers cannot
@@ -548,16 +564,10 @@ func (d *DrawIOContent) AppendBinary(b []byte) ([]byte, error) {
 
 // Clone creates a deep copy of the DrawIOContent
 func (d *DrawIOContent) Clone() Content {
-	// Deep copy connections
-	newConnections := slices.Clone(d.header.Connections)
-
-	newHeader := d.header
-	newHeader.Connections = newConnections
-
 	return &DrawIOContent{
 		id:      d.id,
 		title:   d.title,
-		header:  newHeader,
+		header:  cloneDrawIOHeader(d.header),
 		records: cloneRecords(d.records),
 		columns: slices.Clone(d.columns),
 	}
