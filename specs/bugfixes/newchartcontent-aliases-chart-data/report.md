@@ -1,7 +1,7 @@
 # Bugfix Report: NewChartContent Aliases Known Chart Data
 
 **Date:** 2026-11-02
-**Status:** In Progress
+**Status:** Fixed
 **Ticket:** T-1369
 
 ## Description of the Issue
@@ -45,7 +45,15 @@ and only known types can be copied.
 
 ## Resolution for the Issue
 
-_To be completed after the fix._
+**Changes made:**
+- `v2/graph_content.go` `NewChartContent` - stores `cloneChartData(data)` instead of `data`; godoc states known chart data is copied and other data is stored as provided.
+- `v2/graph_content.go` `NewGanttChart` / `NewPieChart` - pass the caller's slice into the fresh `GanttData`/`PieData` and rely on `NewChartContent` for the copy, so the data is copied once instead of twice. Behaviour is unchanged (the T-1305 tests still pass).
+
+**Approach rationale:** `cloneChartData` already holds the ownership rules for the known chart types and is used by `GetData` and `Clone`; reusing it at the constructor makes all entry and exit points share one definition.
+
+**Alternatives considered:**
+- Reflection-based deep copy of arbitrary `data` - out of scope; unknown user types keep their current stored-as-provided semantics.
+- Leaving the pre-copy in `NewGanttChart`/`NewPieChart` - harmless but copies the slices twice for no benefit.
 
 ## Regression Test
 
@@ -58,3 +66,28 @@ and (for Gantt) a task's `Dependencies` changes neither `GetData()` nor the
 `AppendText` output.
 
 **Run command:** `cd v2 && go test -run 'TestNewChartContent_MutateInput' .`
+
+## Affected Files
+
+| File | Change |
+|------|--------|
+| `v2/graph_content.go` | Copy known chart data in `NewChartContent`; drop redundant pre-copy in `NewGanttChart`/`NewPieChart` |
+| `v2/graph_content_mutation_test.go` | Regression tests for direct `NewChartContent` calls |
+| `CHANGELOG.md` | Unreleased "Fixed" entry |
+
+## Verification
+
+**Automated:**
+- [x] Regression tests fail before the fix (7 subtests) and pass after
+- [x] Full unit and integration suites pass, except two FileWriter read-error subtests that also fail on unmodified `main` in this environment (they rely on `chmod 000` blocking reads, which does not apply when tests run as root)
+- [x] `golangci-lint run` reports 0 issues; `go vet ./...` clean
+
+## Prevention
+
+**Recommendations to avoid similar bugs:**
+- When a type has a clone helper, apply it at every constructor that accepts caller data, not only the convenience constructors and getters.
+
+## Related
+
+- T-1305 (defensive copies for `NewGanttChart`, `NewPieChart`, `GetData`, `Clone`)
+- T-1295, T-1371 (equivalent fixes for graph and Draw.io content)
