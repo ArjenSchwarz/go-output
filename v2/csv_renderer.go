@@ -161,7 +161,8 @@ func (c *csvRenderer) renderDocumentCSVTo(ctx context.Context, doc *Document, w 
 // renderSectionTablesCSV recursively flattens a section hierarchy and renders
 // every nested table to CSV (T-1239). It walks the section's contents,
 // applying per-content transformations at each level, rendering any
-// TableContent it finds, and recursing into any nested SectionContent. This
+// TableContent it finds, recursing into any nested SectionContent, and
+// rendering any nested DefaultCollapsibleSection (T-2283). This
 // replaces an earlier hand-written loop that only reached tables one section
 // level deep, silently dropping tables nested deeper.
 //
@@ -217,6 +218,14 @@ func (c *csvRenderer) renderSectionTablesCSV(ctx context.Context, section *Secti
 			// Recurse into deeper sections to any depth.
 			if err := c.renderSectionTablesCSV(ctx, nested, csvWriter, lastKeyOrder, flushCSV); err != nil {
 				return err
+			}
+
+		case *DefaultCollapsibleSection:
+			// Collapsible sections nested inside regular sections render
+			// exactly like top-level ones (metadata row + nested tables),
+			// matching the table renderer's renderSectionTable (T-2283).
+			if err := c.renderCollapsibleSectionCSV(ctx, nested, csvWriter, lastKeyOrder, flushCSV); err != nil {
+				return fmt.Errorf("failed to render collapsible section %s: %w", nested.ID(), err)
 			}
 		}
 	}
