@@ -3,7 +3,9 @@ package output
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -154,21 +156,16 @@ func (o *SortOp) Apply(ctx context.Context, content Content) (Content, error) {
 	// Clone the content to preserve immutability
 	cloned := tableContent.Clone().(*TableContent)
 
-	// Validate that sort columns exist in the data (only if we have records and are using keys)
+	// Validate that sort columns exist (only if we have records and are using keys).
+	// A column is known when the table schema defines it or any record contains
+	// it, so sparse tables whose first row omits the column are accepted
+	// (T-1465). Records missing the column are compared as nil.
 	if len(cloned.records) > 0 && o.comparator == nil && len(o.keys) > 0 {
-		// Check first record for column existence
-		// Note: Missing columns in other records will be treated as nil values during comparison
-		firstRecord := cloned.records[0]
-		availableColumns := make([]string, 0, len(firstRecord))
-		for col := range firstRecord {
-			availableColumns = append(availableColumns, col)
-		}
-
 		for _, key := range o.keys {
-			if _, exists := firstRecord[key.Column]; !exists {
+			if !cloned.hasColumn(key.Column) {
 				return nil, NewValidationError("sort_column", key.Column,
 					fmt.Sprintf("sort column '%s' does not exist in table data. Available columns: %v",
-						key.Column, availableColumns))
+						key.Column, cloned.availableColumns()))
 			}
 		}
 	}
@@ -437,10 +434,11 @@ func NewFilterOp(predicate func(Record) bool) *FilterOp {
 	}
 }
 
-// NewSortOp creates a new sort operation with the given sort keys
+// NewSortOp creates a new sort operation with the given sort keys.
+// The keys are copied, so later changes to a caller's slice do not affect the operation.
 func NewSortOp(keys ...SortKey) *SortOp {
 	return &SortOp{
-		keys: keys,
+		keys: slices.Clone(keys),
 	}
 }
 
@@ -852,11 +850,13 @@ func MaxAggregate(field string) AggregateFunc {
 	}
 }
 
-// NewGroupByOp creates a new groupBy operation
+// NewGroupByOp creates a new groupBy operation.
+// The groupBy slice and aggregates map are copied, so later changes to them
+// do not affect the operation.
 func NewGroupByOp(groupBy []string, aggregates map[string]AggregateFunc) *GroupByOp {
 	return &GroupByOp{
-		groupBy:    groupBy,
-		aggregates: aggregates,
+		groupBy:    slices.Clone(groupBy),
+		aggregates: maps.Clone(aggregates),
 	}
 }
 
@@ -1022,11 +1022,55 @@ func (o *AddColumnOp) CanTransform(content Content, format string) bool {
 	return content != nil && content.Type() == ContentTypeTable
 }
 
-// NewAddColumnOp creates a new addColumn operation
+// NewAddColumnOp creates a new addColumn operation.
+// The value pointed to by position is copied, so changing it afterwards does
+// not affect the operation.
 func NewAddColumnOp(name string, fn func(Record) any, position *int) *AddColumnOp {
-	return &AddColumnOp{
-		name:     name,
-		fn:       fn,
-		position: position,
+	op := &AddColumnOp{
+		name: name,
+		fn:   fn,
 	}
+	if position != nil {
+		pos := *position
+		op.position = &pos
+	}
+	return op
+}
+
+// hasColumn reports whether column is defined by the table schema or present
+// in at least one record.
+func (t *TableContent) hasColumn(column string) bool {
+	if t.schema != nil && (t.schema.HasField(column) || slices.Contains(t.schema.keyOrder, column)) {
+		return true
+	}
+	for _, record := range t.records {
+		if _, ok := record[column]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// availableColumns returns the schema key order followed by any additional
+// columns found in records (sorted), for use in error messages.
+func (t *TableContent) availableColumns() []string {
+	var columns []string
+	if t.schema != nil {
+		columns = t.schema.GetKeyOrder()
+	}
+	seen := make(map[string]bool, len(columns))
+	for _, c := range columns {
+		seen[c] = true
+	}
+	var extra []string
+	for _, record := range t.records {
+		for c := range record {
+			if !seen[c] {
+				seen[c] = true
+				extra = append(extra, c)
+			}
+		}
+	}
+	slices.Sort(extra)
+	return append(columns, extra...)
 }
