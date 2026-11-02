@@ -88,9 +88,9 @@ func (h *htmlRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer)
 	}
 
 	// Render document content
-	if err := h.renderDocumentTo(ctx, doc, w, func(content Content, w io.Writer) error {
+	if err := h.renderDocumentToWithFormat(ctx, doc, w, func(content Content, w io.Writer) error {
 		return h.renderContentTo(ctx, content, w)
-	}); err != nil {
+	}, FormatHTML); err != nil {
 		return err
 	}
 

@@ -3,6 +3,7 @@ package output
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"sync"
 )
@@ -118,6 +119,21 @@ func (tp *TransformPipeline) Count() int {
 	defer tp.mu.RUnlock()
 
 	return len(tp.transformers)
+}
+
+// clone returns an independent pipeline holding the same transformers, so
+// later Add/Remove/Clear calls on either pipeline do not affect the other.
+// A nil pipeline clones to nil.
+func (tp *TransformPipeline) clone() *TransformPipeline {
+	if tp == nil {
+		return nil
+	}
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+	return &TransformPipeline{
+		transformers: slices.Clone(tp.transformers),
+		sorted:       tp.sorted,
+	}
 }
 
 // sortTransformers ensures transformers are sorted by priority (lower numbers first)
