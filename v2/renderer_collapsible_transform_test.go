@@ -76,6 +76,28 @@ func TestCSVRenderer_CollapsibleSectionAppliesTransformations(t *testing.T) {
 	assertTransformedRows(t, "CSV", got)
 }
 
+// TestCSVRenderer_NestedCollapsibleSectionRendered is a regression test for
+// T-2283: a collapsible section placed inside a regular SectionContent must be
+// rendered by the CSV renderer (metadata row plus transformed nested rows),
+// mirroring TestTableRenderer_NestedCollapsibleSectionAppliesTransformations.
+// Previously renderSectionTablesCSV only dispatched *TableContent and
+// *SectionContent, so the nested collapsible section produced no output at all.
+func TestCSVRenderer_NestedCollapsibleSectionRendered(t *testing.T) {
+	section := NewSectionContent("Outer")
+	section.AddContent(collapsibleTransformSection(t))
+	doc := New().AddContent(section).Build()
+	renderer := NewCSVRendererWithCollapsible(DefaultRendererConfig)
+
+	got, err := renderer.Render(context.Background(), doc)
+	if err != nil {
+		t.Fatalf("csvRenderer.Render() error = %v", err)
+	}
+	if want := "# Section: Details"; !strings.Contains(string(got), want) {
+		t.Errorf("CSV output missing collapsible section metadata %q\nGot:\n%s", want, got)
+	}
+	assertTransformedRows(t, "CSV", got)
+}
+
 // TestTableRenderer_CollapsibleSectionAppliesTransformations is a regression
 // test for T-1635 (consolidating T-1637): the terminal-table renderer must
 // apply per-content transformations to content nested inside an expanded
