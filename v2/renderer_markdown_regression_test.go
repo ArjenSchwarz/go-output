@@ -102,7 +102,7 @@ func TestMarkdownRenderer_FrontMatterNotAliased(t *testing.T) {
 			}
 
 			got := string(result)
-			want := "---\ntitle: First Report\n---\n\n"
+			want := "---\ntitle: \"First Report\"\n---\n\n"
 			if !strings.HasPrefix(got, want) {
 				t.Errorf("Render() front matter changed after mutating caller map\ngot:\n%s\nwant prefix:\n%s", got, want)
 			}
