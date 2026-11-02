@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 )
@@ -229,5 +230,91 @@ func TestCloneRendererConfig_NilFields(t *testing.T) {
 	}
 	if got.MaxDetailLength != 7 {
 		t.Errorf("MaxDetailLength = %d, want 7", got.MaxDetailLength)
+	}
+}
+
+// Regression tests for the T-1718 review finding: HTML Mermaid script
+// detection inspected the original document, so a data transformer that
+// turned a table into a chart produced chart markup without the Mermaid
+// loader, and one that turned a chart into other content still injected it.
+// Detection now follows the content actually rendered, on both Render and
+// RenderTo.
+
+// replaceContentTransformer replaces every content accepted by match with
+// the result of replace.
+type replaceContentTransformer struct {
+	match   func(Content) bool
+	replace func() Content
+}
+
+func (r *replaceContentTransformer) Name() string     { return "replace-content" }
+func (r *replaceContentTransformer) Priority() int    { return 100 }
+func (r *replaceContentTransformer) Describe() string { return "replaces content for tests" }
+func (r *replaceContentTransformer) CanTransform(content Content, format string) bool {
+	return r.match(content) && format == FormatHTML
+}
+func (r *replaceContentTransformer) TransformData(context.Context, Content, string) (Content, error) {
+	return r.replace(), nil
+}
+
+func TestHTMLRenderer_MermaidScriptFollowsTransformedContent(t *testing.T) {
+	pieChart := func() Content {
+		return NewPieChart("Share", []PieSlice{{Label: "A", Value: 1}}, false)
+	}
+	textContent := func() Content { return NewTextContent("no chart here") }
+	isTable := func(c Content) bool { _, ok := c.(*TableContent); return ok }
+	isChart := func(c Content) bool { _, ok := c.(*ChartContent); return ok }
+
+	tests := map[string]struct {
+		doc         *Document
+		transformer *replaceContentTransformer
+		wantScript  bool
+	}{
+		"table transformed into chart gets script": {
+			doc:         newConstructorTransformerDoc(),
+			transformer: &replaceContentTransformer{match: isTable, replace: pieChart},
+			wantScript:  true,
+		},
+		"chart transformed into text drops script": {
+			doc:         New().AddContent(pieChart()).Build(),
+			transformer: &replaceContentTransformer{match: isChart, replace: textContent},
+			wantScript:  false,
+		},
+	}
+
+	renders := map[string]func(r Renderer, doc *Document) (string, error){
+		"Render": func(r Renderer, doc *Document) (string, error) {
+			out, err := r.Render(t.Context(), doc)
+			return string(out), err
+		},
+		"RenderTo": func(r Renderer, doc *Document) (string, error) {
+			var buf bytes.Buffer
+			err := r.RenderTo(t.Context(), doc, &buf)
+			return buf.String(), err
+		},
+	}
+
+	for name, tc := range tests {
+		for renderName, render := range renders {
+			t.Run(name+"/"+renderName, func(t *testing.T) {
+				config := DefaultRendererConfig
+				config.DataTransformers = []*TransformerAdapter{NewTransformerAdapter(tc.transformer)}
+				config.ByteTransformers = nil
+
+				got, err := render(NewHTMLRendererWithCollapsible(config), tc.doc)
+				if err != nil {
+					t.Fatalf("render failed: %v", err)
+				}
+
+				hasChart := strings.Contains(got, `class="mermaid"`)
+				if hasChart != tc.wantScript {
+					t.Fatalf("chart markup present = %v, want %v; output:\n%s", hasChart, tc.wantScript, got)
+				}
+				hasScript := strings.Contains(got, "mermaid.initialize")
+				if hasScript != tc.wantScript {
+					t.Errorf("mermaid script present = %v, want %v; output:\n%s", hasScript, tc.wantScript, got)
+				}
+			})
+		}
 	}
 }

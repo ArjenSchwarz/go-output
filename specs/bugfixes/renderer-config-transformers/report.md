@@ -75,6 +75,15 @@ not copy maps, slices or pointed-to pipelines.
 - `v2/html_renderer.go` — `RenderTo` uses `renderDocumentToWithFormat(...,
   FormatHTML)`. Byte transformers apply to the rendered content only, before
   the Mermaid script and template footer, matching `Render`.
+- `v2/html_renderer.go` (review follow-up) — Mermaid script detection in
+  both `Render` and `RenderTo` now inspects the content passed to the render
+  callback (after data transformers and per-content operations) instead of the
+  original document. A data transformer that turns a table into a chart now
+  gets the mermaid.js loader, and one that turns a chart into other content no
+  longer injects it. Buffered `Render` had the same mismatch before this PR;
+  it is fixed together so both paths agree. The unused
+  `documentContainsMermaidCharts` wrapper was removed; the recursive
+  `contentsContainMermaidCharts` (T-1593) is unchanged.
 - `v2/markdown_renderer.go` — `Render` applies data transformers (format
   `markdown`), renders, then applies byte transformers to the full output;
   `RenderTo` delegates to `Render`.
@@ -110,19 +119,21 @@ only read scalar fields and were left alone.
 - `TestRendererConstructors_DoNotAliasCallerConfig` (markdown, html)
 - `TestNewHTMLRendererWithCollapsible_DoesNotAliasCSSClasses`
 - `TestCloneRendererConfig_NilFields`
+- `TestHTMLRenderer_MermaidScriptFollowsTransformedContent` (chart added /
+  removed by a data transformer, on Render and RenderTo)
 
 **What it verifies:** transformers configured via `RendererConfig` run on the
 Markdown and streaming HTML paths, and post-construction mutation of the
 caller's config does not affect the renderer.
 
-**Run command:** `cd v2 && go test -run 'AppliesTransformers|RenderToAppliesTransformers|DataTransformerOnly|DoNotAlias|CloneRendererConfig' .`
+**Run command:** `cd v2 && go test -run 'AppliesTransformers|RenderToAppliesTransformers|DataTransformerOnly|DoNotAlias|CloneRendererConfig|MermaidScriptFollowsTransformedContent' .`
 
 ## Affected Files
 
 | File | Change |
 |------|--------|
 | `v2/base_renderer.go` | Streaming transformer support; config cloning in constructors |
-| `v2/html_renderer.go` | `RenderTo` uses the format-aware streaming helper |
+| `v2/html_renderer.go` | `RenderTo` uses the format-aware streaming helper; Mermaid detection follows rendered content |
 | `v2/markdown_renderer.go` | `Render` applies data/byte transformers |
 | `v2/transformer.go` | `TransformPipeline.clone()` |
 | `v2/renderer_config_transformer_test.go` | Regression tests |
