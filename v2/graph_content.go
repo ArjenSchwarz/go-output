@@ -276,13 +276,15 @@ type PieData struct {
 	Slices   []PieSlice
 }
 
-// NewChartContent creates a new chart content
+// NewChartContent creates a new chart content. Known chart data (*GanttData
+// and *PieData) is copied, so later changes to the caller's value do not
+// affect the chart; any other data is stored as provided.
 func NewChartContent(title, chartType string, data any) *ChartContent {
 	return &ChartContent{
 		id:        GenerateID(),
 		title:     title,
 		chartType: chartType,
-		data:      data,
+		data:      cloneChartData(data),
 	}
 }
 
@@ -291,7 +293,7 @@ func NewGanttChart(title string, tasks []GanttTask) *ChartContent {
 	data := &GanttData{
 		DateFormat: "YYYY-MM-DD",
 		AxisFormat: "%Y-%m-%d",
-		Tasks:      cloneGanttTasks(tasks),
+		Tasks:      tasks, // copied by NewChartContent
 	}
 	return NewChartContent(title, ChartTypeGantt, data)
 }
@@ -300,7 +302,7 @@ func NewGanttChart(title string, tasks []GanttTask) *ChartContent {
 func NewPieChart(title string, slices []PieSlice, showData bool) *ChartContent {
 	data := &PieData{
 		ShowData: showData,
-		Slices:   clonePieSlices(slices),
+		Slices:   slices, // copied by NewChartContent
 	}
 	return NewChartContent(title, ChartTypePie, data)
 }
