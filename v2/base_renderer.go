@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -46,6 +48,18 @@ var DefaultRendererConfig = RendererConfig{
 	},
 	DataTransformers: make([]*TransformerAdapter, 0),
 	ByteTransformers: NewTransformPipeline(),
+}
+
+// cloneRendererConfig returns a copy of config whose reference-typed fields
+// (HTMLCSSClasses, DataTransformers, ByteTransformers) no longer alias the
+// caller's, so mutating a RendererConfig after passing it to a renderer
+// constructor cannot change that renderer (T-2322). The transformers
+// themselves are shared, not copied.
+func cloneRendererConfig(config RendererConfig) RendererConfig {
+	config.HTMLCSSClasses = maps.Clone(config.HTMLCSSClasses)
+	config.DataTransformers = slices.Clone(config.DataTransformers)
+	config.ByteTransformers = config.ByteTransformers.clone()
+	return config
 }
 
 // baseRenderer provides common functionality shared by all renderer implementations
@@ -226,6 +240,15 @@ func (b *baseRenderer) applyByteTransformers(ctx context.Context, input []byte, 
 
 // renderDocumentTo handles streaming document rendering with context cancellation
 func (b *baseRenderer) renderDocumentTo(ctx context.Context, doc *Document, w io.Writer, renderFunc func(Content, io.Writer) error) error {
+	return b.renderDocumentToWithFormat(ctx, doc, w, renderFunc, "")
+}
+
+// renderDocumentToWithFormat is the streaming counterpart of
+// renderDocumentWithFormat: it applies the configured DataTransformers before
+// rendering and the ByteTransformers to the rendered content (T-1718). Byte
+// transformers operate on complete output, so the content is buffered only
+// when the pipeline has transformers; otherwise it streams straight to w.
+func (b *baseRenderer) renderDocumentToWithFormat(ctx context.Context, doc *Document, w io.Writer, renderFunc func(Content, io.Writer) error, format string) error {
 	if doc == nil {
 		return fmt.Errorf("document cannot be nil")
 	}
@@ -234,11 +257,34 @@ func (b *baseRenderer) renderDocumentTo(ctx context.Context, doc *Document, w io
 	}
 
 	b.mu.RLock()
-	defer b.mu.RUnlock()
+	config := b.config
+	b.mu.RUnlock()
 
-	contents := doc.GetContents()
+	transformedDoc, err := b.applyDataTransformers(ctx, doc, format, config.DataTransformers)
+	if err != nil {
+		return fmt.Errorf("data transformation failed: %w", err)
+	}
 
-	for i, content := range contents {
+	if config.ByteTransformers == nil || config.ByteTransformers.Count() == 0 {
+		return b.streamContents(ctx, transformedDoc, w, renderFunc)
+	}
+
+	var buf bytes.Buffer
+	if err := b.streamContents(ctx, transformedDoc, &buf, renderFunc); err != nil {
+		return err
+	}
+	finalBytes, err := b.applyByteTransformers(ctx, buf.Bytes(), format, config.ByteTransformers)
+	if err != nil {
+		return fmt.Errorf("byte transformation failed: %w", err)
+	}
+	_, err = w.Write(finalBytes)
+	return err
+}
+
+// streamContents writes each content of doc to w, applying per-content
+// transformations and checking for context cancellation between contents.
+func (b *baseRenderer) streamContents(ctx context.Context, doc *Document, w io.Writer, renderFunc func(Content, io.Writer) error) error {
+	for i, content := range doc.GetContents() {
 		// Check for context cancellation
 		select {
 		case <-ctx.Done():
@@ -578,10 +624,11 @@ func (mop *MemoryOptimizedProcessor) processMap(content map[string]any, maxLengt
 
 // NewMarkdownRendererWithCollapsible creates a markdown renderer with collapsible configuration
 func NewMarkdownRendererWithCollapsible(config RendererConfig) Renderer {
+	config = cloneRendererConfig(config)
 	return &markdownRenderer{
 		// RendererConfig is the single renderer config: it must also populate
-		// baseRenderer.config so the embedded renderDocumentWithFormat path
-		// honours the configured DataTransformers/ByteTransformers (T-1223).
+		// baseRenderer.config, which markdownRenderer.Render reads to apply
+		// the configured DataTransformers/ByteTransformers (T-1223, T-1718).
 		baseRenderer:      baseRenderer{config: config},
 		includeToC:        false,
 		headingLevel:      1,
@@ -596,6 +643,7 @@ func NewMarkdownRendererWithCollapsible(config RendererConfig) Renderer {
 // DataTransformers/ByteTransformers are not applied here. Only the collapsible
 // settings take effect for the table format.
 func NewTableRendererWithCollapsible(styleName string, config RendererConfig) Renderer {
+	config = cloneRendererConfig(config)
 	return &tableRenderer{
 		styleName:         styleName,
 		collapsibleConfig: config,
@@ -604,11 +652,13 @@ func NewTableRendererWithCollapsible(styleName string, config RendererConfig) Re
 
 // NewHTMLRendererWithCollapsible creates an HTML renderer with collapsible configuration
 func NewHTMLRendererWithCollapsible(config RendererConfig) Renderer {
+	config = cloneRendererConfig(config)
 	return &htmlRenderer{
 		// RendererConfig is the single renderer config: it must also populate
-		// baseRenderer.config because htmlRenderer.Render routes through
-		// renderDocumentWithFormat, which reads the configured
-		// DataTransformers/ByteTransformers from baseRenderer.config (T-1223).
+		// baseRenderer.config because htmlRenderer.Render and RenderTo route
+		// through renderDocumentWithFormat / renderDocumentToWithFormat, which
+		// read the configured DataTransformers/ByteTransformers from
+		// baseRenderer.config (T-1223, T-1718).
 		baseRenderer:      baseRenderer{config: config},
 		collapsibleConfig: config,
 	}
@@ -621,6 +671,7 @@ func NewHTMLRendererWithCollapsible(config RendererConfig) Renderer {
 // DataTransformers/ByteTransformers are not applied here. Only the collapsible
 // settings take effect for the CSV format.
 func NewCSVRendererWithCollapsible(config RendererConfig) Renderer {
+	config = cloneRendererConfig(config)
 	return &csvRenderer{
 		collapsibleConfig: config,
 	}

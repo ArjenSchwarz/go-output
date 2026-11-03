@@ -56,15 +56,41 @@ func (m *markdownRenderer) Format() string {
 	return FormatMarkdown
 }
 
+// Render renders the document as Markdown, applying the RendererConfig
+// DataTransformers before rendering and ByteTransformers to the complete
+// output (front matter and table of contents included), like the other
+// renderers that accept a RendererConfig (T-1718).
 func (m *markdownRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
-	return m.renderDocumentMarkdown(ctx, doc)
+	if doc == nil {
+		return nil, fmt.Errorf("document cannot be nil")
+	}
+
+	m.mu.RLock()
+	config := m.config
+	m.mu.RUnlock()
+
+	transformedDoc, err := m.applyDataTransformers(ctx, doc, FormatMarkdown, config.DataTransformers)
+	if err != nil {
+		return nil, fmt.Errorf("data transformation failed: %w", err)
+	}
+
+	result, err := m.renderDocumentMarkdown(ctx, transformedDoc)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err = m.applyByteTransformers(ctx, result, FormatMarkdown, config.ByteTransformers)
+	if err != nil {
+		return nil, fmt.Errorf("byte transformation failed: %w", err)
+	}
+	return result, nil
 }
 
 func (m *markdownRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer) error {
 	if w == nil {
 		return fmt.Errorf("writer cannot be nil")
 	}
-	data, err := m.renderDocumentMarkdown(ctx, doc)
+	data, err := m.Render(ctx, doc)
 	if err != nil {
 		return err
 	}

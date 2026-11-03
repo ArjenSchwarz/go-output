@@ -48,16 +48,21 @@ func (h *htmlRenderer) Format() string {
 }
 
 func (h *htmlRenderer) Render(ctx context.Context, doc *Document) ([]byte, error) {
-	// Render the document
+	// Render the document. Chart detection looks at the content actually
+	// rendered (after data transformers and per-content operations), so a
+	// transformer that adds or removes charts gets a matching mermaid.js
+	// script (T-1718).
+	hasCharts := false
 	result, err := h.renderDocumentWithFormat(ctx, doc, func(content Content) ([]byte, error) {
+		hasCharts = hasCharts || h.contentsContainMermaidCharts([]Content{content})
 		return h.renderContent(ctx, content)
 	}, FormatHTML)
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if document contains any ChartContent that would need mermaid.js
-	if h.documentContainsMermaidCharts(doc) {
+	// Inject mermaid.js if any rendered content is a ChartContent
+	if hasCharts {
 		// Inject mermaid.js script
 		result = h.injectMermaidScript(result)
 	}
@@ -87,15 +92,18 @@ func (h *htmlRenderer) RenderTo(ctx context.Context, doc *Document, w io.Writer)
 		}
 	}
 
-	// Render document content
-	if err := h.renderDocumentTo(ctx, doc, w, func(content Content, w io.Writer) error {
+	// Render document content, detecting charts in the rendered content as
+	// Render does (T-1718)
+	hasCharts := false
+	if err := h.renderDocumentToWithFormat(ctx, doc, w, func(content Content, w io.Writer) error {
+		hasCharts = hasCharts || h.contentsContainMermaidCharts([]Content{content})
 		return h.renderContentTo(ctx, content, w)
-	}); err != nil {
+	}, FormatHTML); err != nil {
 		return err
 	}
 
-	// Check if document contains any ChartContent that would need mermaid.js
-	if h.documentContainsMermaidCharts(doc) {
+	// Write mermaid.js if any rendered content is a ChartContent
+	if hasCharts {
 		if _, err := w.Write([]byte(h.getMermaidScript())); err != nil {
 			return err
 		}
@@ -334,11 +342,6 @@ func (h *htmlRenderer) renderChartContentHTML(chart *ChartContent) ([]byte, erro
 	result.WriteString("</pre>\n")
 
 	return []byte(result.String()), nil
-}
-
-// documentContainsMermaidCharts checks if a document contains any ChartContent
-func (h *htmlRenderer) documentContainsMermaidCharts(doc *Document) bool {
-	return h.contentsContainMermaidCharts(doc.GetContents())
 }
 
 // contentsContainMermaidCharts recursively checks whether any content is a
