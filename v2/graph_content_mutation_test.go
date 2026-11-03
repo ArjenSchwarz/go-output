@@ -420,3 +420,119 @@ func TestDrawIOContent_NilHeaderConnectionsStayNil(t *testing.T) {
 		t.Errorf("Clone().GetHeader().Connections: got %#v, want nil", got)
 	}
 }
+
+// Regression tests for T-1369: the generic NewChartContent constructor stored
+// caller-provided *GanttData/*PieData directly, so mutating the caller-owned
+// struct, its slices, or a task's Dependencies after construction changed the
+// chart's later output. NewChartContent must copy known chart data the same
+// way NewGanttChart, NewPieChart, GetData and Clone already do.
+
+func TestNewChartContent_MutateInputGanttDataAfterCreate(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(d *GanttData)
+	}{
+		"struct field": {
+			mutate: func(d *GanttData) { d.DateFormat = "mutated" },
+		},
+		"task element": {
+			mutate: func(d *GanttData) { d.Tasks[0] = GanttTask{ID: "X", Title: "mutated"} },
+		},
+		"tasks slice reassigned": {
+			mutate: func(d *GanttData) { d.Tasks = nil },
+		},
+		"task dependency": {
+			mutate: func(d *GanttData) { d.Tasks[0].Dependencies[0] = "mutated" },
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			data := &GanttData{
+				DateFormat: "YYYY-MM-DD",
+				AxisFormat: "%Y-%m-%d",
+				Tasks: []GanttTask{
+					{ID: "1", Title: "Build", StartDate: "2026-01-01", Dependencies: []string{"design"}},
+				},
+			}
+
+			c := NewChartContent("project", ChartTypeGantt, data)
+			wantText, err := c.AppendText(nil)
+			if err != nil {
+				t.Fatalf("AppendText: %v", err)
+			}
+
+			tc.mutate(data)
+
+			got := c.GetData().(*GanttData)
+			if got.DateFormat != "YYYY-MM-DD" {
+				t.Errorf("DateFormat: got %q, want YYYY-MM-DD", got.DateFormat)
+			}
+			if len(got.Tasks) != 1 {
+				t.Fatalf("Tasks: got %d tasks, want 1", len(got.Tasks))
+			}
+			if got.Tasks[0].Title != "Build" {
+				t.Errorf("Tasks[0].Title: got %q, want Build", got.Tasks[0].Title)
+			}
+			if !slices.Equal(got.Tasks[0].Dependencies, []string{"design"}) {
+				t.Errorf("Tasks[0].Dependencies: got %q, want [design]", got.Tasks[0].Dependencies)
+			}
+
+			gotText, err := c.AppendText(nil)
+			if err != nil {
+				t.Fatalf("AppendText: %v", err)
+			}
+			if !bytes.Equal(gotText, wantText) {
+				t.Errorf("rendered output changed after input mutation:\ngot:  %q\nwant: %q", gotText, wantText)
+			}
+		})
+	}
+}
+
+func TestNewChartContent_MutateInputPieDataAfterCreate(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(d *PieData)
+	}{
+		"struct field": {
+			mutate: func(d *PieData) { d.ShowData = false },
+		},
+		"slice element": {
+			mutate: func(d *PieData) { d.Slices[0] = PieSlice{Label: "mutated", Value: 99} },
+		},
+		"slices reassigned": {
+			mutate: func(d *PieData) { d.Slices = nil },
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			data := &PieData{
+				ShowData: true,
+				Slices:   []PieSlice{{Label: "A", Value: 1}},
+			}
+
+			c := NewChartContent("dist", ChartTypePie, data)
+			wantText, err := c.AppendText(nil)
+			if err != nil {
+				t.Fatalf("AppendText: %v", err)
+			}
+
+			tc.mutate(data)
+
+			got := c.GetData().(*PieData)
+			if !got.ShowData {
+				t.Errorf("ShowData: got false, want true")
+			}
+			if len(got.Slices) != 1 || got.Slices[0] != (PieSlice{Label: "A", Value: 1}) {
+				t.Errorf("Slices: got %+v, want [{Label:A Value:1}]", got.Slices)
+			}
+
+			gotText, err := c.AppendText(nil)
+			if err != nil {
+				t.Fatalf("AppendText: %v", err)
+			}
+			if !bytes.Equal(gotText, wantText) {
+				t.Errorf("rendered output changed after input mutation:\ngot:  %q\nwant: %q", gotText, wantText)
+			}
+		})
+	}
+}
