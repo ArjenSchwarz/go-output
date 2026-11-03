@@ -327,7 +327,11 @@ func (m *markdownRenderer) renderTextContentMarkdown(text *TextContent) ([]byte,
 				htmlAttrs = append(htmlAttrs, fmt.Sprintf("font-size: %dpx", style.Size))
 			}
 			styleAttr := strings.Join(htmlAttrs, "; ")
-			content = fmt.Sprintf(`<span style="%s">%s</span>`, styleAttr, content)
+			// The text sits inside a raw HTML element, so it must also be
+			// HTML-escaped (T-2030). This runs after Markdown escaping because
+			// escapeMarkdown would break the numeric entities (&#39;, &#34;)
+			// that html.EscapeString emits.
+			content = fmt.Sprintf(`<span style="%s">%s</span>`, styleAttr, html.EscapeString(content))
 		}
 
 		content += "\n\n"
@@ -541,19 +545,21 @@ func NewMarkdownRendererWithToC(enabled bool) *markdownRenderer {
 	}
 }
 
-// NewMarkdownRendererWithFrontMatter creates a markdown renderer with front matter
+// NewMarkdownRendererWithFrontMatter creates a markdown renderer with front matter.
+// The map is copied, so later changes to it do not affect the renderer.
 func NewMarkdownRendererWithFrontMatter(frontMatter map[string]string) *markdownRenderer {
 	return &markdownRenderer{
-		frontMatter:  frontMatter,
+		frontMatter:  maps.Clone(frontMatter),
 		headingLevel: 1,
 	}
 }
 
-// NewMarkdownRendererWithOptions creates a markdown renderer with both ToC and front matter
+// NewMarkdownRendererWithOptions creates a markdown renderer with both ToC and front matter.
+// The map is copied, so later changes to it do not affect the renderer.
 func NewMarkdownRendererWithOptions(includeToC bool, frontMatter map[string]string) *markdownRenderer {
 	return &markdownRenderer{
 		includeToC:   includeToC,
-		frontMatter:  frontMatter,
+		frontMatter:  maps.Clone(frontMatter),
 		headingLevel: 1,
 	}
 }
